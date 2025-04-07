@@ -1,16 +1,21 @@
 package com.msvanegasg.facturaelectronica.DTO;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class TipoDocumentoDTO {
+	
+	@NotNull
+	private Long codigo;
 
-    private Long codigo;
+    @NotBlank
     private String nombre;
+
     private String descripcion;
 }
-

@@ -32,7 +32,7 @@ public class DetalleGasto {
 
     @ManyToOne
     @JoinColumn(name = "id_gasto")
-    private Gastos gasto;
+    private Gasto gasto;
 
     @Column(name = "cantidad")
     private Integer cantidad;

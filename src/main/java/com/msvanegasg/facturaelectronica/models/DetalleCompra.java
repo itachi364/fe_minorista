@@ -1,28 +1,21 @@
 package com.msvanegasg.facturaelectronica.models;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import lombok.*;
 
 import java.math.BigDecimal;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.JoinColumn;
-
 @Entity
 @Table(name = "detalle_compra")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode
 public class DetalleCompra {
 
     @Id
@@ -30,27 +23,38 @@ public class DetalleCompra {
     @Column(name = "id_detalle")
     private Long idDetalle;
 
-    @ManyToOne
-    @JoinColumn(name = "id_compra")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_compra", nullable = false)
+    @NotNull
     private Compra compra;
 
-    @ManyToOne
-    @JoinColumn(name = "id_producto")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_producto", nullable = false)
+    @NotNull
     private Producto producto;
 
-    @Column(name = "cantidad")
+    @Column(name = "cantidad", nullable = false)
+    @NotNull
+    @Positive
     private Integer cantidad;
 
-    @Column(name = "precio_unitario")
+    @Column(name = "precio_unitario", nullable = false)
+    @NotNull
+    @PositiveOrZero
     private BigDecimal precioUnitario;
 
-    @Column(name = "subtotal")
+    @Column(name = "subtotal", nullable = false)
+    @NotNull
+    @PositiveOrZero
     private BigDecimal subtotal;
 
-    @Column(name = "iva")
+    @Column(name = "iva", nullable = false)
+    @NotNull
+    @PositiveOrZero
     private BigDecimal iva;
 
-    @Column(name = "total_linea")
+    @Column(name = "total_linea", nullable = false)
+    @NotNull
+    @PositiveOrZero
     private BigDecimal totalLinea;
 }
-

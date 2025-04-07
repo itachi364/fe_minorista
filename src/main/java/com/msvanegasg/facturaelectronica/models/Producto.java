@@ -1,28 +1,21 @@
 package com.msvanegasg.facturaelectronica.models;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import lombok.*;
 
 import java.math.BigDecimal;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.JoinColumn;
-
 @Entity
 @Table(name = "producto")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode
 public class Producto {
 
     @Id
@@ -30,21 +23,31 @@ public class Producto {
     @Column(name = "id_producto")
     private Long idProducto;
 
-    @Column(name = "nombre")
+    @Column(name = "nombre", nullable = false, length = 100)
+    @NotBlank
+    @Size(max = 100)
     private String nombre;
 
-    @Column(name = "descripcion")
+    @Column(name = "descripcion", length = 250)
+    @Size(max = 250)
     private String descripcion;
 
-    @Column(name = "precio_base")
+    @Column(name = "precio_base", nullable = false)
+    @NotNull
+    @PositiveOrZero
     private BigDecimal precioBase;
 
-    @Column(name = "cantidad_stock")
+    @Column(name = "cantidad_stock", nullable = false)
+    @NotNull
+    @PositiveOrZero
     private Integer cantidadStock;
 
-    @Column(name = "id_categoria")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_categoria", nullable = false)
+    @NotNull
     private Categoria categoria;
-    
-    @Column(name = "estado")
+
+    @Column(name = "estado", nullable = false)
+    @NotNull
     private Boolean estado;
 }

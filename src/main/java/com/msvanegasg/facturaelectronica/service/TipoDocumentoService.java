@@ -1,13 +1,13 @@
 package com.msvanegasg.facturaelectronica.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
+import com.msvanegasg.facturaelectronica.exception.TipoDocumentoNotFoundException;
 import com.msvanegasg.facturaelectronica.models.TipoDocumento;
 import com.msvanegasg.facturaelectronica.repository.TipoDocumentoRepository;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class TipoDocumentoService {
@@ -18,9 +18,14 @@ public class TipoDocumentoService {
     public List<TipoDocumento> findAll() {
         return tipoDocumentoRepository.findAll();
     }
+    
+    public List<TipoDocumento> findActive() {
+        return tipoDocumentoRepository.findByActivoTrue();
+    }
 
-    public Optional<TipoDocumento> findById(Long id) {
-        return tipoDocumentoRepository.findById(id);
+    public TipoDocumento findById(Long id) {
+        return tipoDocumentoRepository.findById(id)
+                .orElseThrow(() -> new TipoDocumentoNotFoundException(id));
     }
 
     public TipoDocumento save(TipoDocumento tipoDocumento) {
@@ -28,10 +33,10 @@ public class TipoDocumentoService {
     }
 
     public void disableById(Long id) {
-        tipoDocumentoRepository.findById(id).ifPresent(tipoDocumento -> {
-            tipoDocumento.setActivo(false);
-            tipoDocumentoRepository.save(tipoDocumento);
-        });
+        TipoDocumento tipoDocumento = tipoDocumentoRepository.findById(id)
+                .orElseThrow(() -> new TipoDocumentoNotFoundException(id));
+
+        tipoDocumento.setActivo(false);
+        tipoDocumentoRepository.save(tipoDocumento);
     }
 }
-

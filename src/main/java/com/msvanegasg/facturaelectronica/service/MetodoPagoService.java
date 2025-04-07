@@ -1,13 +1,13 @@
 package com.msvanegasg.facturaelectronica.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
+import com.msvanegasg.facturaelectronica.exception.MetodoPagoNotFoundException;
 import com.msvanegasg.facturaelectronica.models.MetodoPago;
 import com.msvanegasg.facturaelectronica.repository.MetodoPagoRepository;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class MetodoPagoService {
@@ -19,8 +19,9 @@ public class MetodoPagoService {
         return metodoPagoRepository.findAll();
     }
 
-    public Optional<MetodoPago> findById(Long id) {
-        return metodoPagoRepository.findById(id);
+    public MetodoPago findById(Long id) {
+        return metodoPagoRepository.findById(id)
+                .orElseThrow(() -> new MetodoPagoNotFoundException(id));
     }
 
     public MetodoPago save(MetodoPago metodoPago) {
@@ -28,10 +29,10 @@ public class MetodoPagoService {
     }
 
     public void disableById(Long id) {
-    	metodoPagoRepository.findById(id).ifPresent(metodoPago -> {
-    		metodoPago.setActivo(false);
-    		metodoPagoRepository.save(metodoPago);
-        });
+        MetodoPago metodoPago = metodoPagoRepository.findById(id)
+                .orElseThrow(() -> new MetodoPagoNotFoundException(id));
+
+        metodoPago.setActivo(false);
+        metodoPagoRepository.save(metodoPago);
     }
 }
-

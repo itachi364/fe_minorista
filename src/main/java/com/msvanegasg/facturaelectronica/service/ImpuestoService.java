@@ -1,13 +1,13 @@
 package com.msvanegasg.facturaelectronica.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
+import com.msvanegasg.facturaelectronica.exception.ImpuestoNotFoundException;
 import com.msvanegasg.facturaelectronica.models.Impuesto;
 import com.msvanegasg.facturaelectronica.repository.ImpuestoRepository;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class ImpuestoService {
@@ -19,8 +19,9 @@ public class ImpuestoService {
         return impuestoRepository.findAll();
     }
 
-    public Optional<Impuesto> findById(Long id) {
-        return impuestoRepository.findById(id);
+    public Impuesto findById(Long id) {
+        return impuestoRepository.findById(id)
+                .orElseThrow(() -> new ImpuestoNotFoundException(id));
     }
 
     public Impuesto save(Impuesto impuesto) {
@@ -28,10 +29,10 @@ public class ImpuestoService {
     }
 
     public void disableById(Long id) {
-    	impuestoRepository.findById(id).ifPresent(impuesto -> {
-    		impuesto.setActivo(false);
-    		impuestoRepository.save(impuesto);
-        });
+        Impuesto impuesto = impuestoRepository.findById(id)
+                .orElseThrow(() -> new ImpuestoNotFoundException(id));
+
+        impuesto.setActivo(false);
+        impuestoRepository.save(impuesto);
     }
 }
-

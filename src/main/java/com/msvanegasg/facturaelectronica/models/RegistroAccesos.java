@@ -30,7 +30,7 @@ public class RegistroAccesos {
 
     @ManyToOne
     @JoinColumn(name = "id_usuario")
-    private Usuarios usuario;
+    private Usuario usuario;
 
     @Column(name = "fecha_hora")
     private LocalDateTime fechaHora;

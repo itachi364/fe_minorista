@@ -1,23 +1,19 @@
 package com.msvanegasg.facturaelectronica.models;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Column;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.GeneratedValue;
 
 @Entity
 @Table(name = "categoria")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode
 public class Categoria {
 
     @Id
@@ -25,12 +21,16 @@ public class Categoria {
     @Column(name = "id_categoria")
     private Long idCategoria;
 
-    @Column(name = "nombre")
+    @Column(name = "nombre", nullable = false, length = 100)
+    @NotBlank
+    @Size(max = 100)
     private String nombre;
 
-    @Column(name = "descripcion")
+    @Column(name = "descripcion", length = 255)
+    @Size(max = 255)
     private String descripcion;
-    
-    @Column(name = "activo")
+
+    @Column(name = "activo", nullable = false)
+    @NotNull
     private Boolean activo;
 }

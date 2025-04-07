@@ -1,35 +1,35 @@
 package com.msvanegasg.facturaelectronica.models;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Column;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.GeneratedValue;
+import lombok.*;
 
 @Entity
 @Table(name = "tipodocumento")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode
 public class TipoDocumento {
 
-	@Id
-	@Column(name = "codigo")
-	private Long codigo;
-	
-	@Column(name = "nombre")
-	private String nombre;
+    @Id
+    @Column(name = "codigo",nullable = false, unique = true)
+    private Long codigo;
 
-	@Column(name = "descripcion")
-	private String descripcion;
-	
-	@Column(name = "activo")
+    @Column(name = "nombre", nullable = false, unique = true, length = 50)
+    @NotBlank
+    @Size(max = 50)
+    private String nombre;
+
+    @Column(name = "descripcion", length = 100)
+    @Size(max = 100)
+    private String descripcion;
+
+    @Column(name = "activo", nullable = false)
+    @NotNull
     private Boolean activo;
 }

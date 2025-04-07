@@ -1,55 +1,56 @@
 package com.msvanegasg.facturaelectronica.controller;
 
+import com.msvanegasg.facturaelectronica.DTO.MetodoPagoDTO;
+import com.msvanegasg.facturaelectronica.mapper.MetodoPagoMapper;
+import com.msvanegasg.facturaelectronica.models.MetodoPago;
+import com.msvanegasg.facturaelectronica.service.MetodoPagoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.msvanegasg.facturaelectronica.models.MetodoPago;
-import com.msvanegasg.facturaelectronica.service.MetodoPagoService;
-
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/metodo-pago")
+@RequestMapping("/api/metodopago")
 public class MetodoPagoController {
 
     @Autowired
     private MetodoPagoService metodoPagoService;
 
     @GetMapping
-    public List<MetodoPago> getAll() {
-        return metodoPagoService.findAll();
+    public ResponseEntity<List<MetodoPago>> findAll() {
+    	List<MetodoPago> all = metodoPagoService.findAll();
+        return ResponseEntity.ok(all);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<MetodoPago> getById(@PathVariable Long id) {
-        return metodoPagoService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<MetodoPagoDTO> getById(@PathVariable("id") Long id) {
+        MetodoPago metodoPago = metodoPagoService.findById(id);
+        return ResponseEntity.ok(MetodoPagoMapper.toDTO(metodoPago));
     }
 
     @PostMapping
-    public MetodoPago create(@RequestBody MetodoPago metodoPago) {
-        return metodoPagoService.save(metodoPago);
+    public ResponseEntity<MetodoPagoDTO> create(@Valid @RequestBody MetodoPagoDTO dto) {
+        MetodoPago nuevoMetodo = MetodoPagoMapper.toEntity(dto);
+        nuevoMetodo.setActivo(true);
+        MetodoPago guardado = metodoPagoService.save(nuevoMetodo);
+        return ResponseEntity.ok(MetodoPagoMapper.toDTO(guardado));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<MetodoPago> update(@PathVariable Long id, @RequestBody MetodoPago metodoPago) {
-        return metodoPagoService.findById(id)
-                .map(existing -> {
-                	metodoPago.setIdMetodoPago(existing.getIdMetodoPago());
-                    return ResponseEntity.ok(metodoPagoService.save(metodoPago));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<MetodoPagoDTO> update(@PathVariable("id") Long id, @Valid @RequestBody MetodoPagoDTO dto) {
+        MetodoPago existente = metodoPagoService.findById(id);
+        MetodoPago actualizado = MetodoPagoMapper.toEntity(dto);
+        actualizado.setIdMetodoPago(existente.getIdMetodoPago());
+        actualizado.setActivo(existente.getActivo());
+        MetodoPago guardado = metodoPagoService.save(actualizado);
+        return ResponseEntity.ok(MetodoPagoMapper.toDTO(guardado));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> disable(@PathVariable Long id) {
-        if (metodoPagoService.findById(id).isPresent()) {
-        	metodoPagoService.disableById(id);
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.notFound().build();
+    public ResponseEntity<Void> disable(@PathVariable("id") Long id) {
+        metodoPagoService.disableById(id);
+        return ResponseEntity.noContent().build();
     }
 }
-

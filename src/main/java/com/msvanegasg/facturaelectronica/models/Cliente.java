@@ -1,25 +1,19 @@
 package com.msvanegasg.facturaelectronica.models;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Column;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.JoinColumn;
+import lombok.*;
 
 @Entity
 @Table(name = "cliente")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode
 public class Cliente {
 
     @Id
@@ -27,27 +21,44 @@ public class Cliente {
     @Column(name = "id_cliente")
     private Long idCliente;
 
-    @Column(name = "nombre")
+    @Column(name = "nombre", nullable = false, length = 100)
+    @NotBlank
+    @Size(max = 100)
     private String nombre;
 
-    @Column(name = "id_tipo_documento")
-    private Long tipoDocumento;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_tipo_documento", nullable = false)
+    @NotNull
+    private TipoDocumento tipoDocumento;
 
-    @Column(name = "numero_documento")
-    private String numeroDocumento;
+    @Column(name = "numero_documento", nullable = false, unique = true, length = 20)
+    @NotNull
+    private Long numeroDocumento;
 
-    @Column(name = "direccion")
+    @Column(name = "direccion", length = 150)
+    @Size(max = 150)
     private String direccion;
 
-    @Column(name = "telefono")
+    @Column(name = "telefono", length = 15)
+    @Size(max = 15)
     private String telefono;
 
-    @Column(name = "correo_electronico")
+    @Column(name = "correo_electronico", length = 100)
+    @Email
+    @Size(max = 100)
     private String correoElectronico;
 
-    @Column(name = "tipo_cliente")
-    private String tipoCliente;
-    
-    @Column(name = "activo")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_cliente", nullable = false, length = 20)
+    @NotNull
+    private TipoCliente tipoCliente;
+
+    @Column(name = "activo", nullable = false)
+    @NotNull
     private Boolean activo;
+
+    public enum TipoCliente {
+        NATURAL,
+        JURIDICO
+    }
 }

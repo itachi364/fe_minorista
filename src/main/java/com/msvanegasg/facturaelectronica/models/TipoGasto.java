@@ -1,23 +1,19 @@
 package com.msvanegasg.facturaelectronica.models;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Column;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.GeneratedValue;
+import lombok.*;
 
 @Entity
 @Table(name = "tipo_gasto")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode
 public class TipoGasto {
 
     @Id
@@ -25,13 +21,14 @@ public class TipoGasto {
     @Column(name = "id_tipo_gasto")
     private Long idTipoGasto;
 
-    @Column(name = "nombre")
+    @Column(name = "nombre", nullable = false, length = 100)
+    @NotBlank
     private String nombre;
 
-    @Column(name = "descripcion")
+    @Column(name = "descripcion", length = 255)
     private String descripcion;
-    
-    @Column(name = "activo")
+
+    @Column(name = "activo", nullable = false)
+    @NotNull
     private Boolean activo;
 }
-
