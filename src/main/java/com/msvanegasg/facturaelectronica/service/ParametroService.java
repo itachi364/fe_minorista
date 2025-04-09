@@ -23,6 +23,14 @@ public class ParametroService {
         return parametroRepository.findById(id)
                 .orElseThrow(() -> new ParametroNotFoundException(id));
     }
+    
+    public List<Parametro> findActive() {
+        return parametroRepository.findByActivoTrue();
+    }
+    
+    public List<Parametro> findActiveFalse() {
+        return parametroRepository.findByActivoFalse();
+    }
 
     public Parametro save(Parametro parametro) {
         return parametroRepository.save(parametro);
@@ -34,5 +42,15 @@ public class ParametroService {
 
         parametro.setActivo(false);
         parametroRepository.save(parametro);
+    }
+    
+    public void activarParametro(Long id) {
+        Parametro parametro = parametroRepository.findById(id)
+                .orElseThrow(() -> new ParametroNotFoundException(id));
+
+        if (!parametro.getActivo()) {
+        	parametro.setActivo(true);
+        	parametroRepository.save(parametro);
+        }
     }
 }

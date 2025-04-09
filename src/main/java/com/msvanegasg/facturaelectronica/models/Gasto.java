@@ -2,6 +2,7 @@ package com.msvanegasg.facturaelectronica.models;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+import com.msvanegasg.facturaelectronica.enums.Estado;
 
 import lombok.*;
 
@@ -49,9 +50,10 @@ public class Gasto {
     @Column(name = "url_evidencia", length = 255)
     private String urlEvidencia;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 20)
-    @NotBlank
-    private String estado;
+    @NotNull
+    private Estado estado;
 
     @Column(name = "activo", nullable = false)
     @NotNull

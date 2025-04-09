@@ -23,6 +23,14 @@ public class TipoGastoService {
         return tipoGastoRepository.findById(id)
                 .orElseThrow(() -> new TipoGastoNotFoundException(id));
     }
+    
+    public List<TipoGasto> findActive() {
+        return tipoGastoRepository.findByActivoTrue();
+    }
+    
+    public List<TipoGasto> findActiveFalse() {
+        return tipoGastoRepository.findByActivoFalse();
+    }
 
     public TipoGasto save(TipoGasto tipoGasto) {
         return tipoGastoRepository.save(tipoGasto);
@@ -34,5 +42,15 @@ public class TipoGastoService {
 
         tipoGasto.setActivo(false);
         tipoGastoRepository.save(tipoGasto);
+    }
+    
+    public void activarTipoGasto(Long idTipoGasto) {
+        TipoGasto tipoGasto = tipoGastoRepository.findById(idTipoGasto)
+                .orElseThrow(() -> new TipoGastoNotFoundException(idTipoGasto));
+
+        if (!tipoGasto.getActivo()) {
+        	tipoGasto.setActivo(true);
+        	tipoGastoRepository.save(tipoGasto);
+        }
     }
 }

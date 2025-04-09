@@ -1,6 +1,7 @@
 package com.msvanegasg.facturaelectronica.repository;
 
 import com.msvanegasg.facturaelectronica.models.Cliente;
+import com.msvanegasg.facturaelectronica.models.TipoDocumento;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,10 +14,14 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 	
 	Optional<Cliente> findByNumeroDocumento(Long numeroDocumento);
 	
-	List<Cliente> findByNombreContainingIgnoreCase(String nombre);
+	Optional<Cliente> findByNumeroDocumentoAndTipoDocumento(Long numeroDocumento, TipoDocumento tipoDocumento);
+	
+	Cliente findByNombreContainingIgnoreCase(String nombre);
 
     List<Cliente> findByActivoTrue();
     
-    boolean existsByNumeroDocumento(Long numeroDocumento);
+    List<Cliente> findByActivoFalse();
+    
+    boolean existsByNumeroDocumentoAndTipoDocumento_Codigo(Long numeroDocumento, Long tipoDocumentoCodigo);
 	
 }

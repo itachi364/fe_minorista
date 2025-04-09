@@ -47,7 +47,7 @@ public class Producto {
     @NotNull
     private Categoria categoria;
 
-    @Column(name = "estado", nullable = false)
+    @Column(name = "activo", nullable = false)
     @NotNull
-    private Boolean estado;
+    private Boolean activo;
 }

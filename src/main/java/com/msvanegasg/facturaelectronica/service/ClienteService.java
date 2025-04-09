@@ -1,77 +1,124 @@
 package com.msvanegasg.facturaelectronica.service;
 
-import com.msvanegasg.facturaelectronica.exception.ClienteAlreadyExistsException;
-import com.msvanegasg.facturaelectronica.exception.ClienteNotFoundException;
+import com.msvanegasg.facturaelectronica.exception.cliente.ClienteInactivoException;
+import com.msvanegasg.facturaelectronica.exception.cliente.ClienteNotFoundException;
+import com.msvanegasg.facturaelectronica.exception.cliente.ClienteIdNotFoundException;
 import com.msvanegasg.facturaelectronica.models.Cliente;
+import com.msvanegasg.facturaelectronica.models.TipoDocumento;
 import com.msvanegasg.facturaelectronica.repository.ClienteRepository;
+import com.msvanegasg.facturaelectronica.repository.TipoDocumentoRepository;
+import com.msvanegasg.facturaelectronica.validator.EntidadValidator;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ClienteService {
 
 	@Autowired
-    private ClienteRepository clienteRepository;
+	private ClienteRepository clienteRepository;
 
+	@Autowired
+	private TipoDocumentoRepository tipoDocumentoRepository;
 
-    public List<Cliente> findAll() {
-        return clienteRepository.findAll();
-    }
+	@Autowired
+	private EntidadValidator entidadValidator;
 
-    public List<Cliente> findActivos() {
-        return clienteRepository.findByActivoTrue();
-    }
+	public List<Cliente> findAll() {
+		return clienteRepository.findAll();
+	}
 
-    public Cliente findById(Long id) {
-        return clienteRepository.findById(id)
-                .orElseThrow(() -> new ClienteNotFoundException(id));
-    }
+	public List<Cliente> findActivos() {
+		return clienteRepository.findByActivoTrue();
+	}
 
-    public Cliente findByNumeroDocumento(Long numeroDocumento) {
-        return clienteRepository.findByNumeroDocumento(numeroDocumento)
-                .orElseThrow(() -> new ClienteNotFoundException(numeroDocumento));
-    }
+	public List<Cliente> findActivosFalse() {
+		return clienteRepository.findByActivoFalse();
+	}
 
+	public Cliente findById(Long id) {
+		return clienteRepository.findById(id).orElseThrow(() -> new ClienteIdNotFoundException(id));
+	}
 
-    public List<Cliente> findByNombre(String nombre) {
-        return clienteRepository.findByNombreContainingIgnoreCase(nombre);
-    }
+	public Cliente findByNumeroDocumentoAndTipoDocumento(Long numeroDocumento, Long tipoDocumentoCodigo) {
+		TipoDocumento tipoDocumento = entidadValidator.obtenerTipoDocumento(tipoDocumentoCodigo);
 
-    public Cliente save(Cliente cliente) {
-        if (clienteRepository.existsByNumeroDocumento(cliente.getNumeroDocumento())) {
-            throw new ClienteAlreadyExistsException(cliente.getNumeroDocumento());
-        }
-        return clienteRepository.save(cliente);
-    }
-    
-    public Cliente update(Long numero_documento, Cliente clienteActualizado) {
-        Cliente existente = clienteRepository.findByNumeroDocumento(numero_documento)
-                .orElseThrow(() -> new ClienteNotFoundException(numero_documento));
+		return clienteRepository.findByNumeroDocumentoAndTipoDocumento(numeroDocumento, tipoDocumento)
+				.orElseThrow(() -> new ClienteNotFoundException(numeroDocumento, tipoDocumentoCodigo));
+	}
 
-        // Si el número de documento cambia, validamos que no esté ya en uso por otro cliente
-        if (!existente.getNumeroDocumento().equals(clienteActualizado.getNumeroDocumento())
-                && clienteRepository.existsByNumeroDocumento(clienteActualizado.getNumeroDocumento())) {
-            throw new ClienteAlreadyExistsException(clienteActualizado.getNumeroDocumento());
-        }
+	public Cliente findByNombre(String nombre) {
+		return clienteRepository.findByNombreContainingIgnoreCase(nombre);
+	}
 
-        existente.setNombre(clienteActualizado.getNombre());
-        existente.setTipoDocumento(clienteActualizado.getTipoDocumento());
-        existente.setNumeroDocumento(clienteActualizado.getNumeroDocumento());
-        existente.setDireccion(clienteActualizado.getDireccion());
-        existente.setTelefono(clienteActualizado.getTelefono());
-        existente.setCorreoElectronico(clienteActualizado.getCorreoElectronico());
-        existente.setTipoCliente(clienteActualizado.getTipoCliente());
+	public Cliente save(Cliente cliente) {
+		Long numeroDocumento = cliente.getNumeroDocumento();
+		Long tipoDocumentoCodigo = cliente.getTipoDocumento().getCodigo();
 
-        return clienteRepository.save(existente);
-    }
+		if (tipoDocumentoCodigo == 31 || tipoDocumentoCodigo == 50) {
+			entidadValidator.validarNit(tipoDocumentoCodigo, numeroDocumento,
+					Optional.ofNullable(cliente.getDigitoVerificacion()));
+		}
 
+		boolean existe = clienteRepository.existsByNumeroDocumentoAndTipoDocumento_Codigo(numeroDocumento,
+				tipoDocumentoCodigo);
+		entidadValidator.validarNoExistenciaEntidad(existe, numeroDocumento, tipoDocumentoCodigo, "cliente");
 
-    public void disableById(Long id) {
-        Cliente cliente = findById(id);
-        cliente.setActivo(false);
-        clienteRepository.save(cliente);
-    }
+		return clienteRepository.save(cliente);
+	}
+
+	public Cliente update(Long numeroDocumento, Long tipoDocumentoCodigo, Cliente clienteActualizado) {
+		TipoDocumento tipoDocumento = entidadValidator.obtenerTipoDocumento(tipoDocumentoCodigo);
+
+		Cliente existente = clienteRepository.findByNumeroDocumentoAndTipoDocumento(numeroDocumento, tipoDocumento)
+				.orElseThrow(() -> new ClienteNotFoundException(numeroDocumento, tipoDocumentoCodigo));
+
+		if (!existente.getActivo()) {
+			throw new ClienteInactivoException(numeroDocumento);
+		}
+
+		entidadValidator.validarNumeroDocumentoNoModificable(existente.getNumeroDocumento(),
+				clienteActualizado.getNumeroDocumento(), "cliente");
+
+		entidadValidator.validarTipoDocumentoNoModificable(existente.getTipoDocumento().getCodigo(),
+				clienteActualizado.getTipoDocumento().getCodigo());
+
+		
+		entidadValidator.validarDigitoVerificacionNoModificable(Optional.ofNullable(existente.getDigitoVerificacion()),
+				Optional.ofNullable(clienteActualizado.getDigitoVerificacion()), "cliente");
+
+		existente.setNombre(clienteActualizado.getNombre());
+		existente.setDireccion(clienteActualizado.getDireccion());
+		existente.setTelefono(clienteActualizado.getTelefono());
+		existente.setCorreoElectronico(clienteActualizado.getCorreoElectronico());
+		existente.setTipoCliente(clienteActualizado.getTipoCliente());
+		existente.setDigitoVerificacion(clienteActualizado.getDigitoVerificacion());
+
+		return clienteRepository.save(existente);
+	}
+
+	public void disableByNumero(Long numeroDocumento, Long tipoDocumentoCodigo) {
+		TipoDocumento tipoDocumento = entidadValidator.obtenerTipoDocumento(tipoDocumentoCodigo);
+
+		Cliente cliente = clienteRepository.findByNumeroDocumentoAndTipoDocumento(numeroDocumento, tipoDocumento)
+				.orElseThrow(() -> new ClienteNotFoundException(numeroDocumento, tipoDocumentoCodigo));
+
+		cliente.setActivo(false);
+		clienteRepository.save(cliente);
+	}
+
+	public void activarCliente(Long numeroDocumento, Long tipoDocumentoCodigo) {
+		TipoDocumento tipoDocumento = entidadValidator.obtenerTipoDocumento(tipoDocumentoCodigo);
+
+		Cliente cliente = clienteRepository.findByNumeroDocumentoAndTipoDocumento(numeroDocumento, tipoDocumento)
+				.orElseThrow(() -> new ClienteNotFoundException(numeroDocumento, tipoDocumentoCodigo));
+
+		if (!cliente.getActivo()) {
+			cliente.setActivo(true);
+			clienteRepository.save(cliente);
+		}
+	}
 }

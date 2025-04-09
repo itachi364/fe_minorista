@@ -1,4 +1,4 @@
-package com.msvanegasg.facturaelectronica.DTO;
+package com.msvanegasg.facturaelectronica.DTO.response;
 
 import lombok.*;
 
@@ -7,15 +7,17 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ProveedorResponseDTO {
-
-    private Long idProveedor;
+public class ClienteResponseDTO {
+	
+    private Long id_cliente;
     private String nombre;
-    private Long tipoDocumento;
+    private TipoDocumentoResponseDTO tipoDocumento;
     private Long numeroDocumento;
+    private Integer digitoVerificacion;
     private String direccion;
     private String telefono;
     private String correoElectronico;
+    private String tipoCliente;
     private Boolean activo;
-}
 
+}

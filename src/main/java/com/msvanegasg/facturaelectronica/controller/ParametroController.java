@@ -25,6 +25,18 @@ public class ParametroController {
     	List<Parametro> all = parametroService.findAll();
         return ResponseEntity.ok(all);
     }
+    
+    @GetMapping("/active")
+    public ResponseEntity<List<Parametro>> findActiveTrue() {
+    	List<Parametro> all = parametroService.findActive();
+        return ResponseEntity.ok(all);
+    }
+    
+    @GetMapping("/inactive")
+    public ResponseEntity<List<Parametro>> findActiveFalse() {
+    	List<Parametro> all = parametroService.findActiveFalse();
+        return ResponseEntity.ok(all);
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<ParametroDTO> getById(@PathVariable("id") Long id) {
@@ -52,6 +64,12 @@ public class ParametroController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> disable(@PathVariable("id") Long id) {
         parametroService.disableById(id);
+        return ResponseEntity.noContent().build();
+    }
+    
+    @PutMapping("/{id}/activar")
+    public ResponseEntity<Void> activarParametro(@PathVariable("id") Long id) {
+    	parametroService.activarParametro(id);
         return ResponseEntity.noContent().build();
     }
 }

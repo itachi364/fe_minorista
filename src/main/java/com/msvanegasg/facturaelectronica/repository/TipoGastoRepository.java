@@ -10,6 +10,8 @@ import java.util.List;
 public interface TipoGastoRepository extends JpaRepository<TipoGasto, Long> {
 
     List<TipoGasto> findByActivoTrue();
+    
+    List<TipoGasto> findByActivoFalse();
 
     boolean existsByNombreIgnoreCase(String nombre);
 }

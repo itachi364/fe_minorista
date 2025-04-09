@@ -12,7 +12,7 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
     List<Producto> findByCategoria(Categoria categoria);
 
-    List<Producto> findByEstadoTrue();
+    List<Producto> findByActivoTrue();
 
     List<Producto> findByNombreContainingIgnoreCase(String nombre);
 }

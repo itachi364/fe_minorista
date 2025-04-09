@@ -1,7 +1,10 @@
 package com.msvanegasg.facturaelectronica.mapper;
 
+import java.util.Optional;
+
 import com.msvanegasg.facturaelectronica.DTO.ProveedorDTO;
-import com.msvanegasg.facturaelectronica.DTO.ProveedorResponseDTO;
+import com.msvanegasg.facturaelectronica.DTO.response.ProveedorResponseDTO;
+import com.msvanegasg.facturaelectronica.DTO.response.TipoDocumentoResponseDTO;
 import com.msvanegasg.facturaelectronica.models.Proveedor;
 import com.msvanegasg.facturaelectronica.models.TipoDocumento;
 
@@ -13,6 +16,7 @@ public class ProveedorMapper {
         return ProveedorDTO.builder()
                 .idTipoDocumento(proveedor.getTipoDocumento().getCodigo())
                 .numeroDocumento(proveedor.getNumeroDocumento())
+                .digitoVerificacion(Optional.ofNullable(proveedor.getDigitoVerificacion()))
                 .nombre(proveedor.getNombre())
                 .telefono(proveedor.getTelefono())
                 .direccion(proveedor.getDireccion())
@@ -26,6 +30,7 @@ public class ProveedorMapper {
         return Proveedor.builder()
                 .tipoDocumento(tipoDocumento)
                 .numeroDocumento(dto.getNumeroDocumento())
+                .digitoVerificacion(dto.getDigitoVerificacion().orElse(null))
                 .nombre(dto.getNombre())
                 .telefono(dto.getTelefono())
                 .direccion(dto.getDireccion())
@@ -35,16 +40,21 @@ public class ProveedorMapper {
     }
     
     public static ProveedorResponseDTO toResponseDTO(Proveedor proveedor) {
+    	TipoDocumentoResponseDTO tipoDocumentoDTO = TipoDocumentoResponseDTO.builder()
+    			.id(proveedor.getTipoDocumento().getCodigo())
+                .nombre(proveedor.getTipoDocumento().getNombre())
+                .build();
         return ProveedorResponseDTO.builder()
                 .idProveedor(proveedor.getIdProveedor())
                 .nombre(proveedor.getNombre())
-                .tipoDocumento(proveedor.getTipoDocumento().getCodigo())
+                .tipoDocumento(tipoDocumentoDTO)
                 .numeroDocumento(proveedor.getNumeroDocumento())
+                .digitoVerificacion(proveedor.getDigitoVerificacion())
                 .direccion(proveedor.getDireccion())
                 .telefono(proveedor.getTelefono())
                 .correoElectronico(proveedor.getCorreoElectronico())
                 .activo(proveedor.getActivo())
                 .build();
     }
-
+    
 }

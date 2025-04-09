@@ -2,7 +2,6 @@ package com.msvanegasg.facturaelectronica.controller;
 
 import com.msvanegasg.facturaelectronica.DTO.TipoDocumentoDTO;
 import com.msvanegasg.facturaelectronica.mapper.TipoDocumentoMapper;
-import com.msvanegasg.facturaelectronica.models.Impuesto;
 import com.msvanegasg.facturaelectronica.models.TipoDocumento;
 import com.msvanegasg.facturaelectronica.service.TipoDocumentoService;
 
@@ -12,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/tipos-documento")
@@ -33,11 +31,17 @@ public class TipoDocumentoController {
     	List<TipoDocumento> active = tipoDocumentoService.findActive();
     	return ResponseEntity.ok(active);
     }
+    
+    @GetMapping("/inactive")
+    public ResponseEntity<List<TipoDocumento>> findActiveFalse() {
+    	List<TipoDocumento> inactivo = tipoDocumentoService.findActiveFalse();
+    	return ResponseEntity.ok(inactivo);
+    }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<TipoDocumentoDTO> findById(@PathVariable("id") Long id) {
-        TipoDocumento tipo = tipoDocumentoService.findById(id);
-        return ResponseEntity.ok(TipoDocumentoMapper.toDTO(tipo));
+    @GetMapping("/{codigo}")
+    public ResponseEntity<TipoDocumento> findById(@PathVariable("codigo") Long codigo) {
+        TipoDocumento tipo = tipoDocumentoService.findById(codigo);
+        return ResponseEntity.ok(tipo);
     }
 
     @PostMapping
@@ -48,9 +52,9 @@ public class TipoDocumentoController {
         return ResponseEntity.ok(TipoDocumentoMapper.toDTO(saved));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<TipoDocumentoDTO> update(@PathVariable("id") Long id, @Valid @RequestBody TipoDocumentoDTO dto) {
-        TipoDocumento existing = tipoDocumentoService.findById(id);
+    @PutMapping("/{codigo}")
+    public ResponseEntity<TipoDocumentoDTO> update(@PathVariable("codigo") Long codigo, @Valid @RequestBody TipoDocumentoDTO dto) {
+        TipoDocumento existing = tipoDocumentoService.findById(codigo);
 
         TipoDocumento updatedTipo = TipoDocumentoMapper.toEntity(dto);
         updatedTipo.setCodigo(existing.getCodigo());
@@ -60,9 +64,15 @@ public class TipoDocumentoController {
         return ResponseEntity.ok(TipoDocumentoMapper.toDTO(updated));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> disable(@PathVariable("id") Long id) {
-        tipoDocumentoService.disableById(id);
+    @DeleteMapping("/{codigo}")
+    public ResponseEntity<Void> disable(@PathVariable("codigo") Long codigo) {
+        tipoDocumentoService.disableByCodigo(codigo);
+        return ResponseEntity.noContent().build();
+    }
+    
+    @PutMapping("/{codigo}/activar")
+    public ResponseEntity<Void> activarTipoDocumento(@PathVariable("codigo") Long codigo) {
+    	tipoDocumentoService.activarTipoDocumento(codigo);
         return ResponseEntity.noContent().build();
     }
 }

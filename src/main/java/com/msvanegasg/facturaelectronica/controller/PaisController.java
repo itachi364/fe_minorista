@@ -30,6 +30,12 @@ public class PaisController {
     	List<Pais> active = paisService.findActive();
         return ResponseEntity.ok(active);
     }
+    
+    @GetMapping("/inactive")
+    public ResponseEntity<List<Pais>> findActiveFalse() {
+    	List<Pais> active = paisService.findActiveFalse();
+        return ResponseEntity.ok(active);
+    }
 
     @GetMapping("/{codigo}")
     public ResponseEntity<Pais> getByCodigo(@PathVariable("codigo") String codigo) {

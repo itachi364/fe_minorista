@@ -23,6 +23,14 @@ public class ImpuestoService {
         return impuestoRepository.findById(id)
                 .orElseThrow(() -> new ImpuestoNotFoundException(id));
     }
+    
+    public Impuesto findActiveTrue() {
+        return impuestoRepository.findByActivoTrue();
+    }
+    
+    public Impuesto findActiveFalse() {
+        return impuestoRepository.findByActivoFalse();
+    }
 
     public Impuesto save(Impuesto impuesto) {
         return impuestoRepository.save(impuesto);
@@ -34,5 +42,15 @@ public class ImpuestoService {
 
         impuesto.setActivo(false);
         impuestoRepository.save(impuesto);
+    }
+    
+    public void activarImpuesto(Long id) {
+        Impuesto impuesto = impuestoRepository.findById(id)
+                .orElseThrow(() -> new ImpuestoNotFoundException(id));
+
+        if (!impuesto.getActivo()) {
+        	impuesto.setActivo(true);
+        	impuestoRepository.save(impuesto);
+        }
     }
 }

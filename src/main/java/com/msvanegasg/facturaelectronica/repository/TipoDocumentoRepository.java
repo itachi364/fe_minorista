@@ -10,6 +10,8 @@ import java.util.List;
 public interface TipoDocumentoRepository extends JpaRepository<TipoDocumento, Long> {
 
     List<TipoDocumento> findByActivoTrue();
+    
+    List<TipoDocumento> findByActivoFalse();
 
     boolean existsByNombreIgnoreCase(String nombre);
 }

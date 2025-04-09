@@ -9,7 +9,9 @@ import java.util.List;
 @Repository
 public interface MetodoPagoRepository extends JpaRepository<MetodoPago, Long> {
 
-    List<MetodoPago> findByActivo(Boolean activo);
+	MetodoPago findByActivoFalse();
+	
+	MetodoPago findByActivoTrue();
 
     List<MetodoPago> findByNombreContainingIgnoreCase(String nombre);
 }

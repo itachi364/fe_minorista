@@ -9,7 +9,9 @@ import java.util.List;
 @Repository
 public interface ImpuestoRepository extends JpaRepository<Impuesto, Long> {
 
-    List<Impuesto> findByActivo(Boolean activo);
+	Impuesto findByActivoTrue();
+    
+    Impuesto findByActivoFalse();
 
     List<Impuesto> findByNombreContainingIgnoreCase(String nombre);
 }

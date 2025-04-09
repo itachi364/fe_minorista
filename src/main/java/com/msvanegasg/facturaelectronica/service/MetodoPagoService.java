@@ -18,6 +18,14 @@ public class MetodoPagoService {
     public List<MetodoPago> findAll() {
         return metodoPagoRepository.findAll();
     }
+    
+    public MetodoPago findActiveTrue() {
+        return metodoPagoRepository.findByActivoTrue();
+    }
+    
+    public MetodoPago findActiveFalse() {
+        return metodoPagoRepository.findByActivoFalse();
+    }
 
     public MetodoPago findById(Long id) {
         return metodoPagoRepository.findById(id)
@@ -34,5 +42,15 @@ public class MetodoPagoService {
 
         metodoPago.setActivo(false);
         metodoPagoRepository.save(metodoPago);
+    }
+    
+    public void activarMetodo(Long id) {
+        MetodoPago metodoPago = metodoPagoRepository.findById(id)
+                .orElseThrow(() -> new MetodoPagoNotFoundException(id));
+
+        if (!metodoPago.getActivo()) {
+        	metodoPago.setActivo(true);
+        	metodoPagoRepository.save(metodoPago);
+        }
     }
 }

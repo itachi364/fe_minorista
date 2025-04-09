@@ -12,6 +12,8 @@ public interface PaisRepository extends JpaRepository<Pais, String> {
     List<Pais> findByNombreContainingIgnoreCase(String nombre);
     
     List<Pais> findByActivoTrue();
+    
+    List<Pais> findByActivoFalse();
 
     boolean existsByNombreIgnoreCase(String nombre);
 }

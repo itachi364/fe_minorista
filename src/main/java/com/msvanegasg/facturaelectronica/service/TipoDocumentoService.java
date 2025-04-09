@@ -1,6 +1,6 @@
 package com.msvanegasg.facturaelectronica.service;
 
-import com.msvanegasg.facturaelectronica.exception.TipoDocumentoNotFoundException;
+import com.msvanegasg.facturaelectronica.exception.tipodocumento.TipoDocumentoNotFoundException;
 import com.msvanegasg.facturaelectronica.models.TipoDocumento;
 import com.msvanegasg.facturaelectronica.repository.TipoDocumentoRepository;
 
@@ -22,21 +22,35 @@ public class TipoDocumentoService {
     public List<TipoDocumento> findActive() {
         return tipoDocumentoRepository.findByActivoTrue();
     }
+    
+    public List<TipoDocumento> findActiveFalse() {
+        return tipoDocumentoRepository.findByActivoFalse();
+    }
 
-    public TipoDocumento findById(Long id) {
-        return tipoDocumentoRepository.findById(id)
-                .orElseThrow(() -> new TipoDocumentoNotFoundException(id));
+    public TipoDocumento findById(Long codigo) {
+        return tipoDocumentoRepository.findById(codigo)
+                .orElseThrow(() -> new TipoDocumentoNotFoundException(codigo));
     }
 
     public TipoDocumento save(TipoDocumento tipoDocumento) {
         return tipoDocumentoRepository.save(tipoDocumento);
     }
 
-    public void disableById(Long id) {
-        TipoDocumento tipoDocumento = tipoDocumentoRepository.findById(id)
-                .orElseThrow(() -> new TipoDocumentoNotFoundException(id));
+    public void disableByCodigo(Long codigo) {
+        TipoDocumento tipoDocumento = tipoDocumentoRepository.findById(codigo)
+                .orElseThrow(() -> new TipoDocumentoNotFoundException(codigo));
 
         tipoDocumento.setActivo(false);
         tipoDocumentoRepository.save(tipoDocumento);
+    }
+    
+    public void activarTipoDocumento(Long codigo) {
+        TipoDocumento tipoDocumento = tipoDocumentoRepository.findById(codigo)
+                .orElseThrow(() -> new TipoDocumentoNotFoundException(codigo));
+
+        if (!tipoDocumento.getActivo()) {
+        	tipoDocumento.setActivo(true);
+        	tipoDocumentoRepository.save(tipoDocumento);
+        }
     }
 }

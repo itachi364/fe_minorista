@@ -10,4 +10,6 @@ import java.util.List;
 public interface ParametroRepository extends JpaRepository<Parametro, Long> {
 
     List<Parametro> findByActivoTrue();
+    
+    List<Parametro> findByActivoFalse();
 }

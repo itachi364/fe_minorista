@@ -1,58 +1,54 @@
 package com.msvanegasg.facturaelectronica.models;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Column;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.JoinColumn;
+import lombok.*;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import com.msvanegasg.facturaelectronica.enums.Estado;
+
 @Entity
 @Table(name = "compra")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode
 public class Compra {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_compra")
-    private Long idCompra;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "id_compra")
+	private Long idCompra;
 
-    @ManyToOne
-    @JoinColumn(name = "id_proveedor")
-    private Proveedor proveedor;
+	@ManyToOne
+	@JoinColumn(name = "id_proveedor")
+	private Proveedor proveedor;
 
-    @Column(name = "fecha")
-    private LocalDateTime fecha;
+	@Column(name = "fecha")
+	private LocalDateTime fecha;
 
-    @Column(name = "subtotal")
-    private BigDecimal subtotal;
+	@Column(name = "subtotal")
+	private BigDecimal subtotal;
 
-    @Column(name = "iva_total")
-    private BigDecimal ivaTotal;
+	@Column(name = "iva_total")
+	private BigDecimal ivaTotal;
 
-    @Column(name = "total")
-    private BigDecimal total;
+	@Column(name = "total")
+	private BigDecimal total;
 
-    @Column(name = "url_evidencia")
-    private String urlEvidencia;
+	@Column(name = "url_evidencia")
+	private String urlEvidencia;
 
-    @Column(name = "estado")
-    private String estado;
-    
-    @Column(name = "activo")
-    private Boolean activo;
+	@Enumerated(EnumType.STRING)
+    @Column(name = "estado", nullable = false, length = 20)
+    @NotNull
+	private Estado estado;
+
+	@Column(name = "activo")
+	private Boolean activo;
 }
-

@@ -34,6 +34,9 @@ public class Proveedor {
     @Column(name = "numero_documento", nullable = false, unique = true, length = 20)
     @NotNull
     private Long numeroDocumento;
+    
+    @Column(name = "digito_verificacion")
+    private Integer digitoVerificacion;
 
     @Column(name = "direccion", length = 150)
     @Size(max = 150)

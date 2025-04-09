@@ -28,6 +28,18 @@ public class ImpuestoController {
     	List<Impuesto> all = impuestoService.findAll();
         return ResponseEntity.ok(all);
     }
+	
+	@GetMapping("/activos")
+    public ResponseEntity<Impuesto> findActivos() {
+        Impuesto activos = impuestoService.findActiveTrue();
+        return ResponseEntity.ok(activos);
+    }
+	
+	@GetMapping("/inactivos")
+    public ResponseEntity<Impuesto> findInactivos() {
+        Impuesto inactivos = impuestoService.findActiveFalse();
+        return ResponseEntity.ok(inactivos);
+    }
 
 	@GetMapping("/{id}")
 	public ResponseEntity<Impuesto> getById(@PathVariable("id") Long id) {
@@ -69,5 +81,10 @@ public class ImpuestoController {
 			return ResponseEntity.notFound().build();
 		}
 	}
-
+	
+	@PutMapping("/{id}/activar")
+    public ResponseEntity<Void> activarImpuesto(@PathVariable("id") Long id) {
+		impuestoService.activarImpuesto(id);
+        return ResponseEntity.noContent().build();
+    }
 }

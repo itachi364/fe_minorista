@@ -1,5 +1,7 @@
 package com.msvanegasg.facturaelectronica.DTO;
 
+import java.util.Optional;
+
 import jakarta.validation.constraints.*;
 import lombok.*;
 
@@ -15,6 +17,8 @@ public class ProveedorDTO {
 
     @NotNull
     private Long numeroDocumento;
+    
+    private Optional<Integer> digitoVerificacion = Optional.empty();
 
     @NotBlank
     private String nombre;

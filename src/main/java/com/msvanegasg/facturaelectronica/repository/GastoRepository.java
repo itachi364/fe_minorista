@@ -12,6 +12,8 @@ public interface GastoRepository extends JpaRepository<Gasto, Long> {
     List<Gasto> findByTipoGastoIdTipoGasto(Long idTipoGasto);
 
     List<Gasto> findByMetodoPagoIdMetodoPago(Long idMetodoPago);
+    
+    Gasto findByDescripcionContainingIgnoreCase(String descripcion);
 
     List<Gasto> findByActivo(Boolean activo);
 

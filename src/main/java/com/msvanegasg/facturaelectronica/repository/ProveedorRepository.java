@@ -1,7 +1,8 @@
 package com.msvanegasg.facturaelectronica.repository;
 
-import com.msvanegasg.facturaelectronica.models.Cliente;
 import com.msvanegasg.facturaelectronica.models.Proveedor;
+import com.msvanegasg.facturaelectronica.models.TipoDocumento;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -11,11 +12,13 @@ import java.util.Optional;
 @Repository
 public interface ProveedorRepository extends JpaRepository<Proveedor, Long> {
 	
-	Optional<Proveedor> findByNumeroDocumento(Long numeroDocumento);
+	Optional<Proveedor> findByNumeroDocumentoAndTipoDocumento(Long numeroDocumento, TipoDocumento tipoDocumento);
 
-    List<Proveedor> findByNombreContainingIgnoreCase(String nombre);
+    Proveedor findByNombreContainingIgnoreCase(String nombre);
 
     List<Proveedor> findByActivoTrue();
+    
+    List<Proveedor> findByActivoFalse();
 
     boolean existsByNumeroDocumento(Long numeroDocumento);
 }

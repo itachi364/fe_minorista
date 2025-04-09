@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.models;
 
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 
@@ -34,6 +35,9 @@ public class Cliente {
     @Column(name = "numero_documento", nullable = false, unique = true, length = 20)
     @NotNull
     private Long numeroDocumento;
+    
+    @Column(name = "digito_verificacion")
+    private Integer digitoVerificacion;
 
     @Column(name = "direccion", length = 150)
     @Size(max = 150)
@@ -56,6 +60,7 @@ public class Cliente {
     @Column(name = "activo", nullable = false)
     @NotNull
     private Boolean activo;
+    
 
     public enum TipoCliente {
         NATURAL,

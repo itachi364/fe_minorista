@@ -23,6 +23,18 @@ public class MetodoPagoController {
     	List<MetodoPago> all = metodoPagoService.findAll();
         return ResponseEntity.ok(all);
     }
+    
+    @GetMapping("/activos")
+    public ResponseEntity<MetodoPago> findActivos() {
+        MetodoPago activos = metodoPagoService.findActiveTrue();
+        return ResponseEntity.ok(activos);
+    }
+    
+    @GetMapping("/inactivos")
+    public ResponseEntity<MetodoPago> findInactivos() {
+        MetodoPago inactivos = metodoPagoService.findActiveFalse();
+        return ResponseEntity.ok(inactivos);
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<MetodoPagoDTO> getById(@PathVariable("id") Long id) {
@@ -51,6 +63,12 @@ public class MetodoPagoController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> disable(@PathVariable("id") Long id) {
         metodoPagoService.disableById(id);
+        return ResponseEntity.noContent().build();
+    }
+    
+    @PutMapping("/{id}/activar")
+    public ResponseEntity<Void> activarMetodo(@PathVariable("id") Long id) {
+    	metodoPagoService.activarMetodo(id);
         return ResponseEntity.noContent().build();
     }
 }

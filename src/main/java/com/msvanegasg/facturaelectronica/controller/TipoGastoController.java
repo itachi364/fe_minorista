@@ -2,7 +2,6 @@ package com.msvanegasg.facturaelectronica.controller;
 
 import com.msvanegasg.facturaelectronica.DTO.TipoGastoDTO;
 import com.msvanegasg.facturaelectronica.mapper.TipoGastoMapper;
-import com.msvanegasg.facturaelectronica.models.TipoDocumento;
 import com.msvanegasg.facturaelectronica.models.TipoGasto;
 import com.msvanegasg.facturaelectronica.service.TipoGastoService;
 
@@ -14,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/tipogasto")
@@ -27,6 +25,18 @@ public class TipoGastoController {
     public ResponseEntity<List<TipoGasto>> findAll() {
     	List<TipoGasto> all = tipoGastoService.findAll();
         return ResponseEntity.ok(all);
+    }
+    
+    @GetMapping("/active")
+    public ResponseEntity<List<TipoGasto>> findActiveTrue() {
+    	List<TipoGasto> active = tipoGastoService.findActive();
+        return ResponseEntity.ok(active);
+    }
+    
+    @GetMapping("/inactive")
+    public ResponseEntity<List<TipoGasto>> findActiveFalse() {
+    	List<TipoGasto> inactive = tipoGastoService.findActiveFalse();
+        return ResponseEntity.ok(inactive);
     }
 
     @GetMapping("/{id}")
@@ -56,6 +66,12 @@ public class TipoGastoController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
         tipoGastoService.disableById(id);
+        return ResponseEntity.noContent().build();
+    }
+    
+    @PutMapping("/{id}/activar")
+    public ResponseEntity<Void> activarImpuesto(@PathVariable("id") Long id) {
+		tipoGastoService.activarTipoGasto(id);
         return ResponseEntity.noContent().build();
     }
 }

@@ -1,78 +1,109 @@
 package com.msvanegasg.facturaelectronica.service;
 
-import com.msvanegasg.facturaelectronica.exception.ClienteNotFoundException;
-import com.msvanegasg.facturaelectronica.exception.ProveedorAlreadyExistsException;
-import com.msvanegasg.facturaelectronica.exception.ProveedorNotFoundException;
+import com.msvanegasg.facturaelectronica.exception.proveedor.*;
+import com.msvanegasg.facturaelectronica.exception.proveedor.ProveedorNotFoundException;
 import com.msvanegasg.facturaelectronica.models.Proveedor;
+import com.msvanegasg.facturaelectronica.models.TipoDocumento;
 import com.msvanegasg.facturaelectronica.repository.ProveedorRepository;
+import com.msvanegasg.facturaelectronica.validator.EntidadValidator;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ProveedorService {
 
-    @Autowired
-    private ProveedorRepository proveedorRepository;
+	@Autowired
+	private ProveedorRepository proveedorRepository;
 
-    public List<Proveedor> findAll() {
-        return proveedorRepository.findAll();
-    }
+	@Autowired
+	private EntidadValidator entidadValidator;
 
-    public Proveedor findById(Long id) {
-        return proveedorRepository.findById(id)
-                .orElseThrow(() -> new ProveedorNotFoundException(id));
-    }
-    
-    public Proveedor findByNumeroDocumento(Long numeroDocumento) {
-        return proveedorRepository.findByNumeroDocumento(numeroDocumento)
-                .orElseThrow(() -> new ClienteNotFoundException(numeroDocumento));
-    }
+	public List<Proveedor> findAll() {
+		return proveedorRepository.findAll();
+	}
 
-    public Proveedor save(Proveedor proveedor) {
-    	if (proveedorRepository.existsByNumeroDocumento(proveedor.getNumeroDocumento())) {
-            throw new ProveedorAlreadyExistsException(proveedor.getNumeroDocumento());
-        }
-        return proveedorRepository.save(proveedor);
-    }
-    
-    public Proveedor update(Long numero_documento, Proveedor proveedorActualizado) {
-        Proveedor existente = proveedorRepository.findByNumeroDocumento(numero_documento)
-                .orElseThrow(() -> new ProveedorNotFoundException(numero_documento));
+	public Proveedor findById(Long id) {
+		return proveedorRepository.findById(id).orElseThrow(() -> new ProveedorNotFoundException(id));
+	}
 
-        // Si el número de documento cambia, validamos que no esté ya en uso por otro cliente
-        if (!existente.getNumeroDocumento().equals(proveedorActualizado.getNumeroDocumento())
-                && proveedorRepository.existsByNumeroDocumento(proveedorActualizado.getNumeroDocumento())) {
-            throw new ProveedorAlreadyExistsException(proveedorActualizado.getNumeroDocumento());
-        }
+	public List<Proveedor> findActive() {
+		return proveedorRepository.findByActivoTrue();
+	}
 
-        existente.setNombre(proveedorActualizado.getNombre());
-        existente.setTipoDocumento(proveedorActualizado.getTipoDocumento());
-        existente.setNumeroDocumento(proveedorActualizado.getNumeroDocumento());
-        existente.setDireccion(proveedorActualizado.getDireccion());
-        existente.setTelefono(proveedorActualizado.getTelefono());
-        existente.setCorreoElectronico(proveedorActualizado.getCorreoElectronico());
+	public List<Proveedor> findActiveFalse() {
+		return proveedorRepository.findByActivoFalse();
+	}
 
-        return proveedorRepository.save(existente);
-    }
+	public Proveedor findByNumeroDocumento(Long numeroDocumento, Long tipoDocumentoCodigo) {
+		TipoDocumento tipoDocumento = entidadValidator.obtenerTipoDocumento(tipoDocumentoCodigo);
+		return proveedorRepository.findByNumeroDocumentoAndTipoDocumento(numeroDocumento, tipoDocumento)
+				.orElseThrow(() -> new ProveedorDocumentoNotFoundException(numeroDocumento, tipoDocumentoCodigo));
+	}
 
-    public void disableById(Long id) {
-        Proveedor proveedor = proveedorRepository.findById(id)
-                .orElseThrow(() -> new ProveedorNotFoundException(id));
+	public Proveedor findByNombre(String nombre) {
+		return proveedorRepository.findByNombreContainingIgnoreCase(nombre);
+	}
 
-        proveedor.setActivo(false);
-        proveedorRepository.save(proveedor);
-    }
-    
-    public void activarProveedor(Long numeroDocumento) {
-        Proveedor proveedor = proveedorRepository.findByNumeroDocumento(numeroDocumento)
-                .orElseThrow(() -> new ProveedorNotFoundException(numeroDocumento));
+	public Proveedor save(Proveedor proveedor) {
+		Long numeroDocumento = proveedor.getNumeroDocumento();
+		Long tipoDocumentoCodigo = proveedor.getTipoDocumento().getCodigo();
 
-        if (!proveedor.getActivo()) {
-            proveedor.setActivo(true);
-            proveedorRepository.save(proveedor);
-        }
-    }
+		if (tipoDocumentoCodigo == 31 || tipoDocumentoCodigo == 50) {
+			entidadValidator.validarNit(tipoDocumentoCodigo, numeroDocumento,
+					Optional.ofNullable(proveedor.getDigitoVerificacion()));
+		}
+
+		boolean existe = proveedorRepository.existsByNumeroDocumento(numeroDocumento);
+		entidadValidator.validarNoExistenciaEntidad(existe, numeroDocumento, tipoDocumentoCodigo, "proveedor");
+
+		return proveedorRepository.save(proveedor);
+	}
+
+	public Proveedor update(Long numeroDocumento, Long tipoDocumentoCodigo, Proveedor proveedorActualizado) {
+		TipoDocumento tipoDocumento = entidadValidator.obtenerTipoDocumento(tipoDocumentoCodigo);
+		Proveedor existente = proveedorRepository.findByNumeroDocumentoAndTipoDocumento(numeroDocumento, tipoDocumento)
+				.orElseThrow(() -> new ProveedorDocumentoNotFoundException(numeroDocumento, tipoDocumentoCodigo));
+
+		// Validar número de documento no modificable
+		entidadValidator.validarNumeroDocumentoNoModificable(existente.getNumeroDocumento(),
+				proveedorActualizado.getNumeroDocumento(), "proveedor");
+
+		// Validar tipo de documento no modificable
+		entidadValidator.validarTipoDocumentoNoModificable(existente.getTipoDocumento().getCodigo(),
+				proveedorActualizado.getTipoDocumento().getCodigo());
+		// Validar digito de verificación no modificable
+		entidadValidator.validarDigitoVerificacionNoModificable(Optional.ofNullable(existente.getDigitoVerificacion()),
+				Optional.ofNullable(proveedorActualizado.getDigitoVerificacion()), "proveedor");
+		existente.setNombre(proveedorActualizado.getNombre());
+		existente.setDireccion(proveedorActualizado.getDireccion());
+		existente.setTelefono(proveedorActualizado.getTelefono());
+		existente.setCorreoElectronico(proveedorActualizado.getCorreoElectronico());
+		existente.setDigitoVerificacion(proveedorActualizado.getDigitoVerificacion());
+
+		return proveedorRepository.save(existente);
+	}
+
+	public void disableByNumero(Long numeroDocumento, Long tipoDocumentoCodigo) {
+		TipoDocumento tipoDocumento = entidadValidator.obtenerTipoDocumento(tipoDocumentoCodigo);
+		Proveedor proveedor = proveedorRepository.findByNumeroDocumentoAndTipoDocumento(numeroDocumento, tipoDocumento)
+				.orElseThrow(() -> new ProveedorDocumentoNotFoundException(numeroDocumento, tipoDocumentoCodigo));
+
+		proveedor.setActivo(false);
+		proveedorRepository.save(proveedor);
+	}
+
+	public void activarProveedor(Long numeroDocumento, Long tipoDocumentoCodigo) {
+		TipoDocumento tipoDocumento = entidadValidator.obtenerTipoDocumento(tipoDocumentoCodigo);
+		Proveedor proveedor = proveedorRepository.findByNumeroDocumentoAndTipoDocumento(numeroDocumento, tipoDocumento)
+				.orElseThrow(() -> new ProveedorDocumentoNotFoundException(numeroDocumento, tipoDocumentoCodigo));
+
+		if (!proveedor.getActivo()) {
+			proveedor.setActivo(true);
+			proveedorRepository.save(proveedor);
+		}
+	}
 }

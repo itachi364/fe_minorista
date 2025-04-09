@@ -2,18 +2,14 @@ package com.msvanegasg.facturaelectronica.service;
 
 import com.msvanegasg.facturaelectronica.DTO.PaisDTO;
 import com.msvanegasg.facturaelectronica.exception.PaisNotFoundException;
-import com.msvanegasg.facturaelectronica.exception.ProveedorNotFoundException;
 import com.msvanegasg.facturaelectronica.mapper.PaisMapper;
-import com.msvanegasg.facturaelectronica.models.Cliente;
 import com.msvanegasg.facturaelectronica.models.Pais;
-import com.msvanegasg.facturaelectronica.models.Proveedor;
 import com.msvanegasg.facturaelectronica.repository.PaisRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class PaisService {
@@ -28,6 +24,10 @@ public class PaisService {
     
     public List<Pais> findActive() {
         return paisRepository.findByActivoTrue();
+    }
+    
+    public List<Pais> findActiveFalse() {
+        return paisRepository.findByActivoFalse();
     }
 
     public Pais findById(String codigoPais) {
