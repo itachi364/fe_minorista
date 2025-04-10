@@ -25,9 +25,8 @@ public class Compra {
 	@Column(name = "id_compra")
 	private Long idCompra;
 
-	@ManyToOne
-	@JoinColumn(name = "id_proveedor")
-	private Proveedor proveedor;
+	@Column(name = "id_proveedor", nullable = false)
+	private Long idProveedor;
 
 	@Column(name = "fecha")
 	private LocalDateTime fecha;
@@ -45,10 +44,11 @@ public class Compra {
 	private String urlEvidencia;
 
 	@Enumerated(EnumType.STRING)
-    @Column(name = "estado", nullable = false, length = 20)
-    @NotNull
+	@Column(name = "estado", nullable = false, length = 20)
+	@NotNull
 	private Estado estado;
 
 	@Column(name = "activo")
 	private Boolean activo;
 }
+

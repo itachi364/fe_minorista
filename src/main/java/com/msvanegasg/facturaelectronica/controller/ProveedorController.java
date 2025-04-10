@@ -1,11 +1,8 @@
 package com.msvanegasg.facturaelectronica.controller;
 
 import com.msvanegasg.facturaelectronica.DTO.ProveedorDTO;
-import com.msvanegasg.facturaelectronica.DTO.response.ClienteResponseDTO;
 import com.msvanegasg.facturaelectronica.DTO.response.ProveedorResponseDTO;
-import com.msvanegasg.facturaelectronica.mapper.ClienteMapper;
 import com.msvanegasg.facturaelectronica.mapper.ProveedorMapper;
-import com.msvanegasg.facturaelectronica.models.Cliente;
 import com.msvanegasg.facturaelectronica.models.Proveedor;
 import com.msvanegasg.facturaelectronica.models.TipoDocumento;
 import com.msvanegasg.facturaelectronica.service.ProveedorService;

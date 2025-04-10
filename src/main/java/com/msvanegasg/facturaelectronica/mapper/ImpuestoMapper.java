@@ -1,6 +1,7 @@
 package com.msvanegasg.facturaelectronica.mapper;
 
 import com.msvanegasg.facturaelectronica.DTO.ImpuestoDTO;
+import com.msvanegasg.facturaelectronica.DTO.response.ImpuestoResponseDTO;
 import com.msvanegasg.facturaelectronica.models.Impuesto;
 import com.msvanegasg.facturaelectronica.models.Pais;
 
@@ -25,6 +26,18 @@ public class ImpuestoMapper {
                 .descripcion(dto.getDescripcion())
                 .pais(pais)
                 .activo(true)
+                .build();
+    }
+    
+    public static ImpuestoResponseDTO toResponseDTO(Impuesto impuesto, Pais pais) {
+        
+        return ImpuestoResponseDTO.builder()
+        		.id(impuesto.getIdImpuesto())
+        		.nombre(impuesto.getNombre())
+        		.descripcion(impuesto.getDescripcion())
+        		.porcentaje(impuesto.getPorcentaje())
+        		.tipo(impuesto.getTipo())
+        		.codigoPais(pais)
                 .build();
     }
 }

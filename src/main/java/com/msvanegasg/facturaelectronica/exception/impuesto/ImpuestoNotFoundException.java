@@ -1,4 +1,4 @@
-package com.msvanegasg.facturaelectronica.exception;
+package com.msvanegasg.facturaelectronica.exception.impuesto;
 
 public class ImpuestoNotFoundException extends RuntimeException {
 	private static final long serialVersionUID = 1L;

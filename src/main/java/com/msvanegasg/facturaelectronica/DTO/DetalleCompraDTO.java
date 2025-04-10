@@ -12,8 +12,8 @@ import java.math.BigDecimal;
 @Builder
 public class DetalleCompraDTO {
 
-    @NotNull
-    private Long idProducto;
+	@NotBlank
+	private Long codigoBarras;
 
     @NotNull
     @Positive

@@ -50,4 +50,8 @@ public class Producto {
     @Column(name = "activo", nullable = false)
     @NotNull
     private Boolean activo;
+    
+    @Column(name = "codigo_barras", nullable = false)
+    @NotNull
+    private Long codigoBarras;
 }

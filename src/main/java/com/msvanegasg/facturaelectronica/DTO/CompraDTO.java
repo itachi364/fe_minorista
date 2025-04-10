@@ -16,7 +16,10 @@ import java.util.List;
 public class CompraDTO {
 
     @NotNull
-    private Long idProveedor;
+    private Long numeroDocumento;
+
+    @NotNull
+    private Long tipoDocumentoId;
 
     private LocalDateTime fecha;
 
@@ -33,9 +36,6 @@ public class CompraDTO {
     private BigDecimal total;
 
     private String urlEvidencia;
-
-    @NotNull
-    private Estado estado;
 
     @NotEmpty
     private List<DetalleCompraDTO> detalles;

@@ -11,6 +11,6 @@ public interface DetalleCompraRepository extends JpaRepository<DetalleCompra, Lo
 
     List<DetalleCompra> findByCompraIdCompra(Long idCompra);
 
-    List<DetalleCompra> findByProductoIdProducto(Long idProducto);
+    List<DetalleCompra> findByProducto(Long producto);
 
 }

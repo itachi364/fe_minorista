@@ -28,10 +28,8 @@ public class DetalleCompra {
     @NotNull
     private Compra compra;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_producto", nullable = false)
-    @NotNull
-    private Producto producto;
+    @Column(name = "id_producto", nullable = false)
+    private Long producto;
 
     @Column(name = "cantidad", nullable = false)
     @NotNull
@@ -57,4 +55,8 @@ public class DetalleCompra {
     @NotNull
     @PositiveOrZero
     private BigDecimal totalLinea;
+    
+    @Column(nullable = false)
+    private Boolean activo;
+
 }

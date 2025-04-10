@@ -28,4 +28,7 @@ public class ProductoDTO {
 
     @NotNull
     private Long idCategoria;
+    
+    @NotNull
+    private Long codigoBarras;
 }

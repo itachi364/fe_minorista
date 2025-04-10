@@ -1,16 +1,21 @@
 package com.msvanegasg.facturaelectronica.controller;
 
 import com.msvanegasg.facturaelectronica.DTO.ImpuestoDTO;
-import com.msvanegasg.facturaelectronica.exception.ImpuestoNotFoundException;
+import com.msvanegasg.facturaelectronica.DTO.response.ImpuestoResponseDTO;
+import com.msvanegasg.facturaelectronica.exception.impuesto.ImpuestoNotFoundException;
 import com.msvanegasg.facturaelectronica.mapper.ImpuestoMapper;
 import com.msvanegasg.facturaelectronica.models.Impuesto;
 import com.msvanegasg.facturaelectronica.models.Pais;
 import com.msvanegasg.facturaelectronica.service.ImpuestoService;
 import com.msvanegasg.facturaelectronica.service.PaisService;
+
+import jakarta.validation.Valid;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -46,29 +51,32 @@ public class ImpuestoController {
 			Impuesto impuesto = impuestoService.findById(id);
 			return ResponseEntity.ok(impuesto);
 	}
+	
+	@GetMapping("/porcentaje/{porcentaje}")
+	public ResponseEntity<Impuesto> findByPorcentaje(@PathVariable("porcentaje") BigDecimal porcentaje) {
+			Impuesto impuesto = impuestoService.findByPorcentaje(porcentaje);
+			return ResponseEntity.ok(impuesto);
+	}
+	
+	@GetMapping("/tipo/{tipo}")
+	public ResponseEntity<Impuesto> findByTipo(@PathVariable("tipo") String tipo) {
+			Impuesto impuesto = impuestoService.findByTipo(tipo);
+			return ResponseEntity.ok(impuesto);
+	}
 
 	@PostMapping
 	public ResponseEntity<Impuesto> create(@RequestBody ImpuestoDTO dto) {
 		Pais pais = paisService.findById(dto.getCodPais());
-		Impuesto impuesto = ImpuestoMapper.toEntity(dto, pais);
+		Impuesto impuesto = impuestoService.save(dto,pais);
 		return ResponseEntity.ok(impuesto);
 	}
-
+	
 	@PutMapping("/{id}")
-	public ResponseEntity<ImpuestoDTO> update(@PathVariable("id") Long id, @RequestBody ImpuestoDTO dto) {
-		try {
-			Impuesto existing = impuestoService.findById(id);
+	public ResponseEntity<ImpuestoResponseDTO> update(@PathVariable("id") Long id, @Valid @RequestBody ImpuestoDTO dto) {
 			Pais pais = paisService.findById(dto.getCodPais());
 
-			Impuesto impuestoToUpdate = ImpuestoMapper.toEntity(dto, pais);
-			impuestoToUpdate.setIdImpuesto(existing.getIdImpuesto());
-			impuestoToUpdate.setActivo(existing.getActivo());
-
-			Impuesto actualizado = impuestoService.save(impuestoToUpdate);
-			return ResponseEntity.ok(ImpuestoMapper.toDTO(actualizado));
-		} catch (ImpuestoNotFoundException e) {
-			return ResponseEntity.notFound().build();
-		}
+			Impuesto actualizado = impuestoService.actualizarImpuesto(id, dto, pais);
+			return ResponseEntity.ok(ImpuestoMapper.toResponseDTO(actualizado, pais));
 	}
 
 	@DeleteMapping("/{id}")
