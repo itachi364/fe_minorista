@@ -8,10 +8,14 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class ClienteResponseDTO {
-	
-    private Long id_cliente;
+
+    private Long idCliente;
     private String nombre;
-    private TipoDocumentoResponseDTO tipoDocumento;
+
+    private Long idTipoDocumento;
+    private String codigoTipoDocumento;
+    private String descripcionTipoDocumento;
+
     private Long numeroDocumento;
     private Integer digitoVerificacion;
     private String direccion;

@@ -1,98 +1,93 @@
 package com.msvanegasg.facturaelectronica.controller;
 
-import com.msvanegasg.facturaelectronica.DTO.ClienteDTO;
-import com.msvanegasg.facturaelectronica.DTO.response.ClienteResponseDTO;
-import com.msvanegasg.facturaelectronica.mapper.ClienteMapper;
-import com.msvanegasg.facturaelectronica.models.Cliente;
-import com.msvanegasg.facturaelectronica.models.TipoDocumento;
-import com.msvanegasg.facturaelectronica.service.ClienteService;
-import com.msvanegasg.facturaelectronica.service.TipoDocumentoService;
-
-import jakarta.validation.Valid;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import com.msvanegasg.facturaelectronica.DTO.ClienteDTO;
+import com.msvanegasg.facturaelectronica.DTO.response.ClienteResponseDTO;
+import com.msvanegasg.facturaelectronica.service.ClienteService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/clientes")
 public class ClienteController {
 
-	@Autowired
-	private ClienteService clienteService;
-	@Autowired
-	private TipoDocumentoService tipoDocumentoService;
+    @Autowired
+    private ClienteService clienteService;
 
-	@GetMapping
-	public List<ClienteResponseDTO> findAll() {
-		return clienteService.findAll().stream().map(ClienteMapper::toResponseDTO).collect(Collectors.toList());
-	}
+    @GetMapping
+    public ResponseEntity<List<ClienteResponseDTO>> listarTodos() {
+        List<ClienteResponseDTO> clientes = clienteService.listarClientesActivos();
+        return ResponseEntity.ok(clientes);
+    }
 
-	@GetMapping("/active")
-	public List<ClienteResponseDTO> findActivos() {
-		return clienteService.findActivos().stream().map(ClienteMapper::toResponseDTO).collect(Collectors.toList());
-	}
+    @GetMapping("/activos")
+    public ResponseEntity<List<ClienteResponseDTO>> listarActivos() {
+        return ResponseEntity.ok(clienteService.listarClientesActivos());
+    }
 
-	@GetMapping("/inactive")
-	public List<ClienteResponseDTO> findActivoFalse() {
-		return clienteService.findActivosFalse().stream().map(ClienteMapper::toResponseDTO)
-				.collect(Collectors.toList());
-	}
+    @GetMapping("/inactivos")
+    public ResponseEntity<List<ClienteResponseDTO>> listarInactivos() {
+        return ResponseEntity.ok(clienteService.listarClientesInactivos());
+    }
 
-	@GetMapping("/{id}")
-	public ResponseEntity<ClienteResponseDTO> findById(@PathVariable("id") Long id) {
-		Cliente cliente = clienteService.findById(id);
-		return ResponseEntity.ok(ClienteMapper.toResponseDTO(cliente));
-	}
+    @GetMapping("/documento/{numeroDocumento}/tipo/{tipoDocumento}")
+    public ResponseEntity<ClienteResponseDTO> obtenerPorDocumento(
+            @PathVariable("numeroDocumento") Long numeroDocumento,
+            @PathVariable("tipoDocumento") Long tipoDocumento) {
+        return ResponseEntity.ok(clienteService
+                .obtenerClientePorTipoYNumeroDocumento(tipoDocumento, numeroDocumento)
+                .map(cliente -> clienteService.obtenerClientePorTipoYNumeroDocumento(tipoDocumento, numeroDocumento))
+                .map(cliente -> clienteService.buscarPorNombre(cliente.getNombre()))
+                .orElseThrow(() -> new RuntimeException("Cliente no encontrado"))); // Puedes usar tu excepción personalizada aquí
+    }
 
-	@GetMapping("/documento/{numeroDocumento}/tipoDocumento/{tipoDocumento}")
-	public ResponseEntity<ClienteResponseDTO> findByNumeroDocumento(
-			@PathVariable("numeroDocumento") Long numeroDocumento, @PathVariable("tipoDocumento") Long tipoDocumento) {
-		Cliente cliente = clienteService.findByNumeroDocumentoAndTipoDocumento(numeroDocumento, tipoDocumento);
-		return ResponseEntity.ok(ClienteMapper.toResponseDTO(cliente));
-	}
+    @GetMapping("/nombre/{nombre}")
+    public ResponseEntity<List<ClienteResponseDTO>> buscarPorNombre(@PathVariable("nombre") String nombre) {
+        return ResponseEntity.ok(clienteService.buscarPorNombre(nombre));
+    }
 
-	@GetMapping("/nombre/{nombre}")
-	public ResponseEntity<ClienteResponseDTO> findByNombre(@PathVariable("nombre") String nombre) {
-		Cliente cliente = clienteService.findByNombre(nombre);
-		return ResponseEntity.ok(ClienteMapper.toResponseDTO(cliente));
-	}
+    @PostMapping
+    public ResponseEntity<ClienteResponseDTO> crearCliente(@Valid @RequestBody ClienteDTO clienteDTO) {
+        ClienteResponseDTO response = clienteService.crearCliente(clienteDTO);
+        return ResponseEntity.ok(response);
+    }
 
-	@PostMapping
-	public ResponseEntity<ClienteDTO> save(@Valid @RequestBody ClienteDTO clienteDTO) {
-		TipoDocumento tipoDocumento = tipoDocumentoService.findById(clienteDTO.getIdTipoDocumento());
-		Cliente cliente = ClienteMapper.toEntity(clienteDTO, tipoDocumento);
+    @PutMapping("/documento/{numeroDocumento}/tipo/{tipoDocumento}")
+    public ResponseEntity<ClienteResponseDTO> actualizarCliente(
+            @PathVariable("numeroDocumento") Long numeroDocumento,
+            @PathVariable("tipoDocumento") Long tipoDocumento,
+            @Valid @RequestBody ClienteDTO clienteDTO) {
+        ClienteResponseDTO actualizado = clienteService.actualizarCliente(clienteDTO, numeroDocumento, tipoDocumento);
+        return ResponseEntity.ok(actualizado);
+    }
 
-		Cliente saved = clienteService.save(cliente);
-		return ResponseEntity.ok(ClienteMapper.toDTO(saved));
-	}
+    @DeleteMapping("/documento/{numeroDocumento}/tipo/{tipoDocumento}")
+    public ResponseEntity<Void> desactivarCliente(
+            @PathVariable("numeroDocumento") Long numeroDocumento,
+            @PathVariable("tipoDocumento") Long tipoDocumento) {
+        clienteService.eliminarCliente(numeroDocumento, tipoDocumento);
+        return ResponseEntity.noContent().build();
+    }
 
-	@PutMapping("/documento/{numeroDocumento}/tipo/{tipoDocumento}")
-	public ResponseEntity<ClienteDTO> update(@PathVariable("numeroDocumento") Long numeroDocumento,
-			@PathVariable("tipoDocumento") Long tipoDocumento, @Valid @RequestBody ClienteDTO clienteDTO) {
-
-		TipoDocumento tipoDoc = tipoDocumentoService.findById(tipoDocumento);
-
-		Cliente clienteActualizado = ClienteMapper.toEntity(clienteDTO, tipoDoc);
-
-		Cliente updated = clienteService.update(numeroDocumento, tipoDocumento, clienteActualizado);
-		return ResponseEntity.ok(ClienteMapper.toDTO(updated));
-	}
-
-	@DeleteMapping("/documento/{numeroDocumento}/tipo/{tipoDocumento}")
-	public ResponseEntity<Void> disable(@PathVariable("numeroDocumento") Long numeroDocumento,
-			@PathVariable("tipoDocumento") Long tipoDocumento) {
-		clienteService.disableByNumero(numeroDocumento, tipoDocumento);
-		return ResponseEntity.noContent().build();
-	}
-
-	@PutMapping("/{numeroDocumento}/tipo/{tipoDocumento}/activar")
-	public ResponseEntity<Void> activarCliente(@PathVariable("numeroDocumento") Long numeroDocumento,
-			@PathVariable("tipoDocumento") Long tipoDocumento) {
-		clienteService.activarCliente(numeroDocumento, tipoDocumento);
-		return ResponseEntity.noContent().build();
-	}
+    @PutMapping("/documento/{numeroDocumento}/tipo/{tipoDocumento}/activar")
+    public ResponseEntity<Void> activarCliente(
+            @PathVariable("numeroDocumento") Long numeroDocumento,
+            @PathVariable("tipoDocumento") Long tipoDocumento) {
+        clienteService.activarCliente(numeroDocumento, tipoDocumento);
+        return ResponseEntity.noContent().build();
+    }
 }
+
+

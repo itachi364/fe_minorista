@@ -2,40 +2,33 @@ package com.msvanegasg.facturaelectronica.mapper;
 
 import java.util.Optional;
 
+import org.springframework.stereotype.Component;
+
 import com.msvanegasg.facturaelectronica.DTO.ClienteDTO;
 import com.msvanegasg.facturaelectronica.DTO.response.ClienteResponseDTO;
-import com.msvanegasg.facturaelectronica.DTO.response.TipoDocumentoResponseDTO;
+import com.msvanegasg.facturaelectronica.enums.TipoClienteEnum;
 import com.msvanegasg.facturaelectronica.models.Cliente;
-import com.msvanegasg.facturaelectronica.models.TipoDocumento;
 
+@Component
 public class ClienteMapper {
 
-	public static Cliente toEntity(ClienteDTO dto, TipoDocumento tipoDocumento) {
-	    Cliente.TipoCliente tipoCliente;
-
-	    switch (dto.getIdTipoDocumento().intValue()) {
-	        case 31, 50 -> tipoCliente = Cliente.TipoCliente.JURIDICO;
-	        default -> tipoCliente = Cliente.TipoCliente.NATURAL;
-	    }
-
-	    return Cliente.builder()
-	            .nombre(dto.getNombre())
-	            .numeroDocumento(dto.getNumeroDocumento())
-	            .tipoDocumento(tipoDocumento)
-	            .digitoVerificacion(dto.getDigitoVerificacion().orElse(null))
+    public Cliente toEntity(ClienteDTO dto, TipoClienteEnum tipoCliente) {
+        return Cliente.builder()
+                .nombre(dto.getNombre())
+                .numeroDocumento(dto.getNumeroDocumento())
+                .digitoVerificacion(dto.getDigitoVerificacion().orElse(null))
                 .direccion(dto.getDireccion())
-	            .telefono(dto.getTelefono())
-	            .correoElectronico(dto.getCorreoElectronico())
-	            .tipoCliente(tipoCliente)
-	            .activo(true)
-	            .build();
-	}
+                .telefono(dto.getTelefono())
+                .correoElectronico(dto.getCorreoElectronico())
+                .tipoCliente(tipoCliente)
+                .activo(true)
+                .build();
+    }
 
-
-    public static ClienteDTO toDTO(Cliente cliente) {
+    public ClienteDTO toDTO(Cliente cliente, Long idTipoDocumento) {
         return ClienteDTO.builder()
                 .nombre(cliente.getNombre())
-                .idTipoDocumento(cliente.getTipoDocumento().getCodigo())
+                .idTipoDocumento(idTipoDocumento)
                 .numeroDocumento(cliente.getNumeroDocumento())
                 .digitoVerificacion(Optional.ofNullable(cliente.getDigitoVerificacion()))
                 .direccion(cliente.getDireccion())
@@ -43,23 +36,31 @@ public class ClienteMapper {
                 .correoElectronico(cliente.getCorreoElectronico())
                 .build();
     }
-    
-    public static ClienteResponseDTO toResponseDTO(Cliente cliente) {
-    	TipoDocumentoResponseDTO tipoDocumentoDTO = TipoDocumentoResponseDTO.builder()
-    			.id(cliente.getTipoDocumento().getCodigo())
-                .nombre(cliente.getTipoDocumento().getNombre())
-                .build();
+
+    public ClienteResponseDTO toResponseDTO(Cliente cliente, String codigoTipoDocumento, String descripcionTipoDocumento) {
         return ClienteResponseDTO.builder()
-        		.id_cliente(cliente.getIdCliente())
-        		.numeroDocumento(cliente.getNumeroDocumento())
-        		.digitoVerificacion(cliente.getDigitoVerificacion())
-        		.tipoDocumento(tipoDocumentoDTO)
-        		.nombre(cliente.getNombre())
-        		.correoElectronico(cliente.getCorreoElectronico())
-        		.telefono(cliente.getTelefono())
-        		.direccion(cliente.getDireccion())
-        		.tipoCliente(cliente.getTipoCliente().name())
-        		.activo(cliente.getActivo())
+                .idCliente(cliente.getIdCliente())
+                .nombre(cliente.getNombre())
+                .idTipoDocumento(cliente.getIdTipoDocumento())
+                .codigoTipoDocumento(codigoTipoDocumento)
+                .descripcionTipoDocumento(descripcionTipoDocumento)
+                .numeroDocumento(cliente.getNumeroDocumento())
+                .digitoVerificacion(cliente.getDigitoVerificacion())
+                .direccion(cliente.getDireccion())
+                .telefono(cliente.getTelefono())
+                .correoElectronico(cliente.getCorreoElectronico())
+                .tipoCliente(cliente.getTipoCliente().toString())
+                .activo(cliente.getActivo())
                 .build();
     }
+    
+    public void actualizarEntidadDesdeDTO(Cliente cliente, ClienteDTO dto, TipoClienteEnum tipoCliente) {
+        cliente.setNombre(dto.getNombre());
+        cliente.setDireccion(dto.getDireccion());
+        cliente.setTelefono(dto.getTelefono());
+        cliente.setCorreoElectronico(dto.getCorreoElectronico());
+        cliente.setTipoCliente(tipoCliente);
+        cliente.setDigitoVerificacion(dto.getDigitoVerificacion().orElse(null));
+    }
+
 }

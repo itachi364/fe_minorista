@@ -38,7 +38,7 @@ public class TipoDocumentoController {
     	return ResponseEntity.ok(inactivo);
     }
 
-    @GetMapping("/{codigo}")
+    @GetMapping("/codigo/{codigo}")
     public ResponseEntity<TipoDocumento> findById(@PathVariable("codigo") Long codigo) {
         TipoDocumento tipo = tipoDocumentoService.findById(codigo);
         return ResponseEntity.ok(tipo);

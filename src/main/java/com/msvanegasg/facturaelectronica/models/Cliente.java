@@ -1,9 +1,9 @@
 package com.msvanegasg.facturaelectronica.models;
 
+import com.msvanegasg.facturaelectronica.enums.TipoClienteEnum;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
-
 import lombok.*;
 
 @Entity
@@ -27,10 +27,9 @@ public class Cliente {
     @Size(max = 100)
     private String nombre;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "id_tipo_documento", nullable = false)
+    @Column(name = "id_tipo_documento", nullable = false)
     @NotNull
-    private TipoDocumento tipoDocumento;
+    private Long idTipoDocumento;
 
     @Column(name = "numero_documento", nullable = false, unique = true, length = 20)
     @NotNull
@@ -55,15 +54,11 @@ public class Cliente {
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo_cliente", nullable = false, length = 20)
     @NotNull
-    private TipoCliente tipoCliente;
+    private TipoClienteEnum tipoCliente;
 
     @Column(name = "activo", nullable = false)
     @NotNull
     private Boolean activo;
-    
 
-    public enum TipoCliente {
-        NATURAL,
-        JURIDICO
-    }
+   
 }

@@ -1,17 +1,18 @@
 package com.msvanegasg.facturaelectronica.service;
 
-import com.msvanegasg.facturaelectronica.exception.proveedor.*;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.msvanegasg.facturaelectronica.DTO.response.TipoDocumentoResponseDTO;
+import com.msvanegasg.facturaelectronica.exception.proveedor.ProveedorDocumentoNotFoundException;
 import com.msvanegasg.facturaelectronica.exception.proveedor.ProveedorNotFoundException;
 import com.msvanegasg.facturaelectronica.models.Proveedor;
 import com.msvanegasg.facturaelectronica.models.TipoDocumento;
 import com.msvanegasg.facturaelectronica.repository.ProveedorRepository;
 import com.msvanegasg.facturaelectronica.validator.EntidadValidator;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Optional;
 
 @Service
 public class ProveedorService {
@@ -39,7 +40,7 @@ public class ProveedorService {
 	}
 
 	public Proveedor findByNumeroDocumento(Long numeroDocumento, Long tipoDocumentoCodigo) {
-		TipoDocumento tipoDocumento = entidadValidator.obtenerTipoDocumento(tipoDocumentoCodigo);
+		TipoDocumentoResponseDTO tipoDocumento = entidadValidator.obtenerTipoDocumento(tipoDocumentoCodigo);
 		return proveedorRepository.findByNumeroDocumentoAndTipoDocumento(numeroDocumento, tipoDocumento)
 				.orElseThrow(() -> new ProveedorDocumentoNotFoundException(numeroDocumento, tipoDocumentoCodigo));
 	}

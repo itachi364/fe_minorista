@@ -1,27 +1,22 @@
 package com.msvanegasg.facturaelectronica.repository;
 
-import com.msvanegasg.facturaelectronica.models.Cliente;
-import com.msvanegasg.facturaelectronica.models.TipoDocumento;
-
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Query;
 
-@Repository
+import com.msvanegasg.facturaelectronica.models.Cliente;
+
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
-	
-	Optional<Cliente> findByNumeroDocumento(Long numeroDocumento);
-	
-	Optional<Cliente> findByNumeroDocumentoAndTipoDocumento(Long numeroDocumento, TipoDocumento tipoDocumento);
-	
-	Cliente findByNombreContainingIgnoreCase(String nombre);
 
-    List<Cliente> findByActivoTrue();
-    
-    List<Cliente> findByActivoFalse();
-    
-    boolean existsByNumeroDocumentoAndTipoDocumento_Codigo(Long numeroDocumento, Long tipoDocumentoCodigo);
-	
+	Optional<Cliente> findByIdTipoDocumentoAndNumeroDocumento(Long idTipoDocumento, Long numeroDocumento);
+
+	List<Cliente> findAllByActivo(Boolean activo);
+
+	@Query("SELECT c FROM Cliente c WHERE LOWER(c.nombre) LIKE LOWER(CONCAT('%', :nombre, '%'))")
+	List<Cliente> findByNombreContainingIgnoreCase(String nombre);
+
+	boolean existsByNumeroDocumentoAndIdTipoDocumento(Long numeroDocumento, Long idTipoDocumento);
+
 }
