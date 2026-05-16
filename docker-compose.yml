@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: facturaelectronica-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  app:
+    image: eclipse-temurin:17-jdk
+    container_name: facturaelectronica-app
+    working_dir: /workspace
+    environment:
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
+      DIAN_PROVIDER_MODE: ${DIAN_PROVIDER_MODE:-mock}
+      DIAN_MOCK_DEFAULT_STATUS: ${DIAN_MOCK_DEFAULT_STATUS:-ACCEPTED}
+      DIAN_MOCK_ERROR_CODE: ${DIAN_MOCK_ERROR_CODE:-}
+      DIAN_MOCK_ERROR_MESSAGE: ${DIAN_MOCK_ERROR_MESSAGE:-}
+    ports:
+      - "8083:8083"
+    volumes:
+      - .:/workspace
+      - maven_cache:/root/.m2
+    command: ["sh", "./mvnw", "spring-boot:run"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  maven_cache:

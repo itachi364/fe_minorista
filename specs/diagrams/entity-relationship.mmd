@@ -1,0 +1,146 @@
+erDiagram
+  COMPANY ||--o{ USER_COMPANY : has
+  USER_ACCOUNT ||--o{ USER_COMPANY : belongs
+  ROLE ||--o{ USER_COMPANY : grants
+
+  COMPANY ||--o{ CUSTOMER : owns
+  COMPANY ||--o{ SUPPLIER : owns
+  IDENTIFICATION_TYPE ||--o{ CUSTOMER : classifies
+  IDENTIFICATION_TYPE ||--o{ SUPPLIER : classifies
+
+  COMPANY ||--o{ CATEGORY : owns
+  COMPANY ||--o{ PRODUCT : owns
+  CATEGORY ||--o{ PRODUCT : groups
+  PRODUCT ||--|| STOCK_BALANCE : has
+  PRODUCT ||--o{ INVENTORY_MOVEMENT : moves
+
+  COMPANY ||--o{ PURCHASE : owns
+  SUPPLIER ||--o{ PURCHASE : supplies
+  PURCHASE ||--o{ PURCHASE_LINE : contains
+  PRODUCT ||--o{ PURCHASE_LINE : purchased
+
+  COMPANY ||--o{ ISSUER_PROFILE : configures
+  COMPANY ||--o{ NUMBERING_RESOLUTION : owns
+  NUMBERING_RESOLUTION ||--o{ ELECTRONIC_DOCUMENT : numbers
+
+  COMPANY ||--o{ SALE : owns
+  CUSTOMER ||--o{ SALE : buys
+  SALE ||--o{ SALE_LINE : contains
+  PRODUCT ||--o{ SALE_LINE : sold
+  SALE ||--o| ELECTRONIC_DOCUMENT : generates
+
+  COMPANY ||--o{ ELECTRONIC_DOCUMENT : owns
+  ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_LINE : contains
+  ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_TAX : taxes
+  ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_ARTIFACT : produces
+  PRODUCT ||--o{ ELECTRONIC_DOCUMENT_LINE : snapshot
+
+  COMPANY ||--o{ PROVIDER_CONFIGURATION : owns
+  PROVIDER_CONFIGURATION ||--o{ PROVIDER_SUBMISSION : used_by
+  ELECTRONIC_DOCUMENT ||--o{ PROVIDER_SUBMISSION : submitted
+
+  PUC_ACCOUNT_TEMPLATE ||--o{ ACCOUNT : seeds
+  COMPANY ||--o{ ACCOUNT : owns
+  ACCOUNT ||--o{ ACCOUNT : parent
+  COMPANY ||--o{ ACCOUNTING_ENTRY : owns
+  ACCOUNTING_ENTRY ||--o{ ACCOUNTING_ENTRY_LINE : contains
+  ACCOUNT ||--o{ ACCOUNTING_ENTRY_LINE : posts
+
+  COMPANY ||--o{ AUDIT_EVENT : scopes
+  USER_ACCOUNT ||--o{ AUDIT_EVENT : triggers
+
+  COMPANY {
+    uuid id PK
+    varchar legal_name
+    varchar identification_number
+    varchar status
+  }
+
+  USER_ACCOUNT {
+    uuid id PK
+    varchar username
+    varchar email
+    varchar password_hash
+    varchar status
+  }
+
+  PRODUCT {
+    uuid id PK
+    uuid company_id FK
+    uuid category_id FK
+    varchar barcode
+    varchar name
+    numeric sale_price
+    boolean active
+  }
+
+  STOCK_BALANCE {
+    uuid id PK
+    uuid company_id FK
+    uuid product_id FK
+    numeric current_stock
+    numeric reserved_stock
+  }
+
+  INVENTORY_MOVEMENT {
+    uuid id PK
+    uuid company_id FK
+    uuid product_id FK
+    varchar movement_type
+    numeric quantity
+    numeric previous_stock
+    numeric resulting_stock
+    varchar source_type
+    uuid source_id
+  }
+
+  SALE {
+    uuid id PK
+    uuid company_id FK
+    uuid customer_id FK
+    varchar sale_channel
+    numeric total
+    varchar status
+  }
+
+  ELECTRONIC_DOCUMENT {
+    uuid id PK
+    uuid company_id FK
+    uuid sale_id FK
+    varchar document_type
+    varchar prefix
+    bigint number
+    varchar cufe_cude
+    numeric total
+    varchar status
+  }
+
+  NUMBERING_RESOLUTION {
+    uuid id PK
+    uuid company_id FK
+    varchar document_type
+    varchar resolution_number
+    varchar prefix
+    bigint from_number
+    bigint to_number
+    bigint current_number
+    date valid_from
+    date valid_to
+  }
+
+  ACCOUNT {
+    uuid id PK
+    uuid company_id FK
+    varchar code
+    varchar name
+    varchar nature
+  }
+
+  ACCOUNTING_ENTRY {
+    uuid id PK
+    uuid company_id FK
+    date entry_date
+    varchar source_type
+    uuid source_id
+    varchar status
+  }

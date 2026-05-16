@@ -2,7 +2,6 @@ package com.msvanegasg.facturaelectronica.controller;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,9 +12,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.msvanegasg.facturaelectronica.DTO.ClienteDTO;
-import com.msvanegasg.facturaelectronica.DTO.response.ClienteResponseDTO;
-import com.msvanegasg.facturaelectronica.service.ClienteService;
+import com.msvanegasg.facturaelectronica.thirdparty.application.port.in.ManageCustomerUseCase;
+import com.msvanegasg.facturaelectronica.thirdparty.interfaces.rest.CustomerRestMapper;
+import com.msvanegasg.facturaelectronica.thirdparty.interfaces.rest.dto.CustomerRequest;
+import com.msvanegasg.facturaelectronica.thirdparty.interfaces.rest.dto.CustomerResponse;
 
 import jakarta.validation.Valid;
 
@@ -23,61 +23,69 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/clientes")
 public class ClienteController {
 
-    @Autowired
-    private ClienteService clienteService;
+    private final ManageCustomerUseCase manageCustomerUseCase;
+
+    public ClienteController(ManageCustomerUseCase manageCustomerUseCase) {
+        this.manageCustomerUseCase = manageCustomerUseCase;
+    }
 
     @GetMapping
-    public ResponseEntity<List<ClienteResponseDTO>> listarTodos() {
-        List<ClienteResponseDTO> clientes = clienteService.listarClientesActivos();
+    public ResponseEntity<List<CustomerResponse>> listarTodos() {
+        List<CustomerResponse> clientes = manageCustomerUseCase.findActive().stream()
+                .map(CustomerRestMapper::toResponse)
+                .toList();
         return ResponseEntity.ok(clientes);
     }
 
     @GetMapping("/activos")
-    public ResponseEntity<List<ClienteResponseDTO>> listarActivos() {
-        return ResponseEntity.ok(clienteService.listarClientesActivos());
+    public ResponseEntity<List<CustomerResponse>> listarActivos() {
+        return ResponseEntity.ok(manageCustomerUseCase.findActive().stream()
+                .map(CustomerRestMapper::toResponse)
+                .toList());
     }
 
     @GetMapping("/inactivos")
-    public ResponseEntity<List<ClienteResponseDTO>> listarInactivos() {
-        return ResponseEntity.ok(clienteService.listarClientesInactivos());
+    public ResponseEntity<List<CustomerResponse>> listarInactivos() {
+        return ResponseEntity.ok(manageCustomerUseCase.findInactive().stream()
+                .map(CustomerRestMapper::toResponse)
+                .toList());
     }
 
     @GetMapping("/documento/{numeroDocumento}/tipo/{tipoDocumento}")
-    public ResponseEntity<ClienteResponseDTO> obtenerPorDocumento(
+    public ResponseEntity<CustomerResponse> obtenerPorDocumento(
             @PathVariable("numeroDocumento") Long numeroDocumento,
             @PathVariable("tipoDocumento") Long tipoDocumento) {
-        return ResponseEntity.ok(clienteService
-                .obtenerClientePorTipoYNumeroDocumento(tipoDocumento, numeroDocumento)
-                .map(cliente -> clienteService.obtenerClientePorTipoYNumeroDocumento(tipoDocumento, numeroDocumento))
-                .map(cliente -> clienteService.buscarPorNombre(cliente.getNombre()))
-                .orElseThrow(() -> new RuntimeException("Cliente no encontrado"))); // Puedes usar tu excepción personalizada aquí
+        return ResponseEntity.ok(
+                CustomerRestMapper.toResponse(manageCustomerUseCase.findByDocument(tipoDocumento, numeroDocumento)));
     }
 
     @GetMapping("/nombre/{nombre}")
-    public ResponseEntity<List<ClienteResponseDTO>> buscarPorNombre(@PathVariable("nombre") String nombre) {
-        return ResponseEntity.ok(clienteService.buscarPorNombre(nombre));
+    public ResponseEntity<List<CustomerResponse>> buscarPorNombre(@PathVariable("nombre") String nombre) {
+        return ResponseEntity.ok(manageCustomerUseCase.findByName(nombre).stream()
+                .map(CustomerRestMapper::toResponse)
+                .toList());
     }
 
     @PostMapping
-    public ResponseEntity<ClienteResponseDTO> crearCliente(@Valid @RequestBody ClienteDTO clienteDTO) {
-        ClienteResponseDTO response = clienteService.crearCliente(clienteDTO);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<CustomerResponse> crearCliente(@Valid @RequestBody CustomerRequest clienteDTO) {
+        return ResponseEntity.ok(CustomerRestMapper.toResponse(
+                manageCustomerUseCase.create(CustomerRestMapper.toCommand(clienteDTO))));
     }
 
     @PutMapping("/documento/{numeroDocumento}/tipo/{tipoDocumento}")
-    public ResponseEntity<ClienteResponseDTO> actualizarCliente(
+    public ResponseEntity<CustomerResponse> actualizarCliente(
             @PathVariable("numeroDocumento") Long numeroDocumento,
             @PathVariable("tipoDocumento") Long tipoDocumento,
-            @Valid @RequestBody ClienteDTO clienteDTO) {
-        ClienteResponseDTO actualizado = clienteService.actualizarCliente(clienteDTO, numeroDocumento, tipoDocumento);
-        return ResponseEntity.ok(actualizado);
+            @Valid @RequestBody CustomerRequest clienteDTO) {
+        return ResponseEntity.ok(CustomerRestMapper.toResponse(
+                manageCustomerUseCase.update(tipoDocumento, numeroDocumento, CustomerRestMapper.toCommand(clienteDTO))));
     }
 
     @DeleteMapping("/documento/{numeroDocumento}/tipo/{tipoDocumento}")
     public ResponseEntity<Void> desactivarCliente(
             @PathVariable("numeroDocumento") Long numeroDocumento,
             @PathVariable("tipoDocumento") Long tipoDocumento) {
-        clienteService.eliminarCliente(numeroDocumento, tipoDocumento);
+        manageCustomerUseCase.disable(tipoDocumento, numeroDocumento);
         return ResponseEntity.noContent().build();
     }
 
@@ -85,9 +93,7 @@ public class ClienteController {
     public ResponseEntity<Void> activarCliente(
             @PathVariable("numeroDocumento") Long numeroDocumento,
             @PathVariable("tipoDocumento") Long tipoDocumento) {
-        clienteService.activarCliente(numeroDocumento, tipoDocumento);
+        manageCustomerUseCase.enable(tipoDocumento, numeroDocumento);
         return ResponseEntity.noContent().build();
     }
 }
-
-

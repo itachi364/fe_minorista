@@ -1,7 +1,7 @@
 package com.msvanegasg.facturaelectronica.client;
 
-import com.msvanegasg.facturaelectronica.DTO.request.AumentarStockRequestDTO;
-import com.msvanegasg.facturaelectronica.DTO.response.ProductoResponseDTO;
+import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.dto.ProductResponse;
+import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.dto.ProductStockIncreaseRequest;
 import com.msvanegasg.facturaelectronica.exception.producto.ProductoCodigoNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,18 +19,18 @@ public class ProductoClient {
 	@Value("${microservicio.productos.url}")
 	private String baseUrl;
 
-	public ProductoResponseDTO obtenerProductoPorCodigoBarras(Long codigoBarras) {
+	public ProductResponse obtenerProductoPorCodigoBarrasMigrado(Long codigoBarras) {
 		try {
 			return webClient.get().uri(baseUrl + "/codigo/{codigoBarras}", codigoBarras).retrieve()
-					.bodyToMono(ProductoResponseDTO.class).block();
+					.bodyToMono(ProductResponse.class).block();
 		} catch (WebClientResponseException.NotFound ex) {
 			throw new ProductoCodigoNotFoundException(codigoBarras);
 		}
 	}
 
-	public void aumentarStock(AumentarStockRequestDTO requestDTO) {
+	public void aumentarStockMigrado(ProductStockIncreaseRequest request) {
 		webClient.put().uri(baseUrl + "/aumentar-stock")
-				.body(Mono.just(requestDTO), AumentarStockRequestDTO.class).retrieve().bodyToMono(Void.class).block();
+				.body(Mono.just(request), ProductStockIncreaseRequest.class).retrieve().bodyToMono(Void.class).block();
 	}
 
 }

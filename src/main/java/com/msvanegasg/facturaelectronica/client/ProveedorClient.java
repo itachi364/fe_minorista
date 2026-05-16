@@ -1,7 +1,7 @@
 package com.msvanegasg.facturaelectronica.client;
 
-import com.msvanegasg.facturaelectronica.DTO.response.ProveedorResponse2DTO;
 import com.msvanegasg.facturaelectronica.exception.proveedor.ProveedorDocumentoNotFoundException;
+import com.msvanegasg.facturaelectronica.thirdparty.interfaces.rest.dto.SupplierResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -17,7 +17,7 @@ public class ProveedorClient {
     @Value("${microservicio.proveedores.url}")
     private String baseUrl;
 
-    public ProveedorResponse2DTO obtenerProveedorPorDocumento(Long numeroDocumento, Long tipoDocumento) {
+    public SupplierResponse obtenerProveedorPorDocumentoMigrado(Long numeroDocumento, Long tipoDocumento) {
         String url = String.format("%s/documento/%s/tipo/%d", baseUrl, numeroDocumento, tipoDocumento);
 
         return webClient.get()
@@ -25,9 +25,9 @@ public class ProveedorClient {
                 .retrieve()
                 .onStatus(
                         status -> status.value() == 404,
-                        response -> Mono.error(new ProveedorDocumentoNotFoundException(numeroDocumento,tipoDocumento))
+                        response -> Mono.error(new ProveedorDocumentoNotFoundException(numeroDocumento, tipoDocumento))
                 )
-                .bodyToMono(ProveedorResponse2DTO.class)
-                .block(); // sincrónico para servicio interno
+                .bodyToMono(SupplierResponse.class)
+                .block();
     }
 }

@@ -1,95 +1,92 @@
 package com.msvanegasg.facturaelectronica.controller;
 
-import com.msvanegasg.facturaelectronica.DTO.ProveedorDTO;
-import com.msvanegasg.facturaelectronica.DTO.response.ProveedorResponseDTO;
-import com.msvanegasg.facturaelectronica.mapper.ProveedorMapper;
-import com.msvanegasg.facturaelectronica.models.Proveedor;
-import com.msvanegasg.facturaelectronica.models.TipoDocumento;
-import com.msvanegasg.facturaelectronica.service.ProveedorService;
-import com.msvanegasg.facturaelectronica.service.TipoDocumentoService;
+import com.msvanegasg.facturaelectronica.thirdparty.application.port.in.ManageSupplierUseCase;
+import com.msvanegasg.facturaelectronica.thirdparty.domain.model.Supplier;
+import com.msvanegasg.facturaelectronica.thirdparty.interfaces.rest.SupplierRestMapper;
+import com.msvanegasg.facturaelectronica.thirdparty.interfaces.rest.dto.SupplierRequest;
+import com.msvanegasg.facturaelectronica.thirdparty.interfaces.rest.dto.SupplierResponse;
 
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/proveedores")
 public class ProveedorController {
 
-	@Autowired
-	private ProveedorService proveedorService;
+	private final ManageSupplierUseCase manageSupplierUseCase;
 
-	@Autowired
-	private TipoDocumentoService tipoDocumentoService;
+	public ProveedorController(ManageSupplierUseCase manageSupplierUseCase) {
+		this.manageSupplierUseCase = manageSupplierUseCase;
+	}
 
 	@GetMapping
-	public List<ProveedorResponseDTO> findAll() {
-		return proveedorService.findAll().stream().map(ProveedorMapper::toResponseDTO).collect(Collectors.toList());
+	public List<SupplierResponse> findAll() {
+		return manageSupplierUseCase.findAll().stream()
+				.map(SupplierRestMapper::toResponse)
+				.toList();
 	}
 
 	@GetMapping("/active")
-	public List<ProveedorResponseDTO> findActiveTrue() {
-		return proveedorService.findActive().stream().map(ProveedorMapper::toResponseDTO).collect(Collectors.toList());
+	public List<SupplierResponse> findActiveTrue() {
+		return manageSupplierUseCase.findActive().stream()
+				.map(SupplierRestMapper::toResponse)
+				.toList();
 	}
 
 	@GetMapping("/inactive")
-	public List<ProveedorResponseDTO> findActiveFalse() {
-		return proveedorService.findActiveFalse().stream().map(ProveedorMapper::toResponseDTO)
-				.collect(Collectors.toList());
+	public List<SupplierResponse> findActiveFalse() {
+		return manageSupplierUseCase.findInactive().stream()
+				.map(SupplierRestMapper::toResponse)
+				.toList();
 	}
 
 	@GetMapping("/{id}")
-	public ResponseEntity<ProveedorResponseDTO> findById(@PathVariable("id") Long id) {
-		Proveedor proveedor = proveedorService.findById(id);
-		return ResponseEntity.ok(ProveedorMapper.toResponseDTO(proveedor));
+	public ResponseEntity<SupplierResponse> findById(@PathVariable("id") Long id) {
+		Supplier supplier = manageSupplierUseCase.findById(id);
+		return ResponseEntity.ok(SupplierRestMapper.toResponse(supplier));
 	}
 
 	@GetMapping("/documento/{numeroDocumento}/tipo/{tipoDocumento}")
-	public ResponseEntity<ProveedorResponseDTO> findByNumeroDocumento(
+	public ResponseEntity<SupplierResponse> findByNumeroDocumento(
 			@PathVariable("numeroDocumento") Long numeroDocumento, @PathVariable("tipoDocumento") Long tipoDocumento) {
-		Proveedor proveedor = proveedorService.findByNumeroDocumento(numeroDocumento, tipoDocumento);
-		return ResponseEntity.ok(ProveedorMapper.toResponseDTO(proveedor));
+		Supplier supplier = manageSupplierUseCase.findByDocument(tipoDocumento, numeroDocumento);
+		return ResponseEntity.ok(SupplierRestMapper.toResponse(supplier));
 	}
 	
 	@GetMapping("/nombre/{nombre}")
-	public ResponseEntity<ProveedorResponseDTO> findByNombre(@PathVariable("nombre") String nombre) {
-		Proveedor proveedor = proveedorService.findByNombre(nombre);
-		return ResponseEntity.ok(ProveedorMapper.toResponseDTO(proveedor));
+	public ResponseEntity<SupplierResponse> findByNombre(@PathVariable("nombre") String nombre) {
+		Supplier supplier = manageSupplierUseCase.findByName(nombre);
+		return ResponseEntity.ok(SupplierRestMapper.toResponse(supplier));
 	}
 
 	@PostMapping
-	public ResponseEntity<ProveedorDTO> create(@Valid @RequestBody ProveedorDTO dto) {
-		TipoDocumento tipoDocumento = tipoDocumentoService.findById(dto.getIdTipoDocumento());
-		Proveedor proveedor = ProveedorMapper.toEntity(dto, tipoDocumento);
-		proveedor.setActivo(true);
-		Proveedor saved = proveedorService.save(proveedor);
-		return ResponseEntity.ok(ProveedorMapper.toDTO(saved));
+	public ResponseEntity<SupplierRequest> create(@Valid @RequestBody SupplierRequest dto) {
+		Supplier saved = manageSupplierUseCase.create(SupplierRestMapper.toCommand(dto));
+		return ResponseEntity.ok(SupplierRestMapper.toRequestResponse(saved));
 	}
 
 	@PutMapping("/documento/{numeroDocumento}/tipo/{tipoDocumento}")
-	public ResponseEntity<ProveedorDTO> update(@PathVariable("numeroDocumento") Long numeroDocumento,
-			@PathVariable("tipoDocumento") Long tipoDocumentoCodigo, @Valid @RequestBody ProveedorDTO proveedorDTO) {
-		TipoDocumento tipoDocumento = tipoDocumentoService.findById(proveedorDTO.getIdTipoDocumento());
-		Proveedor proveedorActualizado = ProveedorMapper.toEntity(proveedorDTO, tipoDocumento);
-		Proveedor actualizado = proveedorService.update(numeroDocumento, tipoDocumentoCodigo, proveedorActualizado);
-		return ResponseEntity.ok(ProveedorMapper.toDTO(actualizado));
+	public ResponseEntity<SupplierRequest> update(@PathVariable("numeroDocumento") Long numeroDocumento,
+			@PathVariable("tipoDocumento") Long tipoDocumentoCodigo, @Valid @RequestBody SupplierRequest proveedorDTO) {
+		Supplier updated = manageSupplierUseCase.update(tipoDocumentoCodigo, numeroDocumento,
+				SupplierRestMapper.toCommand(proveedorDTO));
+		return ResponseEntity.ok(SupplierRestMapper.toRequestResponse(updated));
 	}
 
 	@DeleteMapping("/documento/{numeroDocumento}/tipo/{tipoDocumento}")
 	public ResponseEntity<Void> disable(@PathVariable("numeroDocumento") Long numeroDocumento,
 			@PathVariable("tipoDocumento") Long tipoDocumentoCodigo) {
-		proveedorService.disableByNumero(numeroDocumento, tipoDocumentoCodigo);
+		manageSupplierUseCase.disable(tipoDocumentoCodigo, numeroDocumento);
 		return ResponseEntity.noContent().build();
 	}
 
 	@PutMapping("/documento/{numeroDocumento}/tipo/{tipoDocumento}/activar")
 	public ResponseEntity<Void> activarProveedor(@PathVariable("numeroDocumento") Long numeroDocumento,
 			@PathVariable("tipoDocumento") Long tipoDocumentoCodigo) {
-		proveedorService.activarProveedor(numeroDocumento, tipoDocumentoCodigo);
+		manageSupplierUseCase.enable(tipoDocumentoCodigo, numeroDocumento);
 		return ResponseEntity.noContent().build();
 	}
 

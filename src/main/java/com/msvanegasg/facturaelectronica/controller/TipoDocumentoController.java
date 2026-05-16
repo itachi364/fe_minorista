@@ -1,12 +1,11 @@
 package com.msvanegasg.facturaelectronica.controller;
 
-import com.msvanegasg.facturaelectronica.DTO.TipoDocumentoDTO;
-import com.msvanegasg.facturaelectronica.mapper.TipoDocumentoMapper;
-import com.msvanegasg.facturaelectronica.models.TipoDocumento;
-import com.msvanegasg.facturaelectronica.service.TipoDocumentoService;
+import com.msvanegasg.facturaelectronica.catalog.application.port.in.ManageDocumentTypeUseCase;
+import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.DocumentTypeRestMapper;
+import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.dto.DocumentTypeRequest;
+import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.dto.DocumentTypeResponse;
 
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,63 +15,63 @@ import java.util.List;
 @RequestMapping("/api/tipos-documento")
 public class TipoDocumentoController {
 
-    @Autowired
-    private TipoDocumentoService tipoDocumentoService;
+    private final ManageDocumentTypeUseCase manageDocumentTypeUseCase;
+
+    public TipoDocumentoController(ManageDocumentTypeUseCase manageDocumentTypeUseCase) {
+        this.manageDocumentTypeUseCase = manageDocumentTypeUseCase;
+    }
 
     @GetMapping
-    public ResponseEntity<List<TipoDocumento>> findAll() {
-    	List<TipoDocumento> all = tipoDocumentoService.findAll();
+    public ResponseEntity<List<DocumentTypeResponse>> findAll() {
+    	List<DocumentTypeResponse> all = manageDocumentTypeUseCase.findAll().stream()
+                .map(DocumentTypeRestMapper::toResponse)
+                .toList();
         return ResponseEntity.ok(all);
     }
     
     
     @GetMapping("/active")
-    public ResponseEntity<List<TipoDocumento>> findActiveTrue() {
-    	List<TipoDocumento> active = tipoDocumentoService.findActive();
+    public ResponseEntity<List<DocumentTypeResponse>> findActiveTrue() {
+    	List<DocumentTypeResponse> active = manageDocumentTypeUseCase.findActive().stream()
+                .map(DocumentTypeRestMapper::toResponse)
+                .toList();
     	return ResponseEntity.ok(active);
     }
     
     @GetMapping("/inactive")
-    public ResponseEntity<List<TipoDocumento>> findActiveFalse() {
-    	List<TipoDocumento> inactivo = tipoDocumentoService.findActiveFalse();
+    public ResponseEntity<List<DocumentTypeResponse>> findActiveFalse() {
+    	List<DocumentTypeResponse> inactivo = manageDocumentTypeUseCase.findInactive().stream()
+                .map(DocumentTypeRestMapper::toResponse)
+                .toList();
     	return ResponseEntity.ok(inactivo);
     }
 
     @GetMapping("/codigo/{codigo}")
-    public ResponseEntity<TipoDocumento> findById(@PathVariable("codigo") Long codigo) {
-        TipoDocumento tipo = tipoDocumentoService.findById(codigo);
-        return ResponseEntity.ok(tipo);
+    public ResponseEntity<DocumentTypeResponse> findById(@PathVariable("codigo") Long codigo) {
+        return ResponseEntity.ok(DocumentTypeRestMapper.toResponse(manageDocumentTypeUseCase.findByCode(codigo)));
     }
 
     @PostMapping
-    public ResponseEntity<TipoDocumentoDTO> create(@Valid @RequestBody TipoDocumentoDTO dto) {
-        TipoDocumento tipoDocumento = TipoDocumentoMapper.toEntity(dto);
-        tipoDocumento.setActivo(true);
-        TipoDocumento saved = tipoDocumentoService.save(tipoDocumento);
-        return ResponseEntity.ok(TipoDocumentoMapper.toDTO(saved));
+    public ResponseEntity<DocumentTypeRequest> create(@Valid @RequestBody DocumentTypeRequest dto) {
+        return ResponseEntity.ok(DocumentTypeRestMapper.toRequest(
+                manageDocumentTypeUseCase.create(DocumentTypeRestMapper.toCommand(dto))));
     }
 
     @PutMapping("/{codigo}")
-    public ResponseEntity<TipoDocumentoDTO> update(@PathVariable("codigo") Long codigo, @Valid @RequestBody TipoDocumentoDTO dto) {
-        TipoDocumento existing = tipoDocumentoService.findById(codigo);
-
-        TipoDocumento updatedTipo = TipoDocumentoMapper.toEntity(dto);
-        updatedTipo.setCodigo(existing.getCodigo());
-        updatedTipo.setActivo(existing.getActivo());
-
-        TipoDocumento updated = tipoDocumentoService.save(updatedTipo);
-        return ResponseEntity.ok(TipoDocumentoMapper.toDTO(updated));
+    public ResponseEntity<DocumentTypeRequest> update(@PathVariable("codigo") Long codigo, @Valid @RequestBody DocumentTypeRequest dto) {
+        return ResponseEntity.ok(DocumentTypeRestMapper.toRequest(
+                manageDocumentTypeUseCase.update(codigo, DocumentTypeRestMapper.toCommand(dto))));
     }
 
     @DeleteMapping("/{codigo}")
     public ResponseEntity<Void> disable(@PathVariable("codigo") Long codigo) {
-        tipoDocumentoService.disableByCodigo(codigo);
+        manageDocumentTypeUseCase.disable(codigo);
         return ResponseEntity.noContent().build();
     }
     
     @PutMapping("/{codigo}/activar")
     public ResponseEntity<Void> activarTipoDocumento(@PathVariable("codigo") Long codigo) {
-    	tipoDocumentoService.activarTipoDocumento(codigo);
+    	manageDocumentTypeUseCase.enable(codigo);
         return ResponseEntity.noContent().build();
     }
 }

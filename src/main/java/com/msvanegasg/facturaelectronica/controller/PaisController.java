@@ -1,10 +1,10 @@
 package com.msvanegasg.facturaelectronica.controller;
 
-import com.msvanegasg.facturaelectronica.DTO.PaisDTO;
-import com.msvanegasg.facturaelectronica.models.Pais;
-import com.msvanegasg.facturaelectronica.service.PaisService;
+import com.msvanegasg.facturaelectronica.catalog.application.port.in.ManageCountryUseCase;
+import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.CountryRestMapper;
+import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.dto.CountryRequest;
+import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.dto.CountryResponse;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,51 +16,60 @@ import java.util.List;
 @RequestMapping("/api/paises")
 public class PaisController {
 
-    @Autowired
-    private PaisService paisService;
+    private final ManageCountryUseCase manageCountryUseCase;
+
+    public PaisController(ManageCountryUseCase manageCountryUseCase) {
+        this.manageCountryUseCase = manageCountryUseCase;
+    }
 
     @GetMapping
-    public ResponseEntity<List<Pais>> findAll() {
-    	List<Pais> all = paisService.findAll();
+    public ResponseEntity<List<CountryResponse>> findAll() {
+    	List<CountryResponse> all = manageCountryUseCase.findAll().stream()
+                .map(CountryRestMapper::toResponse)
+                .toList();
         return ResponseEntity.ok(all);
     }
     
     @GetMapping("/active")
-    public ResponseEntity<List<Pais>> findActive() {
-    	List<Pais> active = paisService.findActive();
+    public ResponseEntity<List<CountryResponse>> findActive() {
+    	List<CountryResponse> active = manageCountryUseCase.findActive().stream()
+                .map(CountryRestMapper::toResponse)
+                .toList();
         return ResponseEntity.ok(active);
     }
     
     @GetMapping("/inactive")
-    public ResponseEntity<List<Pais>> findActiveFalse() {
-    	List<Pais> active = paisService.findActiveFalse();
+    public ResponseEntity<List<CountryResponse>> findActiveFalse() {
+    	List<CountryResponse> active = manageCountryUseCase.findInactive().stream()
+                .map(CountryRestMapper::toResponse)
+                .toList();
         return ResponseEntity.ok(active);
     }
 
     @GetMapping("/{codigo}")
-    public ResponseEntity<Pais> getByCodigo(@PathVariable("codigo") String codigo) {
-        return ResponseEntity.ok(paisService.findById(codigo));
+    public ResponseEntity<CountryResponse> getByCodigo(@PathVariable("codigo") String codigo) {
+        return ResponseEntity.ok(CountryRestMapper.toResponse(manageCountryUseCase.findByCode(codigo)));
     }
 
     @PostMapping
-    public ResponseEntity<PaisDTO> create(@Valid @RequestBody PaisDTO paisDTO) {
-        return ResponseEntity.ok(paisService.save(paisDTO));
+    public ResponseEntity<CountryRequest> create(@Valid @RequestBody CountryRequest paisDTO) {
+        return ResponseEntity.ok(CountryRestMapper.toRequest(manageCountryUseCase.create(CountryRestMapper.toCommand(paisDTO))));
     }
 
     @PutMapping("/{codigo}")
-    public ResponseEntity<PaisDTO> update(@PathVariable("codigo") String codigo, @Valid @RequestBody PaisDTO paisDTO) {
-        return ResponseEntity.ok(paisService.update(codigo, paisDTO));
+    public ResponseEntity<CountryRequest> update(@PathVariable("codigo") String codigo, @Valid @RequestBody CountryRequest paisDTO) {
+        return ResponseEntity.ok(CountryRestMapper.toRequest(manageCountryUseCase.update(codigo, CountryRestMapper.toCommand(paisDTO))));
     }
 
     @DeleteMapping("/{codigo}")
     public ResponseEntity<Void> disable(@PathVariable("codigo") String codigo) {
-        paisService.disableById(codigo);
+        manageCountryUseCase.disable(codigo);
         return ResponseEntity.noContent().build();
     }
     
     @PutMapping("/{codigoPais}/activar")
     public ResponseEntity<Void> activarPais(@PathVariable("codigoPais") String codigoPais) {
-        paisService.activarPais(codigoPais);
+        manageCountryUseCase.enable(codigoPais);
         return ResponseEntity.noContent().build();
     }
 }

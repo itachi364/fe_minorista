@@ -1,0 +1,772 @@
+# Tasks
+
+## Estado
+
+- `PENDING`: pendiente.
+- `APPROVED`: aprobado para implementar en una fase posterior.
+- `IN_PROGRESS`: en ejecucion.
+- `DONE`: completado.
+
+## Fase 0: Seguridad y base SDD
+
+- [ ] TASK-001: Preparar Docker y variables de entorno para secretos
+  - Estado: DONE
+  - Archivos propuestos:
+    - `docker-compose.yml`
+    - `.env.example`
+    - `.env`
+    - `src/main/resources/application.properties`
+    - `.gitignore`
+  - Descripcion: Crear la configuracion base de Docker Compose para PostgreSQL y la aplicacion, documentar variables de entorno con valores dummy en `.env.example`, excluir `.env` del control de versiones y reemplazar credenciales hardcodeadas por referencias a variables de entorno.
+  - Requisitos: RNF-006, RN-007.
+  - Acceptance criteria: AC-017, AC-019.
+  - Variables minimas:
+    - `DB_URL`
+    - `DB_USERNAME`
+    - `DB_PASSWORD`
+    - `POSTGRES_DB`
+    - `POSTGRES_USER`
+    - `POSTGRES_PASSWORD`
+    - `POSTGRES_HOST_PORT`
+  - Variables placeholder para proveedor tecnologico DIAN:
+    - `DIAN_PROVIDER_BASE_URL`
+    - `DIAN_PROVIDER_API_KEY`
+    - `DIAN_CERTIFICATE_PATH`
+    - `DIAN_CERTIFICATE_PASSWORD`
+  - Regla: Las variables DIAN deben quedar documentadas como placeholders no obligatorios hasta seleccionar proveedor tecnologico y obtener certificados.
+  - Permisos/lectura en Docker: Docker Compose debe inyectar las variables al contenedor mediante `env_file` o `environment`; los permisos de archivos solo aplicaran cuando se monten certificados reales por volumen o Docker secrets.
+  - Despliegue PostgreSQL en Docker:
+    - Crear servicio `postgres` en `docker-compose.yml`.
+    - Usar imagen oficial `postgres` en version estable aprobada.
+    - Exponer el puerto `5432` para desarrollo local mediante `POSTGRES_HOST_PORT`, permitiendo cambiarlo cuando el host ya tenga PostgreSQL local u otra restriccion de puerto.
+    - Crear volumen persistente `postgres_data`.
+    - Configurar `POSTGRES_DB`, `POSTGRES_USER` y `POSTGRES_PASSWORD` desde `.env`.
+    - Agregar `healthcheck` para validar disponibilidad de PostgreSQL antes de iniciar la aplicacion.
+    - Configurar `DB_URL` para que la aplicacion use el host Docker `postgres` cuando corra dentro de Compose.
+    - Documentar comando de arranque: `docker compose up -d postgres`.
+    - Resultado local: PostgreSQL quedo levantado en el puerto host `15432` porque `5432` y `5433` estaban bloqueados en el equipo.
+  - Tests requeridos: prueba de arranque o carga de contexto usando variables dummy; validacion manual de que `application.properties` no contiene secretos reales.
+
+- [ ] TASK-002: Crear estructura SDD local
+  - Estado: DONE
+  - Archivos:
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/tasks.md`
+    - `specs/acceptance-criteria.md`
+    - `specs/use-cases.md`
+    - `specs/api-contract.md`
+    - `specs/architecture.md`
+    - `specs/diagrams/architecture.mmd`
+    - `specs/adr/ADR-001-clean-architecture-microservices.md`
+  - Acceptance criteria: AC-021, AC-024.
+  - Tests requeridos: no aplica, documentacion.
+
+## Fase 1: Arquitectura y plataforma
+
+- [ ] TASK-003: Disenar modelo de base de datos multiempresa
+  - Estado: DONE
+  - Archivos:
+    - `specs/data-model.md`
+    - `specs/data-dictionary.md`
+    - `specs/diagrams/entity-relationship.mmd`
+    - `specs/tasks.md`
+  - Descripcion: Definir modelo entidad-relacion y diccionario de datos para PostgreSQL, con aislamiento por `company_id`, inventario de stock simple, POS que genera documento electronico, descuento de inventario por venta facturada y contabilidad basada en PUC colombiano.
+  - Requisitos: RF-006, RF-008, RF-009, RNF-003, RNF-009.
+  - Acceptance criteria: AC-007, AC-010, AC-011, AC-012, AC-013, AC-014, AC-015, AC-016.
+  - Tests requeridos: no aplica, documentacion. Las migraciones y pruebas de repositorio se ejecutaran en TASK-007.
+
+- [ ] TASK-004: Definir contratos entre microservicios
+  - Estado: DONE
+  - Archivos propuestos:
+    - `specs/api-contract.md`
+    - OpenAPI por servicio.
+  - Acceptance criteria: AC-019.
+  - Tests requeridos: contract tests cuando existan servicios.
+  - Resultado local: `specs/api-contract.md` actualizado con convenciones, headers multiempresa, errores estandar, endpoints por servicio, DTOs base, reglas por servicio y eventos internos propuestos.
+
+- [ ] TASK-005: Actualizar Spring Boot a version soportada/LTS
+  - Estado: DONE
+  - Archivos propuestos:
+    - `pom.xml`
+    - archivos de configuracion o pruebas afectados por cambios de compatibilidad.
+  - Descripcion: Actualizar el proyecto desde Spring Boot `3.3.7` a una version soportada. Ruta recomendada: primero migrar a Spring Boot `3.5.x` por ser la ultima rama menor de Spring Boot 3 y compatible con Java 17; luego evaluar Spring Boot `4.x` como migracion mayor separada.
+  - Requisitos: RNF-001, RNF-004.
+  - Acceptance criteria:
+    - El `pom.xml` usa una version soportada de Spring Boot.
+    - Las dependencias administradas por Spring Boot quedan alineadas con la version seleccionada.
+    - El proyecto compila.
+    - Las pruebas existentes pasan o se documentan bloqueos especificos.
+    - Cualquier cambio de comportamiento requerido por la migracion queda documentado antes de implementarse.
+  - Tests requeridos:
+    - `mvn test`
+    - prueba de arranque o `contextLoads` con variables de entorno dummy y base de datos disponible.
+  - Notas:
+    - Confirmar version exacta antes de modificar `pom.xml`.
+    - No migrar a Spring Boot `4.x` en la misma tarea sin una evaluacion de breaking changes y confirmacion explicita.
+    - Resultado local: actualizado a Spring Boot `3.5.14`, con `springdoc-openapi-starter-webmvc-ui` `2.8.17`, PostgreSQL y Lombok administrados por Spring Boot, y pruebas ejecutadas con exito.
+
+- [ ] TASK-006: Crear estructura Clean Architecture para `billing-service`
+  - Estado: DONE
+  - Archivos propuestos:
+    - `billing-service/src/main/java/.../domain`
+    - `billing-service/src/main/java/.../application`
+    - `billing-service/src/main/java/.../infrastructure`
+    - `billing-service/src/main/java/.../interfaces`
+  - Acceptance criteria: AC-021, AC-022.
+  - Tests requeridos: unit tests de casos de uso base.
+  - Resultado local: se creo `billing` como modulo Clean Architecture dentro del backend actual, siguiendo la migracion incremental definida en `specs/architecture.md`. Incluye dominio sin Spring/JPA, puertos de entrada/salida, caso de uso base para crear documento fiscal `DRAFT`, adaptadores de sistema para UUID/reloj y pruebas unitarias.
+
+- [ ] TASK-007: Crear migraciones versionadas de base de datos
+  - Estado: DONE
+  - Archivos:
+    - `src/main/resources/db/migration/V001__create_legacy_public_schema.sql`
+    - `pom.xml`
+    - `src/test/java/com/msvanegasg/facturaelectronica/FacturaelectronicaApplicationTests.java`
+  - Acceptance criteria: AC-001, AC-007, AC-014.
+  - Tests requeridos: prueba de carga de contexto con Flyway y validacion Hibernate.
+  - Resultado local: se agrego Flyway, se creo la migracion versionada inicial para el esquema publico legado, se aplico contra PostgreSQL local en Docker y `contextLoads` valida el esquema con `spring.jpa.hibernate.ddl-auto=validate`.
+
+## Fase 2: Facturacion electronica y proveedor tecnologico
+
+- [ ] TASK-008: Implementar configuracion de emisor y resoluciones
+  - Estado: DONE
+  - Archivos:
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/IssuerProfile.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/NumberingResolution.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/FiscalEnvironment.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/FiscalNumberAssignment.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/dto/*Issuer*`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/dto/*Numbering*`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/in/*Issuer*`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/in/*Numbering*`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/out/*Issuer*`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/out/*Numbering*`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/usecase/*Issuer*`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/usecase/*Numbering*`
+    - `src/test/java/com/msvanegasg/facturaelectronica/billing/application/usecase/IssuerAndNumberingConfigurationServiceTest.java`
+  - Acceptance criteria: AC-001.
+  - Tests requeridos: unit tests de validacion de resolucion y numeracion.
+  - Resultado local: se implementaron modelos de dominio y casos de uso para configurar emisor, crear resoluciones y asignar consecutivos solo cuando existe emisor activo y resolucion activa/vigente con rango disponible. La regla de prefijo se limita a caracteres alfanumericos y maximo 4 caracteres segun numeracion DIAN. La persistencia JPA y endpoints REST se dejan para la fase de adaptadores del modelo multiempresa.
+
+- [ ] TASK-009: Implementar calculo de factura electronica
+  - Estado: DONE
+  - Archivos:
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/DocumentLineToCalculate.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/CalculatedDocumentLine.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/CalculatedElectronicDocument.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/ElectronicDocumentCalculator.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/dto/*Calculation*`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/dto/CalculatedElectronicDocument*`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/in/CalculateElectronicDocumentUseCase.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/usecase/CalculateElectronicDocumentService.java`
+    - `src/test/java/com/msvanegasg/facturaelectronica/billing/application/usecase/CalculateElectronicDocumentServiceTest.java`
+  - Acceptance criteria: AC-002.
+  - Tests requeridos: unit tests de totales, impuestos, redondeos y descuentos.
+  - Resultado local: se documento e implemento la politica confirmada de calculo por linea, descuento antes de impuesto, redondeo `HALF_UP` a 2 decimales y totales como suma de lineas calculadas. Se agregaron pruebas unitarias para totales, redondeo, descuentos invalidos, lineas vacias y tasa negativa.
+
+- [ ] TASK-010: Implementar puerto y adaptador de proveedor tecnologico DIAN
+  - Estado: DONE
+  - Archivos:
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/ProviderSubmissionRecord.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/ProviderSubmissionStatus.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/dto/DianProviderRequest.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/dto/DianProviderResponse.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/dto/ProviderSubmissionResult.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/dto/SubmitElectronicDocumentToProviderCommand.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/in/SubmitElectronicDocumentToProviderUseCase.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/out/DianProviderPort.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/out/ProviderSubmissionRecordRepositoryPort.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/usecase/SubmitElectronicDocumentToProviderService.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/infrastructure/provider/DummyDianProviderAdapter.java`
+    - `src/test/java/com/msvanegasg/facturaelectronica/billing/application/usecase/SubmitElectronicDocumentToProviderServiceTest.java`
+  - Acceptance criteria: AC-003, AC-004, AC-006, AC-019.
+  - Tests requeridos: unit tests con mocks y pruebas de errores externos.
+  - Resultado local: se creo el puerto `DianProviderPort`, el caso de uso de envio al proveedor, el registro de solicitud/respuesta mediante puerto de persistencia y un adaptador dummy local sin llamadas externas ni secretos. Los errores externos se convierten a respuesta segura sin exponer detalles internos.
+
+- [ ] TASK-011: Implementar estados y trazabilidad de documentos electronicos
+  - Estado: DONE
+  - Archivos:
+    - `specs/design.md`
+    - `specs/data-dictionary.md`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/ElectronicDocumentLifecycle.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/ElectronicDocumentTraceAction.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/ElectronicDocumentTraceEvent.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/FiscalAuditEvent.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/dto/RegisterProviderSubmissionOutcomeCommand.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/dto/ElectronicDocumentStatusResult.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/in/RegisterProviderSubmissionOutcomeUseCase.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/out/ElectronicDocumentLifecycleRepositoryPort.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/out/ElectronicDocumentTraceEventRepositoryPort.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/out/FiscalAuditEventRepositoryPort.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/usecase/RegisterProviderSubmissionOutcomeService.java`
+    - `src/test/java/com/msvanegasg/facturaelectronica/billing/application/usecase/RegisterProviderSubmissionOutcomeServiceTest.java`
+  - Acceptance criteria: AC-003, AC-004, AC-006, AC-018.
+  - Tests requeridos: unit tests de transiciones validas e invalidas.
+  - Resultado local: se implemento el ciclo de vida interno de documentos electronicos, validando que los resultados del proveedor solo apliquen a documentos en `SENT_TO_PROVIDER`. Se registran artefactos para aceptados, errores seguros para rechazados/fallidos, evento de trazabilidad y evento de auditoria fiscal. Se documentaron transiciones permitidas y se agregaron pruebas unitarias de estados validos e invalidos.
+
+- [ ] TASK-012: Implementar notas credito y debito
+  - Estado: DONE
+  - Archivos:
+    - `specs/design.md`
+    - `specs/data-dictionary.md`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/FiscalAdjustmentNote.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/dto/CreateFiscalAdjustmentNoteCommand.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/dto/FiscalAdjustmentNoteResult.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/in/CreateFiscalAdjustmentNoteUseCase.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/out/FiscalAdjustmentNoteRepositoryPort.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/usecase/CreateFiscalAdjustmentNoteService.java`
+    - `src/test/java/com/msvanegasg/facturaelectronica/billing/application/usecase/CreateFiscalAdjustmentNoteServiceTest.java`
+  - Acceptance criteria: AC-005.
+  - Tests requeridos: unit tests de referencia a factura, valores y estados.
+  - Resultado local: se implementaron notas credito/debito como documentos `DRAFT` que solo pueden referenciar factura electronica `VALIDATED`, con motivo obligatorio y validacion de valores `total = subtotal + taxTotal`. Se rechazan facturas no validadas, documentos POS, tipos de nota invalidos, motivos vacios y totales inconsistentes.
+  - Verificacion: `mvnw.cmd -Dtest=CreateFiscalAdjustmentNoteServiceTest test` ejecutado con exito: 8 tests, 0 fallos. La suite completa `mvnw.cmd test` quedo bloqueada porque Docker Desktop/PostgreSQL no estaba activo y `localhost:15432` rechazo conexion.
+
+## Fase 3: POS electronico
+
+- [ ] TASK-013: Implementar emision de documento equivalente electronico POS
+  - Estado: DONE
+  - Archivos:
+    - `specs/design.md`
+    - `specs/data-dictionary.md`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/BuyerInformation.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/CudeGenerator.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/ElectronicPosDocument.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/dto/IssueElectronicPosCommand.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/dto/ElectronicPosDocumentResult.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/in/IssueElectronicPosUseCase.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/out/ElectronicPosDocumentRepositoryPort.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/usecase/IssueElectronicPosService.java`
+    - `src/test/java/com/msvanegasg/facturaelectronica/billing/application/usecase/IssueElectronicPosServiceTest.java`
+  - Acceptance criteria: AC-007, AC-009.
+  - Tests requeridos: unit tests de CUDE, totales, adquirente y numeracion.
+  - Resultado local: se implemento emision inicial de POS electronico como `ELECTRONIC_POS`, calculando totales, asignando numeracion fiscal, permitiendo adquirente opcional completo y generando CUDE deterministico para pruebas internas. El documento nace en `NUMBER_ASSIGNED`; envio/validacion se mantienen en tareas de proveedor y trazabilidad. La generacion final de CUDE queda sujeta al Anexo Tecnico de Documento Equivalente Electronico y proveedor real.
+  - Verificacion: `mvnw.cmd -Dtest=IssueElectronicPosServiceTest test` ejecutado con exito: 5 tests, 0 fallos. Suite completa `mvnw.cmd test`: 40 tests, 0 fallos.
+
+## Fase 4: Refactorizacion arquitectonica legacy
+
+- [x] TASK-014: Refactorizar modulos CRUD existentes hacia Clean Architecture
+  - Estado: DONE
+  - Descripcion: Migrar gradualmente los modulos existentes desde la estructura legacy `controller/service/repository/models/DTO/mappers` hacia bounded contexts con la misma arquitectura usada por `billing`: dominio puro, casos de uso, puertos de entrada/salida, adaptadores de persistencia e interfaces REST.
+  - Alcance inicial:
+    - Usar `Categoria` como modulo piloto.
+    - Mantener endpoints, DTOs y comportamiento externo compatibles.
+    - No introducir reglas de negocio nuevas durante el refactor.
+    - Documentar cualquier incompatibilidad encontrada antes de modificar contratos publicos.
+  - Bounded contexts objetivo:
+    - `catalog`: categorias, productos, impuestos, paises, metodos de pago, tipos de documento y tipos de gasto.
+    - `thirdparty`: clientes y proveedores.
+    - `inventory`: compras, stock y movimientos.
+    - `billing`: facturas, POS y documentos electronicos.
+    - `accounting`: PUC, asientos y libros.
+    - `audit`: auditoria y accesos.
+  - Archivos propuestos para piloto `Categoria`:
+    - `src/main/java/com/msvanegasg/facturaelectronica/catalog/domain/model/Category.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/catalog/application/port/in/*Category*UseCase.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/catalog/application/port/out/CategoryRepositoryPort.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/catalog/application/usecase/*Category*Service.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/catalog/application/dto/*Category*.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/catalog/infrastructure/persistence/*Category*Adapter.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/catalog/interfaces/rest/*Category*Controller.java`
+    - pruebas unitarias y de capa web correspondientes.
+  - Dependencias:
+    - TASK-006.
+    - TASK-007.
+  - Acceptance criteria: AC-021, AC-022, AC-024, AC-025, AC-026, AC-027, AC-028, AC-029.
+  - Completion criteria:
+    - El modulo piloto compila y pasa pruebas.
+    - Los endpoints existentes del modulo piloto siguen funcionando con contratos compatibles.
+    - El dominio y los casos de uso no dependen de Spring/JPA/HTTP.
+    - Los repositorios JPA quedan encapsulados en adaptadores de infraestructura.
+    - Se documentan los modulos migrados y los pendientes.
+  - Tests requeridos:
+    - unit tests de casos de uso.
+    - pruebas de controlador o integracion para compatibilidad de endpoints existentes.
+    - `mvn test`.
+  - Resultado local: se refactorizo el modulo piloto `Categoria` hacia el bounded context `catalog`, agregando dominio puro, comando de aplicacion, puerto de entrada, puerto de salida, caso de uso, adaptador de persistencia y mapper REST. El controlador legacy `CategoriaController` se conserva para mantener compatibilidad de rutas y respuesta JSON (`idCategoria`, `nombre`, `descripcion`, `activo`), pero ahora depende del puerto de entrada `ManageCategoryUseCase`.
+  - Modulos migrados:
+    - `catalog`: `Categoria`.
+  - Modulos pendientes:
+    - `catalog`: productos, impuestos, paises, metodos de pago, tipos de documento y tipos de gasto.
+    - `thirdparty`: clientes y proveedores.
+    - `inventory`: compras, stock y movimientos.
+    - `accounting`: PUC, asientos y libros.
+    - `audit`: auditoria y accesos.
+  - Verificacion: `mvnw.cmd "-Dtest=CategoryManagementServiceTest,CategoriaControllerTest" test` ejecutado con exito: 11 tests, 0 fallos. Suite completa `mvnw.cmd test` con PostgreSQL local: 51 tests, 0 fallos.
+
+## Fase 5: POS electronico - ajustes
+
+- [x] TASK-015: Implementar nota de ajuste POS
+  - Estado: DONE
+  - Acceptance criteria: AC-008.
+  - Tests requeridos: unit tests de anulacion, correccion y no reutilizacion de numero.
+  - Resultado local: se implemento caso de uso `CreatePosAdjustmentNoteService` para generar notas de ajuste POS con tipo `CANCELLATION` o `CORRECTION`, referencia al POS emitido, numeracion fiscal propia como `POS_ADJUSTMENT_NOTE`, totales validados y bloqueo de reutilizacion del mismo prefijo y numero del POS original. La nota nace en `NUMBER_ASSIGNED`; envio al proveedor y trazabilidad quedan en las tareas ya definidas para proveedor/estados.
+  - Verificacion: `mvnw.cmd "-Dtest=CreatePosAdjustmentNoteServiceTest,IssueElectronicPosServiceTest" test` ejecutado con exito: 10 tests, 0 fallos. Suite completa `mvnw.cmd test` con PostgreSQL local: 56 tests, 0 fallos.
+
+## Fase 6: Inventario
+
+- [x] TASK-016: Implementar movimientos de inventario
+  - Estado: DONE
+  - Acceptance criteria: AC-010, AC-011, AC-013.
+  - Tests requeridos: unit tests de entradas, salidas y trazabilidad.
+  - Resultado local: se implemento el nucleo de inventario en Clean Architecture con `StockBalance`, `InventoryMovement`, tipos de movimiento, tipo de documento origen, puertos de entrada/salida y `RegisterInventoryMovementService`. Las compras incrementan stock con movimiento `PURCHASE_IN`; las ventas disminuyen stock con `SALE_OUT`; cada movimiento conserva trazabilidad de empresa, producto, cantidad, documento origen, usuario, fecha, stock previo y stock resultante. El dominio impide stock negativo.
+  - Verificacion: `mvnw.cmd "-Dtest=RegisterInventoryMovementServiceTest" test` ejecutado con exito: 4 tests, 0 fallos. Suite completa `mvnw.cmd test` con PostgreSQL local: 60 tests, 0 fallos.
+
+- [x] TASK-017: Implementar validacion de disponibilidad
+  - Estado: DONE
+  - Acceptance criteria: AC-012.
+  - Tests requeridos: unit tests de stock suficiente e insuficiente.
+  - Resultado local: se implemento `CheckStockAvailabilityService` como caso de uso de consulta para validar disponibilidad por empresa y producto. La disponibilidad se calcula como stock actual menos stock reservado; el caso de uso devuelve resultado consultable y ofrece `requireAvailable` para rechazar ventas con cantidad mayor a la disponible.
+  - Verificacion: `mvnw.cmd "-Dtest=CheckStockAvailabilityServiceTest,RegisterInventoryMovementServiceTest" test` ejecutado con exito: 8 tests, 0 fallos. Suite completa `mvnw.cmd test` con PostgreSQL local: 64 tests, 0 fallos.
+
+## Fase 7: Contabilidad base
+
+- [x] TASK-018: Implementar plan de cuentas basico
+  - Estado: DONE
+  - Acceptance criteria: AC-014, AC-015, AC-016.
+  - Tests requeridos: unit tests de cuentas y estructura.
+  - Resultado local: se implemento el nucleo de plan de cuentas en Clean Architecture con `Account`, clasificacion PUC por primer digito, nivel por longitud del codigo, naturaleza debito/credito, puerto de repositorio y `ChartOfAccountsService`. Se valida codigo numerico, clase PUC 1 a 9, nombre obligatorio y unicidad por empresa/codigo.
+  - Verificacion: `mvnw.cmd "-Dtest=ChartOfAccountsServiceTest" test` ejecutado con exito: 5 tests, 0 fallos. Suite completa `mvnw.cmd test` con PostgreSQL local: 69 tests, 0 fallos.
+
+## Fase 8: Refactorizacion legacy restante
+
+- [x] TASK-019: Completar refactor de modulos legacy restantes hacia Clean Architecture
+  - Estado: DONE
+  - Descripcion: Migrar los modulos preexistentes que aun dependen directamente de la estructura legacy `controller/service/repository/models/DTO/mappers` hacia bounded contexts con la misma arquitectura aplicada en el piloto `Categoria`: dominio puro, comandos/DTOs de aplicacion, puertos de entrada/salida, casos de uso, adaptadores de persistencia y mappers REST compatibles.
+  - Alcance:
+    - `catalog`: `Producto`, `Impuesto`, `Pais`, `MetodoPago`, `TipoDocumento`, `TipoGasto`, `Parametro`.
+    - `thirdparty`: `Cliente`, `Proveedor`.
+    - `inventory`: `Compra`, `DetalleCompra`, integracion con stock y movimientos ya definidos.
+    - `expenses`: `Gasto`, `DetalleGasto`, relacion con `TipoGasto` y `MetodoPago`.
+  - Estrategia:
+    - Migrar por modulo o subgrupo funcional, no todos en un unico cambio grande.
+    - Mantener los controladores legacy como fachada compatible cuando sea necesario, igual que `CategoriaController`.
+    - No introducir reglas de negocio nuevas durante el refactor.
+    - Documentar incompatibilidades encontradas antes de modificar contratos publicos.
+    - Mantener integracion con las entidades JPA existentes mediante adaptadores hasta que exista una migracion de persistencia aprobada.
+  - Archivos esperados:
+    - `src/main/java/com/msvanegasg/facturaelectronica/catalog/**`
+    - `src/main/java/com/msvanegasg/facturaelectronica/thirdparty/**`
+    - `src/main/java/com/msvanegasg/facturaelectronica/inventory/**`
+    - `src/main/java/com/msvanegasg/facturaelectronica/expenses/**`
+    - pruebas unitarias de casos de uso.
+    - pruebas de controlador o compatibilidad por endpoint migrado.
+  - Acceptance criteria:
+    - AC-025: Endpoints, codigos HTTP y JSON legacy compatibles salvo cambio previamente aprobado.
+    - AC-026: Dominio y casos de uso sin dependencias de Spring MVC, JPA, controladores o anotaciones HTTP.
+    - AC-027: Controladores dependiendo de puertos/casos de uso; repositorios JPA encapsulados tras adaptadores de infraestructura.
+    - AC-028: Cada modulo migrado con pruebas unitarias de casos de uso y pruebas de compatibilidad de endpoints cuando exista controlador.
+    - AC-029: Migracion incremental por bounded context, con modulos migrados y pendientes documentados.
+  - Completion criteria:
+    - Todos los modulos indicados en el alcance compilan bajo Clean Architecture.
+    - Las rutas actuales siguen respondiendo con contratos compatibles.
+    - La suite completa `mvn test` pasa.
+    - `specs/tasks.md` documenta modulos migrados, pendientes y cualquier riesgo residual.
+  - Tests requeridos:
+    - unit tests de casos de uso por modulo migrado.
+    - controller tests o integration tests de compatibilidad para endpoints existentes.
+    - `mvn test`.
+  - Avance local:
+    - Migrado `catalog.Pais` a `Country`, `ManageCountryUseCase`, `CountryRepositoryPort`, `CountryManagementService`, `CountryPersistenceAdapter` y mapper REST compatible. `PaisController` conserva rutas y JSON legacy, pero ahora depende del caso de uso.
+    - Migrado `catalog.MetodoPago` a `PaymentMethod`, `ManagePaymentMethodUseCase`, `PaymentMethodRepositoryPort`, `PaymentMethodManagementService`, `PaymentMethodPersistenceAdapter` y mapper REST compatible. `MetodoPagoController` conserva rutas y JSON legacy, pero ahora depende del caso de uso.
+    - Migrado `catalog.TipoDocumento` a `DocumentType`, `ManageDocumentTypeUseCase`, `DocumentTypeRepositoryPort`, `DocumentTypeManagementService`, `DocumentTypePersistenceAdapter` y mapper REST compatible. `TipoDocumentoController` conserva rutas y JSON legacy, pero ahora depende del caso de uso.
+    - Migrado `catalog.TipoGasto` a `ExpenseType`, `ManageExpenseTypeUseCase`, `ExpenseTypeRepositoryPort`, `ExpenseTypeManagementService`, `ExpenseTypePersistenceAdapter` y mapper REST compatible. `TipoGastoController` conserva rutas y JSON legacy, pero ahora depende del caso de uso.
+    - Migrado `catalog.Impuesto` a `Tax`, `ManageTaxUseCase`, `TaxRepositoryPort`, `TaxManagementService`, `TaxPersistenceAdapter` y mapper REST compatible. `ImpuestoController` conserva rutas y JSON legacy, incluyendo la relacion con `Pais`, pero ahora depende del caso de uso.
+    - Migrado `catalog.Parametro` a `Parameter`, `ManageParameterUseCase`, `ParameterRepositoryPort`, `ParameterManagementService`, `ParameterPersistenceAdapter` y mapper REST compatible. `ParametroController` conserva rutas y JSON legacy, pero ahora depende del caso de uso.
+    - Migrado `catalog.Producto` a `Product`, `ManageProductUseCase`, `ProductRepositoryPort`, `ProductManagementService`, `ProductPersistenceAdapter` y mapper REST compatible. `ProductoController` conserva rutas y JSON legacy, incluyendo categoria y aumento de stock legacy, pero ahora depende del caso de uso.
+    - Migrado `thirdparty.Cliente` a `Customer`, `ManageCustomerUseCase`, `CustomerRepositoryPort`, `DocumentTypeLookupPort`, `CustomerManagementService`, `CustomerPersistenceAdapter`, adaptador de consulta de tipo de documento y mapper REST compatible. `ClienteController` conserva rutas y JSON legacy, pero ahora depende del caso de uso.
+    - Migrado `thirdparty.Proveedor` a `Supplier`, `ManageSupplierUseCase`, `SupplierRepositoryPort`, `SupplierManagementService`, `SupplierPersistenceAdapter` y mapper REST compatible. `ProveedorController` conserva rutas y JSON legacy, incluyendo consulta por documento/tipo, activacion, desactivacion y DTOs legacy, pero ahora depende del caso de uso.
+    - Migrado `inventory.Compra` y los detalles de compra expuestos por API a `Purchase`, `PurchaseLine`, `ManagePurchaseUseCase`, `PurchaseRepositoryPort`, puertos de consulta de proveedor/producto/stock, `PurchaseManagementService`, `PurchasePersistenceAdapter` y mapper REST compatible. `CompraController` conserva rutas y JSON legacy, pero ahora depende del caso de uso.
+    - Migrado `expenses.Gasto` a `Expense`, `ManageExpenseUseCase`, `ExpenseRepositoryPort`, `ExpenseCatalogPort`, `ExpenseManagementService`, `ExpensePersistenceAdapter`, adaptador de catalogo para `TipoGasto`/`MetodoPago` y mapper REST compatible. `GastoController` conserva rutas y JSON legacy, pero ahora depende del caso de uso.
+  - Modulos migrados:
+    - `catalog`: `Categoria`, `Pais`, `MetodoPago`, `TipoDocumento`, `TipoGasto`, `Impuesto`, `Parametro`, `Producto`.
+    - `thirdparty`: `Cliente`, `Proveedor`.
+    - `inventory`: `Compra` y detalles de compra expuestos por API.
+    - `expenses`: `Gasto`.
+  - Modulos pendientes:
+    - Sin modulos legacy con controlador expuesto dentro del alcance de TASK-019.
+  - Riesgos residuales:
+    - `DetalleGasto` existe como entidad/repositorio legacy, pero no tiene servicio/controlador/DTO publico en el comportamiento actual; no se invento un nuevo contrato para evitar crear requisitos no aprobados. Su reubicacion fisica queda para TASK-020 y la eliminacion o conservacion para TASK-021.
+    - `Compra` mantiene la integracion de stock compatible mediante el flujo existente de producto (`aumentar-stock`). El registro en `InventoryMovement` multiempresa requiere que el contrato de compra tenga `companyId`, `productId` multiempresa y `createdBy`; no se agregaron campos nuevos al JSON legacy sin aprobacion.
+  - Verificacion parcial: `mvnw.cmd "-Dtest=ProductManagementServiceTest,ProductoControllerTest" test` ejecutado con exito: 17 tests, 0 fallos. `mvnw.cmd "-Dtest=SupplierManagementServiceTest,ProveedorControllerTest,CustomerManagementServiceTest,ClienteControllerTest" test` ejecutado con exito: 28 tests, 0 fallos. `mvnw.cmd "-Dtest=PurchaseManagementServiceTest,CompraControllerTest,ExpenseManagementServiceTest,GastoControllerTest" test` ejecutado con exito: 20 tests, 0 fallos. Suite completa `mvnw.cmd test` con PostgreSQL local: 204 tests, 0 fallos.
+
+- [x] TASK-020: Migrar persistencia y contratos legacy a Clean Architecture completa
+  - Estado: COMPLETED
+  - Descripcion: Reemplazar gradualmente las entidades JPA, DTOs, repositorios Spring Data y contratos ubicados en paquetes legacy compartidos por implementaciones propias de cada bounded context, de forma que `domain`, `application`, `infrastructure` e `interfaces` queden estandarizados bajo Clean Architecture en todo el proyecto.
+  - Alcance:
+    - Mover o recrear entidades JPA por bounded context en paquetes de infraestructura, por ejemplo `catalog/infrastructure/persistence/entity`, `thirdparty/infrastructure/persistence/entity`, `inventory/infrastructure/persistence/entity` y `expenses/infrastructure/persistence/entity`.
+    - Mover o recrear repositorios Spring Data por bounded context en paquetes de infraestructura, manteniendolos detras de puertos de salida.
+    - Mover o recrear DTOs REST por bounded context en paquetes de interfaces, manteniendo compatibilidad de JSON y rutas salvo cambio aprobado.
+    - Sustituir dependencias hacia paquetes legacy `models`, `DTO`, `repository` y `mapper` desde controladores, casos de uso y adaptadores migrados.
+    - Mantener adaptadores de persistencia como unica capa autorizada para conocer JPA y Spring Data.
+  - Fuera de alcance:
+    - Cambiar reglas de negocio.
+    - Cambiar nombres de rutas, codigos HTTP o JSON publico sin aprobacion previa.
+    - Eliminar archivos legacy; eso se realiza en TASK-021 despues de verificar referencias.
+    - Cambiar el modelo fisico de base de datos sin una migracion Flyway aprobada.
+  - Archivos esperados:
+    - `src/main/java/com/msvanegasg/facturaelectronica/catalog/infrastructure/persistence/entity/**`
+    - `src/main/java/com/msvanegasg/facturaelectronica/catalog/infrastructure/persistence/repository/**`
+    - `src/main/java/com/msvanegasg/facturaelectronica/catalog/interfaces/rest/dto/**`
+    - `src/main/java/com/msvanegasg/facturaelectronica/thirdparty/**`
+    - `src/main/java/com/msvanegasg/facturaelectronica/inventory/**`
+    - `src/main/java/com/msvanegasg/facturaelectronica/expenses/**`
+    - pruebas unitarias y de compatibilidad para los contratos movidos.
+  - Dependencias:
+    - TASK-019.
+  - Acceptance criteria:
+    - AC-025: Endpoints, codigos HTTP y JSON legacy compatibles salvo cambio previamente aprobado.
+    - AC-026: Dominio y casos de uso sin dependencias de Spring MVC, JPA, controladores, DTOs REST o anotaciones HTTP.
+    - AC-027: Repositorios Spring Data y entidades JPA ubicados solo en infraestructura y encapsulados tras adaptadores.
+    - AC-028: Cada contrato migrado con pruebas de compatibilidad de endpoint cuando exista controlador.
+    - AC-029: Migracion incremental por bounded context, con archivos migrados y pendientes documentados.
+  - Completion criteria:
+    - No quedan dependencias desde bounded contexts migrados hacia paquetes legacy `models`, `DTO`, `repository` o `mapper`.
+    - Las entidades JPA y repositorios Spring Data usados por cada modulo migrado viven en su bounded context.
+    - Los DTOs publicos usados por controladores migrados viven en `interfaces/rest/dto` o paquete equivalente del bounded context.
+    - La suite completa `mvn test` pasa.
+    - `specs/tasks.md` documenta modulos migrados, pendientes y riesgos residuales.
+  - Tests requeridos:
+    - unit tests de casos de uso cuando se ajusten puertos/adaptadores.
+    - controller tests de compatibilidad para contratos REST migrados.
+    - pruebas de carga de contexto con Flyway/Hibernate.
+    - `mvn test`.
+  - Avance local:
+    - Migrado `catalog.Categoria` como piloto de persistencia y contrato REST completo dentro del bounded context.
+    - Entidad JPA recreada en `catalog/infrastructure/persistence/entity/CategoryJpaEntity` apuntando a la tabla existente `categoria`.
+    - Repositorio Spring Data recreado en `catalog/infrastructure/persistence/repository/CategoryJpaRepository`.
+    - DTOs REST recreados en `catalog/interfaces/rest/dto/CategoryRequest` y `CategoryResponse`, manteniendo nombres JSON legacy (`idCategoria`, `nombre`, `descripcion`, `activo`).
+    - `CategoryPersistenceAdapter`, `CategoryRestMapper` y `CategoriaController` ya no dependen de paquetes legacy `models.Categoria`, `repository.CategoriaRepository` ni `DTO.CategoriaDTO`.
+    - `FacturaelectronicaApplication` actualizado para escanear repositorios y entidades JPA por bounded context durante la migracion incremental.
+    - Migrado `catalog.Pais` a persistencia y contrato REST completo dentro del bounded context.
+    - Entidad JPA recreada en `catalog/infrastructure/persistence/entity/CountryJpaEntity` apuntando a la tabla existente `pais`.
+    - Repositorio Spring Data recreado en `catalog/infrastructure/persistence/repository/CountryJpaRepository`.
+    - DTOs REST recreados en `catalog/interfaces/rest/dto/CountryRequest` y `CountryResponse`, manteniendo nombres JSON legacy (`codigoPais`, `nombre`, `moneda`, `activo`).
+    - `CountryPersistenceAdapter`, `CountryRestMapper` y `PaisController` ya no dependen de paquetes legacy `models.Pais`, `repository.PaisRepository` ni `DTO.PaisDTO`.
+    - Migrado `catalog.MetodoPago` a persistencia y contrato REST completo dentro del bounded context.
+    - Entidad JPA recreada en `catalog/infrastructure/persistence/entity/PaymentMethodJpaEntity` apuntando a la tabla existente `metodo_pago`.
+    - Repositorio Spring Data recreado en `catalog/infrastructure/persistence/repository/PaymentMethodJpaRepository`.
+    - DTOs REST recreados en `catalog/interfaces/rest/dto/PaymentMethodRequest` y `PaymentMethodResponse`, manteniendo nombres JSON legacy (`idMetodoPago`, `nombre`, `descripcion`, `activo`).
+    - `PaymentMethodPersistenceAdapter`, `PaymentMethodRestMapper` y `MetodoPagoController` ya no dependen de paquetes legacy `models.MetodoPago`, `repository.MetodoPagoRepository` ni `DTO.MetodoPagoDTO`.
+    - Migrado `catalog.TipoDocumento` a persistencia y contrato REST completo dentro del bounded context.
+    - Entidad JPA recreada en `catalog/infrastructure/persistence/entity/DocumentTypeJpaEntity` apuntando a la tabla existente `tipodocumento`.
+    - Repositorio Spring Data recreado en `catalog/infrastructure/persistence/repository/DocumentTypeJpaRepository`.
+    - DTOs REST recreados en `catalog/interfaces/rest/dto/DocumentTypeRequest` y `DocumentTypeResponse`, manteniendo nombres JSON legacy (`codigo`, `nombre`, `descripcion`, `activo`).
+    - `DocumentTypePersistenceAdapter`, `DocumentTypeRestMapper` y `TipoDocumentoController` ya no dependen de paquetes legacy `models.TipoDocumento`, `repository.TipoDocumentoRepository` ni `DTO.TipoDocumentoDTO`.
+    - Migrado `catalog.TipoGasto` a persistencia y contrato REST completo dentro del bounded context.
+    - Entidad JPA recreada en `catalog/infrastructure/persistence/entity/ExpenseTypeJpaEntity` apuntando a la tabla existente `tipo_gasto`.
+    - Repositorio Spring Data recreado en `catalog/infrastructure/persistence/repository/ExpenseTypeJpaRepository`.
+    - DTOs REST recreados en `catalog/interfaces/rest/dto/ExpenseTypeRequest` y `ExpenseTypeResponse`, manteniendo nombres JSON legacy (`idTipoGasto`, `nombre`, `descripcion`, `activo`).
+    - `ExpenseTypePersistenceAdapter`, `ExpenseTypeRestMapper` y `TipoGastoController` ya no dependen de paquetes legacy `models.TipoGasto`, `repository.TipoGastoRepository` ni `DTO.TipoGastoDTO`.
+    - Migrado `catalog.Parametro` a persistencia y contrato REST completo dentro del bounded context.
+    - Entidad JPA recreada en `catalog/infrastructure/persistence/entity/ParameterJpaEntity` apuntando a la tabla existente `parametros`.
+    - Repositorio Spring Data recreado en `catalog/infrastructure/persistence/repository/ParameterJpaRepository`.
+    - DTOs REST recreados en `catalog/interfaces/rest/dto/ParameterRequest` y `ParameterResponse`, manteniendo nombres JSON legacy (`idParametro`, `clave`, `valor`, `descripcion`, `activo`).
+    - `ParameterPersistenceAdapter`, `ParameterRestMapper` y `ParametroController` ya no dependen de paquetes legacy `models.Parametro`, `repository.ParametroRepository` ni `DTO.ParametroDTO`.
+    - Migrado `catalog.Impuesto` a persistencia y contrato REST completo dentro del bounded context.
+    - Entidad JPA recreada en `catalog/infrastructure/persistence/entity/TaxJpaEntity` apuntando a la tabla existente `impuesto` y relacionandose con `CountryJpaEntity`.
+    - Repositorio Spring Data recreado en `catalog/infrastructure/persistence/repository/TaxJpaRepository`.
+    - DTOs REST recreados en `catalog/interfaces/rest/dto/TaxRequest`, `TaxResponse` y `TaxUpdateResponse`, manteniendo nombres JSON legacy (`idImpuesto`, `pais`, `codigoPais`, `codPais`, `nombre`, `porcentaje`, `tipo`, `descripcion`, `activo`).
+    - `TaxPersistenceAdapter`, `TaxRestMapper` y `ImpuestoController` ya no dependen de paquetes legacy `models.Impuesto`, `models.Pais`, `repository.ImpuestoRepository`, `repository.PaisRepository`, `DTO.ImpuestoDTO` ni `DTO.response.ImpuestoResponseDTO`.
+    - Migrado `catalog.Producto` a persistencia y contrato REST completo dentro del bounded context.
+    - Entidad JPA recreada en `catalog/infrastructure/persistence/entity/ProductJpaEntity` apuntando a la tabla existente `producto` y relacionandose con `CategoryJpaEntity`.
+    - Repositorio Spring Data recreado en `catalog/infrastructure/persistence/repository/ProductJpaRepository`.
+    - DTOs REST recreados en `catalog/interfaces/rest/dto/ProductRequest`, `ProductResponse` y `ProductStockIncreaseRequest`, manteniendo nombres JSON legacy (`id`, `nombre`, `descripcion`, `precioBase`, `cantidadStock`, `categoria`, `codigoBarras`, `idCategoria`, `cantidadASumar`).
+    - `ProductPersistenceAdapter`, `ProductRestMapper` y `ProductoController` ya no dependen de paquetes legacy `models.Producto`, `models.Categoria`, `repository.ProductoRepository`, `repository.CategoriaRepository`, `DTO.ProductoDTO`, `DTO.request.AumentarStockRequestDTO`, `DTO.response.ProductoResponseDTO` ni `DTO.response.CategoriaResponseDTO`.
+    - Migrado `thirdparty.Cliente` a persistencia y contrato REST completo dentro del bounded context.
+    - Entidad JPA recreada en `thirdparty/infrastructure/persistence/entity/CustomerJpaEntity` apuntando a la tabla existente `cliente`.
+    - Repositorio Spring Data recreado en `thirdparty/infrastructure/persistence/repository/CustomerJpaRepository`.
+    - DTOs REST recreados en `thirdparty/interfaces/rest/dto/CustomerRequest` y `CustomerResponse`, manteniendo nombres JSON legacy (`idCliente`, `nombre`, `idTipoDocumento`, `codigoTipoDocumento`, `descripcionTipoDocumento`, `numeroDocumento`, `digitoVerificacion`, `direccion`, `telefono`, `correoElectronico`, `tipoCliente`, `activo`).
+    - `FacturaelectronicaApplication` actualizado para escanear repositorios y entidades JPA del bounded context `thirdparty` durante la migracion incremental.
+    - `CustomerPersistenceAdapter`, `CustomerRestMapper` y `ClienteController` ya no dependen de paquetes legacy `models.Cliente`, `repository.ClienteRepository`, `DTO.ClienteDTO` ni `DTO.response.ClienteResponseDTO`.
+    - Migrado `thirdparty.Proveedor` a persistencia y contrato REST completo dentro del bounded context.
+    - Entidad JPA recreada en `thirdparty/infrastructure/persistence/entity/SupplierJpaEntity` apuntando a la tabla existente `proveedor` y relacionandose con `DocumentTypeJpaEntity`.
+    - Repositorio Spring Data recreado en `thirdparty/infrastructure/persistence/repository/SupplierJpaRepository`.
+    - DTOs REST recreados en `thirdparty/interfaces/rest/dto/SupplierRequest` y `SupplierResponse`, manteniendo nombres JSON legacy de escritura (`idTipoDocumento`, `numeroDocumento`, `digitoVerificacion`, `nombre`, `telefono`, `direccion`, `correo`) y consulta (`idProveedor`, `nombre`, `tipoDocumento`, `numeroDocumento`, `digitoVerificacion`, `direccion`, `telefono`, `correoElectronico`, `activo`).
+    - `SupplierPersistenceAdapter`, `SupplierRestMapper` y `ProveedorController` ya no dependen de paquetes legacy `models.Proveedor`, `models.TipoDocumento`, `repository.ProveedorRepository`, `DTO.ProveedorDTO`, `DTO.response.ProveedorResponseDTO` ni `DTO.response.TipoDocumentoResponseDTO`.
+    - Migrado `expenses.Gasto` a persistencia y contrato REST completo dentro del bounded context.
+    - Entidad JPA recreada en `expenses/infrastructure/persistence/entity/ExpenseJpaEntity` apuntando a la tabla existente `gastos` y relacionandose con `ExpenseTypeJpaEntity` y `PaymentMethodJpaEntity`.
+    - Repositorio Spring Data recreado en `expenses/infrastructure/persistence/repository/ExpenseJpaRepository`.
+    - DTOs REST recreados en `expenses/interfaces/rest/dto/ExpenseRequest` y `ExpenseResponse`, manteniendo nombres JSON legacy de escritura (`fecha`, `monto`, `descripcion`, `idTipoGasto`, `idMetodoPago`, `urlEvidencia`, `estado`) y respuesta (`fecha`, `monto`, `descripcion`, `tipoGasto`, `metodoPago`, `urlEvidencia`, `estado`).
+    - `FacturaelectronicaApplication` actualizado para escanear repositorios y entidades JPA del bounded context `expenses` durante la migracion incremental.
+    - `ExpensePersistenceAdapter`, `ExpenseCatalogAdapter`, `ExpenseRestMapper` y `GastoController` ya no dependen de paquetes legacy `models.Gasto`, `models.TipoGasto`, `models.MetodoPago`, `repository.GastoRepository`, `repository.TipoGastoRepository`, `repository.MetodoPagoRepository`, `DTO.GastoDTO`, `DTO.response.GastoResponseDTO`, `DTO.response.TipoGastoResponseDTO` ni `DTO.response.MetodoPagoResponseDTO`.
+    - Migrado `inventory.Compra` a persistencia y contrato REST completo dentro del bounded context.
+    - Entidades JPA recreadas en `inventory/infrastructure/persistence/entity/PurchaseJpaEntity` y `PurchaseLineJpaEntity`, apuntando a las tablas existentes `compra` y `detalle_compra`.
+    - Repositorios Spring Data recreados en `inventory/infrastructure/persistence/repository/PurchaseJpaRepository` y `PurchaseLineJpaRepository`.
+    - DTOs REST recreados en `inventory/interfaces/rest/dto/PurchaseRequest` y `PurchaseLineRequest`, manteniendo nombres JSON legacy (`numeroDocumento`, `tipoDocumentoId`, `fecha`, `subtotal`, `ivaTotal`, `total`, `urlEvidencia`, `detalles`, `codigoBarras`, `cantidad`, `precioUnitario`, `iva`, `totalLinea`).
+    - `FacturaelectronicaApplication` actualizado para escanear repositorios y entidades JPA del bounded context `inventory` durante la migracion incremental.
+    - `PurchasePersistenceAdapter`, `PurchaseRestMapper` y `CompraController` ya no dependen de paquetes legacy `models.Compra`, `models.DetalleCompra`, `repository.CompraRepository`, `repository.DetalleCompraRepository`, `DTO.CompraDTO` ni `DTO.DetalleCompraDTO`.
+    - Clients internos `ProductoClient`, `ProveedorClient` y `TipoDocumentoClient` extendidos con metodos migrados que devuelven contratos REST del bounded context (`ProductResponse`, `ProductStockIncreaseRequest`, `SupplierResponse`, `DocumentTypeResponse`) sin eliminar metodos legacy aun requeridos por servicios antiguos.
+    - Adaptadores cliente `ProductInventoryAdapter`, `SupplierInventoryAdapter` y `DocumentTypeLookupAdapter` ya no dependen de DTOs legacy `AumentarStockRequestDTO`, `ProductoResponseDTO`, `ProveedorResponse2DTO` ni `TipoDocumentoResponseDTO`.
+    - Busqueda de referencias `rg` sin imports legacy `models`, `DTO`, `repository` o `mapper` en `catalog`, `thirdparty`, `inventory`, `expenses` ni controladores migrados.
+  - Verificacion parcial: `mvnw.cmd "-Dtest=CategoryManagementServiceTest,CategoriaControllerTest" test` ejecutado con exito: 11 tests, 0 fallos. `mvnw.cmd "-Dtest=CountryManagementServiceTest,PaisControllerTest" test` ejecutado con exito: 10 tests, 0 fallos. `mvnw.cmd "-Dtest=PaymentMethodManagementServiceTest,MetodoPagoControllerTest" test` ejecutado con exito: 10 tests, 0 fallos. `mvnw.cmd "-Dtest=DocumentTypeManagementServiceTest,TipoDocumentoControllerTest" test` ejecutado con exito: 10 tests, 0 fallos. `mvnw.cmd "-Dtest=ExpenseTypeManagementServiceTest,TipoGastoControllerTest" test` ejecutado con exito: 12 tests, 0 fallos. `mvnw.cmd "-Dtest=ParameterManagementServiceTest,ParametroControllerTest" test` ejecutado con exito: 12 tests, 0 fallos. `mvnw.cmd "-Dtest=TaxManagementServiceTest,ImpuestoControllerTest" test` ejecutado con exito: 16 tests, 0 fallos. `mvnw.cmd "-Dtest=ProductManagementServiceTest,ProductoControllerTest" test` ejecutado con exito: 17 tests, 0 fallos. `mvnw.cmd "-Dtest=CustomerManagementServiceTest,ClienteControllerTest" test` ejecutado con exito: 13 tests, 0 fallos. `mvnw.cmd "-Dtest=SupplierManagementServiceTest,ProveedorControllerTest" test` ejecutado con exito: 15 tests, 0 fallos. `mvnw.cmd "-Dtest=ExpenseManagementServiceTest,GastoControllerTest" test` ejecutado con exito: 13 tests, 0 fallos. `mvnw.cmd "-Dtest=PurchaseManagementServiceTest,CompraControllerTest" test` ejecutado con exito: 7 tests, 0 fallos. `mvnw.cmd "-Dtest=PurchaseManagementServiceTest,CompraControllerTest,CustomerManagementServiceTest,ClienteControllerTest" test` ejecutado con exito: 20 tests, 0 fallos. Suite completa `mvnw.cmd test` con PostgreSQL local: 204 tests, 0 fallos.
+
+- [x] TASK-021: Eliminar codigo muerto legacy despues de migracion Clean Architecture completa
+  - Estado: DONE
+  - Descripcion: Eliminar services, mappers, DTOs, entidades JPA, repositorios y otros archivos legacy que queden sin referencias reales despues de completar TASK-020, dejando el proyecto sin rutas paralelas de arquitectura.
+  - Alcance:
+    - Verificar referencias con `rg` antes de eliminar cada archivo.
+    - Eliminar archivos legacy sin uso en `src/main/java/com/msvanegasg/facturaelectronica/service`.
+    - Eliminar archivos legacy sin uso en `src/main/java/com/msvanegasg/facturaelectronica/mapper`.
+    - Eliminar archivos legacy sin uso en `src/main/java/com/msvanegasg/facturaelectronica/models`.
+    - Eliminar archivos legacy sin uso en `src/main/java/com/msvanegasg/facturaelectronica/DTO`.
+    - Eliminar archivos legacy sin uso en `src/main/java/com/msvanegasg/facturaelectronica/repository`.
+  - Reglas:
+    - No eliminar archivos con referencias reales.
+    - No eliminar archivos requeridos por compatibilidad publica vigente.
+    - No cambiar comportamiento durante la limpieza.
+    - Documentar archivos conservados y razon tecnica.
+  - Dependencias:
+    - TASK-020.
+  - Acceptance criteria:
+    - AC-025: Contratos publicos siguen compatibles.
+    - AC-026: La arquitectura final no expone dependencias legacy desde dominio o aplicacion.
+    - AC-027: Persistencia queda encapsulada en infraestructura.
+    - AC-028: Pruebas existentes y nuevas pasan despues de la limpieza.
+    - AC-029: Eliminaciones y archivos conservados documentados.
+  - Completion criteria:
+    - `rg` no encuentra referencias a archivos legacy eliminados.
+    - El proyecto compila.
+    - La suite completa `mvn test` pasa.
+    - `specs/tasks.md` lista archivos eliminados, archivos conservados y riesgos residuales.
+  - Tests requeridos:
+    - `mvn test`.
+    - pruebas enfocadas de los modulos afectados por eliminacion.
+  - Resultado local:
+    - Verificacion previa con `rg` confirmo que las referencias reales a paquetes legacy solo quedaban en servicios legacy, DTOs legacy, mappers legacy, repositorios legacy, entidades legacy, `EntidadValidator`, metodos antiguos de clientes internos y dos tests legacy.
+    - Eliminados 92 archivos legacy:
+      - 24 DTOs legacy en `src/main/java/com/msvanegasg/facturaelectronica/DTO`.
+      - 13 mappers legacy en `src/main/java/com/msvanegasg/facturaelectronica/mapper`.
+      - 20 entidades JPA legacy en `src/main/java/com/msvanegasg/facturaelectronica/models`.
+      - 20 repositorios Spring Data legacy en `src/main/java/com/msvanegasg/facturaelectronica/repository`.
+      - 12 servicios legacy en `src/main/java/com/msvanegasg/facturaelectronica/service`.
+      - `src/main/java/com/msvanegasg/facturaelectronica/validator/EntidadValidator.java`.
+      - `src/test/java/com/msvanegasg/facturaelectronica/service/ClienteServiceTest.java`.
+      - `src/test/java/com/msvanegasg/facturaelectronica/service/ProveedorServiceTest.java`.
+    - `FacturaelectronicaApplication` ya no escanea paquetes legacy `repository` ni `models`.
+    - `ProductoClient`, `ProveedorClient` y `TipoDocumentoClient` ya no exponen metodos antiguos basados en DTOs legacy; se conservan los metodos migrados que usan contratos de bounded contexts.
+    - Archivos conservados: no se conservaron archivos Java dentro de `DTO`, `mapper`, `models`, `repository`, `service` o `validator`; los contratos publicos activos permanecen en `interfaces/rest/dto` por bounded context y los adaptadores activos permanecen detras de puertos.
+    - Verificacion de referencias posterior: `rg "com\\.msvanegasg\\.facturaelectronica\\.(DTO|mapper|models|repository|service|validator)" src/main src/test` sin resultados.
+    - Verificacion de metodos legacy posterior: no quedan llamadas a `obtenerProductoPorCodigoBarras`, `aumentarStock`, `obtenerProveedorPorDocumento` u `obtenerTipoDocumentoPorCodigo` en clientes legacy; solo permanece el endpoint migrado `ProductoController.aumentarStock`.
+    - Compilacion: `mvnw.cmd -DskipTests compile` ejecutado con exito; 319 clases compiladas.
+    - Pruebas enfocadas: `mvnw.cmd "-Dtest=CategoryManagementServiceTest,CategoriaControllerTest,CustomerManagementServiceTest,ClienteControllerTest,SupplierManagementServiceTest,ProveedorControllerTest,ProductManagementServiceTest,ProductoControllerTest,PurchaseManagementServiceTest,CompraControllerTest" test` ejecutado con exito: 63 tests, 0 fallos.
+    - Suite completa: `mvnw.cmd test` con PostgreSQL local en `localhost:15432` ejecutado con exito: 202 tests, 0 fallos. La cuenta bajo de 204 a 202 por la eliminacion aprobada de los dos tests legacy.
+    - Riesgos residuales: algunos directorios vacios legacy pueden permanecer en el filesystem local porque no son versionados por Git y PowerShell no los removio de forma consistente; no contienen archivos Java ni afectan compilacion, empaquetado o despliegue.
+
+## Fase 9: Contabilidad
+
+- [x] TASK-022: Implementar asientos contables automaticos
+  - Estado: DONE
+  - Acceptance criteria: AC-014.
+  - Tests requeridos: unit tests de partida doble.
+  - Descripcion: Implementar el nucleo de generacion de asientos contables mediante reglas configurables por empresa, manteniendo Clean Architecture y evitando cuentas hardcodeadas para soportar diferentes realidades contables de negocios colombianos.
+  - Alcance:
+    - Crear dominio de asientos, lineas, estados, eventos, origenes y reglas contables.
+    - Crear reglas parametrizables por empresa con cuenta PUC, lado debito/credito y valor base: subtotal, impuesto o total.
+    - Generar asientos `POSTED` solo si debitos y creditos son equivalentes.
+    - Evitar doble contabilizacion por `companyId`, `sourceType` y `sourceId`.
+    - Validar cuentas inexistentes o inactivas.
+    - Mantener plantillas base de prueba para venta POS/factura, compra y gasto.
+  - Fuera de alcance:
+    - Persistencia JPA de asientos y reglas.
+    - Endpoints REST para administrar reglas.
+    - Carga completa del catalogo PUC oficial como datos semilla.
+    - Definir mapeos contables obligatorios e iguales para todas las empresas.
+  - Archivos:
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/domain/model/AccountingEntry.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/domain/model/AccountingEntryLine.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/domain/model/AccountingEntryStatus.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/domain/model/AccountingSourceType.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/domain/model/AccountingEventType.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/domain/model/AccountingEntrySide.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/domain/model/AccountingAmountType.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/domain/model/AccountingRule.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/domain/model/AccountingRuleLine.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/dto/GenerateAccountingEntryCommand.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/dto/AccountingEntryResult.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/dto/AccountingEntryLineResult.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/port/in/GenerateAccountingEntryUseCase.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/port/out/AccountingEntryRepositoryPort.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/port/out/AccountingRuleRepositoryPort.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/usecase/GenerateAccountingEntryService.java`
+    - `src/test/java/com/msvanegasg/facturaelectronica/accounting/application/usecase/GenerateAccountingEntryServiceTest.java`
+    - `specs/design.md`
+    - `specs/tasks.md`
+  - Resultado local:
+    - Implementado motor de generacion de asientos desde reglas contables activas por empresa.
+    - Las reglas permiten parametrizar cuentas PUC y lado debito/credito para ventas, compras y gastos.
+    - Se omiten lineas de impuesto en cero para operaciones no gravadas.
+    - Se rechazan asientos descuadrados, cuentas inexistentes, cuentas inactivas, reglas ausentes y documentos ya contabilizados para la misma empresa.
+    - Verificacion enfocada: `mvnw.cmd "-Dtest=ChartOfAccountsServiceTest,GenerateAccountingEntryServiceTest" test` ejecutado con exito: 16 tests, 0 fallos.
+    - Suite completa: `mvnw.cmd test` quedo bloqueada porque PostgreSQL local en `localhost:15432` no estaba disponible y Docker Desktop no estaba activo para levantar `docker compose up -d postgres`.
+
+- [x] TASK-023: Implementar libro diario y libro mayor
+  - Estado: DONE
+  - Acceptance criteria: AC-015, AC-016.
+  - Tests requeridos: unit tests de consultas y agregaciones.
+  - Descripcion: Implementar consultas de libro diario y libro mayor sobre asientos contables posteados, manteniendo aislamiento multiempresa y calculo de saldos por naturaleza PUC.
+  - Alcance:
+    - Consultar asientos `POSTED` por empresa y rango de fechas.
+    - Exponer libro diario con fecha, descripcion, documento origen, cuentas, tercero, debitos y creditos.
+    - Exponer libro mayor agrupado por cuenta.
+    - Calcular saldos de mayor segun naturaleza debito o credito de la cuenta.
+    - Validar rangos de fecha.
+  - Fuera de alcance:
+    - Persistencia JPA.
+    - Endpoints REST.
+    - Exportacion PDF, Excel o informes fiscales.
+    - Saldos iniciales, cierres contables y periodos cerrados.
+  - Archivos:
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/dto/JournalBookQuery.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/dto/JournalBookResult.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/dto/JournalBookEntryResult.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/dto/JournalBookLineResult.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/dto/LedgerBookQuery.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/dto/LedgerBookResult.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/dto/LedgerAccountSummaryResult.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/port/in/QueryAccountingBooksUseCase.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/usecase/QueryAccountingBooksService.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/accounting/application/port/out/AccountingEntryRepositoryPort.java`
+    - `src/test/java/com/msvanegasg/facturaelectronica/accounting/application/usecase/QueryAccountingBooksServiceTest.java`
+    - `specs/design.md`
+    - `specs/tasks.md`
+  - Resultado local:
+    - Implementado libro diario con detalle de asientos, lineas, cuentas, tercero, debitos, creditos y documento origen.
+    - Implementado libro mayor agrupado por cuenta, con debitos, creditos y saldo neto segun naturaleza PUC.
+    - Las consultas quedan filtradas por empresa y periodo.
+    - Verificacion enfocada: `mvnw.cmd "-Dtest=ChartOfAccountsServiceTest,GenerateAccountingEntryServiceTest,QueryAccountingBooksServiceTest" test` ejecutado con exito: 23 tests, 0 fallos.
+    - Suite completa: `mvnw.cmd test` con PostgreSQL local en `localhost:15432` ejecutado con exito: 220 tests, 0 fallos. `docker compose up -d postgres` sigue fallando por permiso denegado al conectar con el pipe de Docker Desktop, pero la base local respondio y permitio validar la suite completa.
+
+## Fase 10: Calidad, auditoria y observabilidad
+
+- [ ] TASK-024: Estandarizar errores API
+  - Estado: DONE
+  - Acceptance criteria: AC-019.
+  - Tests requeridos: controller tests de errores.
+  - Descripcion: Reemplazar respuestas de error legacy heterogeneas por el error estandar definido en `specs/api-contract.md`, sin exponer stack traces, secretos ni detalles internos.
+  - Alcance:
+    - Crear contrato de respuesta de error con `timestamp`, `status`, `code`, `message`, `correlationId` y `details`.
+    - Propagar `X-Correlation-Id` cuando llegue en la peticion y generar uno cuando falte.
+    - Mapear validaciones de DTO a `VALIDATION_ERROR` con detalles por campo.
+    - Mapear recursos no encontrados a `RESOURCE_NOT_FOUND`.
+    - Mapear duplicados a `DUPLICATE_RESOURCE`.
+    - Mapear reglas de negocio a `BUSINESS_RULE_VIOLATION`.
+    - Mapear errores no controlados a `INTERNAL_ERROR` con mensaje seguro.
+  - Completion criteria:
+    - Los controladores devuelven el contrato estandar para errores cubiertos.
+    - Los tests de controller verifican estructura, codigo, status y correlation ID.
+    - La suite completa pasa.
+  - Archivos:
+    - `src/main/java/com/msvanegasg/facturaelectronica/exception/ApiErrorCode.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/exception/ApiErrorDetail.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/exception/ApiErrorResponse.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/exception/ExternalProviderException.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/exception/GlobalExceptionHandler.java`
+    - `src/test/java/com/msvanegasg/facturaelectronica/exception/GlobalExceptionHandlerTest.java`
+    - `specs/design.md`
+    - `specs/tasks.md`
+  - Resultado local:
+    - Implementado contrato de error estandar con `timestamp`, `status`, `code`, `message`, `correlationId` y `details`.
+    - `GlobalExceptionHandler` ahora mapea validaciones a `VALIDATION_ERROR`, recursos inexistentes a `RESOURCE_NOT_FOUND`, duplicados a `DUPLICATE_RESOURCE`, reglas de negocio a `BUSINESS_RULE_VIOLATION`, proveedor externo a `EXTERNAL_PROVIDER_ERROR` y errores inesperados a `INTERNAL_ERROR`.
+    - Los errores inesperados y de proveedor externo usan mensajes seguros sin exponer stack traces, secretos ni detalles internos.
+    - `X-Correlation-Id` se propaga en el cuerpo de error cuando llega en la peticion; cuando falta, se genera un UUID.
+    - Verificacion enfocada: `mvnw.cmd "-Dtest=GlobalExceptionHandlerTest" test` ejecutado con exito: 4 tests, 0 fallos.
+    - Verificacion HTTP: `mvnw.cmd "-Dtest=*ControllerTest,GlobalExceptionHandlerTest" test` ejecutado con exito: 97 tests, 0 fallos.
+    - Suite completa: `mvnw.cmd test` con PostgreSQL local en `localhost:15432` ejecutado con exito: 224 tests, 0 fallos.
+
+- [ ] TASK-025: Implementar auditoria fiscal
+  - Estado: PENDING
+  - Acceptance criteria: AC-018.
+  - Tests requeridos: unit tests de registro de auditoria.
+
+- [ ] TASK-026: Implementar correlation ID y logs estructurados
+  - Estado: PENDING
+  - Acceptance criteria: AC-020.
+  - Tests requeridos: unit/integration tests de filtro o interceptor.
+
+## Fase 11: Pruebas end-to-end locales con Docker
+
+- [x] TASK-027: Implementar persistencia JPA y endpoints REST para billing/POS
+  - Estado: DONE
+  - Acceptance criteria: AC-001, AC-002, AC-003, AC-004, AC-007, AC-009, AC-019, AC-021, AC-022.
+  - Tests requeridos: tests de adaptadores de persistencia, tests de controladores REST y suite completa.
+  - Descripcion: Habilitar que el flujo POS electronico pueda probarse por HTTP y persistirse en PostgreSQL dentro del despliegue Docker local.
+  - Alcance:
+    - Crear migraciones para tablas de emisor, resoluciones, documentos POS, lineas, envios de proveedor y trazabilidad fiscal minima.
+    - Crear entidades JPA y repositorios Spring Data dentro de `billing/infrastructure/persistence`.
+    - Implementar adaptadores de persistencia para los puertos existentes de billing.
+    - Exponer endpoints REST versionados bajo `/api/v1` para configurar emisor, crear resolucion POS, emitir POS electronico, consultar POS y enviar POS al proveedor mock.
+    - Requerir `X-Company-Id` en endpoints de negocio.
+    - Mantener DTOs de API separados de dominio y de entidades JPA.
+  - Fuera de alcance:
+    - Integracion real con proveedor tecnologico DIAN.
+    - Firma digital real, XML UBL real, representacion grafica real o QR oficial.
+    - Descuento automatico de inventario y asiento contable automatico dentro de la misma transaccion.
+  - Completion criteria:
+    - Se puede emitir un POS electronico por API y queda persistido.
+    - Se puede consultar el POS electronico por API.
+    - Se puede enviar el POS al proveedor mock y registrar respuesta simulada.
+    - La data queda visible en PostgreSQL.
+    - Las pruebas automatizadas pasan.
+  - Verificacion 2026-05-15:
+    - `.\mvnw.cmd -DskipTests compile`: BUILD SUCCESS.
+    - `.\mvnw.cmd "-Dtest=BillingControllerTest,GlobalExceptionHandlerTest" test`: 9 tests, 0 failures.
+    - `.\mvnw.cmd test` con PostgreSQL Docker: 229 tests, 0 failures.
+    - Docker Compose local: `app` en puerto `8083`, `postgres` en puerto `15432`, `/actuator/health` en `UP`.
+    - Flujo HTTP probado: emisor, resolucion POS, emision POS, consulta POS y envio mock DIAN.
+    - Evidencia PostgreSQL: documento `1604da5f-30ba-4dbe-806a-4cb5c90e7b16` validado con `DUMMY-SUBMISSION-1604DA5F-30B` y `DUMMY-CUDE-1604DA5F-30B`.
+
+- [x] TASK-028: Implementar proveedor DIAN mock configurable
+  - Estado: DONE
+  - Acceptance criteria: AC-003, AC-004, AC-019, AC-023.
+  - Tests requeridos: tests de adaptador mock y errores externos seguros.
+  - Descripcion: Implementar proveedor DIAN local deterministico para simular aceptacion o rechazo de documentos sin llamadas externas ni credenciales reales.
+  - Alcance:
+    - Respuesta `ACCEPTED` con tracking ID, CUFE/CUDE, QR y artefacto XML dummy.
+    - Respuesta `REJECTED` configurable para pruebas negativas.
+    - Sin secretos en logs, payloads ni excepciones publicas.
+    - Configuracion por variables de entorno seguras cuando aplique.
+  - Resultado local:
+    - `DummyDianProviderAdapter` ahora soporta `ACCEPTED`, `REJECTED` y `FAILED` de forma deterministica.
+    - `DIAN_PROVIDER_MODE` se configura en `application.properties` y Docker Compose; solo se acepta `mock` en esta version.
+    - `DIAN_MOCK_DEFAULT_STATUS`, `DIAN_MOCK_ERROR_CODE` y `DIAN_MOCK_ERROR_MESSAGE` permiten simular aceptacion, rechazo y fallo tecnico sin credenciales reales.
+    - `.env.example` documenta las variables seguras del mock; `.env` real no fue modificado.
+    - Tests agregados en `DummyDianProviderAdapterTest` para respuestas aceptadas, rechazadas y fallidas.
+    - Verificacion enfocada: `.\mvnw.cmd "-Dtest=DummyDianProviderAdapterTest,SubmitElectronicDocumentToProviderServiceTest,FacturaelectronicaApplicationTests" test` con PostgreSQL Docker: 9 tests, 0 failures.
+    - Suite completa: `.\mvnw.cmd test` con PostgreSQL Docker: 232 tests, 0 failures.
+
+- [x] TASK-029: Implementar persistencia JPA y endpoints REST para accounting
+  - Estado: DONE
+  - Acceptance criteria: AC-014, AC-015, AC-016, AC-021, AC-022.
+  - Tests requeridos: tests de persistencia, controller tests y suite completa.
+  - Descripcion: Persistir cuentas PUC, reglas contables, asientos y lineas; exponer endpoints para crear cuentas, configurar reglas, generar asientos y consultar libro diario/mayor.
+  - Alcance:
+    - Migraciones PostgreSQL para `accounting_account`, `accounting_rule`, `accounting_rule_line`, `accounting_entry` y `accounting_entry_line`.
+    - Adaptadores JPA para puertos de accounting.
+    - Endpoints `/api/v1/accounts`, `/api/v1/accounting-rules`, `/api/v1/accounting-entries`, `/api/v1/reports/journal` y `/api/v1/reports/ledger`.
+  - Resultado local:
+    - Agregada migracion `V003__create_accounting_schema.sql` con tablas prefijadas `accounting_*`, restricciones unicas por empresa, llaves foraneas, checks de lineas contables e indices de consulta.
+    - Implementados adapters JPA para cuentas PUC, reglas contables, asientos y lineas.
+    - Agregado caso de uso `ManageAccountingRulesUseCase` para crear reglas contables activas por empresa y validar que las cuentas configuradas existan.
+    - Expuestos endpoints REST:
+      - `POST /api/v1/accounts`.
+      - `GET /api/v1/accounts?code=`.
+      - `POST /api/v1/accounting-rules`.
+      - `POST /api/v1/accounting-entries`.
+      - `GET /api/v1/reports/journal?from=&to=`.
+      - `GET /api/v1/reports/ledger?from=&to=&accountCode=`.
+    - `POST /api/v1/accounting-entries` contabiliza inmediatamente usando reglas configurables y genera asientos `POSTED`; no se implemento flujo de borradores porque no esta modelado en el dominio aprobado.
+    - Verificacion enfocada: `.\mvnw.cmd "-Dtest=AccountingControllerTest,AccountingPersistenceAdapterTest,ChartOfAccountsServiceTest,GenerateAccountingEntryServiceTest,QueryAccountingBooksServiceTest" test` ejecutado con exito: 33 tests, 0 fallos.
+    - Suite completa: `.\mvnw.cmd test` con PostgreSQL local en `localhost:15432` ejecutado con exito: 242 tests, 0 fallos.
+
+- [ ] TASK-030: Crear seed local y guia de pruebas Docker
+  - Estado: PENDING
+  - Acceptance criteria: AC-024.
+  - Tests requeridos: checklist operacional documentado y prueba manual guiada.
+  - Descripcion: Crear datos dummy y documentacion para levantar Docker, ejecutar flujos por API y consultar PostgreSQL.
+  - Alcance:
+    - Datos dummy seguros para empresa, catalogos, emisor, resolucion POS, productos, cliente/proveedor y cuentas contables base.
+    - Comandos `docker compose up`, logs, healthchecks, curls de prueba y consultas SQL.
+    - Documentar limitaciones locales: proveedor DIAN mock, sin certificados reales y sin validacion oficial DIAN.

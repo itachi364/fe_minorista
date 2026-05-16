@@ -1,17 +1,15 @@
 package com.msvanegasg.facturaelectronica.controller;
 
-import com.msvanegasg.facturaelectronica.DTO.ImpuestoDTO;
-import com.msvanegasg.facturaelectronica.DTO.response.ImpuestoResponseDTO;
+import com.msvanegasg.facturaelectronica.catalog.application.port.in.ManageTaxUseCase;
+import com.msvanegasg.facturaelectronica.catalog.domain.model.Tax;
+import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.TaxRestMapper;
+import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.dto.TaxRequest;
+import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.dto.TaxResponse;
+import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.dto.TaxUpdateResponse;
 import com.msvanegasg.facturaelectronica.exception.impuesto.ImpuestoNotFoundException;
-import com.msvanegasg.facturaelectronica.mapper.ImpuestoMapper;
-import com.msvanegasg.facturaelectronica.models.Impuesto;
-import com.msvanegasg.facturaelectronica.models.Pais;
-import com.msvanegasg.facturaelectronica.service.ImpuestoService;
-import com.msvanegasg.facturaelectronica.service.PaisService;
 
 import jakarta.validation.Valid;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,68 +20,61 @@ import java.util.List;
 @RequestMapping("/api/impuesto")
 public class ImpuestoController {
 
-	@Autowired
-	private ImpuestoService impuestoService;
+	private final ManageTaxUseCase manageTaxUseCase;
 
-	@Autowired
-	private PaisService paisService;
+	public ImpuestoController(ManageTaxUseCase manageTaxUseCase) {
+		this.manageTaxUseCase = manageTaxUseCase;
+	}
 
 	@GetMapping
-    public ResponseEntity<List<Impuesto>> findAll() {
-    	List<Impuesto> all = impuestoService.findAll();
+    public ResponseEntity<List<TaxResponse>> findAll() {
+    	List<TaxResponse> all = manageTaxUseCase.findAll().stream()
+				.map(TaxRestMapper::toResponse)
+				.toList();
         return ResponseEntity.ok(all);
     }
 	
 	@GetMapping("/activos")
-    public ResponseEntity<Impuesto> findActivos() {
-        Impuesto activos = impuestoService.findActiveTrue();
-        return ResponseEntity.ok(activos);
+    public ResponseEntity<TaxResponse> findActivos() {
+        return ResponseEntity.ok(TaxRestMapper.toResponse(manageTaxUseCase.findActive()));
     }
 	
 	@GetMapping("/inactivos")
-    public ResponseEntity<Impuesto> findInactivos() {
-        Impuesto inactivos = impuestoService.findActiveFalse();
-        return ResponseEntity.ok(inactivos);
+    public ResponseEntity<TaxResponse> findInactivos() {
+        return ResponseEntity.ok(TaxRestMapper.toResponse(manageTaxUseCase.findInactive()));
     }
 
 	@GetMapping("/{id}")
-	public ResponseEntity<Impuesto> getById(@PathVariable("id") Long id) {
-			Impuesto impuesto = impuestoService.findById(id);
-			return ResponseEntity.ok(impuesto);
+	public ResponseEntity<TaxResponse> getById(@PathVariable("id") Long id) {
+			return ResponseEntity.ok(TaxRestMapper.toResponse(manageTaxUseCase.findById(id)));
 	}
 	
 	@GetMapping("/porcentaje/{porcentaje}")
-	public ResponseEntity<Impuesto> findByPorcentaje(@PathVariable("porcentaje") BigDecimal porcentaje) {
-			Impuesto impuesto = impuestoService.findByPorcentaje(porcentaje);
-			return ResponseEntity.ok(impuesto);
+	public ResponseEntity<TaxResponse> findByPorcentaje(@PathVariable("porcentaje") BigDecimal porcentaje) {
+			return ResponseEntity.ok(TaxRestMapper.toResponse(manageTaxUseCase.findByPercentage(porcentaje)));
 	}
 	
 	@GetMapping("/tipo/{tipo}")
-	public ResponseEntity<Impuesto> findByTipo(@PathVariable("tipo") String tipo) {
-			Impuesto impuesto = impuestoService.findByTipo(tipo);
-			return ResponseEntity.ok(impuesto);
+	public ResponseEntity<TaxResponse> findByTipo(@PathVariable("tipo") String tipo) {
+			return ResponseEntity.ok(TaxRestMapper.toResponse(manageTaxUseCase.findByType(tipo)));
 	}
 
 	@PostMapping
-	public ResponseEntity<Impuesto> create(@RequestBody ImpuestoDTO dto) {
-		Pais pais = paisService.findById(dto.getCodPais());
-		Impuesto impuesto = impuestoService.save(dto,pais);
-		return ResponseEntity.ok(impuesto);
+	public ResponseEntity<TaxResponse> create(@RequestBody TaxRequest dto) {
+		Tax tax = manageTaxUseCase.create(TaxRestMapper.toCommand(dto));
+		return ResponseEntity.ok(TaxRestMapper.toResponse(tax));
 	}
 	
 	@PutMapping("/{id}")
-	public ResponseEntity<ImpuestoResponseDTO> update(@PathVariable("id") Long id, @Valid @RequestBody ImpuestoDTO dto) {
-			Pais pais = paisService.findById(dto.getCodPais());
-
-			Impuesto actualizado = impuestoService.actualizarImpuesto(id, dto, pais);
-			return ResponseEntity.ok(ImpuestoMapper.toResponseDTO(actualizado, pais));
+	public ResponseEntity<TaxUpdateResponse> update(@PathVariable("id") Long id, @Valid @RequestBody TaxRequest dto) {
+			Tax updated = manageTaxUseCase.update(id, TaxRestMapper.toCommand(dto));
+			return ResponseEntity.ok(TaxRestMapper.toUpdateResponse(updated));
 	}
 
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Void> disable(@PathVariable("id") Long id) {
 		try {
-			impuestoService.findById(id);
-			impuestoService.disableById(id);
+			manageTaxUseCase.disable(id);
 			return ResponseEntity.noContent().build();
 		} catch (ImpuestoNotFoundException e) {
 			return ResponseEntity.notFound().build();
@@ -92,7 +83,7 @@ public class ImpuestoController {
 	
 	@PutMapping("/{id}/activar")
     public ResponseEntity<Void> activarImpuesto(@PathVariable("id") Long id) {
-		impuestoService.activarImpuesto(id);
+		manageTaxUseCase.enable(id);
         return ResponseEntity.noContent().build();
     }
 }

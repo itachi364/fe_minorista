@@ -1,13 +1,13 @@
 package com.msvanegasg.facturaelectronica.controller;
 
-import com.msvanegasg.facturaelectronica.DTO.TipoGastoDTO;
-import com.msvanegasg.facturaelectronica.mapper.TipoGastoMapper;
-import com.msvanegasg.facturaelectronica.models.TipoGasto;
-import com.msvanegasg.facturaelectronica.service.TipoGastoService;
+import com.msvanegasg.facturaelectronica.catalog.application.port.in.ManageExpenseTypeUseCase;
+import com.msvanegasg.facturaelectronica.catalog.domain.model.ExpenseType;
+import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.ExpenseTypeRestMapper;
+import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.dto.ExpenseTypeRequest;
+import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.dto.ExpenseTypeResponse;
 
 import jakarta.validation.Valid;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,60 +18,63 @@ import java.util.List;
 @RequestMapping("/api/tipogasto")
 public class TipoGastoController {
 
-    @Autowired
-    private TipoGastoService tipoGastoService;
+    private final ManageExpenseTypeUseCase manageExpenseTypeUseCase;
+
+    public TipoGastoController(ManageExpenseTypeUseCase manageExpenseTypeUseCase) {
+        this.manageExpenseTypeUseCase = manageExpenseTypeUseCase;
+    }
 
     @GetMapping
-    public ResponseEntity<List<TipoGasto>> findAll() {
-    	List<TipoGasto> all = tipoGastoService.findAll();
+    public ResponseEntity<List<ExpenseTypeResponse>> findAll() {
+    	List<ExpenseTypeResponse> all = manageExpenseTypeUseCase.findAll().stream()
+                .map(ExpenseTypeRestMapper::toResponse)
+                .toList();
         return ResponseEntity.ok(all);
     }
     
     @GetMapping("/active")
-    public ResponseEntity<List<TipoGasto>> findActiveTrue() {
-    	List<TipoGasto> active = tipoGastoService.findActive();
+    public ResponseEntity<List<ExpenseTypeResponse>> findActiveTrue() {
+    	List<ExpenseTypeResponse> active = manageExpenseTypeUseCase.findActive().stream()
+                .map(ExpenseTypeRestMapper::toResponse)
+                .toList();
         return ResponseEntity.ok(active);
     }
     
     @GetMapping("/inactive")
-    public ResponseEntity<List<TipoGasto>> findActiveFalse() {
-    	List<TipoGasto> inactive = tipoGastoService.findActiveFalse();
+    public ResponseEntity<List<ExpenseTypeResponse>> findActiveFalse() {
+    	List<ExpenseTypeResponse> inactive = manageExpenseTypeUseCase.findInactive().stream()
+                .map(ExpenseTypeRestMapper::toResponse)
+                .toList();
         return ResponseEntity.ok(inactive);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TipoGastoDTO> getById(@PathVariable("id") Long id) {
-        TipoGasto tipo = tipoGastoService.findById(id);
-        return ResponseEntity.ok(TipoGastoMapper.toDTO(tipo));
+    public ResponseEntity<ExpenseTypeRequest> getById(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(ExpenseTypeRestMapper.toRequest(manageExpenseTypeUseCase.findById(id)));
     }
 
     @PostMapping
-    public ResponseEntity<TipoGastoDTO> create(@Valid @RequestBody TipoGastoDTO dto) {
-        TipoGasto tipoGasto = TipoGastoMapper.toEntity(dto);
-        tipoGasto.setActivo(true);
-        TipoGasto saved = tipoGastoService.save(tipoGasto);
-        return ResponseEntity.created(URI.create("/api/tipogasto/" + saved.getIdTipoGasto()))
-                .body(TipoGastoMapper.toDTO(saved));
+    public ResponseEntity<ExpenseTypeRequest> create(@Valid @RequestBody ExpenseTypeRequest dto) {
+        ExpenseType created = manageExpenseTypeUseCase.create(ExpenseTypeRestMapper.toCommand(dto));
+        return ResponseEntity.created(URI.create("/api/tipogasto/" + created.id()))
+                .body(ExpenseTypeRestMapper.toRequest(created));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TipoGastoDTO> update(@PathVariable("id") Long id, @Valid @RequestBody TipoGastoDTO dto) {
-        TipoGasto existing = tipoGastoService.findById(id);
-        existing.setNombre(dto.getNombre());
-        existing.setDescripcion(dto.getDescripcion());
-        TipoGasto updated = tipoGastoService.save(existing);
-        return ResponseEntity.ok(TipoGastoMapper.toDTO(updated));
+    public ResponseEntity<ExpenseTypeRequest> update(@PathVariable("id") Long id, @Valid @RequestBody ExpenseTypeRequest dto) {
+        return ResponseEntity.ok(ExpenseTypeRestMapper.toRequest(
+                manageExpenseTypeUseCase.update(id, ExpenseTypeRestMapper.toCommand(dto))));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
-        tipoGastoService.disableById(id);
+        manageExpenseTypeUseCase.disable(id);
         return ResponseEntity.noContent().build();
     }
     
     @PutMapping("/{id}/activar")
     public ResponseEntity<Void> activarImpuesto(@PathVariable("id") Long id) {
-		tipoGastoService.activarTipoGasto(id);
+		manageExpenseTypeUseCase.enable(id);
         return ResponseEntity.noContent().build();
     }
 }

@@ -1,0 +1,36 @@
+flowchart TB
+  Client[Frontend / POS / Admin Client]
+  Gateway[API Gateway]
+  Identity[identity-service]
+  ThirdParty[thirdparty-service]
+  Catalog[catalog-service]
+  Billing[billing-service]
+  Inventory[inventory-service]
+  Accounting[accounting-service]
+  DianProvider[dian-provider-service]
+  TechProvider[Proveedor tecnologico DIAN]
+  Reporting[reporting-service]
+
+  Client --> Gateway
+  Gateway --> Identity
+  Gateway --> ThirdParty
+  Gateway --> Catalog
+  Gateway --> Billing
+  Gateway --> Inventory
+  Gateway --> Accounting
+  Gateway --> Reporting
+
+  Billing --> ThirdParty
+  Billing --> Catalog
+  Billing --> Inventory
+  Billing --> Accounting
+  Billing --> DianProvider
+  DianProvider --> TechProvider
+
+  Inventory --> InventoryDb[(Inventory DB)]
+  Billing --> BillingDb[(Billing DB)]
+  Accounting --> AccountingDb[(Accounting DB)]
+  ThirdParty --> ThirdPartyDb[(ThirdParty DB)]
+  Catalog --> CatalogDb[(Catalog DB)]
+  Identity --> IdentityDb[(Identity DB)]
+  Reporting --> ReportingDb[(Reporting DB)]

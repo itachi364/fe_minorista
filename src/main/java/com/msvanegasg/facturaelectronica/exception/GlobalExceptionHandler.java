@@ -1,151 +1,192 @@
 package com.msvanegasg.facturaelectronica.exception;
 
+import java.time.Instant;
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import com.msvanegasg.facturaelectronica.exception.cliente.*;
-import com.msvanegasg.facturaelectronica.exception.gasto.*;
+import com.msvanegasg.facturaelectronica.exception.cliente.ClienteAlreadyExistsException;
+import com.msvanegasg.facturaelectronica.exception.cliente.ClienteDocumentoNoModificableException;
+import com.msvanegasg.facturaelectronica.exception.cliente.ClienteInactivoException;
+import com.msvanegasg.facturaelectronica.exception.cliente.ClienteNotFoundException;
+import com.msvanegasg.facturaelectronica.exception.compra.CompraNotFoundException;
+import com.msvanegasg.facturaelectronica.exception.gasto.GastoInactivoException;
+import com.msvanegasg.facturaelectronica.exception.gasto.GastoNotFoundException;
 import com.msvanegasg.facturaelectronica.exception.impuesto.ImpuestoNotFoundException;
-import com.msvanegasg.facturaelectronica.exception.producto.*;
-import com.msvanegasg.facturaelectronica.exception.proveedor.*;
-import com.msvanegasg.facturaelectronica.exception.tipodocumento.*;
-import com.msvanegasg.facturaelectronica.exception.util.*;
-import com.msvanegasg.facturaelectronica.exception.compra.*;
+import com.msvanegasg.facturaelectronica.exception.producto.ProductoCodigoNotFoundException;
+import com.msvanegasg.facturaelectronica.exception.producto.ProductoIdNotFoundException;
+import com.msvanegasg.facturaelectronica.exception.proveedor.ProveedorAlreadyExistsException;
+import com.msvanegasg.facturaelectronica.exception.proveedor.ProveedorDocumentoNoModificableException;
+import com.msvanegasg.facturaelectronica.exception.proveedor.ProveedorDocumentoNotFoundException;
+import com.msvanegasg.facturaelectronica.exception.proveedor.ProveedorNotFoundException;
+import com.msvanegasg.facturaelectronica.exception.tipodocumento.TipoDocumentoNoModificableException;
+import com.msvanegasg.facturaelectronica.exception.tipodocumento.TipoDocumentoNotFoundException;
+import com.msvanegasg.facturaelectronica.exception.util.DigitoVerificacionNoModificableException;
+import com.msvanegasg.facturaelectronica.exception.util.NitInvalidoException;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
-	
-	@ExceptionHandler(Exception.class)
-    public ResponseEntity<Object> handleGenericException(Exception ex) {
-        return buildResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR, "Ha ocurrido un error inesperado. "+ex);
-    }
-	
-	@ExceptionHandler(CompraNotFoundException.class)
-    public ResponseEntity<Object> handleCompraNotFoundException(CompraNotFoundException ex) {
-        return buildResponseEntity(HttpStatus.NOT_FOUND, ex.getMessage());
-    }
-	
-	@ExceptionHandler(CategoriaNotFoundException.class)
-    public ResponseEntity<Object> handleCategoriaNotFoundException(CategoriaNotFoundException ex) {
-        return buildResponseEntity(HttpStatus.NOT_FOUND, ex.getMessage());
-    }
-	
-	@ExceptionHandler(GastoNotFoundException.class)
-    public ResponseEntity<Object> handleGastoNotFoundException(GastoNotFoundException ex) {
-        return buildResponseEntity(HttpStatus.NOT_FOUND, ex.getMessage());
+
+    private static final String CORRELATION_ID_HEADER = "X-Correlation-Id";
+    private static final String SAFE_INTERNAL_ERROR_MESSAGE = "Ha ocurrido un error inesperado.";
+    private static final String SAFE_EXTERNAL_PROVIDER_ERROR_MESSAGE =
+            "El proveedor tecnologico no pudo procesar la solicitud.";
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleValidationException(
+            MethodArgumentNotValidException exception,
+            HttpServletRequest request) {
+        List<ApiErrorDetail> details = exception.getBindingResult().getFieldErrors().stream()
+                .map(error -> new ApiErrorDetail(error.getField(), error.getDefaultMessage()))
+                .sorted(Comparator.comparing(ApiErrorDetail::field))
+                .toList();
+
+        return buildResponseEntity(
+                HttpStatus.BAD_REQUEST,
+                ApiErrorCode.VALIDATION_ERROR,
+                "La solicitud no cumple las reglas de validacion.",
+                details,
+                request);
     }
 
-    @ExceptionHandler(ImpuestoNotFoundException.class)
-    public ResponseEntity<Object> handleImpuestoNotFoundException(ImpuestoNotFoundException ex) {
-        return buildResponseEntity(HttpStatus.NOT_FOUND, ex.getMessage());
+    @ExceptionHandler({
+            IllegalArgumentException.class,
+            ConstraintViolationException.class,
+            MethodArgumentTypeMismatchException.class,
+            MissingServletRequestParameterException.class,
+            HttpMessageNotReadableException.class
+    })
+    public ResponseEntity<ApiErrorResponse> handleValidationException(Exception exception, HttpServletRequest request) {
+        return buildResponseEntity(
+                HttpStatus.BAD_REQUEST,
+                ApiErrorCode.VALIDATION_ERROR,
+                safeMessage(exception.getMessage(), "La solicitud no cumple las reglas de validacion."),
+                List.of(),
+                request);
     }
 
-    @ExceptionHandler(PaisNotFoundException.class)
-    public ResponseEntity<Object> handlePaisNotFoundException(PaisNotFoundException ex) {
-        return buildResponseEntity(HttpStatus.NOT_FOUND, ex.getMessage());
-    }
-    
-    @ExceptionHandler(MetodoPagoNotFoundException.class)
-    public ResponseEntity<Object> handleMetodoPagoNotFountException(MetodoPagoNotFoundException ex){
-    	return buildResponseEntity(HttpStatus.NOT_FOUND, ex.getMessage());
-    }
-    
-    @ExceptionHandler(ParametroNotFoundException.class)
-    public ResponseEntity<Object> handleParametroNotFountException(ParametroNotFoundException ex){
-    	return buildResponseEntity(HttpStatus.NOT_FOUND, ex.getMessage());
-    }
-    
-    @ExceptionHandler(ProveedorDocumentoNotFoundException.class)
-    public ResponseEntity<Object> handleProveedorDocumentoNotFountException(ProveedorDocumentoNotFoundException ex){
-    	return buildResponseEntity(HttpStatus.NOT_FOUND, ex.getMessage());
-    }
-    
-    @ExceptionHandler(ProveedorNotFoundException.class)
-    public ResponseEntity<Object> handleProveedorNotFountException(ProveedorNotFoundException ex){
-    	return buildResponseEntity(HttpStatus.NOT_FOUND, ex.getMessage());
-    }
-    
-    @ExceptionHandler(TipoDocumentoNotFoundException.class)
-    public ResponseEntity<Object> handleTipoDocumentoNotFountException(TipoDocumentoNotFoundException ex){
-    	return buildResponseEntity(HttpStatus.NOT_FOUND, ex.getMessage());
-    }
-    
-    @ExceptionHandler(TipoGastoNotFoundException.class)
-    public ResponseEntity<Object> handleTipoGastoNotFountException(TipoGastoNotFoundException ex){
-    	return buildResponseEntity(HttpStatus.NOT_FOUND, ex.getMessage());
-    }
-    
-    @ExceptionHandler(ClienteNotFoundException.class)
-    public ResponseEntity<Object> handleClienteNotFountException(ClienteNotFoundException ex){
-    	return buildResponseEntity(HttpStatus.NOT_FOUND, ex.getMessage());
-    }
-    
-    @ExceptionHandler(ProductoCodigoNotFoundException.class)
-    public ResponseEntity<String> handleProductoNotFoundException(ProductoCodigoNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
-    }
-    
-    @ExceptionHandler(ClienteAlreadyExistsException.class)
-    public ResponseEntity<String> handleClienteAlreadyExists(ClienteAlreadyExistsException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
-    }
-    @ExceptionHandler(ProveedorAlreadyExistsException.class)
-    public ResponseEntity<String> handleProveedorAlreadyExists(ProveedorAlreadyExistsException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
-    }
-    
-    @ExceptionHandler(TipoClienteInvalidoException.class)
-    public ResponseEntity<String> handleTipoClienteInvalidoException(TipoClienteInvalidoException ex) {
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
-    }
-    
-    @ExceptionHandler(GastoInactivoException.class)
-    public ResponseEntity<String> handleGastoInactivoException(GastoInactivoException ex) {
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
-    }
-    
-    @ExceptionHandler(ClienteInactivoException.class)
-    public ResponseEntity<String> handleClienteInactivoException(ClienteInactivoException ex) {
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
-    }
-    
-    @ExceptionHandler(ClienteDocumentoNoModificableException.class)
-    public ResponseEntity<String> handleClienteDocumentoNoModificableException(ClienteDocumentoNoModificableException ex) {
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
-    }
-    
-    @ExceptionHandler(ProveedorDocumentoNoModificableException.class)
-    public ResponseEntity<String> handleProveedorDocumentoNoModificableException(ProveedorDocumentoNoModificableException ex) {
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
-    }
-    
-    @ExceptionHandler(DigitoVerificacionNoModificableException.class)
-    public ResponseEntity<String> handleDigitoVerificacionNoModificableException(DigitoVerificacionNoModificableException ex) {
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    @ExceptionHandler({
+            CompraNotFoundException.class,
+            CategoriaNotFoundException.class,
+            GastoNotFoundException.class,
+            ImpuestoNotFoundException.class,
+            PaisNotFoundException.class,
+            MetodoPagoNotFoundException.class,
+            ParametroNotFoundException.class,
+            ProveedorDocumentoNotFoundException.class,
+            ProveedorNotFoundException.class,
+            TipoDocumentoNotFoundException.class,
+            TipoGastoNotFoundException.class,
+            ClienteNotFoundException.class,
+            ProductoCodigoNotFoundException.class,
+            ProductoIdNotFoundException.class
+    })
+    public ResponseEntity<ApiErrorResponse> handleNotFoundException(RuntimeException exception,
+            HttpServletRequest request) {
+        return buildResponseEntity(
+                HttpStatus.NOT_FOUND,
+                ApiErrorCode.RESOURCE_NOT_FOUND,
+                safeMessage(exception.getMessage(), "El recurso solicitado no fue encontrado."),
+                List.of(),
+                request);
     }
 
-    @ExceptionHandler(TipoDocumentoNoModificableException.class)
-    public ResponseEntity<String> handleTipoDocumentoNoModificableException(TipoDocumentoNoModificableException ex) {
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
-    }
-    
-    @ExceptionHandler(NitInvalidoException.class)
-    public ResponseEntity<String> handleNitInvalidoException(NitInvalidoException ex) {
-        return ResponseEntity.internalServerError().body(ex.getMessage());
+    @ExceptionHandler({
+            ClienteAlreadyExistsException.class,
+            ProveedorAlreadyExistsException.class
+    })
+    public ResponseEntity<ApiErrorResponse> handleDuplicateException(RuntimeException exception,
+            HttpServletRequest request) {
+        return buildResponseEntity(
+                HttpStatus.CONFLICT,
+                ApiErrorCode.DUPLICATE_RESOURCE,
+                safeMessage(exception.getMessage(), "El recurso ya existe."),
+                List.of(),
+                request);
     }
 
-    private ResponseEntity<Object> buildResponseEntity(HttpStatus status, String message) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", LocalDateTime.now());
-        body.put("status", status.value());
-        body.put("error", status.getReasonPhrase());
-        body.put("message", message);
+    @ExceptionHandler({
+            IllegalStateException.class,
+            TipoClienteInvalidoException.class,
+            GastoInactivoException.class,
+            ClienteInactivoException.class,
+            ClienteDocumentoNoModificableException.class,
+            ProveedorDocumentoNoModificableException.class,
+            DigitoVerificacionNoModificableException.class,
+            TipoDocumentoNoModificableException.class,
+            NitInvalidoException.class
+    })
+    public ResponseEntity<ApiErrorResponse> handleBusinessRuleException(RuntimeException exception,
+            HttpServletRequest request) {
+        return buildResponseEntity(
+                HttpStatus.BAD_REQUEST,
+                ApiErrorCode.BUSINESS_RULE_VIOLATION,
+                safeMessage(exception.getMessage(), "La operacion no cumple una regla de negocio."),
+                List.of(),
+                request);
+    }
 
-        return new ResponseEntity<>(body, status);
+    @ExceptionHandler(ExternalProviderException.class)
+    public ResponseEntity<ApiErrorResponse> handleExternalProviderException(ExternalProviderException exception,
+            HttpServletRequest request) {
+        return buildResponseEntity(
+                HttpStatus.BAD_GATEWAY,
+                ApiErrorCode.EXTERNAL_PROVIDER_ERROR,
+                SAFE_EXTERNAL_PROVIDER_ERROR_MESSAGE,
+                List.of(),
+                request);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiErrorResponse> handleGenericException(Exception exception, HttpServletRequest request) {
+        return buildResponseEntity(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                ApiErrorCode.INTERNAL_ERROR,
+                SAFE_INTERNAL_ERROR_MESSAGE,
+                List.of(),
+                request);
+    }
+
+    private ResponseEntity<ApiErrorResponse> buildResponseEntity(
+            HttpStatus status,
+            ApiErrorCode code,
+            String message,
+            List<ApiErrorDetail> details,
+            HttpServletRequest request) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                Instant.now(),
+                status.value(),
+                code,
+                message,
+                correlationId(request),
+                details);
+        return ResponseEntity.status(status).body(response);
+    }
+
+    private String correlationId(HttpServletRequest request) {
+        String correlationId = request.getHeader(CORRELATION_ID_HEADER);
+        if (correlationId == null || correlationId.isBlank()) {
+            return UUID.randomUUID().toString();
+        }
+        return correlationId;
+    }
+
+    private String safeMessage(String message, String defaultMessage) {
+        if (message == null || message.isBlank()) {
+            return defaultMessage;
+        }
+        return message;
     }
 }

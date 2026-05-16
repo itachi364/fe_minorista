@@ -1,0 +1,19 @@
+package com.msvanegasg.facturaelectronica.billing.application.dto;
+
+import java.util.UUID;
+
+import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderSubmissionStatus;
+
+public record RegisterProviderSubmissionOutcomeCommand(
+        UUID companyId,
+        UUID documentId,
+        ProviderSubmissionStatus providerStatus,
+        String providerSubmissionId,
+        String cufeCude,
+        String qrContent,
+        String xmlContent,
+        String graphicRepresentationContent,
+        String errorCode,
+        String errorMessage,
+        UUID userId) {
+}
