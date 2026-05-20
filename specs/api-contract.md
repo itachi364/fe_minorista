@@ -17,6 +17,22 @@ Estos contratos son la base para futuros archivos OpenAPI por servicio.
 - Aislamiento multiempresa: `X-Company-Id` obligatorio en APIs de negocio.
 - Trazabilidad: `X-Correlation-Id` obligatorio o generado por gateway.
 - Idempotencia: `Idempotency-Key` obligatorio en emision fiscal, movimientos de inventario y contabilizacion.
+- Unidad de despliegue: un artefacto y contenedor por microservicio/bounded context, no por endpoint individual.
+- Comunicacion inicial: REST sincrono entre microservicios; eventos internos quedan como contrato para una fase posterior.
+
+## Microservicios fisicos objetivo
+
+| Microservicio | Responsabilidad principal | Artefacto objetivo |
+|---|---|---|
+| `tenant-service` | Empresas y estado del tenant | `services/tenant-service` |
+| `identity-service` | Usuarios, roles y permisos | `services/identity-service` |
+| `catalog-service` | Catalogos oficiales y configurables | `services/catalog-service` |
+| `thirdparty-service` | Clientes y proveedores | `services/thirdparty-service` |
+| `inventory-service` | Productos, costos, compras, stock y kardex | `services/inventory-service` |
+| `billing-service` | Ventas, POS, factura electronica, notas y numeracion | `services/billing-service` |
+| `dian-provider-service` | Mock DIAN y futura integracion con proveedor real | `services/dian-provider-service` |
+| `accounting-service` | PUC, reglas, asientos, libro diario y mayor | `services/accounting-service` |
+| `audit-service` | Auditoria fiscal y tecnica | `services/audit-service` |
 
 ## Headers obligatorios
 
@@ -72,6 +88,21 @@ Responsabilidad: empresas, configuracion multiempresa y estado del tenant.
 
 ### CompanyResponse
 
+### CompanyRequest
+
+```json
+{
+  "legalName": "Mi Empresa SAS",
+  "tradeName": "Mi Tienda",
+  "identificationTypeId": "uuid",
+  "identificationNumber": "900123456",
+  "verificationDigit": "7",
+  "email": "admin@example.com"
+}
+```
+
+### CompanyResponse
+
 ```json
 {
   "id": "uuid",
@@ -106,6 +137,12 @@ Regla:
 
 Responsabilidad: catalogos globales y catalogos configurables por empresa.
 
+Estado TASK-033:
+
+- Microservicio fisico implementado en `services/catalog-service`.
+- Contratos legacy compatibles mantenidos durante extraccion: `/api/categorias`, `/api/paises`, `/api/tipos-documento`, `/api/metodos-pago`, `/api/parametros`, `/api/tipos-gasto`, `/api/impuestos` y `/api/productos`.
+- Los contratos `/api/v1/catalogs/*` siguen siendo objetivo del contrato estable posterior.
+
 ### Endpoints
 
 - `GET /api/v1/catalogs/identification-types`
@@ -124,6 +161,13 @@ Regla:
 ## thirdparty-service
 
 Responsabilidad: clientes y proveedores aislados por empresa.
+
+Estado TASK-033:
+
+- Microservicio fisico implementado en `services/thirdparty-service`.
+- Contratos legacy compatibles mantenidos durante extraccion: `/api/clientes` y `/api/proveedores`.
+- `thirdparty-service` consulta `catalog-service` por REST para tipos de documento usando `CATALOG_SERVICE_URL`.
+- Los contratos `/api/v1/customers` y `/api/v1/suppliers` siguen siendo objetivo del contrato estable posterior.
 
 ### Clientes
 
@@ -167,37 +211,42 @@ Reglas:
 
 Responsabilidad: productos, stock simple, compras, movimientos y kardex.
 
+Estado TASK-034:
+
+- Microservicio fisico implementado en `services/inventory-service`.
+- Endpoints `/api/v1` implementados para productos, disponibilidad, kardex, movimientos, compras y confirmacion de compras.
+- Las operaciones implementadas requieren `X-Company-Id`.
+- `Idempotency-Key` es obligatorio en movimientos y compras; en creacion de producto se usa cuando se registra stock inicial.
+- Las rutas de busqueda/listado, actualizacion y desactivacion quedan como contrato objetivo posterior.
+
 ### Productos
 
 - `POST /api/v1/products`
 - `GET /api/v1/products/{productId}`
-- `GET /api/v1/products?barcode=&sku=&name=&active=`
-- `PUT /api/v1/products/{productId}`
-- `PUT /api/v1/products/{productId}/deactivate`
-- `GET /api/v1/products/{productId}/stock`
-- `GET /api/v1/products/{productId}/kardex?from=&to=`
+- `GET /api/v1/products/{productId}/availability?quantity=`
+- `GET /api/v1/products/{productId}/kardex`
 
 ### Compras
 
 - `POST /api/v1/purchases`
 - `POST /api/v1/purchases/{purchaseId}/confirm`
-- `GET /api/v1/purchases/{purchaseId}`
 
 ### Movimientos
 
 - `POST /api/v1/inventory-movements`
-- `GET /api/v1/inventory-movements?productId=&sourceType=&from=&to=`
+- Kardex por producto: `GET /api/v1/products/{productId}/kardex`
 
-### ProductAvailabilityRequest
+### ProductRequest
 
 ```json
 {
-  "items": [
-    {
-      "productId": "uuid",
-      "quantity": 2
-    }
-  ]
+  "sku": "SKU-001",
+  "barcode": "7701234567890",
+  "name": "Cafe 500g",
+  "description": "Bolsa de cafe",
+  "salePrice": 15000,
+  "cost": 9000,
+  "initialStock": 10
 }
 ```
 
@@ -205,13 +254,44 @@ Responsabilidad: productos, stock simple, compras, movimientos y kardex.
 
 ```json
 {
-  "available": true,
-  "items": [
+  "companyId": "uuid",
+  "productId": "uuid",
+  "requestedQuantity": 2,
+  "availableQuantity": 10,
+  "available": true
+}
+```
+
+### InventoryMovementRequest
+
+```json
+{
+  "productId": "uuid",
+  "movementType": "ADJUSTMENT_IN",
+  "quantity": 4,
+  "unitCost": 9000,
+  "sourceDocumentType": "ADJUSTMENT",
+  "sourceDocumentId": "uuid"
+}
+```
+
+### PurchaseRequest
+
+```json
+{
+  "supplierId": "uuid",
+  "subtotal": 90000,
+  "taxTotal": 17100,
+  "total": 107100,
+  "evidenceUrl": "https://example.local/evidence.pdf",
+  "lines": [
     {
       "productId": "uuid",
-      "requestedQuantity": 2,
-      "currentStock": 10,
-      "available": true
+      "quantity": 10,
+      "unitCost": 9000,
+      "subtotal": 90000,
+      "tax": 17100,
+      "total": 107100
     }
   ]
 }
@@ -227,6 +307,14 @@ Reglas:
 ## billing-service
 
 Responsabilidad: ventas POS, facturacion electronica, documento equivalente POS, notas, numeracion y estados fiscales.
+
+Estado TASK-035:
+
+- Microservicio fisico inicial implementado en `services/billing-service`.
+- Endpoints implementados: `POST /api/v1/sales`, `POST /api/v1/sales/{saleId}/confirm` y `GET /api/v1/sales/{saleId}`.
+- La creacion de venta valida disponibilidad contra `inventory-service` usando `GET /api/v1/products/{productId}/availability`.
+- La confirmacion genera un documento electronico POS consumiendo `dian-provider-service` por HTTP.
+- La aplicacion automatica de `SALE_OUT` y asiento contable queda para TASK-037.
 
 ### Emisor
 
@@ -285,7 +373,8 @@ Responsabilidad: ventas POS, facturacion electronica, documento equivalente POS,
       "quantity": 2,
       "unitPrice": 15000,
       "discountAmount": 0,
-      "taxCode": "IVA_19"
+      "taxCode": "IVA_19",
+      "taxRate": 19
     }
   ]
 }
@@ -305,7 +394,9 @@ Responsabilidad: ventas POS, facturacion electronica, documento equivalente POS,
   "taxTotal": 5700,
   "total": 35700,
   "status": "VALIDATED",
-  "providerStatus": "ACCEPTED"
+  "providerStatus": "ACCEPTED",
+  "inventoryAppliedAt": "2026-05-19T10:01:00Z",
+  "accountingAppliedAt": "2026-05-19T10:01:01Z"
 }
 ```
 
@@ -351,11 +442,22 @@ Reglas:
 - La numeracion fiscal debe ser idempotente y no reutilizable.
 - El POS genera documento electronico a partir de la venta.
 - La afectacion de inventario ocurre cuando la venta/documento llegue al estado aprobado por la politica transaccional.
+- Si el proveedor devuelve `ACCEPTED`, `billing-service` aplica `SALE_OUT` en `inventory-service` y genera asiento `SALE_CONFIRMED` en `accounting-service`.
+- Los campos `inventoryAppliedAt` y `accountingAppliedAt` evidencian la aplicacion idempotente de efectos posteriores.
+- Reintentar `POST /api/v1/sales/{saleId}/confirm` no debe duplicar documento, movimientos de inventario ni asiento contable.
 - En ambiente local, `POST /api/v1/electronic-pos/{documentId}/submit` usa proveedor DIAN mock sin llamadas externas.
 
 ## dian-provider-service
 
 Responsabilidad: encapsular integracion con proveedor tecnologico DIAN.
+
+Estado TASK-036:
+
+- Microservicio fisico implementado en `services/dian-provider-service`.
+- Modo local soportado: `DIAN_PROVIDER_MODE=mock`.
+- Persistencia de envios mock en `dian_provider.provider_submission`.
+- `billing-service` consume `POST /api/v1/provider/electronic-pos` por HTTP usando `DIAN_PROVIDER_SERVICE_URL`.
+- `GET /api/v1/provider/submissions/{trackingId}` permite consultar el resultado mock persistido y requiere `X-Company-Id`.
 
 ### Endpoints internos
 
@@ -400,8 +502,8 @@ Reglas:
 
 - No guardar secretos en payloads ni logs.
 - Todo error externo debe mapearse a `EXTERNAL_PROVIDER_ERROR` con detalle seguro.
-- La implementacion concreta queda pendiente hasta seleccionar proveedor tecnologico.
-- En desarrollo local se usara un adaptador dummy que responde sin llamadas externas y solo sirve para probar el flujo interno.
+- La integracion real queda pendiente hasta seleccionar proveedor tecnologico.
+- En desarrollo local se usa el microservicio mock sin llamadas externas y solo sirve para probar el flujo interno.
 - Variables locales del mock:
   - `DIAN_PROVIDER_MODE=mock`.
   - `DIAN_MOCK_DEFAULT_STATUS=ACCEPTED|REJECTED|FAILED`.
@@ -412,6 +514,12 @@ Reglas:
 ## accounting-service
 
 Responsabilidad: PUC, cuentas por empresa, asientos, libro diario y libro mayor.
+
+Estado TASK-037:
+
+- Microservicio fisico implementado en `services/accounting-service`.
+- Persistencia propia bajo schema `accounting`.
+- `POST /api/v1/accounting-entries` es idempotente por `companyId`, `sourceType` y `sourceId`; si el asiento ya existe, retorna el asiento existente.
 
 ### Cuentas
 
@@ -475,6 +583,7 @@ Reglas:
 
 - Todo asiento posteado debe cumplir partida doble.
 - En la implementacion local actual, `POST /api/v1/accounting-entries` genera un asiento `POSTED` inmediatamente desde reglas contables activas por empresa; el flujo draft/post-by-id queda pendiente hasta que se apruebe un modelo de borradores contables.
+- Reintentar la contabilizacion de una misma venta no debe crear un segundo asiento.
 - Las cuentas deben derivar del PUC colombiano o de una configuracion aprobada por empresa.
 - Un documento fiscal validado debe poder rastrearse hasta su asiento contable.
 

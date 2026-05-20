@@ -4,6 +4,8 @@
 
 Se usara Clean Architecture dentro de una estrategia basada en microservicios. Cada microservicio debe separar dominio, casos de uso, puertos, adaptadores y configuracion framework.
 
+La unidad de despliegue aprobada es el microservicio por bounded context. No se creara un artefacto o contenedor por endpoint individual. Cada endpoint debe pertenecer al microservicio que representa su capacidad de negocio.
+
 ## Microservicios propuestos
 
 - `identity-service`: usuarios, roles, autenticacion, autorizacion y auditoria base.
@@ -51,6 +53,14 @@ Se usara Clean Architecture dentro de una estrategia basada en microservicios. C
 - Orquesta inventario, contabilidad y proveedor tecnologico.
 - Mantiene estados del ciclo fiscal.
 
+Estado TASK-035:
+
+- `billing-service` fisico queda creado para ventas POS.
+- `POST /api/v1/sales` calcula totales por linea y valida stock contra `inventory-service`.
+- `POST /api/v1/sales/{saleId}/confirm` genera documento electronico POS y envia la solicitud por HTTP a `dian-provider-service`.
+- TASK-037 agrego efectos automaticos posteriores a validacion: `SALE_OUT` contra `inventory-service` y asiento `SALE_CONFIRMED` contra `accounting-service`.
+- `electronic_document.inventory_applied_at` y `electronic_document.accounting_applied_at` registran aplicacion idempotente de efectos posteriores.
+
 ### Politica de calculo fiscal inicial
 
 - El calculo se realiza por linea.
@@ -67,6 +77,14 @@ Se usara Clean Architecture dentro de una estrategia basada en microservicios. C
 - Normaliza respuestas tecnicas.
 - Maneja timeouts, reintentos, idempotencia y errores externos.
 
+Estado TASK-036:
+
+- `dian-provider-service` fisico queda creado con Clean Architecture y persistencia propia.
+- Expone `POST /api/v1/provider/electronic-pos`, `POST /api/v1/provider/electronic-invoices` y `GET /api/v1/provider/submissions/{trackingId}`.
+- En modo local solo soporta `DIAN_PROVIDER_MODE=mock`; cualquier modo distinto falla de forma explicita.
+- Persiste los envios mock en `dian_provider.provider_submission` sin credenciales ni secretos reales.
+- `billing-service` consume el mock por HTTP mediante `DIAN_PROVIDER_SERVICE_URL`.
+
 ### inventory-service
 
 - Administra productos y stock.
@@ -78,6 +96,42 @@ Se usara Clean Architecture dentro de una estrategia basada en microservicios. C
 - Genera asientos desde eventos fiscales.
 - Valida partida doble.
 - Expone libro diario y mayor.
+- TASK-037 extrae el codigo contable Clean Architecture desde el monolito legacy a `services/accounting-service` como artefacto Spring Boot independiente.
+- Expone `POST /api/v1/accounts`, `POST /api/v1/accounting-rules`, `POST /api/v1/accounting-entries`, `GET /api/v1/reports/journal` y `GET /api/v1/reports/ledger`.
+- La generacion de asientos es idempotente por `companyId`, `sourceType` y `sourceId`.
+
+## Comunicacion inicial entre microservicios
+
+- La primera version fisica usara REST sincrono entre servicios.
+- `X-Correlation-Id` debe propagarse entre servicios.
+- `X-Company-Id` debe propagarse en toda operacion de negocio.
+- `Idempotency-Key` sera obligatorio en comandos fiscales, inventario y contabilizacion automatica.
+- Los errores entre servicios deben usar el contrato estandar definido en `specs/api-contract.md`.
+- Los eventos `SaleConfirmed`, `ElectronicDocumentValidated`, `InventoryMovementRegistered` y `AccountingEntryPosted` se mantienen como contratos conceptuales hasta aprobar broker y patron outbox/inbox.
+
+## Flujo end-to-end objetivo antes de depuracion legacy
+
+1. `tenant-service` crea la empresa y devuelve `companyId`.
+2. `catalog-service` expone catalogos oficiales y configuraciones fiscales base.
+3. `thirdparty-service` crea cliente y proveedor aislados por empresa.
+4. `billing-service` configura emisor y resolucion fiscal para la empresa.
+5. `accounting-service` crea cuentas PUC y reglas contables parametrizadas por empresa.
+6. `inventory-service` crea productos con costo y registra compra o ajuste inicial de stock.
+7. `billing-service` crea venta POS/factura para productos existentes.
+8. `billing-service` consulta disponibilidad en `inventory-service`.
+9. `billing-service` emite el documento electronico y lo envia a `dian-provider-service`.
+10. `dian-provider-service` responde mediante mock local deterministico.
+11. Si el documento queda aceptado, `billing-service` solicita a `inventory-service` registrar `SALE_OUT`.
+12. `billing-service` solicita a `accounting-service` generar asiento contable desde la regla aprobada.
+13. `audit-service` registra trazabilidad fiscal/tecnica consultable.
+14. La prueba E2E verifica por API y PostgreSQL empresa, configuraciones, inventario, documento, envio mock, asiento y auditoria.
+
+## Politica de consistencia inicial entre servicios
+
+- El flujo local usara orquestacion sincrona desde `billing-service`.
+- La afectacion de inventario y contabilidad debe ser idempotente por `company_id`, `source_type` y `source_id`.
+- Si una llamada posterior a la validacion fiscal falla, el sistema debe registrar el error y permitir reintento seguro sin duplicar numeracion, movimientos ni asientos.
+- La implementacion asincrona queda diferida hasta aprobar broker, outbox/inbox y contratos de reintento.
 
 ## Flujo de factura electronica
 
@@ -260,6 +314,13 @@ La implementacion concreta dependera del proveedor seleccionado.
 - Validacion de entrada en DTOs.
 - Errores publicos sin stack trace ni secretos.
 
+### Politica inicial de auditoria fiscal
+
+- Las operaciones fiscales sensibles deben registrar evento de auditoria con empresa, recurso, accion, resultado, fecha, usuario cuando este disponible y detalle seguro.
+- Mientras no exista autenticacion/autorizacion implementada, `user_id` puede ser nulo; cuando una capa de seguridad provea usuario, debe propagarse al evento.
+- La auditoria fiscal se mantiene separada de logs tecnicos y trazabilidad interna.
+- Los detalles de auditoria no deben incluir secretos, certificados, tokens, credenciales ni payloads sensibles.
+
 ### Politica inicial de errores API
 
 - Todas las excepciones expuestas por controladores REST deben responder con el error estandar definido en `specs/api-contract.md`.
@@ -276,6 +337,8 @@ La implementacion concreta dependera del proveedor seleccionado.
 
 - Logs estructurados.
 - Correlation ID por request.
+- Las peticiones HTTP usan `X-Correlation-Id` cuando llega en la solicitud o generan un UUID cuando falta; el identificador se expone en la respuesta, se guarda como atributo de request y se registra en MDC con la llave `correlationId`.
+- Los logs tecnicos de inicio y fin de request deben emitirse como mensajes estructurados con `event`, `correlationId`, `method`, `path`, `status` y `durationMs`, sin registrar cuerpos, credenciales ni cabeceras sensibles.
 - Metricas para emisiones, rechazos, reintentos, latencia del proveedor y errores.
 - Auditoria fiscal separada de logs tecnicos.
 

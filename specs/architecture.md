@@ -55,6 +55,53 @@ Fase posterior:
 - `identity-service`
 - PostgreSQL por servicio o por esquema en fase inicial.
 
+## Decision de extraccion fisica
+
+La migracion fisica a microservicios se realizara por bounded context, no por endpoint individual. Cada microservicio tendra:
+
+- Artefacto Maven independiente.
+- Aplicacion Spring Boot independiente.
+- Dockerfile propio.
+- Puerto HTTP propio.
+- Healthcheck propio.
+- Variables de entorno propias.
+- Migraciones de base de datos propias.
+- Pruebas unitarias, de controlador y de persistencia propias.
+
+Los endpoints de cada microservicio viviran dentro del artefacto del bounded context correspondiente. Por ejemplo, `POST /api/v1/products` y `GET /api/v1/products/{id}/availability` pertenecen a `inventory-service`, mientras `POST /api/v1/electronic-pos` pertenece a `billing-service`.
+
+## Estrategia de despliegue local multi-contenedor
+
+La primera version fisica usara Docker Compose:
+
+- Un contenedor por microservicio.
+- Un contenedor PostgreSQL local.
+- Bases de datos o esquemas separados por servicio.
+- Red interna Docker para comunicacion entre servicios.
+- Puertos publicados solo para servicios que deban probarse desde el host.
+
+La estrategia inicial de comunicacion sera REST sincrona con `X-Correlation-Id`, `X-Company-Id` e `Idempotency-Key` en comandos criticos. Los eventos definidos en `specs/api-contract.md` se mantendran como contrato conceptual y podran implementarse despues mediante broker.
+
+## Orden recomendado de extraccion fisica
+
+1. `tenant-service`, porque crea la frontera real de empresa.
+2. `catalog-service` y `thirdparty-service`, porque reducen dependencias legacy y alimentan ventas/compras.
+3. `inventory-service`, porque debe controlar stock, costos y kardex. Implementado en TASK-034.
+4. `dian-provider-service`, porque aisla el mock y prepara el adaptador real.
+5. `accounting-service`, porque ya tiene dominio avanzado y puede exponerse como servicio independiente.
+6. `billing-service`, porque orquesta venta, documento fiscal, proveedor, inventario y contabilidad.
+7. `audit-service`, para consultas y consolidacion de auditoria fiscal/tecnica.
+
+## Regla para depuracion legacy
+
+Ningun paquete legacy ni tabla legacy debe eliminarse por intuicion. La depuracion requiere:
+
+- Mapa de reemplazo legacy -> bounded context.
+- Evidencia de que el endpoint o caso de uso equivalente existe en el microservicio nuevo.
+- Pruebas automatizadas o checklist end-to-end que cubra el reemplazo.
+- Verificacion de que no existan referencias de compilacion ni de runtime.
+- Migracion o respaldo de datos cuando aplique.
+
 ## Recomendacion de migracion incremental
 
 1. Corregir configuracion sensible.
@@ -65,6 +112,7 @@ Fase posterior:
 6. Separar `dian-provider` como servicio o modulo independiente.
 7. Extraer inventario y contabilidad cuando contratos esten estables.
 8. Mantener pruebas de contrato durante la extraccion.
+9. Ejecutar flujo end-to-end desde cero antes de eliminar cualquier elemento legacy.
 
 ## Refactorizacion de modulos existentes
 

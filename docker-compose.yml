@@ -17,11 +17,12 @@ services:
       retries: 5
       start_period: 10s
 
-  app:
+  legacy-monolith:
     image: eclipse-temurin:17-jdk
-    container_name: facturaelectronica-app
+    container_name: facturaelectronica-legacy-monolith
     working_dir: /workspace
     environment:
+      SERVER_PORT: ${LEGACY_MONOLITH_PORT:-8083}
       DB_URL: ${DB_URL}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -31,11 +32,215 @@ services:
       DIAN_MOCK_ERROR_CODE: ${DIAN_MOCK_ERROR_CODE:-}
       DIAN_MOCK_ERROR_MESSAGE: ${DIAN_MOCK_ERROR_MESSAGE:-}
     ports:
-      - "8083:8083"
+      - "${LEGACY_MONOLITH_PORT:-8083}:${LEGACY_MONOLITH_PORT:-8083}"
     volumes:
       - .:/workspace
       - maven_cache:/root/.m2
-    command: ["sh", "./mvnw", "spring-boot:run"]
+    command: ["sh", "./mvnw", "-pl", "services/legacy-monolith", "spring-boot:run"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${LEGACY_MONOLITH_PORT:-8083}/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  tenant-service:
+    image: eclipse-temurin:17-jdk
+    container_name: facturaelectronica-tenant-service
+    working_dir: /workspace
+    environment:
+      SERVER_PORT: ${TENANT_SERVICE_PORT:-8084}
+      TENANT_DB_URL: ${TENANT_DB_URL:-${DB_URL}}
+      TENANT_DB_USERNAME: ${TENANT_DB_USERNAME:-${DB_USERNAME}}
+      TENANT_DB_PASSWORD: ${TENANT_DB_PASSWORD:-${DB_PASSWORD}}
+      JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
+    ports:
+      - "${TENANT_SERVICE_PORT:-8084}:${TENANT_SERVICE_PORT:-8084}"
+    volumes:
+      - .:/workspace
+      - maven_cache:/root/.m2
+    command: ["sh", "./mvnw", "-pl", "services/tenant-service", "spring-boot:run"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${TENANT_SERVICE_PORT:-8084}/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  catalog-service:
+    image: eclipse-temurin:17-jdk
+    container_name: facturaelectronica-catalog-service
+    working_dir: /workspace
+    environment:
+      SERVER_PORT: ${CATALOG_SERVICE_PORT:-8085}
+      CATALOG_DB_URL: ${CATALOG_DB_URL:-${DB_URL}}
+      CATALOG_DB_USERNAME: ${CATALOG_DB_USERNAME:-${DB_USERNAME}}
+      CATALOG_DB_PASSWORD: ${CATALOG_DB_PASSWORD:-${DB_PASSWORD}}
+      JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
+    ports:
+      - "${CATALOG_SERVICE_PORT:-8085}:${CATALOG_SERVICE_PORT:-8085}"
+    volumes:
+      - .:/workspace
+      - maven_cache:/root/.m2
+    command: ["sh", "./mvnw", "-pl", "services/catalog-service", "spring-boot:run"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${CATALOG_SERVICE_PORT:-8085}/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  thirdparty-service:
+    image: eclipse-temurin:17-jdk
+    container_name: facturaelectronica-thirdparty-service
+    working_dir: /workspace
+    environment:
+      SERVER_PORT: ${THIRDPARTY_SERVICE_PORT:-8086}
+      THIRDPARTY_DB_URL: ${THIRDPARTY_DB_URL:-${DB_URL}}
+      THIRDPARTY_DB_USERNAME: ${THIRDPARTY_DB_USERNAME:-${DB_USERNAME}}
+      THIRDPARTY_DB_PASSWORD: ${THIRDPARTY_DB_PASSWORD:-${DB_PASSWORD}}
+      CATALOG_SERVICE_URL: http://catalog-service:${CATALOG_SERVICE_PORT:-8085}
+      JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
+    ports:
+      - "${THIRDPARTY_SERVICE_PORT:-8086}:${THIRDPARTY_SERVICE_PORT:-8086}"
+    volumes:
+      - .:/workspace
+      - maven_cache:/root/.m2
+    command: ["sh", "./mvnw", "-pl", "services/thirdparty-service", "spring-boot:run"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${THIRDPARTY_SERVICE_PORT:-8086}/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      catalog-service:
+        condition: service_healthy
+
+  inventory-service:
+    image: eclipse-temurin:17-jdk
+    container_name: facturaelectronica-inventory-service
+    working_dir: /workspace
+    environment:
+      SERVER_PORT: ${INVENTORY_SERVICE_PORT:-8087}
+      INVENTORY_DB_URL: ${INVENTORY_DB_URL:-${DB_URL}}
+      INVENTORY_DB_USERNAME: ${INVENTORY_DB_USERNAME:-${DB_USERNAME}}
+      INVENTORY_DB_PASSWORD: ${INVENTORY_DB_PASSWORD:-${DB_PASSWORD}}
+      JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
+    ports:
+      - "${INVENTORY_SERVICE_PORT:-8087}:${INVENTORY_SERVICE_PORT:-8087}"
+    volumes:
+      - .:/workspace
+      - maven_cache:/root/.m2
+    command: ["sh", "./mvnw", "-pl", "services/inventory-service", "spring-boot:run"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${INVENTORY_SERVICE_PORT:-8087}/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  billing-service:
+    image: eclipse-temurin:17-jdk
+    container_name: facturaelectronica-billing-service
+    working_dir: /workspace
+    environment:
+      SERVER_PORT: ${BILLING_SERVICE_PORT:-8088}
+      BILLING_DB_URL: ${BILLING_DB_URL:-${DB_URL}}
+      BILLING_DB_USERNAME: ${BILLING_DB_USERNAME:-${DB_USERNAME}}
+      BILLING_DB_PASSWORD: ${BILLING_DB_PASSWORD:-${DB_PASSWORD}}
+      INVENTORY_SERVICE_URL: http://inventory-service:${INVENTORY_SERVICE_PORT:-8087}
+      DIAN_PROVIDER_SERVICE_URL: http://dian-provider-service:${DIAN_PROVIDER_SERVICE_PORT:-8089}
+      ACCOUNTING_SERVICE_URL: http://accounting-service:${ACCOUNTING_SERVICE_PORT:-8090}
+      JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
+    ports:
+      - "${BILLING_SERVICE_PORT:-8088}:${BILLING_SERVICE_PORT:-8088}"
+    volumes:
+      - .:/workspace
+      - maven_cache:/root/.m2
+    command: ["sh", "./mvnw", "-pl", "services/billing-service", "spring-boot:run"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${BILLING_SERVICE_PORT:-8088}/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+      dian-provider-service:
+        condition: service_healthy
+      accounting-service:
+        condition: service_healthy
+
+  dian-provider-service:
+    image: eclipse-temurin:17-jdk
+    container_name: facturaelectronica-dian-provider-service
+    working_dir: /workspace
+    environment:
+      SERVER_PORT: ${DIAN_PROVIDER_SERVICE_PORT:-8089}
+      DIAN_PROVIDER_DB_URL: ${DIAN_PROVIDER_DB_URL:-${DB_URL}}
+      DIAN_PROVIDER_DB_USERNAME: ${DIAN_PROVIDER_DB_USERNAME:-${DB_USERNAME}}
+      DIAN_PROVIDER_DB_PASSWORD: ${DIAN_PROVIDER_DB_PASSWORD:-${DB_PASSWORD}}
+      DIAN_PROVIDER_MODE: ${DIAN_PROVIDER_MODE:-mock}
+      DIAN_MOCK_DEFAULT_STATUS: ${DIAN_MOCK_DEFAULT_STATUS:-ACCEPTED}
+      DIAN_MOCK_ERROR_CODE: ${DIAN_MOCK_ERROR_CODE:-}
+      DIAN_MOCK_ERROR_MESSAGE: ${DIAN_MOCK_ERROR_MESSAGE:-}
+      JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
+    ports:
+      - "${DIAN_PROVIDER_SERVICE_PORT:-8089}:${DIAN_PROVIDER_SERVICE_PORT:-8089}"
+    volumes:
+      - .:/workspace
+      - maven_cache:/root/.m2
+    command: ["sh", "./mvnw", "-pl", "services/dian-provider-service", "spring-boot:run"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${DIAN_PROVIDER_SERVICE_PORT:-8089}/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  accounting-service:
+    image: eclipse-temurin:17-jdk
+    container_name: facturaelectronica-accounting-service
+    working_dir: /workspace
+    environment:
+      SERVER_PORT: ${ACCOUNTING_SERVICE_PORT:-8090}
+      ACCOUNTING_DB_URL: ${ACCOUNTING_DB_URL:-${DB_URL}}
+      ACCOUNTING_DB_USERNAME: ${ACCOUNTING_DB_USERNAME:-${DB_USERNAME}}
+      ACCOUNTING_DB_PASSWORD: ${ACCOUNTING_DB_PASSWORD:-${DB_PASSWORD}}
+      JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
+    ports:
+      - "${ACCOUNTING_SERVICE_PORT:-8090}:${ACCOUNTING_SERVICE_PORT:-8090}"
+    volumes:
+      - .:/workspace
+      - maven_cache:/root/.m2
+    command: ["sh", "./mvnw", "-pl", "services/accounting-service", "spring-boot:run"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${ACCOUNTING_SERVICE_PORT:-8090}/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
     depends_on:
       postgres:
         condition: service_healthy

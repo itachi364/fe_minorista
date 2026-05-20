@@ -9,7 +9,7 @@
 
 ## Fase 0: Seguridad y base SDD
 
-- [ ] TASK-001: Preparar Docker y variables de entorno para secretos
+- [x] TASK-001: Preparar Docker y variables de entorno para secretos
   - Estado: DONE
   - Archivos propuestos:
     - `docker-compose.yml`
@@ -47,7 +47,7 @@
     - Resultado local: PostgreSQL quedo levantado en el puerto host `15432` porque `5432` y `5433` estaban bloqueados en el equipo.
   - Tests requeridos: prueba de arranque o carga de contexto usando variables dummy; validacion manual de que `application.properties` no contiene secretos reales.
 
-- [ ] TASK-002: Crear estructura SDD local
+- [x] TASK-002: Crear estructura SDD local
   - Estado: DONE
   - Archivos:
     - `specs/requirements.md`
@@ -64,7 +64,7 @@
 
 ## Fase 1: Arquitectura y plataforma
 
-- [ ] TASK-003: Disenar modelo de base de datos multiempresa
+- [x] TASK-003: Disenar modelo de base de datos multiempresa
   - Estado: DONE
   - Archivos:
     - `specs/data-model.md`
@@ -76,7 +76,7 @@
   - Acceptance criteria: AC-007, AC-010, AC-011, AC-012, AC-013, AC-014, AC-015, AC-016.
   - Tests requeridos: no aplica, documentacion. Las migraciones y pruebas de repositorio se ejecutaran en TASK-007.
 
-- [ ] TASK-004: Definir contratos entre microservicios
+- [x] TASK-004: Definir contratos entre microservicios
   - Estado: DONE
   - Archivos propuestos:
     - `specs/api-contract.md`
@@ -85,7 +85,7 @@
   - Tests requeridos: contract tests cuando existan servicios.
   - Resultado local: `specs/api-contract.md` actualizado con convenciones, headers multiempresa, errores estandar, endpoints por servicio, DTOs base, reglas por servicio y eventos internos propuestos.
 
-- [ ] TASK-005: Actualizar Spring Boot a version soportada/LTS
+- [x] TASK-005: Actualizar Spring Boot a version soportada/LTS
   - Estado: DONE
   - Archivos propuestos:
     - `pom.xml`
@@ -106,7 +106,7 @@
     - No migrar a Spring Boot `4.x` en la misma tarea sin una evaluacion de breaking changes y confirmacion explicita.
     - Resultado local: actualizado a Spring Boot `3.5.14`, con `springdoc-openapi-starter-webmvc-ui` `2.8.17`, PostgreSQL y Lombok administrados por Spring Boot, y pruebas ejecutadas con exito.
 
-- [ ] TASK-006: Crear estructura Clean Architecture para `billing-service`
+- [x] TASK-006: Crear estructura Clean Architecture para `billing-service`
   - Estado: DONE
   - Archivos propuestos:
     - `billing-service/src/main/java/.../domain`
@@ -117,7 +117,7 @@
   - Tests requeridos: unit tests de casos de uso base.
   - Resultado local: se creo `billing` como modulo Clean Architecture dentro del backend actual, siguiendo la migracion incremental definida en `specs/architecture.md`. Incluye dominio sin Spring/JPA, puertos de entrada/salida, caso de uso base para crear documento fiscal `DRAFT`, adaptadores de sistema para UUID/reloj y pruebas unitarias.
 
-- [ ] TASK-007: Crear migraciones versionadas de base de datos
+- [x] TASK-007: Crear migraciones versionadas de base de datos
   - Estado: DONE
   - Archivos:
     - `src/main/resources/db/migration/V001__create_legacy_public_schema.sql`
@@ -129,7 +129,7 @@
 
 ## Fase 2: Facturacion electronica y proveedor tecnologico
 
-- [ ] TASK-008: Implementar configuracion de emisor y resoluciones
+- [x] TASK-008: Implementar configuracion de emisor y resoluciones
   - Estado: DONE
   - Archivos:
     - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/IssuerProfile.java`
@@ -149,7 +149,7 @@
   - Tests requeridos: unit tests de validacion de resolucion y numeracion.
   - Resultado local: se implementaron modelos de dominio y casos de uso para configurar emisor, crear resoluciones y asignar consecutivos solo cuando existe emisor activo y resolucion activa/vigente con rango disponible. La regla de prefijo se limita a caracteres alfanumericos y maximo 4 caracteres segun numeracion DIAN. La persistencia JPA y endpoints REST se dejan para la fase de adaptadores del modelo multiempresa.
 
-- [ ] TASK-009: Implementar calculo de factura electronica
+- [x] TASK-009: Implementar calculo de factura electronica
   - Estado: DONE
   - Archivos:
     - `specs/requirements.md`
@@ -167,7 +167,7 @@
   - Tests requeridos: unit tests de totales, impuestos, redondeos y descuentos.
   - Resultado local: se documento e implemento la politica confirmada de calculo por linea, descuento antes de impuesto, redondeo `HALF_UP` a 2 decimales y totales como suma de lineas calculadas. Se agregaron pruebas unitarias para totales, redondeo, descuentos invalidos, lineas vacias y tasa negativa.
 
-- [ ] TASK-010: Implementar puerto y adaptador de proveedor tecnologico DIAN
+- [x] TASK-010: Implementar puerto y adaptador de proveedor tecnologico DIAN
   - Estado: DONE
   - Archivos:
     - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/ProviderSubmissionRecord.java`
@@ -186,7 +186,7 @@
   - Tests requeridos: unit tests con mocks y pruebas de errores externos.
   - Resultado local: se creo el puerto `DianProviderPort`, el caso de uso de envio al proveedor, el registro de solicitud/respuesta mediante puerto de persistencia y un adaptador dummy local sin llamadas externas ni secretos. Los errores externos se convierten a respuesta segura sin exponer detalles internos.
 
-- [ ] TASK-011: Implementar estados y trazabilidad de documentos electronicos
+- [x] TASK-011: Implementar estados y trazabilidad de documentos electronicos
   - Estado: DONE
   - Archivos:
     - `specs/design.md`
@@ -207,7 +207,7 @@
   - Tests requeridos: unit tests de transiciones validas e invalidas.
   - Resultado local: se implemento el ciclo de vida interno de documentos electronicos, validando que los resultados del proveedor solo apliquen a documentos en `SENT_TO_PROVIDER`. Se registran artefactos para aceptados, errores seguros para rechazados/fallidos, evento de trazabilidad y evento de auditoria fiscal. Se documentaron transiciones permitidas y se agregaron pruebas unitarias de estados validos e invalidos.
 
-- [ ] TASK-012: Implementar notas credito y debito
+- [x] TASK-012: Implementar notas credito y debito
   - Estado: DONE
   - Archivos:
     - `specs/design.md`
@@ -226,7 +226,7 @@
 
 ## Fase 3: POS electronico
 
-- [ ] TASK-013: Implementar emision de documento equivalente electronico POS
+- [x] TASK-013: Implementar emision de documento equivalente electronico POS
   - Estado: DONE
   - Archivos:
     - `specs/design.md`
@@ -641,7 +641,7 @@
 
 ## Fase 10: Calidad, auditoria y observabilidad
 
-- [ ] TASK-024: Estandarizar errores API
+- [x] TASK-024: Estandarizar errores API
   - Estado: DONE
   - Acceptance criteria: AC-019.
   - Tests requeridos: controller tests de errores.
@@ -676,15 +676,41 @@
     - Verificacion HTTP: `mvnw.cmd "-Dtest=*ControllerTest,GlobalExceptionHandlerTest" test` ejecutado con exito: 97 tests, 0 fallos.
     - Suite completa: `mvnw.cmd test` con PostgreSQL local en `localhost:15432` ejecutado con exito: 224 tests, 0 fallos.
 
-- [ ] TASK-025: Implementar auditoria fiscal
-  - Estado: PENDING
+- [x] TASK-025: Implementar auditoria fiscal
+  - Estado: DONE
   - Acceptance criteria: AC-018.
   - Tests requeridos: unit tests de registro de auditoria.
+  - Descripcion: Formalizar el registro de auditoria fiscal como caso de uso de aplicacion, reutilizable desde operaciones fiscales sensibles y separado de logs tecnicos.
+  - Archivos:
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/dto/RegisterFiscalAuditEventCommand.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/dto/FiscalAuditEventResult.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/in/RegisterFiscalAuditEventUseCase.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/usecase/RegisterFiscalAuditEventService.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/application/usecase/RegisterProviderSubmissionOutcomeService.java`
+    - `src/main/java/com/msvanegasg/facturaelectronica/billing/infrastructure/config/BillingUseCaseConfiguration.java`
+    - `src/test/java/com/msvanegasg/facturaelectronica/billing/application/usecase/RegisterFiscalAuditEventServiceTest.java`
+    - `src/test/java/com/msvanegasg/facturaelectronica/billing/application/usecase/RegisterProviderSubmissionOutcomeServiceTest.java`
+    - `specs/design.md`
+    - `specs/tasks.md`
+  - Resultado local:
+    - Implementado `RegisterFiscalAuditEventUseCase` para registrar auditoria fiscal con empresa, recurso, accion, resultado, usuario cuando exista, fecha y detalle seguro.
+    - El resultado de proveedor DIAN/POS reutiliza el caso de uso de auditoria fiscal en vez de persistir auditoria directamente.
+    - Documentado que `user_id` puede ser nulo hasta implementar autenticacion/autorizacion, pero debe propagarse cuando la capa de seguridad lo entregue.
+    - Agregadas pruebas unitarias de registro de auditoria, validacion de campos requeridos y reutilizacion desde resultado de proveedor.
+    - Verificacion enfocada: `.\mvnw.cmd "-Dtest=RegisterFiscalAuditEventServiceTest,RegisterProviderSubmissionOutcomeServiceTest" test` ejecutado con exito: 9 tests, 0 fallos.
+    - Suite completa: `.\mvnw.cmd test` con PostgreSQL local en `localhost:15432` ejecutado con exito: 248 tests, 0 fallos.
 
-- [ ] TASK-026: Implementar correlation ID y logs estructurados
-  - Estado: PENDING
+- [x] TASK-026: Implementar correlation ID y logs estructurados
+  - Estado: DONE
   - Acceptance criteria: AC-020.
   - Tests requeridos: unit/integration tests de filtro o interceptor.
+  - Resultado local:
+    - Agregado filtro HTTP `CorrelationIdFilter` que resuelve `X-Correlation-Id`, genera UUID cuando falta, lo expone en la respuesta y lo registra en MDC con la llave `correlationId`.
+    - Agregados logs tecnicos estructurados de inicio y fin de request con `event`, `correlationId`, `method`, `path`, `status` y `durationMs`, sin cuerpos ni secretos.
+    - `GlobalExceptionHandler` reutiliza el correlation ID generado para la request antes de generar uno nuevo para el cuerpo de error.
+    - Tests agregados para propagacion/generacion de correlation ID y limpieza de MDC.
+    - Verificacion enfocada: `.\mvnw.cmd "-Dtest=CorrelationIdFilterTest,GlobalExceptionHandlerTest" test` ejecutado con exito: 7 tests, 0 fallos.
+    - Suite completa: `.\mvnw.cmd test` con PostgreSQL local en `localhost:15432` ejecutado con exito: 245 tests, 0 fallos.
 
 ## Fase 11: Pruebas end-to-end locales con Docker
 
@@ -761,8 +787,8 @@
     - Verificacion enfocada: `.\mvnw.cmd "-Dtest=AccountingControllerTest,AccountingPersistenceAdapterTest,ChartOfAccountsServiceTest,GenerateAccountingEntryServiceTest,QueryAccountingBooksServiceTest" test` ejecutado con exito: 33 tests, 0 fallos.
     - Suite completa: `.\mvnw.cmd test` con PostgreSQL local en `localhost:15432` ejecutado con exito: 242 tests, 0 fallos.
 
-- [ ] TASK-030: Crear seed local y guia de pruebas Docker
-  - Estado: PENDING
+- [x] TASK-030: Crear seed local y guia de pruebas Docker
+  - Estado: DONE
   - Acceptance criteria: AC-024.
   - Tests requeridos: checklist operacional documentado y prueba manual guiada.
   - Descripcion: Crear datos dummy y documentacion para levantar Docker, ejecutar flujos por API y consultar PostgreSQL.
@@ -770,3 +796,435 @@
     - Datos dummy seguros para empresa, catalogos, emisor, resolucion POS, productos, cliente/proveedor y cuentas contables base.
     - Comandos `docker compose up`, logs, healthchecks, curls de prueba y consultas SQL.
     - Documentar limitaciones locales: proveedor DIAN mock, sin certificados reales y sin validacion oficial DIAN.
+  - Archivos:
+    - `src/main/resources/db/seed/local-demo-seed.sql`
+    - `docs/local-docker-test-guide.md`
+    - `README.md`
+    - `specs/tasks.md`
+  - Resultado local:
+    - Creado seed SQL local idempotente para catalogos base, producto demo, cliente/proveedor demo, emisor, resolucion POS, cuentas PUC y regla contable de venta POS.
+    - El seed queda fuera de `db/migration` para que Flyway no lo aplique automaticamente en ambientes no locales.
+    - Creada guia Docker con comandos de arranque, healthcheck, carga de seed, curls para POS/proveedor mock/contabilidad, consultas SQL y checklist AC-024.
+    - Documentadas limitaciones locales: proveedor DIAN mock, sin certificados reales, sin validacion oficial DIAN, inventario y contabilidad automatica aun no conectados al flujo POS.
+    - Verificacion: `.\mvnw.cmd test` con PostgreSQL local en `localhost:15432` ejecutado con exito: 245 tests, 0 fallos.
+    - Seed aplicado en PostgreSQL Docker mediante `psql`; verificado emisor demo, resolucion POS demo, cuentas PUC demo, categoria y productos demo.
+
+## Fase 12: Microservicios fisicos y flujo completo antes de depuracion legacy
+
+- [x] TASK-031: Redisenar estructura Maven multi-modulo para microservicios fisicos
+  - Estado: DONE
+  - Requisitos: RF-010, RF-013, RF-014, RF-015, RNF-002, RNF-011, RNF-013, RN-013.
+  - Acceptance criteria: AC-030, AC-031.
+  - Descripcion: Convertir la estructura actual de un unico artefacto Spring Boot en una estructura multi-modulo preparada para microservicios fisicos, manteniendo el codigo actual compilable durante la transicion.
+  - Alcance:
+    - Definir modulo padre Maven.
+    - Definir carpeta objetivo `services/`.
+    - Definir modulos para `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service`.
+    - Definir estrategia de modulo compartido solo para contratos o utilidades estrictamente comunes, evitando acoplar dominio entre servicios.
+    - Mantener el monolito actual como modulo transitorio hasta completar extraccion.
+    - Documentar puertos, nombres de artefactos, puertos HTTP locales y variables de entorno por servicio.
+  - Fuera de alcance:
+    - Mover todo el codigo en una sola tarea.
+    - Eliminar paquetes legacy.
+    - Cambiar contratos publicos sin tarea especifica.
+  - Archivos propuestos:
+    - `pom.xml`
+    - `services/*/pom.xml`
+    - `services/*/src/main/resources/application.properties`
+    - `Dockerfile` por servicio cuando se apruebe la parte Docker de la tarea.
+    - `docker-compose.yml`
+    - `.env.example`
+    - `specs/architecture.md`
+    - `specs/design.md`
+    - `README.md`
+  - Completion criteria:
+    - Cada microservicio objetivo tiene modulo Maven definido o placeholder aprobado.
+    - El proyecto compila en la nueva estructura.
+    - La suite de pruebas existente sigue ejecutando.
+    - Docker Compose queda planificado o actualizado segun aprobacion Docker.
+  - Tests requeridos:
+    - `mvn test` o comando Maven equivalente multi-modulo.
+    - Validacion de arranque minimo de al menos un servicio extraido cuando exista implementacion.
+  - Resultado local:
+    - Convertido `pom.xml` raiz en parent/aggregator Maven con `packaging=pom`.
+    - Movido el backend Spring Boot actual a `services/legacy-monolith` como modulo transitorio.
+    - Creados modulos placeholder para `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service`.
+    - Actualizado `docker-compose.yml` para ejecutar `legacy-monolith` con `./mvnw -pl services/legacy-monolith spring-boot:run`.
+    - Actualizados `.env.example`, `README.md` y la guia Docker local con rutas y comandos multi-modulo.
+    - Verificacion: `.\mvnw.cmd -q -DskipTests validate` ejecutado con exito.
+    - Verificacion Docker Compose: `docker compose config` ejecutado con exito.
+    - Suite completa: `.\mvnw.cmd test` con `DB_URL=jdbc:postgresql://localhost:15432/facturaelectronica`, `DB_USERNAME=factura_user`, `DB_PASSWORD=change_me` y `DIAN_PROVIDER_MODE=mock` ejecutado con exito: 248 tests, 0 fallos.
+
+- [x] TASK-032: Implementar `tenant-service` para empresas multiempresa
+  - Estado: DONE
+  - Requisitos: RF-013, RNF-003, RNF-009, RNF-011, RN-013.
+  - Acceptance criteria: AC-030, AC-031, AC-032, AC-035.
+  - Descripcion: Crear el servicio fisico responsable de empresas/tenants para que el flujo desde cero inicie creando una empresa real y no usando un UUID manual.
+  - Alcance:
+    - Modelo `Company` con datos legales minimos.
+    - Estados `ACTIVE` y `SUSPENDED`.
+    - Endpoints `POST /api/v1/companies`, `GET /api/v1/companies/{companyId}`, `PUT /api/v1/companies/{companyId}/activate` y `PUT /api/v1/companies/{companyId}/suspend`.
+    - Migraciones propias del servicio.
+    - Validacion de identificacion unica por tipo y numero.
+    - Healthcheck y configuracion local.
+  - Fuera de alcance:
+    - Autenticacion real.
+    - Roles y membresias de usuarios.
+  - Archivos propuestos:
+    - `services/tenant-service/**`
+    - `specs/api-contract.md`
+    - `specs/data-model.md`
+    - `README.md`
+  - Completion criteria:
+    - Se puede crear una empresa por API.
+    - Se puede consultar la empresa creada.
+    - La empresa queda persistida con aislamiento para los demas servicios.
+  - Tests requeridos:
+    - Unit tests de caso de uso.
+    - Controller tests.
+    - Persistence tests.
+  - Evidencia:
+    - `services/tenant-service` implementado como microservicio Spring Boot independiente con Clean Architecture.
+    - Migracion Flyway `tenant.company` creada con identificacion unica por tipo y numero.
+    - Endpoints implementados: `POST /api/v1/companies`, `GET /api/v1/companies/{companyId}`, `PUT /api/v1/companies/{companyId}/activate`, `PUT /api/v1/companies/{companyId}/suspend`.
+    - Docker Compose actualizado con contenedor `tenant-service` en puerto `${TENANT_SERVICE_PORT:-8084}` y healthcheck `/actuator/health`.
+    - `.\mvnw.cmd -pl services/tenant-service test`: BUILD SUCCESS, 14 tests, 0 failures.
+    - `.\mvnw.cmd test`: BUILD SUCCESS, reactor completo con `legacy-monolith` y `tenant-service`.
+
+- [x] TASK-033: Migrar catalogos y terceros legacy a Clean Architecture y microservicios
+  - Estado: DONE
+  - Requisitos: RF-010, RF-015, RNF-002, RNF-009, RNF-011, RN-015.
+  - Acceptance criteria: AC-025, AC-026, AC-027, AC-028, AC-030, AC-032, AC-036.
+  - Descripcion: Extraer catalogos y terceros desde paquetes legacy hacia `catalog-service` y `thirdparty-service`, manteniendo compatibilidad funcional mientras se prepara la eliminacion posterior del codigo antiguo.
+  - Alcance:
+    - Migrar paises, impuestos, metodos de pago, parametros fiscales, tipos de documento y tipos de gasto hacia `catalog-service`.
+    - Migrar clientes y proveedores hacia `thirdparty-service`.
+    - Definir cuales catalogos son globales y cuales son por empresa.
+    - Agregar `company_id` a terceros y catalogos configurables.
+    - Mantener adaptadores temporales o rutas compatibles cuando sea necesario.
+  - Fuera de alcance:
+    - Eliminar tablas legacy.
+    - Implementar autenticacion real.
+  - Archivos propuestos:
+    - `services/catalog-service/**`
+    - `services/thirdparty-service/**`
+    - migraciones propias de ambos servicios.
+    - tests de compatibilidad.
+    - `specs/api-contract.md`
+    - `specs/data-model.md`
+  - Completion criteria:
+    - Catalogos y terceros operan desde microservicios fisicos.
+    - No existen dependencias de dominio hacia Spring/JPA.
+    - Las pruebas demuestran aislamiento por empresa donde aplique.
+  - Tests requeridos:
+    - Unit tests de casos de uso.
+    - Controller tests.
+    - Persistence tests.
+    - Pruebas de compatibilidad de endpoints relevantes.
+  - Evidencia:
+    - `services/catalog-service` implementado como microservicio Spring Boot independiente con Clean Architecture, migracion Flyway propia y healthcheck.
+    - `services/thirdparty-service` implementado como microservicio Spring Boot independiente con Clean Architecture, migracion Flyway propia y healthcheck.
+    - `thirdparty-service` elimina dependencia JPA directa hacia entidades de catalogo y consulta tipos de documento mediante contrato REST `CATALOG_SERVICE_URL`.
+    - Docker Compose actualizado con contenedores `catalog-service` en `${CATALOG_SERVICE_PORT:-8085}` y `thirdparty-service` en `${THIRDPARTY_SERVICE_PORT:-8086}`.
+    - `catalog-service` conserva endpoints legacy compatibles de catalogos durante la extraccion.
+    - `thirdparty-service` conserva endpoints legacy compatibles de clientes y proveedores durante la extraccion.
+    - Migraciones creadas: `catalog.*` y `thirdparty.*` con `company_id` preparado en datos configurables y terceros.
+    - `.\mvnw.cmd -pl services/catalog-service test`: BUILD SUCCESS, 99 tests, 0 failures.
+    - `.\mvnw.cmd -pl services/thirdparty-service test`: BUILD SUCCESS, 29 tests, 0 failures.
+    - `docker compose config`: configuracion valida.
+    - `.\mvnw.cmd test`: BUILD SUCCESS, reactor completo con `legacy-monolith`, `tenant-service`, `catalog-service` y `thirdparty-service`.
+  - Nota:
+    - `X-Company-Id` estricto queda pendiente para los contratos `/api/v1`; en TASK-033 se conserva compatibilidad legacy para no romper clientes actuales.
+
+- [x] TASK-034: Implementar `inventory-service` completo con costos, compras, stock y kardex
+  - Estado: DONE
+  - Requisitos: RF-008, RF-014, RF-015, RNF-002, RNF-009, RNF-011.
+  - Acceptance criteria: AC-010, AC-011, AC-012, AC-013, AC-030, AC-032, AC-034, AC-035.
+  - Descripcion: Implementar inventario como microservicio fisico, reemplazando el stock legacy con productos multiempresa, costo inicial, compras, movimientos y kardex.
+  - Alcance:
+    - Productos con `company_id`, SKU/codigo de barras, precio de venta y costo.
+    - Compras y confirmacion de compras.
+    - Stock balance por empresa y producto.
+    - Movimientos `PURCHASE_IN`, `SALE_OUT`, `RETURN_IN`, `ADJUSTMENT_IN`, `ADJUSTMENT_OUT`.
+    - Disponibilidad de productos para venta.
+    - Kardex por producto.
+    - Idempotencia en movimientos por documento origen.
+  - Fuera de alcance:
+    - Bodegas multiples.
+    - Costeo promedio ponderado avanzado, FIFO o NIIF avanzado.
+  - Archivos propuestos:
+    - `services/inventory-service/**`
+    - migraciones `inventory_*`
+    - `specs/data-model.md`
+    - `specs/api-contract.md`
+  - Completion criteria:
+    - Se puede crear inventario desde cero.
+    - Una compra o ajuste incrementa stock.
+    - Una venta validada puede descontar stock sin permitir negativos.
+    - El kardex muestra movimientos con costo y documento origen.
+  - Tests requeridos:
+    - Unit tests de stock y movimientos.
+    - Controller tests.
+    - Persistence tests.
+    - Tests de idempotencia.
+  - Evidencia:
+    - `services/inventory-service` implementado como microservicio Spring Boot independiente con Clean Architecture.
+    - Migracion Flyway `inventory` creada para `product`, `stock_balance`, `inventory_movement`, `purchase` y `purchase_line`.
+    - Endpoints implementados: `POST /api/v1/products`, `GET /api/v1/products/{productId}`, `GET /api/v1/products/{productId}/availability`, `GET /api/v1/products/{productId}/kardex`, `POST /api/v1/inventory-movements`, `POST /api/v1/purchases` y `POST /api/v1/purchases/{purchaseId}/confirm`.
+    - `X-Company-Id` requerido en operaciones de negocio.
+    - `Idempotency-Key` requerido para movimientos y compras; creacion de producto usa la clave cuando registra stock inicial.
+    - Docker Compose actualizado con `inventory-service` en `${INVENTORY_SERVICE_PORT:-8087}` y healthcheck `/actuator/health`.
+    - `.env.example`, `README.md`, `specs/api-contract.md`, `specs/data-model.md` y `specs/architecture.md` actualizados.
+    - `.\mvnw.cmd -pl services/inventory-service test`: BUILD SUCCESS, 15 tests, 0 failures.
+    - `docker compose config`: configuracion valida.
+    - `.\mvnw.cmd test`: BUILD SUCCESS, reactor completo con `legacy-monolith`, `tenant-service`, `catalog-service`, `thirdparty-service` e `inventory-service`.
+
+- [ ] TASK-035: Implementar venta completa y emision electronica conectada al flujo
+  - Estado: IN_PROGRESS
+  - Requisitos: RF-003, RF-004, RF-005, RF-006, RF-014, RN-001, RN-002, RN-005, RN-006, RN-014.
+  - Acceptance criteria: AC-001, AC-002, AC-003, AC-004, AC-007, AC-009, AC-030, AC-031, AC-033, AC-035.
+  - Descripcion: Completar `billing-service` como microservicio fisico para crear venta, validar stock, emitir POS/factura electronica, consultar proveedor DIAN mock y orquestar efectos posteriores.
+  - Alcance:
+    - Endpoint `POST /api/v1/sales`.
+    - Endpoint `POST /api/v1/sales/{saleId}/confirm`.
+    - Soporte de POS electronico y base para factura electronica.
+    - Cliente HTTP hacia `inventory-service`.
+    - Cliente HTTP hacia `dian-provider-service`.
+    - Cliente HTTP hacia `accounting-service`.
+    - Idempotencia en confirmacion y emision.
+    - Persistencia de venta, lineas, documento electronico, estado, CUFE/CUDE/QR simulado y trazabilidad.
+  - Fuera de alcance:
+    - Firma digital real.
+    - XML UBL oficial final.
+    - Proveedor DIAN real.
+  - Archivos propuestos:
+    - `services/billing-service/**`
+    - migraciones `billing_*`
+    - tests de orquestacion.
+    - `specs/api-contract.md`
+  - Completion criteria:
+    - Una venta confirmada genera documento electronico.
+    - El proveedor mock acepta/rechaza segun configuracion.
+    - La venta aceptada descuenta inventario y contabiliza automaticamente.
+    - Los reintentos no duplican numeracion, movimiento ni asiento.
+  - Tests requeridos:
+    - Unit tests de casos de uso.
+    - Controller tests.
+    - Tests de clientes HTTP con mocks.
+    - Tests de idempotencia.
+  - Evidencia parcial:
+    - `services/billing-service` creado como microservicio Spring Boot independiente con Clean Architecture.
+    - Migracion Flyway `billing` creada para `sale`, `sale_line` y `electronic_document`.
+    - Endpoints implementados: `POST /api/v1/sales`, `POST /api/v1/sales/{saleId}/confirm` y `GET /api/v1/sales/{saleId}`.
+    - Creacion de venta valida disponibilidad contra `inventory-service`.
+    - Confirmacion de venta genera documento POS consumiendo `dian-provider-service` por HTTP.
+    - Docker Compose actualizado con `billing-service` en `${BILLING_SERVICE_PORT:-8088}` y healthcheck `/actuator/health`.
+    - `.env.example`, `README.md`, `specs/api-contract.md`, `specs/data-model.md` y `specs/design.md` actualizados.
+    - `.\mvnw.cmd -pl services/billing-service test`: BUILD SUCCESS, 11 tests, 0 failures.
+    - `docker compose config`: configuracion valida.
+    - `.\mvnw.cmd test`: BUILD SUCCESS, reactor completo con `legacy-monolith`, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service` y `billing-service`.
+  - Pendiente para completar TASK-035:
+    - Aplicar automaticamente `SALE_OUT` y asiento contable despues de aceptacion, segun TASK-037.
+    - Reintentos integrales sin duplicar numeracion, movimiento ni asiento.
+
+- [x] TASK-036: Separar `dian-provider-service` con mock configurable
+  - Estado: DONE
+  - Requisitos: RF-004, RF-005, RNF-006, RNF-010, RNF-011.
+  - Acceptance criteria: AC-003, AC-004, AC-019, AC-023, AC-030, AC-031.
+  - Descripcion: Extraer el adaptador DIAN mock a un microservicio fisico independiente para simular emision, rechazo y fallo tecnico sin credenciales reales.
+  - Alcance:
+    - Endpoint interno `POST /api/v1/provider/electronic-pos`.
+    - Endpoint interno base para factura electronica.
+    - Configuracion `DIAN_PROVIDER_MODE=mock`.
+    - Respuestas deterministicas `ACCEPTED`, `REJECTED`, `FAILED`.
+    - Registro seguro de solicitudes/respuestas sin secretos.
+  - Fuera de alcance:
+    - Integracion con proveedor real.
+    - Certificados digitales reales.
+  - Archivos propuestos:
+    - `services/dian-provider-service/**`
+    - migraciones `dian_provider_*` si se persisten envios.
+    - `.env.example`
+    - `docker-compose.yml`
+  - Completion criteria:
+    - `billing-service` puede enviar documentos al mock por HTTP.
+    - El mock responde estados configurables.
+    - No se requieren credenciales reales.
+  - Tests requeridos:
+    - Unit tests del mock.
+    - Controller tests.
+    - Contract tests basicos consumidor/proveedor.
+  - Evidencia:
+    - `services/dian-provider-service` implementado como microservicio Spring Boot independiente con Clean Architecture.
+    - Migracion Flyway `dian_provider` creada para `provider_submission`.
+    - Endpoints implementados: `POST /api/v1/provider/electronic-pos`, `POST /api/v1/provider/electronic-invoices` y `GET /api/v1/provider/submissions/{trackingId}`.
+    - `DIAN_PROVIDER_MODE=mock` es el unico modo permitido en esta version; otros modos fallan explicitamente.
+    - Respuestas mock `ACCEPTED`, `REJECTED` y `FAILED` configurables con `DIAN_MOCK_DEFAULT_STATUS`, `DIAN_MOCK_ERROR_CODE` y `DIAN_MOCK_ERROR_MESSAGE`.
+    - `billing-service` reemplazo el mock local cableado por cliente HTTP hacia `DIAN_PROVIDER_SERVICE_URL`.
+    - Docker Compose actualizado con `dian-provider-service` en `${DIAN_PROVIDER_SERVICE_PORT:-8089}` y healthcheck `/actuator/health`.
+    - `.env.example`, `README.md`, `specs/api-contract.md`, `specs/data-model.md` y `specs/design.md` actualizados.
+    - `.\mvnw.cmd -pl services/dian-provider-service test`: BUILD SUCCESS, 8 tests, 0 failures.
+    - `.\mvnw.cmd -pl services/billing-service test`: BUILD SUCCESS, 11 tests, 0 failures.
+    - `docker compose config`: configuracion valida.
+    - `.\mvnw.cmd test`: BUILD SUCCESS, reactor completo con 424 tests, 0 failures, 0 errors.
+
+- [x] TASK-037: Conectar facturacion validada con inventario y contabilidad
+  - Estado: DONE
+  - Requisitos: RF-008, RF-009, RF-014, RN-006, RN-014.
+  - Acceptance criteria: AC-010, AC-013, AC-014, AC-015, AC-016, AC-033, AC-035.
+  - Descripcion: Implementar la orquestacion idempotente para que un documento aceptado por DIAN mock genere movimiento de inventario y asiento contable automatico.
+  - Alcance:
+    - Cliente HTTP desde `billing-service` hacia `inventory-service` para `SALE_OUT`.
+    - Cliente HTTP desde `billing-service` hacia `accounting-service` para asiento automatico.
+    - Reglas de reintento seguro.
+    - Marcas `inventory_applied_at` y `accounting_applied_at` o equivalente.
+    - Auditoria de efectos posteriores a validacion fiscal.
+  - Fuera de alcance:
+    - Saga asincrona con broker.
+    - Compensaciones automaticas complejas.
+  - Archivos propuestos:
+    - `services/billing-service/**`
+    - `services/inventory-service/**`
+    - `services/accounting-service/**`
+    - tests de integracion local.
+  - Completion criteria:
+    - Documento aceptado descuenta stock una sola vez.
+    - Documento aceptado genera asiento balanceado una sola vez.
+    - Reintentar confirmacion o envio no duplica efectos.
+  - Tests requeridos:
+    - Tests unitarios de orquestacion.
+    - Tests con mocks HTTP.
+    - Tests de idempotencia.
+  - Resultado implementado:
+    - `accounting-service` extraido como microservicio fisico Spring Boot desde el bounded context contable Clean Architecture existente.
+    - `billing-service` agrega cliente HTTP hacia `inventory-service` para registrar `SALE_OUT` por linea aceptada.
+    - `billing-service` agrega cliente HTTP hacia `accounting-service` para generar asiento `SALE_CONFIRMED`.
+    - `billing.electronic_document` agrega `inventory_applied_at` y `accounting_applied_at`.
+    - Reintentos de `POST /api/v1/sales/{saleId}/confirm` aplican efectos pendientes sin reenviar al proveedor ni duplicar efectos ya aplicados.
+    - `accounting-service` retorna asiento existente cuando `companyId`, `sourceType` y `sourceId` ya fueron posteados.
+    - Docker Compose incluye `accounting-service` en `${ACCOUNTING_SERVICE_PORT:-8090}` y `billing-service` depende de su healthcheck.
+    - `.env.example`, `README.md`, `specs/api-contract.md` y `specs/design.md` actualizados.
+    - `docker compose config`: configuracion valida.
+    - `.\mvnw.cmd -pl services/accounting-service test`: BUILD SUCCESS, 28 tests, 0 failures.
+    - `.\mvnw.cmd -pl services/accounting-service,services/billing-service test`: BUILD SUCCESS, 43 tests, 0 failures.
+    - `.\mvnw.cmd test` con `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `DIAN_PROVIDER_MODE=mock`: BUILD SUCCESS, 706 tests, 0 failures, 0 errors.
+
+- [x] TASK-038: Implementar prueba end-to-end Docker desde cero
+  - Estado: DONE
+  - Requisitos: RF-013, RF-014, RNF-013.
+  - Acceptance criteria: AC-024, AC-031, AC-032, AC-035.
+  - Descripcion: Crear prueba operacional y automatizada local que levante la plataforma multi-contenedor y ejecute el flujo desde empresa nueva hasta documento aceptado, inventario descontado y asiento contable generado.
+  - Alcance:
+    - Levantar Docker Compose.
+    - Crear empresa.
+    - Configurar emisor, resolucion, cuentas PUC y regla contable.
+    - Crear cliente/proveedor.
+    - Crear producto y stock inicial.
+    - Crear y confirmar venta.
+    - Emitir POS/factura electronica con DIAN mock.
+    - Verificar inventario, documento, envio, asiento y auditoria por API y PostgreSQL.
+    - Documentar comandos y consultas.
+  - Fuera de alcance:
+    - Prueba con proveedor DIAN real.
+    - Prueba de carga.
+  - Archivos propuestos:
+    - `docs/e2e-from-zero-test-guide.md`
+    - `src/test` o `services/*/src/test` segun estructura final.
+    - scripts de prueba no destructivos aprobados.
+    - `README.md`
+  - Completion criteria:
+    - El flujo completo se puede repetir desde base limpia.
+    - La guia muestra data esperada y tablas intervenidas.
+    - La prueba no requiere secretos reales.
+  - Tests requeridos:
+    - Prueba E2E automatizada cuando sea viable.
+    - Checklist operacional documentado.
+  - Resultado parcial:
+    - Agregada guia `docs/e2e-from-zero-test-guide.md` para ejecutar flujo Docker desde cero sobre microservicios.
+    - Agregado script no destructivo `scripts/e2e-from-zero.ps1` con datos unicos por corrida.
+    - La guia documenta servicios involucrados, componentes no involucrados, limitaciones legacy, datos esperados y consultas PostgreSQL.
+    - Identificada brecha: `billing-service` fisico aun no expone configuracion de emisor/resolucion; la prueba valida POS con configuracion interna actual.
+    - `README.md` actualizado para enlazar la nueva guia E2E.
+  - Resultado implementado:
+    - `billing-service` corrige la carga JPA del agregado `Sale` con `@EntityGraph` para evitar fallos al leer lineas/documento fuera de la transaccion.
+    - `billing-service` envia a `dian-provider-service` el ID real del documento electronico, no el ID de la venta.
+    - Clientes HTTP de `billing-service` envian `Content-Type: application/json` en comandos POST a proveedor, inventario y contabilidad.
+    - Agregada prueba `SalePersistenceAdapterTest` para guardar y leer ventas con lineas/documento desde PostgreSQL.
+    - `.\mvnw.cmd -pl services/billing-service test`: BUILD SUCCESS, 17 tests, 0 failures.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: flujo completado correctamente.
+    - Evidencia E2E: `CompanyId=cfd4ae59-dfb2-4a4d-a8a5-2b39d6d1c524`, `ProductId=f29e0b8e-fcf7-42f2-b4d2-ced59bd514c7`, `SaleId=8d2e3249-3b73-4665-a6fd-ab28285e728b`, `DocumentId=dbfabf9d-d98c-4e68-b360-e4345e7c9594`, `ProviderTrackingId=mock-electronic_pos-dbfabf9d-d98c-4e68-b360-e4345e7c9594`.
+
+- [x] TASK-039: Identificar codigo y tablas legacy no usadas
+  - Estado: DONE
+  - Requisitos: RF-015, RN-015.
+  - Acceptance criteria: AC-036.
+  - Descripcion: Construir inventario de paquetes, clases, endpoints, repositorios, DTOs, mappers, tablas y migraciones legacy para decidir que puede eliminarse despues de la migracion.
+  - Alcance:
+    - Analizar referencias de compilacion.
+    - Analizar endpoints activos.
+    - Mapear tabla legacy contra tabla destino.
+    - Identificar clases reemplazadas.
+    - Identificar tablas que aun contienen datos requeridos.
+    - Proponer plan de eliminacion por lotes.
+  - Fuera de alcance:
+    - Eliminar codigo o tablas.
+    - Borrar datos.
+  - Archivos propuestos:
+    - `docs/legacy-cleanup-inventory.md`
+    - `specs/data-model.md`
+    - `specs/tasks.md`
+  - Completion criteria:
+    - Existe matriz legacy -> reemplazo.
+    - Cada elemento tiene estado: mantener, migrar, eliminar o pendiente.
+    - La limpieza queda bloqueada hasta aprobar TASK-040.
+  - Tests requeridos:
+    - `mvn test`.
+    - Reporte de busqueda de referencias con `rg`.
+  - Evidencia:
+    - Creado `docs/legacy-cleanup-inventory.md` con matriz de endpoints, tablas, componentes, candidatos a eliminar y bloqueos.
+    - Actualizado `specs/data-model.md` con politica de migracion legacy refinada despues de TASK-038.
+    - `rg --files src/main/java`: no existe `src/main/java` raiz; el codigo transitorio esta concentrado en `services/legacy-monolith`.
+    - `services/legacy-monolith` contiene 430 archivos Java main y 45 pruebas; no participa en la prueba E2E Docker desde cero.
+    - `services/audit-service` existe como placeholder sin codigo Java; auditoria real queda pendiente antes de eliminar tablas `auditoria`, `registro_accesos` y `billing_fiscal_audit_event`.
+    - Identificadas brechas que bloquean eliminacion directa: emisor/resolucion en `billing-service`, gastos, auditoria/identidad, historicos y endurecimiento de `X-Company-Id` en rutas compatibles.
+    - `docker compose config`: configuracion valida.
+    - `.\mvnw.cmd test` con `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `DIAN_PROVIDER_MODE=mock`: BUILD SUCCESS.
+    - Reportes Surefire: 140 archivos, 708 tests, 0 failures, 0 errors, 0 skipped.
+
+- [ ] TASK-040: Eliminar codigo muerto y tablas legacy reemplazadas
+  - Estado: PENDING
+  - Requisitos: RF-015, RN-015.
+  - Acceptance criteria: AC-025, AC-028, AC-036.
+  - Descripcion: Ejecutar la depuracion aprobada despues de que la prueba E2E completa confirme que los microservicios reemplazan el comportamiento legacy necesario.
+  - Dependencias:
+    - TASK-031.
+    - TASK-032.
+    - TASK-033.
+    - TASK-034.
+    - TASK-035.
+    - TASK-036.
+    - TASK-037.
+    - TASK-038.
+    - TASK-039.
+  - Alcance:
+    - Eliminar clases, DTOs, mappers, repositorios y controladores legacy reemplazados.
+    - Crear migraciones seguras para retirar tablas o columnas legacy solo cuando aplique.
+    - Mantener respaldos o migraciones de datos cuando existan datos utiles.
+    - Actualizar README, specs y guia de despliegue.
+  - Fuera de alcance:
+    - Borrar datos productivos sin plan de migracion y aprobacion explicita.
+    - Eliminar endpoints aun usados por pruebas o flujo E2E.
+  - Archivos propuestos:
+    - paquetes legacy bajo `src/main/java/com/msvanegasg/facturaelectronica`
+    - migraciones Flyway nuevas.
+    - `README.md`
+    - `docs/legacy-cleanup-inventory.md`
+  - Completion criteria:
+    - No quedan referencias a codigo eliminado.
+    - La suite completa pasa.
+    - La prueba E2E desde cero pasa.
+    - La documentacion refleja la nueva estructura.
+  - Tests requeridos:
+    - Suite completa multi-modulo.
+    - Prueba E2E Docker desde cero.
+    - Validacion de migraciones Flyway.

@@ -49,6 +49,13 @@ Fase microservicios:
 - Cada microservicio puede mantener su propio schema o base de datos.
 - Los IDs externos entre servicios deben tratarse como referencias logicas, no como FK cruzadas entre bases separadas.
 
+Decision de migracion fisica:
+
+- En local se permite iniciar con un unico contenedor PostgreSQL y una base o schema por microservicio.
+- Cada microservicio debe tener sus propias migraciones Flyway y no debe modificar tablas de otro bounded context.
+- Las referencias entre microservicios se guardaran como UUID externos, no como llaves foraneas cruzadas entre servicios.
+- La separacion a instancias PostgreSQL independientes podra hacerse despues de estabilizar contratos y pruebas E2E.
+
 ## Entidades principales
 
 ### Tenant y seguridad
@@ -58,27 +65,142 @@ Fase microservicios:
 - `identity.role`
 - `identity.user_company`
 
+#### `tenant.company`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador de empresa/tenant. |
+| `legal_name` | varchar(180) | Si | Razon social. |
+| `trade_name` | varchar(180) | No | Nombre comercial. |
+| `identification_type_id` | uuid | Si | Tipo de identificacion usado por catalogo oficial. |
+| `identification_number` | varchar(30) | Si | Numero de identificacion. |
+| `verification_digit` | varchar(2) | No | Digito de verificacion cuando aplique. |
+| `email` | varchar(180) | Si | Correo administrativo principal. |
+| `status` | varchar(20) | Si | `ACTIVE` o `SUSPENDED`. |
+| `created_at` | timestamptz | Si | Fecha de creacion. |
+| `updated_at` | timestamptz | Si | Fecha de ultima actualizacion. |
+
+Restricciones:
+
+- `unique(identification_type_id, identification_number)`.
+- `status in ('ACTIVE', 'SUSPENDED')`.
+
 ### Catalogos globales
 
-- `catalog.country`
-- `catalog.identification_type`
-- `catalog.tax_type`
-- `catalog.payment_method`
+- `catalog.pais`
+- `catalog.tipodocumento`
+- `catalog.impuesto`
 - `accounting.puc_account_template`
+
+### Catalogos configurables
+
+- `catalog.metodo_pago`
+- `catalog.tipo_gasto`
+- `catalog.parametros`
+- `catalog.categoria`
+- `catalog.producto` como compatibilidad temporal mientras se depura el codigo legacy reemplazado por `inventory-service`.
+
+Regla de migracion TASK-033:
+
+- `pais`, `tipodocumento` e `impuesto` se tratan como catalogos globales iniciales.
+- `metodo_pago`, `tipo_gasto`, `parametros`, `categoria` y `producto` incluyen `company_id` nullable para preparar aislamiento por empresa sin romper endpoints legacy durante la extraccion.
+- `producto` se mantiene temporalmente en `catalog-service` solo por compatibilidad; el ownership funcional nuevo queda en `inventory-service` desde TASK-034.
 
 ### Terceros
 
-- `thirdparty.customer`
-- `thirdparty.supplier`
+- `thirdparty.cliente`
+- `thirdparty.proveedor`
+
+Regla de migracion TASK-033:
+
+- `thirdparty.cliente` y `thirdparty.proveedor` incluyen `company_id` nullable y constraint unico por `(company_id, id_tipo_documento, numero_documento)`.
+- La implementacion conserva endpoints legacy durante la extraccion fisica. La obligatoriedad estricta de `X-Company-Id` se endurecera cuando los contratos `/api/v1` queden estabilizados.
 
 ### Inventario
 
-- `inventory.category`
 - `inventory.product`
 - `inventory.stock_balance`
 - `inventory.inventory_movement`
 - `inventory.purchase`
 - `inventory.purchase_line`
+
+Estado TASK-034:
+
+- `inventory-service` queda implementado fisicamente en `services/inventory-service`.
+- `inventory.product` reemplaza el ownership funcional de productos inventariables; `catalog.producto` queda solo como compatibilidad legacy temporal.
+- `inventory.purchase` e `inventory.purchase_line` reemplazan el modelo legacy de compras para el flujo nuevo.
+- `inventory.stock_balance` mantiene stock simple por empresa/producto.
+- `inventory.inventory_movement` mantiene kardex inmutable por empresa/producto y documento origen.
+
+#### `inventory.product`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador del producto inventariable. |
+| `company_id` | uuid | Si | Empresa propietaria del producto. |
+| `sku` | varchar(80) | Si | Codigo interno unico por empresa. |
+| `barcode` | varchar(80) | No | Codigo de barras unico por empresa cuando exista. |
+| `name` | varchar(180) | Si | Nombre comercial del producto. |
+| `description` | varchar(500) | No | Descripcion operativa. |
+| `sale_price` | numeric(19,2) | Si | Precio de venta base. |
+| `cost` | numeric(19,2) | Si | Costo vigente inicial. |
+| `active` | boolean | Si | Indica si el producto esta disponible para operar. |
+| `created_at` | timestamptz | Si | Fecha de creacion. |
+| `updated_at` | timestamptz | Si | Fecha de actualizacion. |
+
+Restricciones:
+
+- `unique(company_id, sku)`.
+- `unique(company_id, barcode)` cuando exista codigo de barras.
+
+#### `inventory.stock_balance`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `company_id` | uuid | Si | Empresa propietaria del saldo. |
+| `product_id` | uuid | Si | Producto inventariable. |
+| `current_stock` | numeric(19,4) | Si | Stock actual. |
+| `reserved_stock` | numeric(19,4) | Si | Stock reservado; inicia en cero. |
+| `average_cost` | numeric(19,2) | Si | Costo vigente usado para trazabilidad simple. |
+| `updated_at` | timestamptz | Si | Fecha de ultima actualizacion. |
+
+Restricciones:
+
+- Llave primaria compuesta `(company_id, product_id)`.
+- `current_stock >= 0`.
+- `reserved_stock >= 0`.
+
+#### `inventory.inventory_movement`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador del movimiento. |
+| `company_id` | uuid | Si | Empresa propietaria del movimiento. |
+| `product_id` | uuid | Si | Producto afectado. |
+| `movement_type` | varchar(30) | Si | `PURCHASE_IN`, `SALE_OUT`, `RETURN_IN`, `ADJUSTMENT_IN`, `ADJUSTMENT_OUT`. |
+| `quantity` | numeric(19,4) | Si | Cantidad afectada. |
+| `unit_cost` | numeric(19,2) | Si | Costo unitario asociado al movimiento. |
+| `previous_stock` | numeric(19,4) | Si | Stock antes del movimiento. |
+| `resulting_stock` | numeric(19,4) | Si | Stock despues del movimiento. |
+| `source_document_type` | varchar(30) | Si | `PURCHASE`, `SALE`, `RETURN`, `ADJUSTMENT`, `INITIAL_STOCK`. |
+| `source_document_id` | uuid | Si | Documento origen logico. |
+| `idempotency_key` | varchar(120) | Si | Clave de idempotencia del comando. |
+| `created_by` | uuid | No | Usuario o proceso que origino el movimiento. |
+| `movement_at` | timestamptz | Si | Fecha del movimiento. |
+
+Restricciones:
+
+- `unique(company_id, source_document_type, source_document_id, movement_type, idempotency_key)`.
+- `quantity > 0`.
+- `unit_cost >= 0`.
+
+#### `inventory.purchase` y `inventory.purchase_line`
+
+- Una compra nace en `PENDING`.
+- Al confirmarse pasa a `CONFIRMED` y genera movimientos `PURCHASE_IN`.
+- La confirmacion es idempotente por compra y linea, usando la clave de idempotencia de la compra.
+- `purchase_line` guarda producto, cantidad, costo unitario, subtotal, impuesto y total.
+
 
 ### Facturacion/POS
 
@@ -93,11 +215,35 @@ Fase microservicios:
 - `billing.electronic_document_artifact`
 - `billing.adjustment_document`
 
+Estado TASK-035:
+
+- `billing-service` fisico crea sus propias tablas `billing.sale`, `billing.sale_line` y `billing.electronic_document`.
+- `billing.sale` registra venta POS/factura base, totales calculados e idempotencia.
+- `billing.sale_line` registra producto, cantidad, precio, descuento, impuesto y total por linea.
+- `billing.electronic_document` registra documento POS mock emitido en confirmacion, CUDE/QR simulado, estado fiscal y estado del proveedor.
+- La numeracion autorizada real y resoluciones migradas desde legacy se conectaran en una tarea posterior; en este corte se usa secuencia local mock para pruebas funcionales.
+
+Campos minimos adicionales para orquestacion:
+
+- `billing.sale.status`.
+- `billing.sale.payment_method_id`.
+- `billing.sale.customer_id`.
+- `billing.electronic_document.inventory_applied_at`.
+- `billing.electronic_document.accounting_applied_at`.
+- `billing.electronic_document.idempotency_key`.
+
 ### Proveedor tecnologico DIAN
 
 - `dian_provider.provider_configuration`
 - `dian_provider.provider_submission`
 - `dian_provider.provider_response`
+
+Estado TASK-036:
+
+- `dian-provider-service` fisico crea `dian_provider.provider_submission`.
+- La tabla registra empresa, documento, tipo de documento, clave de idempotencia, tracking ID, estado mock, CUFE/CUDE, QR, error seguro, fecha, request y response seguros.
+- `unique(company_id, document_id, document_type, idempotency_key)` evita duplicar envios por reintento.
+- La configuracion del proveedor real, certificados, credenciales y respuestas oficiales quedan pendientes hasta seleccionar proveedor tecnologico.
 
 ### Contabilidad
 
@@ -108,6 +254,27 @@ Fase microservicios:
 ### Auditoria
 
 - `audit.audit_event`
+
+## Politica de migracion legacy
+
+Antes de eliminar tablas publicas legacy se debe construir una matriz de reemplazo:
+
+| Tabla legacy | Bounded context destino | Tabla destino | Estado |
+|---|---|---|---|
+| `roles`, `usuarios` | `identity-service` futuro | pendiente | mantener; autenticacion/autorizacion no esta migrada |
+| `auditoria`, `registro_accesos` | `audit-service` e `identity-service` | `audit.audit_event`, tablas identity futuras | mantener; `audit-service` aun es placeholder |
+| `tipodocumento`, `pais`, `impuesto`, `metodo_pago`, `parametros`, `categoria`, `tipo_gasto` | `catalog-service` | `catalog.*` | migrado fisicamente; eliminar solo despues de migracion/respaldo de datos |
+| `producto` | `inventory-service` y compatibilidad `catalog-service` | `inventory.product`, `inventory.stock_balance`, `catalog.producto` temporal | migrado funcionalmente para inventario; resolver ownership final antes de limpiar |
+| `cliente` | `thirdparty-service` | `thirdparty.cliente` | migrado fisicamente; pendiente endurecer `X-Company-Id` obligatorio en rutas compatibles |
+| `proveedor` | `thirdparty-service` | `thirdparty.proveedor` | migrado fisicamente; pendiente endurecer `X-Company-Id` obligatorio en rutas compatibles |
+| `compra`, `detalle_compra` | `inventory-service` | `inventory.purchase`, `inventory.purchase_line`, `inventory.inventory_movement` | migrado funcionalmente; limpiar historicos solo con plan aprobado |
+| `gastos`, `detalle_gasto` | `expenses-service` futuro o `accounting-service` segun decision posterior | pendiente | mantener; no existe microservicio fisico de gastos |
+| `factura`, `detalle_factura` | `billing-service` | `billing.sale`, `billing.sale_line`, `billing.electronic_document` | parcial; POS nuevo cubierto, factura electronica completa e historicos pendientes |
+| `billing_issuer_profile`, `billing_numbering_resolution` | `billing-service` | esquema `billing` futuro | mantener; endpoints de emisor/resolucion aun no estan en `billing-service` fisico |
+| `billing_electronic_pos_document`, `billing_electronic_pos_document_line` | `billing-service` | `billing.sale`, `billing.sale_line`, `billing.electronic_document` | parcial; mantener hasta cerrar POS directo y numeracion real |
+| `billing_provider_submission` | `dian-provider-service` y `billing-service` | `dian_provider.provider_submission`, `billing.electronic_document` | reemplazado para mock; migrar trazas utiles antes de eliminar |
+| `billing_electronic_document_trace_event`, `billing_fiscal_audit_event` | `billing-service`/`audit-service` | pendiente | mantener; trazabilidad/auditoria fiscal dedicada pendiente |
+| `accounting_account`, `accounting_rule`, `accounting_rule_line`, `accounting_entry`, `accounting_entry_line` public legacy | `accounting-service` | `accounting.accounting_account`, `accounting.accounting_rule`, `accounting.accounting_rule_line`, `accounting.accounting_entry`, `accounting.accounting_entry_line` | reemplazado funcionalmente; eliminar duplicados solo despues de confirmar datos |
 
 ## Relaciones principales
 

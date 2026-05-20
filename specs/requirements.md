@@ -120,6 +120,9 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RF-010: El sistema debe exponer APIs REST versionadas por microservicio.
 - RF-011: El sistema debe registrar auditoria de cambios y operaciones fiscales.
 - RF-012: El sistema debe permitir consultar documentos por numero, prefijo, cliente, estado, fecha y CUFE/CUDE.
+- RF-013: El sistema debe permitir crear empresas/tenants reales y usar su identificador como frontera obligatoria de datos de negocio.
+- RF-014: El sistema debe ejecutar el flujo completo de venta desde inventario hasta documento electronico, proveedor DIAN mock, descuento de stock y asiento contable automatico.
+- RF-015: El sistema debe migrar los modulos legacy a bounded contexts con Clean Architecture antes de eliminar codigo o tablas antiguas.
 
 ## Requisitos no funcionales
 
@@ -133,6 +136,9 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RNF-008: APIs documentadas con OpenAPI.
 - RNF-009: Migraciones de base de datos versionadas.
 - RNF-010: Integraciones externas desacopladas mediante puertos y adaptadores.
+- RNF-011: Cada microservicio fisico debe tener artefacto de build independiente, contenedor propio, healthcheck y configuracion externa por variables de entorno.
+- RNF-012: La comunicacion inicial entre microservicios sera REST sincrona con `X-Correlation-Id`, `X-Company-Id` e idempotencia en comandos criticos.
+- RNF-013: La extraccion fisica debe mantener pruebas unitarias, pruebas de controlador, pruebas de persistencia y pruebas end-to-end locales en Docker Compose.
 
 ## Reglas de negocio
 
@@ -148,6 +154,9 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RN-010: Los descuentos se aplicaran antes del impuesto.
 - RN-011: Los importes monetarios se redondearan a 2 decimales usando `HALF_UP`.
 - RN-012: Los totales del documento se obtendran sumando los resultados redondeados de sus lineas.
+- RN-013: La unidad minima de despliegue sera el microservicio por bounded context, no un contenedor por endpoint individual.
+- RN-014: Un documento fiscal aceptado por el proveedor DIAN mock debe afectar inventario y contabilidad una sola vez por empresa, aunque el comando se reintente.
+- RN-015: Las tablas y clases legacy solo podran eliminarse despues de demostrar que el flujo equivalente existe en Clean Architecture, que la prueba end-to-end pasa y que no quedan referencias de compilacion o runtime.
 
 ## Supuestos
 
@@ -156,6 +165,8 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - El backend se evolucionara hacia microservicios, manteniendo compatibilidad temporal con el proyecto actual.
 - La correccion de credenciales hardcodeadas queda incluida como tarea aprobada para fase de implementacion.
 - Mientras no exista proveedor tecnologico, contrato tecnico, certificado y credenciales reales, la integracion DIAN se implementara con un adaptador dummy local sin llamadas externas.
+- La migracion fisica a microservicios se hara por bounded context para mantener un balance entre independencia de despliegue y complejidad operacional.
+- En local se usara Docker Compose con contenedores por microservicio; la separacion de bases de datos podra iniciar con esquemas o bases separadas en PostgreSQL y evolucionar a instancias independientes.
 
 ## Restricciones
 
@@ -166,6 +177,8 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - Validar cambios normativos antes de salir a produccion.
 - No mezclar refactorizacion arquitectonica de modulos legacy con cambios funcionales no aprobados.
 - Cada refactor debe preservar compatibilidad publica o documentar y aprobar cualquier ruptura antes de implementarla.
+- No crear nanoservicios por endpoint; cada artefacto debe representar una capacidad de negocio cohesionada.
+- No eliminar codigo, tablas ni migraciones legacy hasta completar la matriz de reemplazo y la prueba end-to-end aprobada.
 
 ## Criterios de aceptacion
 

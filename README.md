@@ -2,51 +2,54 @@
 
 Backend Java/Spring Boot para una plataforma multiempresa de facturacion electronica colombiana, POS electronico, inventario simple y contabilidad basica con PUC colombiano.
 
-El proyecto esta migrando desde una estructura legacy CRUD hacia Clean Architecture por bounded contexts, manteniendo una estrategia de monolito modular como paso intermedio antes de una posible extraccion a microservicios fisicos.
+El proyecto esta migrando desde una estructura legacy CRUD hacia Clean Architecture por bounded contexts. Actualmente usa una estructura Maven multi-modulo: el backend existente vive como `services/legacy-monolith` y los microservicios fisicos nuevos se extraeran progresivamente en `services/*`.
 
 ## Estado Actual
 
 - Arquitectura Clean Architecture implementada por modulos.
 - PostgreSQL con migraciones Flyway versionadas.
-- Docker Compose local para PostgreSQL y aplicacion.
-- POS electronico con proveedor DIAN mock configurable.
+- Docker Compose local para PostgreSQL, `legacy-monolith`, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service` y `accounting-service`.
+- POS electronico con proveedor DIAN mock configurable como microservicio HTTP y efectos posteriores idempotentes sobre inventario/contabilidad.
 - Persistencia JPA y endpoints REST para billing/POS y accounting.
 - Refactor de modulos legacy hacia bounded contexts.
-- Suite completa validada recientemente: `242 tests, 0 fallos`.
+- Suite multi-modulo validada con `legacy-monolith`, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service` y `accounting-service`.
 
 ## Alcance Funcional
 
 - Catalogos: categorias, productos, impuestos, paises, parametros, metodos de pago, tipos de documento y tipos de gasto.
 - Terceros: clientes y proveedores.
-- Inventario: compras, stock simple y movimientos de inventario a nivel de dominio.
+- Inventario: productos multiempresa, costos, compras, stock simple, movimientos y kardex.
 - Billing/POS: emisor, resoluciones, emision POS electronico, consulta y envio a proveedor DIAN mock.
 - Contabilidad: cuentas PUC por empresa, reglas contables configurables, asientos `POSTED`, libro diario y libro mayor.
 - Errores API: contrato estandar con `timestamp`, `status`, `code`, `message`, `correlationId` y `details`.
+- Observabilidad HTTP: correlation ID por request y logs estructurados de inicio/fin.
 
 ## Arquitectura
 
-Cada bounded context sigue esta estructura:
+La estructura objetivo por microservicio es:
 
 ```text
-<context>
-  domain/
-    model/
-  application/
-    dto/
-    port/in/
-    port/out/
-    usecase/
-  infrastructure/
-    config/
-    persistence/
-    provider/
-    system/
-  interfaces/
-    rest/
-    rest/dto/
+services/<service>
+  src/main/java/.../<service>
+    domain/
+    application/
+    infrastructure/
+    interfaces/
 ```
 
-Bounded contexts principales:
+Estructura actual:
+
+- `services/legacy-monolith`: modulo transitorio con el backend Spring Boot actual.
+- `services/tenant-service`: microservicio fisico para empresas/tenants.
+- `services/catalog-service`: microservicio fisico para catalogos oficiales y configurables.
+- `services/thirdparty-service`: microservicio fisico para clientes/proveedores.
+- `services/inventory-service`: microservicio fisico para productos, costos, stock, compras y kardex.
+- `services/billing-service`: microservicio fisico inicial para ventas POS y emision electronica mock.
+- `services/dian-provider-service`: microservicio fisico para mock DIAN y futura integracion real.
+- `services/accounting-service`: microservicio fisico para PUC, reglas contables, asientos, libro diario y mayor.
+- `services/audit-service`: placeholder para auditoria.
+
+Bounded contexts presentes dentro del monolito transitorio:
 
 - `catalog`
 - `thirdparty`
@@ -55,7 +58,7 @@ Bounded contexts principales:
 - `billing`
 - `accounting`
 
-Los paquetes legacy `DTO`, `mapper`, `models`, `repository`, `service` y `validator` fueron limpiados durante la migracion aprobada.
+La unidad de despliegue objetivo es un artefacto/contenedor por microservicio, no uno por endpoint individual.
 
 ## Stack Tecnico
 
@@ -93,9 +96,46 @@ POSTGRES_USER=factura_user
 POSTGRES_PASSWORD=change_me
 POSTGRES_HOST_PORT=5432
 
+LEGACY_MONOLITH_PORT=8083
+TENANT_SERVICE_PORT=8084
+CATALOG_SERVICE_PORT=8085
+THIRDPARTY_SERVICE_PORT=8086
+
 DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
 DB_USERNAME=factura_user
 DB_PASSWORD=change_me
+
+TENANT_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
+TENANT_DB_USERNAME=factura_user
+TENANT_DB_PASSWORD=change_me
+
+CATALOG_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
+CATALOG_DB_USERNAME=factura_user
+CATALOG_DB_PASSWORD=change_me
+CATALOG_SERVICE_URL=http://catalog-service:8085
+
+THIRDPARTY_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
+THIRDPARTY_DB_USERNAME=factura_user
+THIRDPARTY_DB_PASSWORD=change_me
+
+INVENTORY_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
+INVENTORY_DB_USERNAME=factura_user
+INVENTORY_DB_PASSWORD=change_me
+INVENTORY_SERVICE_URL=http://inventory-service:8087
+
+BILLING_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
+BILLING_DB_USERNAME=factura_user
+BILLING_DB_PASSWORD=change_me
+DIAN_PROVIDER_SERVICE_URL=http://dian-provider-service:8089
+ACCOUNTING_SERVICE_URL=http://accounting-service:8090
+
+DIAN_PROVIDER_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
+DIAN_PROVIDER_DB_USERNAME=factura_user
+DIAN_PROVIDER_DB_PASSWORD=change_me
+
+ACCOUNTING_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
+ACCOUNTING_DB_USERNAME=factura_user
+ACCOUNTING_DB_PASSWORD=change_me
 
 JPA_SHOW_SQL=false
 
@@ -124,13 +164,108 @@ $env:DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
 $env:DB_USERNAME='factura_user'
 $env:DB_PASSWORD='change_me'
 $env:DIAN_PROVIDER_MODE='mock'
-.\mvnw.cmd spring-boot:run
+.\mvnw.cmd -pl services/legacy-monolith spring-boot:run
+```
+
+Ejecutar `tenant-service` fuera de Docker:
+
+```powershell
+$env:TENANT_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
+$env:TENANT_DB_USERNAME='factura_user'
+$env:TENANT_DB_PASSWORD='change_me'
+.\mvnw.cmd -pl services/tenant-service spring-boot:run
+```
+
+Ejecutar `catalog-service` fuera de Docker:
+
+```powershell
+$env:CATALOG_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
+$env:CATALOG_DB_USERNAME='factura_user'
+$env:CATALOG_DB_PASSWORD='change_me'
+.\mvnw.cmd -pl services/catalog-service spring-boot:run
+```
+
+Ejecutar `thirdparty-service` fuera de Docker:
+
+```powershell
+$env:THIRDPARTY_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
+$env:THIRDPARTY_DB_USERNAME='factura_user'
+$env:THIRDPARTY_DB_PASSWORD='change_me'
+$env:CATALOG_SERVICE_URL='http://localhost:8085'
+.\mvnw.cmd -pl services/thirdparty-service spring-boot:run
+```
+
+Ejecutar `inventory-service` fuera de Docker:
+
+```powershell
+$env:INVENTORY_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
+$env:INVENTORY_DB_USERNAME='factura_user'
+$env:INVENTORY_DB_PASSWORD='change_me'
+.\mvnw.cmd -pl services/inventory-service spring-boot:run
+```
+
+Ejecutar `billing-service` fuera de Docker:
+
+```powershell
+$env:BILLING_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
+$env:BILLING_DB_USERNAME='factura_user'
+$env:BILLING_DB_PASSWORD='change_me'
+$env:INVENTORY_SERVICE_URL='http://localhost:8087'
+$env:DIAN_PROVIDER_SERVICE_URL='http://localhost:8089'
+.\mvnw.cmd -pl services/billing-service spring-boot:run
+```
+
+Ejecutar `dian-provider-service` fuera de Docker:
+
+```powershell
+$env:DIAN_PROVIDER_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
+$env:DIAN_PROVIDER_DB_USERNAME='factura_user'
+$env:DIAN_PROVIDER_DB_PASSWORD='change_me'
+$env:DIAN_PROVIDER_MODE='mock'
+$env:DIAN_MOCK_DEFAULT_STATUS='ACCEPTED'
+.\mvnw.cmd -pl services/dian-provider-service spring-boot:run
 ```
 
 La aplicacion inicia en:
 
 ```text
 http://localhost:8083
+```
+
+`tenant-service` inicia en:
+
+```text
+http://localhost:8084
+```
+
+`catalog-service` inicia en:
+
+```text
+http://localhost:8085
+```
+
+`thirdparty-service` inicia en:
+
+```text
+http://localhost:8086
+```
+
+`inventory-service` inicia en:
+
+```text
+http://localhost:8087
+```
+
+`billing-service` inicia en:
+
+```text
+http://localhost:8088
+```
+
+`dian-provider-service` inicia en:
+
+```text
+http://localhost:8089
 ```
 
 Healthcheck:
@@ -150,7 +285,14 @@ http://localhost:8083/swagger-ui.html
 El proyecto incluye `docker-compose.yml` con:
 
 - `postgres`: `postgres:16-alpine`.
-- `app`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw spring-boot:run`.
+- `legacy-monolith`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/legacy-monolith spring-boot:run`.
+- `tenant-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/tenant-service spring-boot:run`.
+- `catalog-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/catalog-service spring-boot:run`.
+- `thirdparty-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/thirdparty-service spring-boot:run`.
+- `inventory-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/inventory-service spring-boot:run`.
+- `billing-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/billing-service spring-boot:run`.
+- `dian-provider-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/dian-provider-service spring-boot:run`.
+- `accounting-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/accounting-service spring-boot:run`.
 
 Crear `.env` desde `.env.example` y ajustar puertos si es necesario. En esta maquina se uso PostgreSQL en el puerto host `15432` porque `5432` y `5433` estaban ocupados o reservados.
 
@@ -169,7 +311,13 @@ docker compose up -d postgres
 Ver logs:
 
 ```powershell
-docker compose logs -f app
+docker compose logs -f legacy-monolith
+docker compose logs -f tenant-service
+docker compose logs -f catalog-service
+docker compose logs -f thirdparty-service
+docker compose logs -f inventory-service
+docker compose logs -f billing-service
+docker compose logs -f dian-provider-service
 docker compose logs -f postgres
 ```
 
@@ -198,7 +346,7 @@ Motor seleccionado: PostgreSQL.
 Las migraciones se ejecutan con Flyway desde:
 
 ```text
-src/main/resources/db/migration
+services/legacy-monolith/src/main/resources/db/migration
 ```
 
 Migraciones actuales:
@@ -207,10 +355,38 @@ Migraciones actuales:
 - `V002__create_billing_pos_schema.sql`
 - `V003__create_accounting_schema.sql`
 
+Migracion de `tenant-service`:
+
+- `services/tenant-service/src/main/resources/db/migration/V001__create_tenant_schema.sql`
+
+Migraciones de servicios extraidos:
+
+- `services/catalog-service/src/main/resources/db/migration/V001__create_catalog_schema.sql`
+- `services/thirdparty-service/src/main/resources/db/migration/V001__create_thirdparty_schema.sql`
+- `services/inventory-service/src/main/resources/db/migration/V001__create_inventory_schema.sql`
+- `services/billing-service/src/main/resources/db/migration/V001__create_billing_sales_schema.sql`
+- `services/dian-provider-service/src/main/resources/db/migration/V001__create_dian_provider_schema.sql`
+
+Seed local opcional para pruebas Docker:
+
+```text
+services/legacy-monolith/src/main/resources/db/seed/local-demo-seed.sql
+```
+
+Aplicarlo manualmente:
+
+```powershell
+Get-Content .\services\legacy-monolith\src\main\resources\db\seed\local-demo-seed.sql | docker compose exec -T postgres psql -U factura_user -d facturaelectronica
+```
+
 Tablas relevantes:
 
 - Billing/POS: `billing_issuer_profile`, `billing_numbering_resolution`, `billing_electronic_pos_document`, `billing_provider_submission`, `billing_electronic_document_trace_event`, `billing_fiscal_audit_event`.
 - Accounting: `accounting_account`, `accounting_rule`, `accounting_rule_line`, `accounting_entry`, `accounting_entry_line`.
+- Tenant: `tenant.company`.
+- Catalog: `catalog.tipodocumento`, `catalog.pais`, `catalog.impuesto`, `catalog.metodo_pago`, `catalog.tipo_gasto`, `catalog.parametros`, `catalog.categoria`, `catalog.producto`.
+- Thirdparty: `thirdparty.cliente`, `thirdparty.proveedor`.
+- DIAN provider: `dian_provider.provider_submission`.
 
 Conexion sugerida en PgAdmin/Navicat:
 
@@ -263,9 +439,107 @@ Idempotency-Key: <valor-unico>
 
 `POST /api/v1/accounting-entries` genera asientos `POSTED` inmediatamente desde reglas contables activas por empresa.
 
+### Tenant
+
+`tenant-service` expone en `http://localhost:8084`:
+
+- `POST /api/v1/companies`
+- `GET /api/v1/companies/{companyId}`
+- `PUT /api/v1/companies/{companyId}/activate`
+- `PUT /api/v1/companies/{companyId}/suspend`
+
+### Catalog
+
+`catalog-service` expone en `http://localhost:8085` los endpoints legacy compatibles:
+
+- `/api/categorias`
+- `/api/paises`
+- `/api/tipos-documento`
+- `/api/metodos-pago`
+- `/api/parametros`
+- `/api/tipos-gasto`
+- `/api/impuestos`
+- `/api/productos`
+
+### Thirdparty
+
+`thirdparty-service` expone en `http://localhost:8086` los endpoints legacy compatibles:
+
+- `/api/clientes`
+- `/api/proveedores`
+
+`thirdparty-service` consulta tipos de documento en `catalog-service` por REST usando `CATALOG_SERVICE_URL`.
+
+### Inventory
+
+`inventory-service` expone en `http://localhost:8087`:
+
+- `POST /api/v1/products`
+- `GET /api/v1/products/{productId}`
+- `GET /api/v1/products/{productId}/availability?quantity=`
+- `GET /api/v1/products/{productId}/kardex`
+- `POST /api/v1/inventory-movements`
+- `POST /api/v1/purchases`
+- `POST /api/v1/purchases/{purchaseId}/confirm`
+
+Las operaciones de negocio requieren `X-Company-Id`; los movimientos y compras requieren `Idempotency-Key`.
+
+### Billing
+
+`billing-service` expone en `http://localhost:8088`:
+
+- `POST /api/v1/sales`
+- `POST /api/v1/sales/{saleId}/confirm`
+- `GET /api/v1/sales/{saleId}`
+
+La creacion de venta valida disponibilidad contra `inventory-service`. La confirmacion envia el POS a `dian-provider-service`, que responde con CUDE/QR mock y estado configurable con `DIAN_MOCK_DEFAULT_STATUS`.
+
+Cuando el proveedor responde `ACCEPTED`, `billing-service`:
+
+- registra `SALE_OUT` en `inventory-service` por cada linea vendida;
+- genera un asiento `SALE_CONFIRMED` en `accounting-service`;
+- marca `inventoryAppliedAt` y `accountingAppliedAt` en el documento electronico para reintentos idempotentes.
+
+### DIAN Provider
+
+`dian-provider-service` expone en `http://localhost:8089`:
+
+- `POST /api/v1/provider/electronic-pos`
+- `POST /api/v1/provider/electronic-invoices`
+- `GET /api/v1/provider/submissions/{trackingId}`
+
+Los comandos requieren `Idempotency-Key`. Las consultas requieren `X-Company-Id`. El servicio persiste el envio mock en `dian_provider.provider_submission`.
+
+### Accounting
+
+`accounting-service` expone en `http://localhost:8090`:
+
+- `POST /api/v1/accounts`
+- `GET /api/v1/accounts?code=`
+- `POST /api/v1/accounting-rules`
+- `POST /api/v1/accounting-entries`
+- `GET /api/v1/reports/journal?from=&to=`
+- `GET /api/v1/reports/ledger?from=&to=&accountCode=`
+
+Los asientos se generan desde reglas activas por empresa y son idempotentes por `companyId`, `sourceType` y `sourceId`.
+
+## Guia De Pruebas Docker
+
+La guia E2E desde cero para microservicios, con empresa nueva, inventario, venta POS, proveedor DIAN mock, asiento contable, consultas SQL y checklist AC-024/AC-031/AC-032/AC-035 esta en:
+
+```text
+docs/e2e-from-zero-test-guide.md
+```
+
+La guia legacy del monolito con seed local se conserva como referencia transitoria:
+
+```text
+docs/local-docker-test-guide.md
+```
+
 ## Proveedor DIAN Mock
 
-Mientras no existan proveedor tecnologico real, certificados y credenciales, la aplicacion usa un adaptador local dummy.
+Mientras no existan proveedor tecnologico real, certificados y credenciales, la plataforma usa `dian-provider-service` en modo mock.
 
 Variables:
 
@@ -297,7 +571,75 @@ $env:DIAN_PROVIDER_MODE='mock'
 Ejecutar prueba enfocada:
 
 ```powershell
-.\mvnw.cmd "-Dtest=AccountingControllerTest" test
+.\mvnw.cmd -pl services/legacy-monolith "-Dtest=AccountingControllerTest" test
+```
+
+Ejecutar pruebas de `tenant-service`:
+
+```powershell
+$env:TENANT_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
+$env:TENANT_DB_USERNAME='factura_user'
+$env:TENANT_DB_PASSWORD='change_me'
+.\mvnw.cmd -pl services/tenant-service test
+```
+
+Ejecutar pruebas de `catalog-service`:
+
+```powershell
+$env:CATALOG_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
+$env:CATALOG_DB_USERNAME='factura_user'
+$env:CATALOG_DB_PASSWORD='change_me'
+.\mvnw.cmd -pl services/catalog-service test
+```
+
+Ejecutar pruebas de `thirdparty-service`:
+
+```powershell
+$env:THIRDPARTY_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
+$env:THIRDPARTY_DB_USERNAME='factura_user'
+$env:THIRDPARTY_DB_PASSWORD='change_me'
+$env:CATALOG_SERVICE_URL='http://localhost:8085'
+.\mvnw.cmd -pl services/thirdparty-service test
+```
+
+Ejecutar pruebas de `inventory-service`:
+
+```powershell
+$env:INVENTORY_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
+$env:INVENTORY_DB_USERNAME='factura_user'
+$env:INVENTORY_DB_PASSWORD='change_me'
+.\mvnw.cmd -pl services/inventory-service test
+```
+
+Ejecutar pruebas de `billing-service`:
+
+```powershell
+$env:BILLING_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
+$env:BILLING_DB_USERNAME='factura_user'
+$env:BILLING_DB_PASSWORD='change_me'
+$env:INVENTORY_SERVICE_URL='http://localhost:8087'
+$env:DIAN_PROVIDER_SERVICE_URL='http://localhost:8089'
+$env:ACCOUNTING_SERVICE_URL='http://localhost:8090'
+.\mvnw.cmd -pl services/billing-service test
+```
+
+Ejecutar pruebas de `dian-provider-service`:
+
+```powershell
+$env:DIAN_PROVIDER_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
+$env:DIAN_PROVIDER_DB_USERNAME='factura_user'
+$env:DIAN_PROVIDER_DB_PASSWORD='change_me'
+$env:DIAN_PROVIDER_MODE='mock'
+.\mvnw.cmd -pl services/dian-provider-service test
+```
+
+Ejecutar pruebas de `accounting-service`:
+
+```powershell
+$env:ACCOUNTING_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
+$env:ACCOUNTING_DB_USERNAME='factura_user'
+$env:ACCOUNTING_DB_PASSWORD='change_me'
+.\mvnw.cmd -pl services/accounting-service test
 ```
 
 ## Especificaciones SDD
@@ -337,7 +679,7 @@ Estado actual:
 
 - Docker Compose local disponible.
 - PostgreSQL local en contenedor.
-- Aplicacion local montada como volumen y ejecutada con Maven Wrapper.
+- `legacy-monolith`, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service` y `dian-provider-service` locales montados como volumen y ejecutados con Maven Wrapper.
 
 Pendiente:
 
@@ -349,9 +691,6 @@ Pendiente:
 
 ## Pendientes Relevantes
 
-- `TASK-025`: auditoria fiscal.
-- `TASK-026`: correlation ID y logs estructurados.
-- `TASK-030`: seed local y guia de pruebas Docker.
 - Integracion real con proveedor tecnologico DIAN.
 - Certificados digitales reales.
 - Representacion grafica oficial.
