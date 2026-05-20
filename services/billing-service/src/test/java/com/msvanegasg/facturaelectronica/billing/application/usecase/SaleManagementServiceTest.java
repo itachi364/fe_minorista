@@ -18,9 +18,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalNumberResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.CreateSaleCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ProviderSubmissionResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineCommand;
+import com.msvanegasg.facturaelectronica.billing.application.port.in.AssignFiscalNumberUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AccountingEntryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ElectronicDocumentProviderPort;
@@ -60,6 +62,9 @@ class SaleManagementServiceTest {
 
     @Mock
     private AccountingEntryPort accountingEntryPort;
+
+    @Mock
+    private AssignFiscalNumberUseCase assignFiscalNumberUseCase;
 
     @Mock
     private IdGeneratorPort idGenerator;
@@ -116,12 +121,16 @@ class SaleManagementServiceTest {
                         "mock-qr", null, null));
         when(idGenerator.newId()).thenReturn(DOCUMENT_ID);
         when(clock.now()).thenReturn(NOW);
+        when(assignFiscalNumberUseCase.assign(any()))
+                .thenReturn(new FiscalNumberResult(UUID.randomUUID(), "18760000001", "POS", 100));
         when(saleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         var result = service.confirm(COMPANY_ID, SALE_ID, "confirm-1");
 
         assertThat(result.status()).isEqualTo(SaleStatus.CONFIRMED);
         assertThat(result.electronicDocument()).isNotNull();
+        assertThat(result.electronicDocument().prefix()).isEqualTo("POS");
+        assertThat(result.electronicDocument().documentNumber()).isEqualTo(100);
         assertThat(result.electronicDocument().providerStatus()).isEqualTo(ProviderStatus.ACCEPTED);
         assertThat(result.electronicDocument().cufeCude()).isEqualTo("mock-cude");
         assertThat(result.electronicDocument().inventoryAppliedAt()).isEqualTo(NOW);
@@ -162,7 +171,7 @@ class SaleManagementServiceTest {
 
     private SaleManagementService service() {
         return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
-                accountingEntryPort, idGenerator, clock);
+                accountingEntryPort, assignFiscalNumberUseCase, idGenerator, clock);
     }
 
     private static CreateSaleCommand command(String idempotencyKey) {

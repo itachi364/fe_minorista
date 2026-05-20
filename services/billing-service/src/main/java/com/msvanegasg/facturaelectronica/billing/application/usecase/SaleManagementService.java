@@ -2,14 +2,18 @@ package com.msvanegasg.facturaelectronica.billing.application.usecase;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 
+import com.msvanegasg.facturaelectronica.billing.application.dto.AssignFiscalNumberCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.CreateSaleCommand;
+import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalNumberResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ProviderSubmissionResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
+import com.msvanegasg.facturaelectronica.billing.application.port.in.AssignFiscalNumberUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageSaleUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AccountingEntryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
@@ -22,6 +26,7 @@ import com.msvanegasg.facturaelectronica.billing.domain.model.CudeGenerator;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
+import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalEnvironment;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
@@ -30,24 +35,25 @@ import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
 
 public class SaleManagementService implements ManageSaleUseCase {
 
-    private static final AtomicLong LOCAL_SEQUENCE = new AtomicLong(1);
-
     private final SaleRepositoryPort saleRepository;
     private final InventoryAvailabilityPort inventoryAvailability;
     private final ElectronicDocumentProviderPort providerPort;
     private final InventoryMovementPort inventoryMovementPort;
     private final AccountingEntryPort accountingEntryPort;
+    private final AssignFiscalNumberUseCase assignFiscalNumberUseCase;
     private final IdGeneratorPort idGenerator;
     private final ClockPort clock;
 
     public SaleManagementService(SaleRepositoryPort saleRepository, InventoryAvailabilityPort inventoryAvailability,
             ElectronicDocumentProviderPort providerPort, InventoryMovementPort inventoryMovementPort,
-            AccountingEntryPort accountingEntryPort, IdGeneratorPort idGenerator, ClockPort clock) {
+            AccountingEntryPort accountingEntryPort, AssignFiscalNumberUseCase assignFiscalNumberUseCase,
+            IdGeneratorPort idGenerator, ClockPort clock) {
         this.saleRepository = Objects.requireNonNull(saleRepository);
         this.inventoryAvailability = Objects.requireNonNull(inventoryAvailability);
         this.providerPort = Objects.requireNonNull(providerPort);
         this.inventoryMovementPort = Objects.requireNonNull(inventoryMovementPort);
         this.accountingEntryPort = Objects.requireNonNull(accountingEntryPort);
+        this.assignFiscalNumberUseCase = Objects.requireNonNull(assignFiscalNumberUseCase);
         this.idGenerator = Objects.requireNonNull(idGenerator);
         this.clock = Objects.requireNonNull(clock);
     }
@@ -72,9 +78,15 @@ public class SaleManagementService implements ManageSaleUseCase {
         }
         sale.lines().forEach(line -> ensureAvailable(sale.companyId(), line.productId(), line.quantity()));
         UUID documentId = idGenerator.newId();
-        ProviderSubmissionResult provider = providerPort.submitElectronicPos(sale, documentId, idempotencyKey);
         Instant now = clock.now();
-        ElectronicDocument document = documentFromProvider(documentId, sale, provider, idempotencyKey, now);
+        ElectronicDocumentType documentType = sale.saleChannel() == SaleChannel.POS
+                ? ElectronicDocumentType.ELECTRONIC_POS
+                : ElectronicDocumentType.ELECTRONIC_INVOICE;
+        FiscalNumberResult fiscalNumber = assignFiscalNumberUseCase.assign(new AssignFiscalNumberCommand(
+                sale.companyId(), documentType, LocalDate.ofInstant(now, ZoneOffset.UTC), FiscalEnvironment.TEST));
+        ProviderSubmissionResult provider = providerPort.submitElectronicPos(sale, documentId, idempotencyKey);
+        ElectronicDocument document = documentFromProvider(documentId, sale, documentType, fiscalNumber, provider,
+                idempotencyKey, now);
         Sale confirmed = saleRepository.save(sale.confirm(document, now));
         return BillingResultMapper.toSaleResult(applyPostValidationEffects(confirmed));
     }
@@ -105,26 +117,25 @@ public class SaleManagementService implements ManageSaleUseCase {
         }
     }
 
-    private ElectronicDocument documentFromProvider(UUID documentId, Sale sale, ProviderSubmissionResult provider,
-            String idempotencyKey, Instant issuedAt) {
+    private ElectronicDocument documentFromProvider(UUID documentId, Sale sale, ElectronicDocumentType documentType,
+            FiscalNumberResult fiscalNumber, ProviderSubmissionResult provider, String idempotencyKey,
+            Instant issuedAt) {
         ProviderStatus providerStatus = provider.status();
         ElectronicDocumentStatus status = switch (providerStatus) {
             case ACCEPTED -> ElectronicDocumentStatus.VALIDATED;
             case REJECTED -> ElectronicDocumentStatus.REJECTED;
             case FAILED -> ElectronicDocumentStatus.FAILED;
         };
-        long number = LOCAL_SEQUENCE.getAndIncrement();
         String cude = provider.cufeCude() == null || provider.cufeCude().isBlank()
-                ? CudeGenerator.generate(sale.companyId() + "|" + sale.id() + "|" + number + "|" + sale.total())
+                ? CudeGenerator.generate(
+                        sale.companyId() + "|" + sale.id() + "|" + fiscalNumber.number() + "|" + sale.total())
                 : provider.cufeCude();
         String qr = provider.qrContent() == null || provider.qrContent().isBlank()
                 ? "mock-qr:" + cude
                 : provider.qrContent();
-        return new ElectronicDocument(documentId, sale.companyId(), sale.id(),
-                sale.saleChannel() == SaleChannel.POS ? ElectronicDocumentType.ELECTRONIC_POS
-                        : ElectronicDocumentType.ELECTRONIC_INVOICE,
-                status, providerStatus, sale.saleChannel() == SaleChannel.POS ? "POS" : "FE", number, cude, qr,
-                sale.subtotal(), sale.taxTotal(), sale.total(), provider.trackingId(), provider.errorCode(),
+        return new ElectronicDocument(documentId, sale.companyId(), sale.id(), documentType, status, providerStatus,
+                fiscalNumber.prefix(), fiscalNumber.number(), cude, qr, sale.subtotal(), sale.taxTotal(),
+                sale.total(), provider.trackingId(), provider.errorCode(),
                 provider.errorMessage(), idempotencyKey, issuedAt, null, null);
     }
 

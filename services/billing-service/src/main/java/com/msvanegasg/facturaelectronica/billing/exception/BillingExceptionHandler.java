@@ -46,7 +46,7 @@ public class BillingExceptionHandler {
                 request);
     }
 
-    @ExceptionHandler(InsufficientStockException.class)
+    @ExceptionHandler({ InsufficientStockException.class, IllegalStateException.class })
     ResponseEntity<ApiErrorResponse> handleBusiness(RuntimeException exception, HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, ApiErrorCode.BUSINESS_RULE_VIOLATION, exception.getMessage(), List.of(),
                 request);

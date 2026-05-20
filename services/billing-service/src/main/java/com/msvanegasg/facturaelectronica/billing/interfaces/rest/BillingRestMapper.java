@@ -2,12 +2,20 @@ package com.msvanegasg.facturaelectronica.billing.interfaces.rest;
 
 import java.util.UUID;
 
+import com.msvanegasg.facturaelectronica.billing.application.dto.ConfigureIssuerProfileCommand;
+import com.msvanegasg.facturaelectronica.billing.application.dto.CreateNumberingResolutionCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.CreateSaleCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ElectronicDocumentResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.IssuerProfileResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.NumberingResolutionResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.ElectronicDocumentResponse;
+import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.IssuerProfileRequest;
+import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.IssuerProfileResponse;
+import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.NumberingResolutionRequest;
+import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.NumberingResolutionResponse;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.SaleLineRequest;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.SaleLineResponse;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.SaleRequest;
@@ -29,6 +37,30 @@ final class BillingRestMapper {
                 result.total(), result.idempotencyKey(), result.createdBy(), result.createdAt(), result.confirmedAt(),
                 result.lines().stream().map(BillingRestMapper::toLineResponse).toList(),
                 result.electronicDocument() == null ? null : toDocumentResponse(result.electronicDocument()));
+    }
+
+    static ConfigureIssuerProfileCommand toCommand(UUID companyId, IssuerProfileRequest request) {
+        return new ConfigureIssuerProfileCommand(companyId, request.legalName(), request.nit(),
+                request.verificationDigit(), request.taxResponsibilities(), request.municipalityCode(),
+                request.address());
+    }
+
+    static IssuerProfileResponse toResponse(IssuerProfileResult result) {
+        return new IssuerProfileResponse(result.id(), result.companyId(), result.legalName(), result.nit(),
+                result.verificationDigit(), result.taxResponsibilities(), result.municipalityCode(), result.address(),
+                result.active());
+    }
+
+    static CreateNumberingResolutionCommand toCommand(UUID companyId, NumberingResolutionRequest request) {
+        return new CreateNumberingResolutionCommand(companyId, request.documentType(), request.resolutionNumber(),
+                request.prefix(), request.fromNumber(), request.toNumber(), request.validFrom(), request.validTo(),
+                request.environment());
+    }
+
+    static NumberingResolutionResponse toResponse(NumberingResolutionResult result) {
+        return new NumberingResolutionResponse(result.id(), result.companyId(), result.documentType(),
+                result.resolutionNumber(), result.prefix(), result.fromNumber(), result.toNumber(),
+                result.currentNumber(), result.validFrom(), result.validTo(), result.environment(), result.active());
     }
 
     private static SaleLineCommand toLineCommand(SaleLineRequest request) {

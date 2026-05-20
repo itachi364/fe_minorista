@@ -308,27 +308,28 @@ Reglas:
 
 Responsabilidad: ventas POS, facturacion electronica, documento equivalente POS, notas, numeracion y estados fiscales.
 
-Estado TASK-035:
+Estado TASK-041:
 
 - Microservicio fisico inicial implementado en `services/billing-service`.
-- Endpoints implementados: `POST /api/v1/sales`, `POST /api/v1/sales/{saleId}/confirm` y `GET /api/v1/sales/{saleId}`.
+- Endpoints implementados: `POST /api/v1/issuers`, `GET /api/v1/issuers/current`, `POST /api/v1/numbering-resolutions`, `GET /api/v1/numbering-resolutions`, `POST /api/v1/sales`, `POST /api/v1/sales/{saleId}/confirm` y `GET /api/v1/sales/{saleId}`.
 - La creacion de venta valida disponibilidad contra `inventory-service` usando `GET /api/v1/products/{productId}/availability`.
-- La confirmacion genera un documento electronico POS consumiendo `dian-provider-service` por HTTP.
-- La aplicacion automatica de `SALE_OUT` y asiento contable queda para TASK-037.
+- La confirmacion exige emisor activo y resolucion vigente para `ELECTRONIC_POS` en ambiente `TEST`.
+- La confirmacion asigna prefijo y consecutivo desde `billing.numbering_resolution`, genera documento electronico POS y consume `dian-provider-service` por HTTP.
+- Si el proveedor acepta, aplica automaticamente `SALE_OUT` y asiento contable idempotente.
 
 ### Emisor
 
 - `POST /api/v1/issuers`
 - `GET /api/v1/issuers/current`
-- `PUT /api/v1/issuers/{issuerId}`
+- `PUT /api/v1/issuers/{issuerId}` pendiente
 
 ### Resoluciones
 
 - `POST /api/v1/numbering-resolutions`
 - `GET /api/v1/numbering-resolutions?documentType=&active=`
-- `GET /api/v1/numbering-resolutions/{resolutionId}`
-- `PUT /api/v1/numbering-resolutions/{resolutionId}/activate`
-- `PUT /api/v1/numbering-resolutions/{resolutionId}/deactivate`
+- `GET /api/v1/numbering-resolutions/{resolutionId}` pendiente
+- `PUT /api/v1/numbering-resolutions/{resolutionId}/activate` pendiente
+- `PUT /api/v1/numbering-resolutions/{resolutionId}/deactivate` pendiente
 
 ### Ventas POS
 
@@ -361,6 +362,34 @@ Estado TASK-035:
 - `GET /api/v1/debit-notes/{noteId}`
 
 ### SaleRequest
+
+### IssuerProfileRequest
+
+```json
+{
+  "legalName": "ACME SAS",
+  "nit": "900123456",
+  "verificationDigit": "7",
+  "taxResponsibilities": ["O-13"],
+  "municipalityCode": "11001",
+  "address": "Calle 1 # 2-3"
+}
+```
+
+### NumberingResolutionRequest
+
+```json
+{
+  "documentType": "ELECTRONIC_POS",
+  "resolutionNumber": "18760000001",
+  "prefix": "POS",
+  "fromNumber": 100,
+  "toNumber": 200,
+  "validFrom": "2026-01-01",
+  "validTo": "2026-12-31",
+  "environment": "TEST"
+}
+```
 
 ```json
 {
@@ -440,6 +469,7 @@ Reglas:
 
 - `X-Company-Id` define la empresa emisora.
 - La numeracion fiscal debe ser idempotente y no reutilizable.
+- Confirmar una venta fiscal exige emisor activo y resolucion vigente con numeros disponibles.
 - El POS genera documento electronico a partir de la venta.
 - La afectacion de inventario ocurre cuando la venta/documento llegue al estado aprobado por la politica transaccional.
 - Si el proveedor devuelve `ACCEPTED`, `billing-service` aplica `SALE_OUT` en `inventory-service` y genera asiento `SALE_CONFIRMED` en `accounting-service`.
@@ -591,15 +621,56 @@ Reglas:
 
 Responsabilidad: auditoria tecnica y fiscal.
 
+Estado TASK-042:
+
+- Microservicio fisico implementado en `services/audit-service`.
+- Persistencia propia bajo schema `audit`.
+- Registra eventos de auditoria fiscal/tecnica por empresa mediante `X-Company-Id`.
+- Permite consultar eventos por recurso, rango de fechas y usuario.
+- La integracion automatica desde `billing-service`, `inventory-service` y `accounting-service` queda para una tarea posterior por lotes.
+
 ### Endpoints
 
 - `POST /api/v1/audit-events`
 - `GET /api/v1/audit-events?resourceType=&resourceId=&from=&to=&userId=`
 
+### AuditEventRequest
+
+```json
+{
+  "userId": "uuid",
+  "eventType": "ELECTRONIC_DOCUMENT",
+  "resourceType": "SALE",
+  "resourceId": "sale-1",
+  "action": "VALIDATED",
+  "result": "SUCCESS",
+  "detail": "{\"status\":\"ACCEPTED\"}"
+}
+```
+
+### AuditEventResponse
+
+```json
+{
+  "id": "uuid",
+  "companyId": "uuid",
+  "userId": "uuid",
+  "eventType": "ELECTRONIC_DOCUMENT",
+  "resourceType": "SALE",
+  "resourceId": "sale-1",
+  "action": "VALIDATED",
+  "result": "SUCCESS",
+  "detail": "{\"status\":\"ACCEPTED\"}",
+  "occurredAt": "2026-05-20T10:00:00Z"
+}
+```
+
 Reglas:
 
 - No registrar secretos ni datos sensibles innecesarios.
 - Operaciones fiscales, cambios de resolucion, emision, anulacion, ajustes e integraciones externas son auditables.
+- `detail` debe contener detalle seguro, sin certificados, API keys, tokens, credenciales, payloads completos del proveedor ni datos sensibles innecesarios.
+- Ninguna consulta debe retornar eventos de otra empresa.
 
 ## Eventos internos propuestos
 

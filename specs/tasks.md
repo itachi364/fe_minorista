@@ -1185,14 +1185,14 @@
     - Actualizado `specs/data-model.md` con politica de migracion legacy refinada despues de TASK-038.
     - `rg --files src/main/java`: no existe `src/main/java` raiz; el codigo transitorio esta concentrado en `services/legacy-monolith`.
     - `services/legacy-monolith` contiene 430 archivos Java main y 45 pruebas; no participa en la prueba E2E Docker desde cero.
-    - `services/audit-service` existe como placeholder sin codigo Java; auditoria real queda pendiente antes de eliminar tablas `auditoria`, `registro_accesos` y `billing_fiscal_audit_event`.
+    - Al cierre de TASK-039, `services/audit-service` existia como placeholder sin codigo Java; esa brecha fue cerrada despues en TASK-042, quedando pendiente solo la integracion automatica de productores y la migracion/respaldo historico antes de eliminar tablas legacy.
     - Identificadas brechas que bloquean eliminacion directa: emisor/resolucion en `billing-service`, gastos, auditoria/identidad, historicos y endurecimiento de `X-Company-Id` en rutas compatibles.
     - `docker compose config`: configuracion valida.
     - `.\mvnw.cmd test` con `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `DIAN_PROVIDER_MODE=mock`: BUILD SUCCESS.
     - Reportes Surefire: 140 archivos, 708 tests, 0 failures, 0 errors, 0 skipped.
 
 - [ ] TASK-040: Eliminar codigo muerto y tablas legacy reemplazadas
-  - Estado: PENDING
+  - Estado: IN_PROGRESS
   - Requisitos: RF-015, RN-015.
   - Acceptance criteria: AC-025, AC-028, AC-036.
   - Descripcion: Ejecutar la depuracion aprobada despues de que la prueba E2E completa confirme que los microservicios reemplazan el comportamiento legacy necesario.
@@ -1228,3 +1228,164 @@
     - Suite completa multi-modulo.
     - Prueba E2E Docker desde cero.
     - Validacion de migraciones Flyway.
+  - Lote 1:
+    - Retirar `legacy-monolith` de Docker Compose local sin eliminar el modulo Maven ni sus migraciones.
+    - Quitar `LEGACY_MONOLITH_PORT` de `.env.example`.
+    - Actualizar README e inventario legacy para reflejar que el monolito no participa en el despliegue Compose activo.
+    - Usar `clean spring-boot:run` en servicios activos de Compose para evitar clases obsoletas durante la migracion.
+    - Mantener tablas y codigo legacy para resolver primero emisor/resolucion, gastos, auditoria/identity e historicos.
+  - Evidencia Lote 1:
+    - `docker compose config`: configuracion valida sin servicio `legacy-monolith`.
+    - `docker compose up -d postgres tenant-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service billing-service`: servicios activos creados y saludables sin levantar `legacy-monolith`.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: flujo E2E desde cero exitoso con empresa, producto, venta, documento POS electronico y proveedor DIAN mock.
+    - IDs de evidencia E2E: CompanyId `b079614c-f648-4608-a7bb-849351f5c56b`, ProductId `c8f1494c-f92a-4c41-9943-be0bc70a947e`, SaleId `cd2bf4bf-6023-424c-b94e-8889c6cdc929`, DocumentId `c5cb26d5-aec0-4938-a72b-23c2853f80e2`.
+    - `.\mvnw.cmd test` con `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `DIAN_PROVIDER_MODE=mock`: BUILD SUCCESS.
+    - Reportes Surefire: 140 archivos, 708 tests, 0 failures, 0 errors, 0 skipped.
+    - `.\mvnw.cmd clean test` no se uso como evidencia porque Windows bloqueo la eliminacion de `target\classes`; la suite normal paso despues de levantar PostgreSQL.
+  - Lote 2:
+    - Retirar `services/legacy-monolith` del reactor Maven activo por defecto.
+    - Mantener `services/legacy-monolith` disponible bajo perfil Maven explicito `legacy-monolith`.
+    - Actualizar README, guia Docker local e inventario legacy para indicar que el monolito no es build/runtime activo.
+    - No eliminar codigo, migraciones ni tablas legacy en este lote.
+  - Evidencia Lote 2:
+    - `.\mvnw.cmd test` con `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `DIAN_PROVIDER_MODE=mock`: BUILD SUCCESS del reactor activo sin `legacy-monolith`.
+    - Reactor activo validado: `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service`.
+    - Reportes Surefire del reactor activo: 48 archivos, 210 tests, 0 failures, 0 errors, 0 skipped.
+    - `.\mvnw.cmd -Plegacy-monolith -pl services/legacy-monolith test`: BUILD SUCCESS.
+    - Reportes Surefire del perfil legacy: 45 archivos, 248 tests, 0 failures, 0 errors, 0 skipped.
+    - `docker compose config`: configuracion valida sin servicio `legacy-monolith`.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: flujo E2E desde cero exitoso con servicios fisicos activos.
+    - IDs de evidencia E2E: CompanyId `6369e778-4fa3-40eb-9dac-f660bba843b2`, ProductId `26dadaa6-8952-4963-8b1b-6b201aec48c8`, SaleId `5c895a5f-fbf6-49a2-b4fd-ba14b6784f59`, DocumentId `7f1ae1ce-bc81-4a23-9ebb-27fc978f1c3d`.
+  - Lote 3:
+    - Crear `scripts/legacy-data-audit.sql` para auditar existencia y conteos de tablas legacy/public y tablas destino.
+    - Actualizar README e inventario legacy con el comando de auditoria.
+    - No ejecutar eliminaciones, migraciones destructivas ni cambios de datos.
+  - Evidencia Lote 3:
+    - `Get-Content .\scripts\legacy-data-audit.sql | docker compose exec -T postgres psql -U factura_user -d facturaelectronica`: ejecutado correctamente.
+    - Auditoria SQL: 51 tablas objetivo presentes, 0 tablas objetivo faltantes en la base local.
+    - Conteos relevantes: `billing.sale` 19, `billing.sale_line` 19, `billing.electronic_document` 11, `dian_provider.provider_submission` 6, `inventory.product` 7, `inventory.stock_balance` 7, `inventory.inventory_movement` 12, `thirdparty.cliente` 7, `thirdparty.proveedor` 7, `catalog.tipodocumento` 7.
+    - Tablas legacy con datos a revisar antes de borrar: `billing_issuer_profile` 4, `billing_numbering_resolution` 4, `billing_electronic_pos_document` 1, `billing_provider_submission` 1, `billing_fiscal_audit_event` 1, `accounting_account` 3, `accounting_rule` 1, `accounting_rule_line` 3, `cliente` 1, `proveedor` 1, `producto` 2.
+    - Tablas legacy sin filas en base local: `auditoria`, `registro_accesos`, `roles`, `usuarios`, `compra`, `detalle_compra`, `gastos`, `detalle_gasto`, `factura`, `detalle_factura`.
+    - `docker compose config`: configuracion valida.
+    - `.\mvnw.cmd test` con `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `DIAN_PROVIDER_MODE=mock`: BUILD SUCCESS del reactor activo.
+    - Reportes Surefire del reactor activo: 48 archivos, 210 tests, 0 failures, 0 errors, 0 skipped.
+
+- [x] TASK-041: Migrar emisor, resoluciones y numeracion fiscal a billing-service
+  - Estado: DONE
+  - Requisitos: RF-001, RF-002, RF-006, RF-014, RF-015, RN-001, RN-002.
+  - Acceptance criteria: AC-001, AC-007, AC-021, AC-022, AC-032, AC-035, AC-036.
+  - Descripcion: Migrar desde el monolito legacy la configuracion fiscal minima requerida para que `billing-service` asigne numeracion autorizada real en el flujo POS.
+  - Dependencias:
+    - TASK-035.
+    - TASK-036.
+    - TASK-037.
+    - TASK-038.
+    - TASK-040.
+  - Alcance:
+    - Dominio de emisor fiscal, resolucion de numeracion, ambiente fiscal y asignacion de consecutivo.
+    - Persistencia en esquema `billing` para emisor y resoluciones.
+    - Endpoints `POST /api/v1/issuers`, `GET /api/v1/issuers/current`, `POST /api/v1/numbering-resolutions` y `GET /api/v1/numbering-resolutions`.
+    - Sustituir la secuencia local en memoria del POS por asignacion desde resolucion activa.
+    - Actualizar E2E para configurar emisor y resolucion antes de confirmar venta.
+  - Fuera de alcance:
+    - Integracion real con proveedor tecnologico DIAN.
+    - Firma digital, XML UBL final, ApplicationResponse y representacion grafica oficial.
+    - Borrado de tablas legacy `billing_issuer_profile` y `billing_numbering_resolution`.
+  - Archivos propuestos:
+    - `services/billing-service/**`
+    - `services/billing-service/src/main/resources/db/migration/V003__create_billing_fiscal_configuration.sql`
+    - `scripts/e2e-from-zero.ps1`
+    - `specs/api-contract.md`
+    - `specs/data-model.md`
+    - `specs/design.md`
+    - `docs/legacy-cleanup-inventory.md`
+    - `README.md`
+  - Completion criteria:
+    - `billing-service` persiste emisor activo por empresa.
+    - `billing-service` persiste resolucion activa por empresa, tipo de documento, ambiente, rango y vigencia.
+    - Confirmar una venta POS exige emisor activo y resolucion vigente.
+    - El documento POS usa prefijo y consecutivo de la resolucion, sin usar secuencia en memoria.
+    - E2E desde cero crea configuracion fiscal y verifica documento persistido.
+  - Tests requeridos:
+    - Tests unitarios de casos de uso de emisor/resolucion/asignacion.
+    - Tests de controlador para endpoints fiscales.
+    - Test de persistencia para emisor/resolucion.
+    - `.\mvnw.cmd -pl services/billing-service test`.
+    - `.\mvnw.cmd test`.
+    - `docker compose config`.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`.
+  - Evidencia:
+    - `billing-service` agrega dominio, casos de uso, puertos, adaptadores JPA y endpoints REST para emisor fiscal y resoluciones de numeracion.
+    - Migracion Flyway `services/billing-service/src/main/resources/db/migration/V003__create_billing_fiscal_configuration.sql` crea `billing.issuer_profile` y `billing.numbering_resolution`.
+    - `SaleManagementService` dejo de usar secuencia local en memoria y ahora asigna prefijo/consecutivo desde resolucion activa vigente para `ELECTRONIC_POS` en ambiente `TEST`.
+    - `scripts/e2e-from-zero.ps1` ahora crea emisor y resolucion POS antes de confirmar la venta y valida prefijo/documento generado.
+    - `README.md`, `docs/e2e-from-zero-test-guide.md`, `docs/legacy-cleanup-inventory.md`, `specs/api-contract.md`, `specs/data-model.md` y `specs/design.md` actualizados.
+    - `.\mvnw.cmd -pl services/billing-service test`: BUILD SUCCESS, 28 tests, 0 failures, 0 errors.
+    - `docker compose config`: configuracion valida.
+    - `.\mvnw.cmd test` con `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `DIAN_PROVIDER_MODE=mock`: BUILD SUCCESS del reactor activo.
+    - Reportes Surefire del reactor activo: 40 archivos, 193 tests, 0 failures, 0 errors, 0 skipped.
+    - `docker compose restart billing-service`: contenedor reiniciado y saludable.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: flujo E2E desde cero exitoso con configuracion fiscal migrada.
+    - IDs de evidencia E2E: CompanyId `4a15d085-8212-4057-b241-c21b75c896e7`, ProductId `7886292b-8584-4d2c-9def-14c72edc95cf`, SaleId `23d40b3d-1aa4-4ec1-b556-bd7db48919a1`, DocumentId `f1d7ff53-de5c-4e8a-8db4-527eddd4741f`, ProviderTrackingId `mock-electronic_pos-f1d7ff53-de5c-4e8a-8db4-527eddd4741f`.
+    - Auditoria SQL read-only: 53 tablas objetivo presentes; `billing.issuer_profile` 4 filas y `billing.numbering_resolution` 4 filas en esquema activo.
+
+- [x] TASK-042: Migrar audit-service como microservicio fisico
+  - Estado: DONE
+  - Requisitos: RF-011, RF-015, RN-008, RN-015.
+  - Acceptance criteria: AC-018, AC-021, AC-022, AC-030, AC-031, AC-032, AC-036.
+  - Descripcion: Implementar `audit-service` como microservicio fisico Clean Architecture para registrar y consultar eventos de auditoria fiscal y tecnica por empresa.
+  - Dependencias:
+    - TASK-025.
+    - TASK-031.
+    - TASK-039.
+    - TASK-040.
+  - Alcance:
+    - Aplicacion Spring Boot independiente `services/audit-service`.
+    - Dominio `AuditEvent` y resultado `SUCCESS`/`FAILURE`.
+    - Casos de uso `RegisterAuditEventUseCase` y `QueryAuditEventsUseCase`.
+    - Persistencia JPA en schema `audit`.
+    - Endpoint `POST /api/v1/audit-events`.
+    - Endpoint `GET /api/v1/audit-events?resourceType=&resourceId=&from=&to=&userId=`.
+    - Aislamiento por `X-Company-Id`.
+    - Docker Compose, variables de entorno, healthcheck y documentacion.
+  - Fuera de alcance:
+    - Borrar tablas legacy `auditoria`, `registro_accesos`, `billing_fiscal_audit_event` o `billing_electronic_document_trace_event`.
+    - Integrar automaticamente productores de eventos desde `billing-service`, `inventory-service` y `accounting-service`.
+    - Implementar identity-service o auditoria de login/accesos.
+  - Archivos propuestos:
+    - `services/audit-service/**`
+    - `services/audit-service/src/main/resources/db/migration/V001__create_audit_schema.sql`
+    - `docker-compose.yml`
+    - `.env.example`
+    - `README.md`
+    - `specs/api-contract.md`
+    - `specs/data-model.md`
+    - `specs/design.md`
+    - `docs/legacy-cleanup-inventory.md`
+  - Completion criteria:
+    - `audit-service` compila y arranca como microservicio Spring Boot.
+    - `audit.audit_event` existe mediante migracion Flyway.
+    - El servicio registra eventos con empresa, usuario opcional, recurso, accion, resultado, detalle seguro y fecha.
+    - El servicio consulta eventos filtrando siempre por empresa.
+    - Docker Compose incluye `audit-service` con healthcheck.
+  - Tests requeridos:
+    - Unit tests de casos de uso.
+    - Controller tests de endpoints.
+    - Tests de adaptador de persistencia.
+    - `.\mvnw.cmd -pl services/audit-service test`.
+    - `.\mvnw.cmd test`.
+    - `docker compose config`.
+  - Evidencia:
+    - Implementado `audit-service` como aplicacion Spring Boot independiente con 30 clases main y 4 clases de test.
+    - Implementada migracion Flyway `services/audit-service/src/main/resources/db/migration/V001__create_audit_schema.sql` para `audit.audit_event`.
+    - Implementados endpoints `POST /api/v1/audit-events` y `GET /api/v1/audit-events` con aislamiento obligatorio por `X-Company-Id`.
+    - Actualizados `docker-compose.yml`, `.env.example`, `README.md`, `specs/api-contract.md`, `specs/data-model.md`, `specs/design.md`, `docs/legacy-cleanup-inventory.md` y `scripts/legacy-data-audit.sql`.
+    - `.\mvnw.cmd -pl services/audit-service test`: BUILD SUCCESS, 10 tests, 0 failures, 0 errors, 0 skipped.
+    - `.\mvnw.cmd test` con `SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=2`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `AUDIT_DB_*` y `DIAN_PROVIDER_MODE=mock`: BUILD SUCCESS del reactor activo.
+    - Reportes Surefire del reactor activo: 55 archivos, 231 tests, 0 failures, 0 errors, 0 skipped.
+    - `docker compose config`: configuracion valida e incluye `audit-service`.
+    - `docker compose restart audit-service` y `docker compose ps audit-service`: contenedor `facturaelectronica-audit-service` saludable en puerto 8091.
+    - Prueba manual API: evento creado con ID `0d4bd9cd-be54-4b8f-86b0-22e4f36b5a00` y consultado por `resourceType=SALE`, `resourceId=manual-check`.
+    - Auditoria SQL read-only: 54 tablas objetivo presentes; `audit.audit_event` presente con 2 filas.
+  - Nota operativa:
+    - La primera ejecucion de `.\mvnw.cmd test` fallo por saturacion temporal de conexiones PostgreSQL mientras los microservicios estaban levantados (`FATAL: sorry, too many clients already`). Reejecutada con `SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=2`, la suite completa paso correctamente.

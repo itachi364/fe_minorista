@@ -175,6 +175,30 @@ $companyHeaders = @{
     "X-User-Id" = $userId
 }
 
+Write-Host "Creating issuer and POS numbering resolution..."
+$issuer = Invoke-Api -Method Post -Uri "$BillingUrl/api/v1/issuers" -Headers $companyHeaders -Body @{
+    legalName = "E2E Empresa SAS $suffix"
+    nit = "90$suffix"
+    verificationDigit = "1"
+    taxResponsibilities = @("O-13")
+    municipalityCode = "11001"
+    address = "Calle 1 # 2-3"
+}
+Assert-Equal $issuer.active "True" "Issuer profile must be active"
+
+$resolutionFromNumber = [int64]("3" + $suffix.Substring($suffix.Length - 8))
+$resolution = Invoke-Api -Method Post -Uri "$BillingUrl/api/v1/numbering-resolutions" -Headers $companyHeaders -Body @{
+    documentType = "ELECTRONIC_POS"
+    resolutionNumber = "1876$suffix"
+    prefix = "POS"
+    fromNumber = $resolutionFromNumber
+    toNumber = ($resolutionFromNumber + 100)
+    validFrom = "2026-01-01"
+    validTo = "2026-12-31"
+    environment = "TEST"
+}
+Assert-Equal $resolution.currentNumber ($resolutionFromNumber - 1) "Resolution must start before first authorized number"
+
 Write-Host "Creating PUC accounts and sale rule..."
 $accountHeaders = @{ "X-Company-Id" = $companyId }
 foreach ($account in @(
@@ -233,6 +257,8 @@ $confirmedSale = Invoke-Api -Method Post -Uri "$BillingUrl/api/v1/sales/$saleId/
 Assert-Equal $confirmedSale.status "CONFIRMED" "Sale must be confirmed"
 Assert-Equal $confirmedSale.electronicDocument.status "VALIDATED" "Electronic document must be validated"
 Assert-Equal $confirmedSale.electronicDocument.providerStatus "ACCEPTED" "Provider status must be accepted"
+Assert-Equal $confirmedSale.electronicDocument.prefix "POS" "Electronic document must use configured POS prefix"
+Assert-Equal $confirmedSale.electronicDocument.documentNumber $resolutionFromNumber "Electronic document must use configured first fiscal number"
 Assert-NotEmpty $confirmedSale.electronicDocument.providerTrackingId "Provider tracking id is required"
 Assert-NotEmpty $confirmedSale.electronicDocument.inventoryAppliedAt "Inventory application timestamp is required"
 Assert-NotEmpty $confirmedSale.electronicDocument.accountingAppliedAt "Accounting application timestamp is required"

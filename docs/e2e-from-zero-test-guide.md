@@ -17,12 +17,12 @@ No usa credenciales reales, certificados DIAN ni datos productivos.
 | `accounting-service` | `8090` | Crea cuentas PUC, regla y asiento contable |
 | `billing-service` | `8088` | Crea venta, confirma POS y orquesta efectos posteriores |
 
-`legacy-monolith` no participa en esta prueba. `audit-service` aun es placeholder; por eso la auditoria queda limitada a trazas persistidas del documento, proveedor mock y marcas `inventoryAppliedAt`/`accountingAppliedAt`.
+`legacy-monolith` no participa en esta prueba. `audit-service` ya existe como microservicio fisico, pero aun no recibe eventos automaticos del flujo E2E; por eso la auditoria de esta prueba queda limitada a trazas persistidas del documento, proveedor mock y marcas `inventoryAppliedAt`/`accountingAppliedAt`.
 
 ## Limitaciones conocidas
 
 - `thirdparty-service` y parte de `catalog-service` conservan endpoints legacy sin `X-Company-Id`; se incluyen para completar el escenario funcional, pero no prueban aislamiento multiempresa.
-- `billing-service` fisico todavia no expone endpoints propios para emisor y resolucion de numeracion; el POS se confirma con la configuracion interna actual de documento `POS`. La configuracion completa de emisor/resolucion debe quedar como brecha funcional antes de una prueba normativa final.
+- `billing-service` crea emisor y resolucion POS reales para la corrida local; la integracion DIAN sigue en modo mock y no valida anexos tecnicos oficiales.
 - El aislamiento por `company_id` se verifica en servicios que ya lo implementan: `tenant-service`, `inventory-service`, `billing-service`, `dian-provider-service` y `accounting-service`.
 - La integracion DIAN real queda fuera de alcance; `DIAN_PROVIDER_MODE=mock` y `DIAN_MOCK_DEFAULT_STATUS=ACCEPTED`.
 
@@ -89,24 +89,25 @@ E2E flow completed successfully.
 1. Crea una empresa activa en `tenant-service`.
 2. Crea un tipo de documento en `catalog-service`.
 3. Crea un cliente y un proveedor en `thirdparty-service`.
-4. Crea cuentas PUC basicas en `accounting-service`:
+4. Configura emisor y resolucion POS en `billing-service`.
+5. Crea cuentas PUC basicas en `accounting-service`:
    - `1105` Caja.
    - `4135` Comercio al por mayor y al por menor.
    - `2408` IVA generado.
-5. Crea regla contable `SALE_CONFIRMED` + `SALE`:
+6. Crea regla contable `SALE_CONFIRMED` + `SALE`:
    - Debito `1105` por `TOTAL`.
    - Credito `4135` por `SUBTOTAL`.
    - Credito `2408` por `TAX_TOTAL`.
-6. Crea producto con costo, precio y stock inicial en `inventory-service`.
-7. Crea una venta POS en `billing-service`.
-8. Confirma la venta.
-9. `billing-service` envia el documento a `dian-provider-service`.
-10. Si el proveedor mock acepta, se registran:
+7. Crea producto con costo, precio y stock inicial en `inventory-service`.
+8. Crea una venta POS en `billing-service`.
+9. Confirma la venta.
+10. `billing-service` asigna prefijo/consecutivo desde la resolucion configurada y envia el documento a `dian-provider-service`.
+11. Si el proveedor mock acepta, se registran:
     - `SALE_OUT` en inventario.
     - asiento contable balanceado en contabilidad.
     - marcas `inventoryAppliedAt` y `accountingAppliedAt` en el documento electronico.
-11. Verifica consulta de proveedor por `trackingId`.
-12. Verifica que otra empresa no pueda consultar el producto, venta, envio o cuentas de la primera.
+12. Verifica consulta de proveedor por `trackingId`.
+13. Verifica que otra empresa no pueda consultar el producto, venta, envio o cuentas de la primera.
 
 ## 4. Consultas PostgreSQL
 
@@ -138,7 +139,17 @@ from billing.sale
 order by created_at desc
 limit 5;
 
-select id, company_id, sale_id, status, provider_status, provider_tracking_id, inventory_applied_at, accounting_applied_at
+select id, company_id, legal_name, nit, active
+from billing.issuer_profile
+order by id desc
+limit 5;
+
+select id, company_id, document_type, resolution_number, prefix, from_number, to_number, current_number, environment, active
+from billing.numbering_resolution
+order by valid_to desc
+limit 5;
+
+select id, company_id, sale_id, prefix, document_number, status, provider_status, provider_tracking_id, inventory_applied_at, accounting_applied_at
 from billing.electronic_document
 order by issued_at desc
 limit 5;
@@ -178,6 +189,7 @@ Total esperado: 35700.00
 Estado venta esperado: CONFIRMED
 Estado documento esperado: VALIDATED
 Estado proveedor esperado: ACCEPTED
+Prefijo esperado: POS
 Asiento esperado: debitos 35700.00, creditos 35700.00
 ```
 

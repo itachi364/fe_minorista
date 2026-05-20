@@ -2,17 +2,17 @@
 
 Backend Java/Spring Boot para una plataforma multiempresa de facturacion electronica colombiana, POS electronico, inventario simple y contabilidad basica con PUC colombiano.
 
-El proyecto esta migrando desde una estructura legacy CRUD hacia Clean Architecture por bounded contexts. Actualmente usa una estructura Maven multi-modulo: el backend existente vive como `services/legacy-monolith` y los microservicios fisicos nuevos se extraeran progresivamente en `services/*`.
+El proyecto esta migrando desde una estructura legacy CRUD hacia Clean Architecture por bounded contexts. Actualmente usa una estructura Maven multi-modulo: los microservicios fisicos activos viven en `services/*` y `services/legacy-monolith` queda como modulo transitorio de referencia, excluido del reactor Maven por defecto y disponible solo mediante perfil explicito.
 
 ## Estado Actual
 
 - Arquitectura Clean Architecture implementada por modulos.
 - PostgreSQL con migraciones Flyway versionadas.
-- Docker Compose local para PostgreSQL, `legacy-monolith`, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service` y `accounting-service`.
-- POS electronico con proveedor DIAN mock configurable como microservicio HTTP y efectos posteriores idempotentes sobre inventario/contabilidad.
-- Persistencia JPA y endpoints REST para billing/POS y accounting.
+- Docker Compose local para PostgreSQL, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service`.
+- POS electronico con emisor/resolucion fiscal persistidos en `billing-service`, proveedor DIAN mock configurable como microservicio HTTP y efectos posteriores idempotentes sobre inventario/contabilidad.
+- Persistencia JPA y endpoints REST para billing/POS, accounting y audit.
 - Refactor de modulos legacy hacia bounded contexts.
-- Suite multi-modulo validada con `legacy-monolith`, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service` y `accounting-service`.
+- Suite multi-modulo activa validada con `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service`.
 
 ## Alcance Funcional
 
@@ -39,15 +39,15 @@ services/<service>
 
 Estructura actual:
 
-- `services/legacy-monolith`: modulo transitorio con el backend Spring Boot actual.
+- `services/legacy-monolith`: modulo transitorio de referencia; no se levanta en Docker Compose local por defecto ni compila en el reactor Maven activo.
 - `services/tenant-service`: microservicio fisico para empresas/tenants.
 - `services/catalog-service`: microservicio fisico para catalogos oficiales y configurables.
 - `services/thirdparty-service`: microservicio fisico para clientes/proveedores.
 - `services/inventory-service`: microservicio fisico para productos, costos, stock, compras y kardex.
-- `services/billing-service`: microservicio fisico inicial para ventas POS y emision electronica mock.
+- `services/billing-service`: microservicio fisico para ventas POS, emisor fiscal, resoluciones, numeracion fiscal y emision electronica mock.
 - `services/dian-provider-service`: microservicio fisico para mock DIAN y futura integracion real.
 - `services/accounting-service`: microservicio fisico para PUC, reglas contables, asientos, libro diario y mayor.
-- `services/audit-service`: placeholder para auditoria.
+- `services/audit-service`: microservicio fisico para auditoria fiscal y tecnica.
 
 Bounded contexts presentes dentro del monolito transitorio:
 
@@ -96,7 +96,6 @@ POSTGRES_USER=factura_user
 POSTGRES_PASSWORD=change_me
 POSTGRES_HOST_PORT=5432
 
-LEGACY_MONOLITH_PORT=8083
 TENANT_SERVICE_PORT=8084
 CATALOG_SERVICE_PORT=8085
 THIRDPARTY_SERVICE_PORT=8086
@@ -137,6 +136,10 @@ ACCOUNTING_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
 ACCOUNTING_DB_USERNAME=factura_user
 ACCOUNTING_DB_PASSWORD=change_me
 
+AUDIT_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
+AUDIT_DB_USERNAME=factura_user
+AUDIT_DB_PASSWORD=change_me
+
 JPA_SHOW_SQL=false
 
 DIAN_PROVIDER_MODE=mock
@@ -157,15 +160,17 @@ No se deben versionar `.env`, certificados, API keys ni credenciales reales.
 
 Primero asegurese de tener PostgreSQL disponible y las variables de entorno configuradas.
 
-En PowerShell:
+El monolito transitorio no hace parte de la ejecucion local activa. Para ejecutarlo bajo demanda use el perfil Maven explicito:
 
 ```powershell
 $env:DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
 $env:DB_USERNAME='factura_user'
 $env:DB_PASSWORD='change_me'
 $env:DIAN_PROVIDER_MODE='mock'
-.\mvnw.cmd -pl services/legacy-monolith spring-boot:run
+.\mvnw.cmd -Plegacy-monolith -pl services/legacy-monolith spring-boot:run
 ```
+
+Nota: `legacy-monolith` se mantiene solo como modulo transitorio y no participa en el flujo Docker E2E activo.
 
 Ejecutar `tenant-service` fuera de Docker:
 
@@ -226,12 +231,6 @@ $env:DIAN_MOCK_DEFAULT_STATUS='ACCEPTED'
 .\mvnw.cmd -pl services/dian-provider-service spring-boot:run
 ```
 
-La aplicacion inicia en:
-
-```text
-http://localhost:8083
-```
-
 `tenant-service` inicia en:
 
 ```text
@@ -268,31 +267,19 @@ http://localhost:8088
 http://localhost:8089
 ```
 
-Healthcheck:
-
-```text
-http://localhost:8083/actuator/health
-```
-
-Swagger UI:
-
-```text
-http://localhost:8083/swagger-ui.html
-```
-
 ## Ejecucion Con Docker Compose
 
 El proyecto incluye `docker-compose.yml` con:
 
 - `postgres`: `postgres:16-alpine`.
-- `legacy-monolith`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/legacy-monolith spring-boot:run`.
-- `tenant-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/tenant-service spring-boot:run`.
-- `catalog-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/catalog-service spring-boot:run`.
-- `thirdparty-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/thirdparty-service spring-boot:run`.
-- `inventory-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/inventory-service spring-boot:run`.
-- `billing-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/billing-service spring-boot:run`.
-- `dian-provider-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/dian-provider-service spring-boot:run`.
-- `accounting-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/accounting-service spring-boot:run`.
+- `tenant-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/tenant-service clean spring-boot:run`.
+- `catalog-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/catalog-service clean spring-boot:run`.
+- `thirdparty-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/thirdparty-service clean spring-boot:run`.
+- `inventory-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/inventory-service clean spring-boot:run`.
+- `billing-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/billing-service clean spring-boot:run`.
+- `dian-provider-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/dian-provider-service clean spring-boot:run`.
+- `accounting-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/accounting-service clean spring-boot:run`.
+- `audit-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/audit-service clean spring-boot:run`.
 
 Crear `.env` desde `.env.example` y ajustar puertos si es necesario. En esta maquina se uso PostgreSQL en el puerto host `15432` porque `5432` y `5433` estaban ocupados o reservados.
 
@@ -311,13 +298,14 @@ docker compose up -d postgres
 Ver logs:
 
 ```powershell
-docker compose logs -f legacy-monolith
 docker compose logs -f tenant-service
 docker compose logs -f catalog-service
 docker compose logs -f thirdparty-service
 docker compose logs -f inventory-service
 docker compose logs -f billing-service
 docker compose logs -f dian-provider-service
+docker compose logs -f accounting-service
+docker compose logs -f audit-service
 docker compose logs -f postgres
 ```
 
@@ -343,13 +331,20 @@ docker compose down -v
 
 Motor seleccionado: PostgreSQL.
 
-Las migraciones se ejecutan con Flyway desde:
+Las migraciones activas se ejecutan con Flyway desde cada microservicio:
 
 ```text
-services/legacy-monolith/src/main/resources/db/migration
+services/tenant-service/src/main/resources/db/migration
+services/catalog-service/src/main/resources/db/migration
+services/thirdparty-service/src/main/resources/db/migration
+services/inventory-service/src/main/resources/db/migration
+services/billing-service/src/main/resources/db/migration
+services/dian-provider-service/src/main/resources/db/migration
+services/accounting-service/src/main/resources/db/migration
+services/audit-service/src/main/resources/db/migration
 ```
 
-Migraciones actuales:
+Migraciones legacy de referencia, fuera del reactor activo por defecto:
 
 - `V001__create_legacy_public_schema.sql`
 - `V002__create_billing_pos_schema.sql`
@@ -365,9 +360,12 @@ Migraciones de servicios extraidos:
 - `services/thirdparty-service/src/main/resources/db/migration/V001__create_thirdparty_schema.sql`
 - `services/inventory-service/src/main/resources/db/migration/V001__create_inventory_schema.sql`
 - `services/billing-service/src/main/resources/db/migration/V001__create_billing_sales_schema.sql`
+- `services/billing-service/src/main/resources/db/migration/V002__add_post_validation_effect_tracking.sql`
+- `services/billing-service/src/main/resources/db/migration/V003__create_billing_fiscal_configuration.sql`
 - `services/dian-provider-service/src/main/resources/db/migration/V001__create_dian_provider_schema.sql`
+- `services/audit-service/src/main/resources/db/migration/V001__create_audit_schema.sql`
 
-Seed local opcional para pruebas Docker:
+Seed local legacy opcional, no usado por el flujo E2E activo:
 
 ```text
 services/legacy-monolith/src/main/resources/db/seed/local-demo-seed.sql
@@ -379,14 +377,24 @@ Aplicarlo manualmente:
 Get-Content .\services\legacy-monolith\src\main\resources\db\seed\local-demo-seed.sql | docker compose exec -T postgres psql -U factura_user -d facturaelectronica
 ```
 
+Auditar conteos de tablas legacy y tablas de destino antes de proponer eliminaciones:
+
+```powershell
+Get-Content .\scripts\legacy-data-audit.sql | docker compose exec -T postgres psql -U factura_user -d facturaelectronica
+```
+
+Este script no elimina ni modifica datos de negocio. Reporta tablas presentes o faltantes y conteos exactos para apoyar la limpieza controlada de `TASK-040`.
+
 Tablas relevantes:
 
-- Billing/POS: `billing_issuer_profile`, `billing_numbering_resolution`, `billing_electronic_pos_document`, `billing_provider_submission`, `billing_electronic_document_trace_event`, `billing_fiscal_audit_event`.
+- Billing/POS legacy/public: `billing_issuer_profile`, `billing_numbering_resolution`, `billing_electronic_pos_document`, `billing_provider_submission`, `billing_electronic_document_trace_event`, `billing_fiscal_audit_event`.
+- Billing/POS activo: `billing.issuer_profile`, `billing.numbering_resolution`, `billing.sale`, `billing.sale_line`, `billing.electronic_document`.
 - Accounting: `accounting_account`, `accounting_rule`, `accounting_rule_line`, `accounting_entry`, `accounting_entry_line`.
 - Tenant: `tenant.company`.
 - Catalog: `catalog.tipodocumento`, `catalog.pais`, `catalog.impuesto`, `catalog.metodo_pago`, `catalog.tipo_gasto`, `catalog.parametros`, `catalog.categoria`, `catalog.producto`.
 - Thirdparty: `thirdparty.cliente`, `thirdparty.proveedor`.
 - DIAN provider: `dian_provider.provider_submission`.
+- Audit: `audit.audit_event`.
 
 Conexion sugerida en PgAdmin/Navicat:
 
@@ -417,7 +425,9 @@ X-Company-Id: <uuid>
 ### Billing/POS
 
 - `POST /api/v1/issuers`
+- `GET /api/v1/issuers/current`
 - `POST /api/v1/numbering-resolutions`
+- `GET /api/v1/numbering-resolutions?documentType=&active=`
 - `POST /api/v1/electronic-pos`
 - `GET /api/v1/electronic-pos/{documentId}`
 - `POST /api/v1/electronic-pos/{documentId}/submit`
@@ -523,6 +533,15 @@ Los comandos requieren `Idempotency-Key`. Las consultas requieren `X-Company-Id`
 
 Los asientos se generan desde reglas activas por empresa y son idempotentes por `companyId`, `sourceType` y `sourceId`.
 
+### Audit
+
+`audit-service` expone en `http://localhost:8091`:
+
+- `POST /api/v1/audit-events`
+- `GET /api/v1/audit-events?resourceType=&resourceId=&from=&to=&userId=`
+
+Los eventos requieren `X-Company-Id` y almacenan detalle seguro sin secretos en `audit.audit_event`.
+
 ## Guia De Pruebas Docker
 
 La guia E2E desde cero para microservicios, con empresa nueva, inventario, venta POS, proveedor DIAN mock, asiento contable, consultas SQL y checklist AC-024/AC-031/AC-032/AC-035 esta en:
@@ -571,7 +590,7 @@ $env:DIAN_PROVIDER_MODE='mock'
 Ejecutar prueba enfocada:
 
 ```powershell
-.\mvnw.cmd -pl services/legacy-monolith "-Dtest=AccountingControllerTest" test
+.\mvnw.cmd -Plegacy-monolith -pl services/legacy-monolith "-Dtest=AccountingControllerTest" test
 ```
 
 Ejecutar pruebas de `tenant-service`:
@@ -642,6 +661,15 @@ $env:ACCOUNTING_DB_PASSWORD='change_me'
 .\mvnw.cmd -pl services/accounting-service test
 ```
 
+Ejecutar pruebas de `audit-service`:
+
+```powershell
+$env:AUDIT_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
+$env:AUDIT_DB_USERNAME='factura_user'
+$env:AUDIT_DB_PASSWORD='change_me'
+.\mvnw.cmd -pl services/audit-service test
+```
+
 ## Especificaciones SDD
 
 La especificacion vive en:
@@ -679,7 +707,8 @@ Estado actual:
 
 - Docker Compose local disponible.
 - PostgreSQL local en contenedor.
-- `legacy-monolith`, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service` y `dian-provider-service` locales montados como volumen y ejecutados con Maven Wrapper.
+- `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service` locales montados como volumen y ejecutados con Maven Wrapper. Los comandos Compose usan `clean spring-boot:run` para evitar clases obsoletas durante la migracion.
+- `legacy-monolith` se conserva como referencia transitoria bajo perfil Maven `legacy-monolith`, pero no se despliega por defecto en Compose ni compila en el reactor activo.
 
 Pendiente:
 
@@ -695,9 +724,8 @@ Pendiente:
 - Certificados digitales reales.
 - Representacion grafica oficial.
 - XML UBL y anexos tecnicos definitivos.
-- Descuento automatico de inventario despues de validacion fiscal.
-- Asiento contable automatico conectado al flujo POS/billing.
 - Seguridad/autenticacion/autorizacion.
+- Auditoria/identity y modulo de gastos fuera del legacy.
 
 ## Git
 

@@ -262,7 +262,7 @@ Antes de eliminar tablas publicas legacy se debe construir una matriz de reempla
 | Tabla legacy | Bounded context destino | Tabla destino | Estado |
 |---|---|---|---|
 | `roles`, `usuarios` | `identity-service` futuro | pendiente | mantener; autenticacion/autorizacion no esta migrada |
-| `auditoria`, `registro_accesos` | `audit-service` e `identity-service` | `audit.audit_event`, tablas identity futuras | mantener; `audit-service` aun es placeholder |
+| `auditoria`, `registro_accesos` | `audit-service` e `identity-service` | `audit.audit_event`, tablas identity futuras | `audit.audit_event` migrado en TASK-042; mantener legacy hasta migrar/respaldar datos |
 | `tipodocumento`, `pais`, `impuesto`, `metodo_pago`, `parametros`, `categoria`, `tipo_gasto` | `catalog-service` | `catalog.*` | migrado fisicamente; eliminar solo despues de migracion/respaldo de datos |
 | `producto` | `inventory-service` y compatibilidad `catalog-service` | `inventory.product`, `inventory.stock_balance`, `catalog.producto` temporal | migrado funcionalmente para inventario; resolver ownership final antes de limpiar |
 | `cliente` | `thirdparty-service` | `thirdparty.cliente` | migrado fisicamente; pendiente endurecer `X-Company-Id` obligatorio en rutas compatibles |
@@ -270,10 +270,10 @@ Antes de eliminar tablas publicas legacy se debe construir una matriz de reempla
 | `compra`, `detalle_compra` | `inventory-service` | `inventory.purchase`, `inventory.purchase_line`, `inventory.inventory_movement` | migrado funcionalmente; limpiar historicos solo con plan aprobado |
 | `gastos`, `detalle_gasto` | `expenses-service` futuro o `accounting-service` segun decision posterior | pendiente | mantener; no existe microservicio fisico de gastos |
 | `factura`, `detalle_factura` | `billing-service` | `billing.sale`, `billing.sale_line`, `billing.electronic_document` | parcial; POS nuevo cubierto, factura electronica completa e historicos pendientes |
-| `billing_issuer_profile`, `billing_numbering_resolution` | `billing-service` | esquema `billing` futuro | mantener; endpoints de emisor/resolucion aun no estan en `billing-service` fisico |
+| `billing_issuer_profile`, `billing_numbering_resolution` | `billing-service` | `billing.issuer_profile`, `billing.numbering_resolution` | migrado funcionalmente en TASK-041; mantener tablas legacy hasta migrar/respaldar datos |
 | `billing_electronic_pos_document`, `billing_electronic_pos_document_line` | `billing-service` | `billing.sale`, `billing.sale_line`, `billing.electronic_document` | parcial; mantener hasta cerrar POS directo y numeracion real |
 | `billing_provider_submission` | `dian-provider-service` y `billing-service` | `dian_provider.provider_submission`, `billing.electronic_document` | reemplazado para mock; migrar trazas utiles antes de eliminar |
-| `billing_electronic_document_trace_event`, `billing_fiscal_audit_event` | `billing-service`/`audit-service` | pendiente | mantener; trazabilidad/auditoria fiscal dedicada pendiente |
+| `billing_electronic_document_trace_event`, `billing_fiscal_audit_event` | `billing-service`/`audit-service` | `audit.audit_event` | mantener; falta integrar productores y migrar/respaldar datos historicos |
 | `accounting_account`, `accounting_rule`, `accounting_rule_line`, `accounting_entry`, `accounting_entry_line` public legacy | `accounting-service` | `accounting.accounting_account`, `accounting.accounting_rule`, `accounting.accounting_rule_line`, `accounting.accounting_entry`, `accounting.accounting_entry_line` | reemplazado funcionalmente; eliminar duplicados solo despues de confirmar datos |
 
 ## Relaciones principales

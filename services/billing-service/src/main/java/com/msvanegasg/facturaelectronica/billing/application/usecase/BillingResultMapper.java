@@ -1,9 +1,13 @@
 package com.msvanegasg.facturaelectronica.billing.application.usecase;
 
 import com.msvanegasg.facturaelectronica.billing.application.dto.ElectronicDocumentResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.IssuerProfileResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.NumberingResolutionResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
+import com.msvanegasg.facturaelectronica.billing.domain.model.IssuerProfile;
+import com.msvanegasg.facturaelectronica.billing.domain.model.NumberingResolution;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleLine;
 
@@ -33,5 +37,18 @@ final class BillingResultMapper {
                 document.taxTotal(), document.total(), document.providerTrackingId(), document.providerErrorCode(),
                 document.providerErrorMessage(), document.issuedAt(), document.inventoryAppliedAt(),
                 document.accountingAppliedAt());
+    }
+
+    static IssuerProfileResult toIssuerProfileResult(IssuerProfile issuerProfile) {
+        return new IssuerProfileResult(issuerProfile.id(), issuerProfile.companyId(), issuerProfile.legalName(),
+                issuerProfile.nit(), issuerProfile.verificationDigit(), issuerProfile.taxResponsibilities(),
+                issuerProfile.municipalityCode(), issuerProfile.address(), issuerProfile.active());
+    }
+
+    static NumberingResolutionResult toNumberingResolutionResult(NumberingResolution resolution) {
+        return new NumberingResolutionResult(resolution.id(), resolution.companyId(), resolution.documentType(),
+                resolution.resolutionNumber(), resolution.prefix(), resolution.fromNumber(), resolution.toNumber(),
+                resolution.currentNumber(), resolution.validFrom(), resolution.validTo(), resolution.environment(),
+                resolution.active());
     }
 }

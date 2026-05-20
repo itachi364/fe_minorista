@@ -53,11 +53,13 @@ La unidad de despliegue aprobada es el microservicio por bounded context. No se 
 - Orquesta inventario, contabilidad y proveedor tecnologico.
 - Mantiene estados del ciclo fiscal.
 
-Estado TASK-035:
+Estado TASK-041:
 
 - `billing-service` fisico queda creado para ventas POS.
+- `POST /api/v1/issuers` y `GET /api/v1/issuers/current` gestionan el emisor fiscal activo por empresa.
+- `POST /api/v1/numbering-resolutions` y `GET /api/v1/numbering-resolutions` gestionan resoluciones por empresa, tipo de documento, ambiente, rango y vigencia.
 - `POST /api/v1/sales` calcula totales por linea y valida stock contra `inventory-service`.
-- `POST /api/v1/sales/{saleId}/confirm` genera documento electronico POS y envia la solicitud por HTTP a `dian-provider-service`.
+- `POST /api/v1/sales/{saleId}/confirm` exige emisor activo, asigna numeracion desde resolucion vigente, genera documento electronico POS y envia la solicitud por HTTP a `dian-provider-service`.
 - TASK-037 agrego efectos automaticos posteriores a validacion: `SALE_OUT` contra `inventory-service` y asiento `SALE_CONFIRMED` contra `accounting-service`.
 - `electronic_document.inventory_applied_at` y `electronic_document.accounting_applied_at` registran aplicacion idempotente de efectos posteriores.
 
@@ -100,6 +102,14 @@ Estado TASK-036:
 - Expone `POST /api/v1/accounts`, `POST /api/v1/accounting-rules`, `POST /api/v1/accounting-entries`, `GET /api/v1/reports/journal` y `GET /api/v1/reports/ledger`.
 - La generacion de asientos es idempotente por `companyId`, `sourceType` y `sourceId`.
 
+### audit-service
+
+- TASK-042 extrae auditoria fiscal/tecnica a `services/audit-service` como microservicio fisico con Clean Architecture.
+- Expone `POST /api/v1/audit-events` y `GET /api/v1/audit-events`.
+- Persiste eventos en `audit.audit_event` aislados por `company_id`.
+- Registra `event_type`, `resource_type`, `resource_id`, `action`, `result`, `user_id`, `detail` seguro y `occurred_at`.
+- La integracion automatica desde otros microservicios se hara por lotes mediante REST sincrono o eventos aprobados; en esta tarea el servicio queda disponible y verificable de forma independiente.
+
 ## Comunicacion inicial entre microservicios
 
 - La primera version fisica usara REST sincrono entre servicios.
@@ -119,12 +129,12 @@ Estado TASK-036:
 6. `inventory-service` crea productos con costo y registra compra o ajuste inicial de stock.
 7. `billing-service` crea venta POS/factura para productos existentes.
 8. `billing-service` consulta disponibilidad en `inventory-service`.
-9. `billing-service` emite el documento electronico y lo envia a `dian-provider-service`.
+9. `billing-service` asigna prefijo/consecutivo desde resolucion vigente, emite el documento electronico y lo envia a `dian-provider-service`.
 10. `dian-provider-service` responde mediante mock local deterministico.
 11. Si el documento queda aceptado, `billing-service` solicita a `inventory-service` registrar `SALE_OUT`.
 12. `billing-service` solicita a `accounting-service` generar asiento contable desde la regla aprobada.
-13. `audit-service` registra trazabilidad fiscal/tecnica consultable.
-14. La prueba E2E verifica por API y PostgreSQL empresa, configuraciones, inventario, documento, envio mock, asiento y auditoria.
+13. `audit-service` registra trazabilidad fiscal/tecnica consultable cuando los productores queden integrados.
+14. La prueba E2E verifica por API y PostgreSQL empresa, configuraciones, inventario, documento, envio mock y asiento; auditoria central queda disponible como microservicio y pendiente de integracion automatica.
 
 ## Politica de consistencia inicial entre servicios
 
@@ -149,7 +159,7 @@ Estado TASK-036:
 
 1. Punto de venta solicita emision POS.
 2. `billing-service` valida caja, resolucion POS, productos y adquirente si aplica.
-3. `billing-service` calcula totales, impuestos y CUDE.
+3. `billing-service` calcula totales, impuestos y CUDE usando prefijo/consecutivo autorizado.
 4. `billing-service` envia el documento equivalente electronico al proveedor tecnologico.
 5. Se registran estado, CUDE, QR, XML y representacion.
 6. Inventario y contabilidad se actualizan segun politica transaccional aprobada.

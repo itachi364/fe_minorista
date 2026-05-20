@@ -17,36 +17,6 @@ services:
       retries: 5
       start_period: 10s
 
-  legacy-monolith:
-    image: eclipse-temurin:17-jdk
-    container_name: facturaelectronica-legacy-monolith
-    working_dir: /workspace
-    environment:
-      SERVER_PORT: ${LEGACY_MONOLITH_PORT:-8083}
-      DB_URL: ${DB_URL}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
-      JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
-      DIAN_PROVIDER_MODE: ${DIAN_PROVIDER_MODE:-mock}
-      DIAN_MOCK_DEFAULT_STATUS: ${DIAN_MOCK_DEFAULT_STATUS:-ACCEPTED}
-      DIAN_MOCK_ERROR_CODE: ${DIAN_MOCK_ERROR_CODE:-}
-      DIAN_MOCK_ERROR_MESSAGE: ${DIAN_MOCK_ERROR_MESSAGE:-}
-    ports:
-      - "${LEGACY_MONOLITH_PORT:-8083}:${LEGACY_MONOLITH_PORT:-8083}"
-    volumes:
-      - .:/workspace
-      - maven_cache:/root/.m2
-    command: ["sh", "./mvnw", "-pl", "services/legacy-monolith", "spring-boot:run"]
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:${LEGACY_MONOLITH_PORT:-8083}/actuator/health >/dev/null 2>&1 || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-      start_period: 60s
-    depends_on:
-      postgres:
-        condition: service_healthy
-
   tenant-service:
     image: eclipse-temurin:17-jdk
     container_name: facturaelectronica-tenant-service
@@ -62,7 +32,7 @@ services:
     volumes:
       - .:/workspace
       - maven_cache:/root/.m2
-    command: ["sh", "./mvnw", "-pl", "services/tenant-service", "spring-boot:run"]
+    command: ["sh", "./mvnw", "-pl", "services/tenant-service", "clean", "spring-boot:run"]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${TENANT_SERVICE_PORT:-8084}/actuator/health >/dev/null 2>&1 || exit 1"]
       interval: 15s
@@ -88,7 +58,7 @@ services:
     volumes:
       - .:/workspace
       - maven_cache:/root/.m2
-    command: ["sh", "./mvnw", "-pl", "services/catalog-service", "spring-boot:run"]
+    command: ["sh", "./mvnw", "-pl", "services/catalog-service", "clean", "spring-boot:run"]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${CATALOG_SERVICE_PORT:-8085}/actuator/health >/dev/null 2>&1 || exit 1"]
       interval: 15s
@@ -115,7 +85,7 @@ services:
     volumes:
       - .:/workspace
       - maven_cache:/root/.m2
-    command: ["sh", "./mvnw", "-pl", "services/thirdparty-service", "spring-boot:run"]
+    command: ["sh", "./mvnw", "-pl", "services/thirdparty-service", "clean", "spring-boot:run"]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${THIRDPARTY_SERVICE_PORT:-8086}/actuator/health >/dev/null 2>&1 || exit 1"]
       interval: 15s
@@ -143,7 +113,7 @@ services:
     volumes:
       - .:/workspace
       - maven_cache:/root/.m2
-    command: ["sh", "./mvnw", "-pl", "services/inventory-service", "spring-boot:run"]
+    command: ["sh", "./mvnw", "-pl", "services/inventory-service", "clean", "spring-boot:run"]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${INVENTORY_SERVICE_PORT:-8087}/actuator/health >/dev/null 2>&1 || exit 1"]
       interval: 15s
@@ -172,7 +142,7 @@ services:
     volumes:
       - .:/workspace
       - maven_cache:/root/.m2
-    command: ["sh", "./mvnw", "-pl", "services/billing-service", "spring-boot:run"]
+    command: ["sh", "./mvnw", "-pl", "services/billing-service", "clean", "spring-boot:run"]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${BILLING_SERVICE_PORT:-8088}/actuator/health >/dev/null 2>&1 || exit 1"]
       interval: 15s
@@ -208,7 +178,7 @@ services:
     volumes:
       - .:/workspace
       - maven_cache:/root/.m2
-    command: ["sh", "./mvnw", "-pl", "services/dian-provider-service", "spring-boot:run"]
+    command: ["sh", "./mvnw", "-pl", "services/dian-provider-service", "clean", "spring-boot:run"]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${DIAN_PROVIDER_SERVICE_PORT:-8089}/actuator/health >/dev/null 2>&1 || exit 1"]
       interval: 15s
@@ -234,9 +204,35 @@ services:
     volumes:
       - .:/workspace
       - maven_cache:/root/.m2
-    command: ["sh", "./mvnw", "-pl", "services/accounting-service", "spring-boot:run"]
+    command: ["sh", "./mvnw", "-pl", "services/accounting-service", "clean", "spring-boot:run"]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${ACCOUNTING_SERVICE_PORT:-8090}/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  audit-service:
+    image: eclipse-temurin:17-jdk
+    container_name: facturaelectronica-audit-service
+    working_dir: /workspace
+    environment:
+      SERVER_PORT: ${AUDIT_SERVICE_PORT:-8091}
+      AUDIT_DB_URL: ${AUDIT_DB_URL:-${DB_URL}}
+      AUDIT_DB_USERNAME: ${AUDIT_DB_USERNAME:-${DB_USERNAME}}
+      AUDIT_DB_PASSWORD: ${AUDIT_DB_PASSWORD:-${DB_PASSWORD}}
+      JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
+    ports:
+      - "${AUDIT_SERVICE_PORT:-8091}:${AUDIT_SERVICE_PORT:-8091}"
+    volumes:
+      - .:/workspace
+      - maven_cache:/root/.m2
+    command: ["sh", "./mvnw", "-pl", "services/audit-service", "clean", "spring-boot:run"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${AUDIT_SERVICE_PORT:-8091}/actuator/health >/dev/null 2>&1 || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 10
