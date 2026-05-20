@@ -15,13 +15,17 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.msvanegasg.facturaelectronica.billing.application.dto.AuditEventCommand;
+import com.msvanegasg.facturaelectronica.billing.application.dto.AuditResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalNumberResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.CreateSaleCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ProviderSubmissionResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineCommand;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.AuditEventPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.AssignFiscalNumberUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AccountingEntryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
@@ -62,6 +66,9 @@ class SaleManagementServiceTest {
 
     @Mock
     private AccountingEntryPort accountingEntryPort;
+
+    @Mock
+    private AuditEventPort auditEventPort;
 
     @Mock
     private AssignFiscalNumberUseCase assignFiscalNumberUseCase;
@@ -137,6 +144,15 @@ class SaleManagementServiceTest {
         assertThat(result.electronicDocument().accountingAppliedAt()).isEqualTo(NOW);
         verify(inventoryMovementPort).applySaleOut(any(), org.mockito.ArgumentMatchers.eq("confirm-1"));
         verify(accountingEntryPort).postSale(any(), org.mockito.ArgumentMatchers.eq("confirm-1"));
+        ArgumentCaptor<AuditEventCommand> auditCaptor = ArgumentCaptor.forClass(AuditEventCommand.class);
+        verify(auditEventPort).register(auditCaptor.capture());
+        assertThat(auditCaptor.getValue().companyId()).isEqualTo(COMPANY_ID);
+        assertThat(auditCaptor.getValue().eventType()).isEqualTo("ELECTRONIC_DOCUMENT");
+        assertThat(auditCaptor.getValue().resourceType()).isEqualTo("SALE");
+        assertThat(auditCaptor.getValue().resourceId()).isEqualTo(SALE_ID.toString());
+        assertThat(auditCaptor.getValue().action()).isEqualTo("CONFIRM_SALE");
+        assertThat(auditCaptor.getValue().result()).isEqualTo(AuditResult.SUCCESS);
+        assertThat(auditCaptor.getValue().detail()).contains("\"documentId\":\"" + DOCUMENT_ID + "\"");
     }
 
     @Test
@@ -154,6 +170,7 @@ class SaleManagementServiceTest {
         verify(providerPort, never()).submitElectronicPos(any(), any(), any());
         verify(inventoryMovementPort).applySaleOut(any(), org.mockito.ArgumentMatchers.eq("confirm-1"));
         verify(accountingEntryPort).postSale(any(), org.mockito.ArgumentMatchers.eq("confirm-1"));
+        verify(auditEventPort, never()).register(any());
     }
 
     @Test
@@ -167,11 +184,12 @@ class SaleManagementServiceTest {
         verify(providerPort, never()).submitElectronicPos(any(), any(), any());
         verify(inventoryMovementPort, never()).applySaleOut(any(), any());
         verify(accountingEntryPort, never()).postSale(any(), any());
+        verify(auditEventPort, never()).register(any());
     }
 
     private SaleManagementService service() {
         return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
-                accountingEntryPort, assignFiscalNumberUseCase, idGenerator, clock);
+                accountingEntryPort, auditEventPort, assignFiscalNumberUseCase, idGenerator, clock);
     }
 
     private static CreateSaleCommand command(String idempotencyKey) {

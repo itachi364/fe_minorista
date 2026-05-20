@@ -979,8 +979,8 @@
     - `docker compose config`: configuracion valida.
     - `.\mvnw.cmd test`: BUILD SUCCESS, reactor completo con `legacy-monolith`, `tenant-service`, `catalog-service`, `thirdparty-service` e `inventory-service`.
 
-- [ ] TASK-035: Implementar venta completa y emision electronica conectada al flujo
-  - Estado: IN_PROGRESS
+- [x] TASK-035: Implementar venta completa y emision electronica conectada al flujo
+  - Estado: DONE
   - Requisitos: RF-003, RF-004, RF-005, RF-006, RF-014, RN-001, RN-002, RN-005, RN-006, RN-014.
   - Acceptance criteria: AC-001, AC-002, AC-003, AC-004, AC-007, AC-009, AC-030, AC-031, AC-033, AC-035.
   - Descripcion: Completar `billing-service` como microservicio fisico para crear venta, validar stock, emitir POS/factura electronica, consultar proveedor DIAN mock y orquestar efectos posteriores.
@@ -1023,9 +1023,11 @@
     - `.\mvnw.cmd -pl services/billing-service test`: BUILD SUCCESS, 11 tests, 0 failures.
     - `docker compose config`: configuracion valida.
     - `.\mvnw.cmd test`: BUILD SUCCESS, reactor completo con `legacy-monolith`, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service` y `billing-service`.
-  - Pendiente para completar TASK-035:
-    - Aplicar automaticamente `SALE_OUT` y asiento contable despues de aceptacion, segun TASK-037.
-    - Reintentos integrales sin duplicar numeracion, movimiento ni asiento.
+  - Cierre:
+    - Los pendientes de `SALE_OUT`, asiento contable e idempotencia integral fueron cubiertos por TASK-037.
+    - La numeracion fiscal desde resolucion activa fue cubierta por TASK-041.
+    - La auditoria central del evento fiscal de confirmacion fue cubierta por TASK-043.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: flujo desde cero exitoso con venta POS, proveedor DIAN mock, inventario, contabilidad y auditoria central.
 
 - [x] TASK-036: Separar `dian-provider-service` con mock configurable
   - Estado: DONE
@@ -1389,3 +1391,473 @@
     - Auditoria SQL read-only: 54 tablas objetivo presentes; `audit.audit_event` presente con 2 filas.
   - Nota operativa:
     - La primera ejecucion de `.\mvnw.cmd test` fallo por saturacion temporal de conexiones PostgreSQL mientras los microservicios estaban levantados (`FATAL: sorry, too many clients already`). Reejecutada con `SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=2`, la suite completa paso correctamente.
+
+- [x] TASK-043: Conectar billing-service como productor de auditoria fiscal
+  - Estado: DONE
+  - Requisitos: RF-011, RF-014, RN-008, RN-014, RN-015.
+  - Acceptance criteria: AC-018, AC-021, AC-022, AC-030, AC-031, AC-032, AC-035, AC-036.
+  - Descripcion: Integrar `billing-service` con `audit-service` para registrar automaticamente auditoria fiscal al confirmar ventas POS/facturas electronicas.
+  - Dependencias:
+    - TASK-035.
+    - TASK-037.
+    - TASK-041.
+    - TASK-042.
+  - Alcance:
+    - Puerto de salida `AuditEventPort` en `billing-service`.
+    - Adaptador HTTP desde `billing-service` hacia `audit-service`.
+    - Publicacion del evento `ELECTRONIC_DOCUMENT`/`SALE`/`CONFIRM_SALE` con resultado `SUCCESS` o `FAILURE`.
+    - Detalle seguro sin secretos: venta, documento, estado del proveedor y marcas de efectos posteriores.
+    - Configuracion `AUDIT_SERVICE_URL` y dependencia Compose de `billing-service` hacia `audit-service`.
+    - Verificacion E2E de evento de auditoria e aislamiento multiempresa.
+  - Fuera de alcance:
+    - Productores automaticos desde `inventory-service` y `accounting-service`.
+    - Patron outbox/inbox, broker de eventos o reintentos asincronos.
+    - Migracion historica desde `billing_fiscal_audit_event` o `billing_electronic_document_trace_event`.
+  - Archivos propuestos:
+    - `services/billing-service/**`
+    - `scripts/e2e-from-zero.ps1`
+    - `docker-compose.yml`
+    - `.env.example`
+    - `README.md`
+    - `specs/api-contract.md`
+    - `specs/design.md`
+    - `docs/e2e-from-zero-test-guide.md`
+    - `docs/legacy-cleanup-inventory.md`
+  - Completion criteria:
+    - Confirmar una venta nueva publica evento de auditoria hacia `audit-service`.
+    - El evento queda asociado a `companyId`, `resourceType=SALE`, `resourceId=saleId`, `action=CONFIRM_SALE` y resultado segun validacion fiscal.
+    - La publicacion no incluye secretos ni payloads completos del proveedor.
+    - La prueba E2E consulta el evento de auditoria y valida que otra empresa no pueda verlo.
+  - Tests requeridos:
+    - Unit test de `SaleManagementService` verificando publicacion de auditoria.
+    - Test HTTP de `AuditEventHttpAdapter`.
+    - `.\mvnw.cmd -pl services/billing-service test`.
+    - `.\mvnw.cmd test`.
+    - `docker compose config`.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`.
+  - Evidencia:
+    - `billing-service` agrega `AuditEventPort`, `AuditEventCommand`, `AuditResult` y `AuditEventHttpAdapter`.
+    - `SaleManagementService` publica `ELECTRONIC_DOCUMENT`/`SALE`/`CONFIRM_SALE` despues de confirmar una venta nueva y aplicar efectos posteriores cuando corresponda.
+    - `docker-compose.yml` configura `AUDIT_SERVICE_URL` y hace que `billing-service` dependa del healthcheck de `audit-service`.
+    - `.env.example`, `README.md`, `specs/api-contract.md`, `specs/design.md`, `docs/e2e-from-zero-test-guide.md` y `docs/legacy-cleanup-inventory.md` actualizados.
+    - `scripts/e2e-from-zero.ps1` valida evento de auditoria por API y aislamiento multiempresa.
+    - `.\mvnw.cmd -pl services/billing-service test`: BUILD SUCCESS, 29 tests, 0 failures, 0 errors, 0 skipped.
+    - `.\mvnw.cmd test` con `SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=2`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `AUDIT_DB_*` y `DIAN_PROVIDER_MODE=mock`: BUILD SUCCESS del reactor activo.
+    - Reportes Surefire del reactor activo: 56 archivos, 232 tests, 0 failures, 0 errors, 0 skipped.
+    - `docker compose config`: configuracion valida con `billing-service` dependiendo de `audit-service`.
+    - `docker compose up -d audit-service billing-service`: servicios levantados; `billing-service` y `audit-service` saludables.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: flujo E2E desde cero exitoso con verificacion de auditoria central.
+    - IDs de evidencia E2E: CompanyId `63671b8e-2126-4d90-b310-5b89c395183b`, ProductId `bf9f03c0-e9c2-4654-8818-f88d15985ddc`, SaleId `87377999-b0ef-494c-b350-727ed569448d`, DocumentId `db52c888-f5fd-4e3d-bb87-9a9ecf825ed3`, ProviderTrackingId `mock-electronic_pos-db52c888-f5fd-4e3d-bb87-9a9ecf825ed3`.
+  - Nota operativa:
+    - La publicacion HTTP inicial hacia `audit-service` es best-effort para no revertir una emision fiscal ya persistida. Se debe endurecer con outbox/inbox o broker cuando se apruebe mensajeria.
+
+- [x] TASK-044: Desacoplar dependencias de arranque entre microservicios
+  - Estado: DONE
+  - Requisitos: RNF-010, RNF-011, RNF-013.
+  - Acceptance criteria: AC-024, AC-030, AC-031, AC-035.
+  - Descripcion: Ajustar la configuracion local de Docker Compose y la documentacion para que ningun microservicio dependa del arranque o healthcheck de otro microservicio. La unica dependencia de arranque permitida sera PostgreSQL, porque sin base de datos no existe persistencia ni lectura de datos de negocio.
+  - Dependencias:
+    - TASK-031.
+    - TASK-033.
+    - TASK-034.
+    - TASK-035.
+    - TASK-036.
+    - TASK-037.
+    - TASK-041.
+    - TASK-042.
+    - TASK-043.
+  - Alcance:
+    - Remover `depends_on` entre microservicios en `docker-compose.yml`.
+    - Mantener `depends_on` hacia `postgres` con healthcheck cuando el servicio requiera base de datos al iniciar.
+    - Documentar que las fallas de servicios pares deben manejarse en runtime mediante errores controlados, idempotencia y reintentos futuros.
+    - Verificar que cada contenedor de aplicacion pueda iniciar aunque otro microservicio no este disponible.
+    - Actualizar README y specs si mencionan dependencias de arranque entre servicios.
+  - Fuera de alcance:
+    - Implementar NATS JetStream, Outbox/Inbox o broker de eventos.
+    - Implementar circuit breaker.
+    - Cambiar contratos REST o logica de negocio.
+    - Eliminar codigo legacy.
+  - Archivos propuestos:
+    - `docker-compose.yml`
+    - `README.md`
+    - `specs/design.md`
+    - `specs/tasks.md`
+    - `docs/e2e-from-zero-test-guide.md`
+  - Completion criteria:
+    - Ningun microservicio tiene `depends_on` hacia otro microservicio en Docker Compose.
+    - Los microservicios que persisten datos solo dependen de `postgres`.
+    - `docker compose config` es valido.
+    - La suite activa pasa.
+    - La prueba E2E desde cero sigue pasando cuando todos los servicios requeridos estan disponibles.
+  - Tests requeridos:
+    - `docker compose config`.
+    - `.\mvnw.cmd test`.
+    - Arranque local con Docker Compose.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`.
+  - Evidencia:
+    - `docker-compose.yml` conserva `depends_on` solo hacia `postgres` en servicios de aplicacion.
+    - Se removieron dependencias de arranque `thirdparty-service -> catalog-service` y `billing-service -> inventory-service/dian-provider-service/accounting-service/audit-service`.
+    - `specs/design.md`, `README.md` y `docs/e2e-from-zero-test-guide.md` documentan que las integraciones REST son dependencias de runtime, no de arranque.
+    - `docker compose config`: configuracion valida; cada microservicio activo depende solo de `postgres`.
+    - `.\mvnw.cmd test` con `SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=2`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `AUDIT_DB_*` y `DIAN_PROVIDER_MODE=mock`: BUILD SUCCESS del reactor activo.
+    - Reportes Surefire del reactor activo: 56 archivos, 232 tests, 0 failures, 0 errors, 0 skipped.
+    - `docker compose up -d postgres tenant-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service audit-service billing-service`: servicios levantados.
+    - `docker compose ps`: todos los servicios activos saludables.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: flujo E2E desde cero exitoso con verificacion de proveedor mock, inventario, contabilidad, auditoria y aislamiento.
+    - IDs de evidencia E2E: CompanyId `e1a7b141-4fe3-45d3-a207-4b55cd398fbb`, ProductId `d82a8168-107c-4339-936a-4d1c9a5fa408`, SaleId `cd26af04-e31e-4640-b646-5f0de2a8c777`, DocumentId `7e373009-ed63-4194-9703-784fc993c20c`, ProviderTrackingId `mock-electronic_pos-7e373009-ed63-4194-9703-784fc993c20c`.
+  - Nota:
+    - La evidencia historica de TASK-043 sobre `billing-service` dependiendo de `audit-service` queda reemplazada por esta tarea.
+
+- [ ] TASK-046: Cerrar diseno backend core pendiente antes de depuracion legacy
+  - Estado: PENDING
+  - Requisitos: RF-016, RF-017, RF-018, RF-019, RF-020, RF-021, RF-022, RF-023, RF-024, RF-025, RF-026, RF-027, RN-016, RN-030.
+  - Acceptance criteria: AC-037, AC-038, AC-039, AC-040, AC-041, AC-042, AC-043, AC-044, AC-045, AC-046, AC-047, AC-048, AC-049, AC-050, AC-051.
+  - Descripcion: Consolidar el diseno funcional y tecnico faltante del backend antes de eliminar legacy o introducir broker: terceros fiscales, clientes, proveedores, bienes, servicios, insumos, compras, gastos, cuentas por pagar, reportes, usuarios, permisos y licencias.
+  - Dependencias:
+    - TASK-044.
+  - Alcance:
+    - Actualizar specs con reglas finales de terceros fiscales y digito de verificacion NIT.
+    - Definir modelo objetivo de items `PHYSICAL_GOOD`, `SERVICE` y `SUPPLY`.
+    - Definir politica de servicios con insumos sugeridos sin consumo automatico.
+    - Definir compras, gastos, cuentas por pagar, pagos, reportes, permisos y licencias.
+    - Definir contratos API objetivo por servicio.
+    - Definir matriz de trazabilidad requisito -> criterio -> caso de uso -> task.
+  - Fuera de alcance:
+    - Implementar Java, migraciones o Docker.
+    - Eliminar codigo legacy.
+    - Implementar NATS.
+  - Archivos propuestos:
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/architecture.md`
+    - `specs/api-contract.md`
+    - `specs/acceptance-criteria.md`
+    - `specs/use-cases.md`
+    - `specs/data-model.md`
+    - `specs/data-dictionary.md`
+    - `specs/tasks.md`
+  - Completion criteria:
+    - Las reglas nuevas quedan documentadas y trazables.
+    - El orden aprobado queda como backend core, migracion legacy, limpieza y despues NATS.
+    - No se modifica codigo de aplicacion.
+  - Tests requeridos:
+    - Revision documental.
+    - `git diff --check`.
+
+- [ ] TASK-047: Implementar terceros fiscales con DV NIT automatico
+  - Estado: PENDING
+  - Requisitos: RF-016, RF-017, RF-018, RNF-015, RN-016, RN-017, RN-018, RN-019.
+  - Acceptance criteria: AC-037, AC-038, AC-039, AC-021, AC-022, AC-032.
+  - Descripcion: Evolucionar `thirdparty-service` para manejar clientes/adquirentes y proveedores bajo un modelo fiscal unificado, con roles por empresa y calculo automatico del digito de verificacion para NIT.
+  - Dependencias:
+    - TASK-046.
+  - Archivos propuestos:
+    - `services/thirdparty-service/**`
+    - migracion Flyway de `thirdparty.third_party` y `thirdparty.third_party_role`.
+    - `specs/api-contract.md`
+    - `specs/data-model.md`
+    - `specs/data-dictionary.md`
+  - Completion criteria:
+    - Crear/consultar/actualizar tercero fiscal por empresa.
+    - Calcular DV automaticamente para NIT.
+    - Permitir roles cliente/proveedor sin duplicar identificacion.
+    - Mantener compatibilidad temporal con endpoints legacy o documentar ruptura aprobada.
+  - Tests requeridos:
+    - Unit tests del algoritmo DV.
+    - Unit tests de casos de uso.
+    - Controller tests.
+    - Persistence tests.
+    - `.\mvnw.cmd -pl services/thirdparty-service test`.
+
+- [ ] TASK-048: Implementar bienes, servicios, insumos y referencias operativas
+  - Estado: PENDING
+  - Requisitos: RF-019, RF-020, RF-021, RF-022, RN-020, RN-021, RN-022, RN-023.
+  - Acceptance criteria: AC-040, AC-041, AC-042, AC-021, AC-022, AC-034.
+  - Descripcion: Evolucionar `inventory-service` para diferenciar bienes fisicos, servicios/intangibles e insumos, permitiendo referencias servicio-insumo sin consumo automatico.
+  - Dependencias:
+    - TASK-046.
+    - TASK-047.
+  - Archivos propuestos:
+    - `services/inventory-service/**`
+    - migraciones Flyway de campos `item_type`, `sale_enabled`, `purchase_enabled`, `stock_tracked` y `service_supply_reference`.
+    - `specs/api-contract.md`
+    - `specs/data-model.md`
+    - `specs/data-dictionary.md`
+  - Completion criteria:
+    - Crear items `PHYSICAL_GOOD`, `SERVICE` y `SUPPLY`.
+    - Validar que servicios sean facturables sin stock automatico.
+    - Registrar referencias de insumos sugeridos sin generar kardex.
+    - Conservar stock/kardex solo para items con `stockTracked=true`.
+  - Tests requeridos:
+    - Unit tests de dominio.
+    - Controller tests.
+    - Persistence tests.
+    - `.\mvnw.cmd -pl services/inventory-service test`.
+
+- [ ] TASK-049: Ajustar ventas y documentos para bienes y servicios
+  - Estado: PENDING
+  - Requisitos: RF-020, RF-024, RN-020, RN-021, RN-026.
+  - Acceptance criteria: AC-040, AC-041, AC-046, AC-033, AC-035.
+  - Descripcion: Ajustar `billing-service` para vender y facturar lineas mixtas de bienes y servicios, validando stock solo cuando corresponda y conservando snapshot fiscal completo.
+  - Dependencias:
+    - TASK-047.
+    - TASK-048.
+  - Archivos propuestos:
+    - `services/billing-service/**`
+    - `scripts/e2e-from-zero.ps1`
+    - `docs/e2e-from-zero-test-guide.md`
+  - Completion criteria:
+    - Una venta puede contener bienes fisicos y servicios.
+    - La disponibilidad se consulta solo para bienes con stock.
+    - El POS/factura conserva tercero, tipo de item, lineas, impuestos y totales.
+    - Servicios no generan consumo automatico de insumos.
+  - Tests requeridos:
+    - Unit tests de orquestacion.
+    - Controller tests.
+    - `.\mvnw.cmd -pl services/billing-service test`.
+    - E2E con venta mixta.
+
+- [ ] TASK-050: Implementar movimientos manuales de insumos
+  - Estado: PENDING
+  - Requisitos: RF-022, RN-022, RN-023.
+  - Acceptance criteria: AC-042, AC-013, AC-018.
+  - Descripcion: Agregar movimientos manuales `CONSUMPTION_OUT` y `WASTE_OUT` para insumos, con motivo obligatorio, trazabilidad y auditoria.
+  - Dependencias:
+    - TASK-048.
+  - Archivos propuestos:
+    - `services/inventory-service/**`
+    - `services/audit-service/**` si se conecta auditoria automatica.
+    - `specs/api-contract.md`
+  - Completion criteria:
+    - Consumos y desperdicios descuentan stock sin asociarse automaticamente a ventas.
+    - El movimiento requiere motivo y origen.
+    - El kardex muestra el movimiento.
+  - Tests requeridos:
+    - Unit tests de movimientos.
+    - Controller tests.
+    - Persistence tests.
+    - E2E parcial de consumo manual.
+
+- [ ] TASK-051: Implementar compras, gastos y cuentas por pagar
+  - Estado: PENDING
+  - Requisitos: RF-018, RF-023, RN-024, RN-025.
+  - Acceptance criteria: AC-043, AC-044, AC-045, AC-014.
+  - Descripcion: Completar flujo de compras de productos/insumos, gastos sin inventario, cuentas por pagar y pagos basicos, integrados con contabilidad por reglas PUC.
+  - Dependencias:
+    - TASK-047.
+    - TASK-048.
+    - TASK-050.
+  - Archivos propuestos:
+    - `services/inventory-service/**`
+    - `services/accounting-service/**`
+    - migraciones Flyway de gastos/cuentas por pagar si se ubican inicialmente en `accounting-service`.
+    - `specs/api-contract.md`
+  - Completion criteria:
+    - Compra confirmada incrementa stock y genera asiento/cuenta por pagar.
+    - Gasto confirmado no afecta stock y genera asiento/cuenta por pagar.
+    - Pago parcial o total reduce saldo y registra asiento.
+  - Tests requeridos:
+    - Unit tests de compras/gastos/pagos.
+    - Controller tests.
+    - Persistence tests.
+    - E2E parcial compra -> stock -> contabilidad.
+
+- [ ] TASK-052: Completar documentos fiscales y consultas fiscales
+  - Estado: PENDING
+  - Requisitos: RF-003, RF-004, RF-005, RF-006, RF-007, RF-012, RF-024.
+  - Acceptance criteria: AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-046.
+  - Descripcion: Completar factura electronica, POS electronico, notas credito/debito, notas de ajuste POS, consultas por estado/documento/tercero y artefactos fiscales con proveedor mock.
+  - Dependencias:
+    - TASK-049.
+    - TASK-051.
+  - Archivos propuestos:
+    - `services/billing-service/**`
+    - `services/dian-provider-service/**`
+    - `specs/api-contract.md`
+  - Completion criteria:
+    - Emitir factura electronica y POS con proveedor mock.
+    - Emitir notas y consultar estados/artefactos.
+    - Reintentos no duplican numeracion ni efectos.
+  - Tests requeridos:
+    - Unit tests.
+    - Controller tests.
+    - Persistence tests.
+    - E2E completo.
+
+- [ ] TASK-053: Completar contabilidad parametrizable PUC
+  - Estado: PENDING
+  - Requisitos: RF-009, RF-023, RN-025.
+  - Acceptance criteria: AC-014, AC-015, AC-016, AC-043, AC-044, AC-045.
+  - Descripcion: Completar reglas contables para ventas, compras, gastos, IVA generado, IVA descontable, inventario, proveedores, caja, bancos y cuentas por cobrar/pagar.
+  - Dependencias:
+    - TASK-051.
+    - TASK-052.
+  - Archivos propuestos:
+    - `services/accounting-service/**`
+    - semillas o migraciones de plantillas PUC aprobadas.
+  - Completion criteria:
+    - Las reglas son parametrizables por empresa.
+    - Todo asiento posteado cuadra debitos y creditos.
+    - Reportes diario/mayor reflejan ventas, compras, gastos y pagos.
+  - Tests requeridos:
+    - Unit tests de reglas.
+    - Controller tests.
+    - Persistence tests.
+
+- [ ] TASK-054: Implementar reportes minimos operativos, fiscales y contables
+  - Estado: PENDING
+  - Requisitos: RF-025, RNF-016, RN-028.
+  - Acceptance criteria: AC-047, AC-015, AC-016.
+  - Descripcion: Exponer reportes minimos por empresa para ventas, documentos electronicos, inventario/kardex, compras/gastos, cuentas por pagar/cobrar y contabilidad.
+  - Dependencias:
+    - TASK-049.
+    - TASK-051.
+    - TASK-053.
+  - Archivos propuestos:
+    - `services/reporting-service/**` si se extrae fisicamente.
+    - O endpoints de consulta iniciales en servicios duenos de datos si se difiere `reporting-service`.
+  - Completion criteria:
+    - Cada reporte filtra por `company_id`.
+    - Los datos provienen del modelo nuevo, no de tablas legacy.
+    - Se documentan limites y filtros.
+  - Tests requeridos:
+    - Controller tests.
+    - Query/persistence tests.
+    - E2E de reportes basicos.
+
+- [ ] TASK-055: Implementar usuarios, roles, permisos y auditoria de acceso
+  - Estado: PENDING
+  - Requisitos: RF-026, RNF-017.
+  - Acceptance criteria: AC-048, AC-018, AC-032.
+  - Descripcion: Implementar `identity-service` para autenticacion, usuarios, membresias por empresa, roles, permisos y auditoria de acceso.
+  - Dependencias:
+    - TASK-046.
+  - Archivos propuestos:
+    - `services/identity-service/**`
+    - migraciones Flyway `identity.*`.
+    - `docker-compose.yml` solo cuando se apruebe la implementacion.
+  - Completion criteria:
+    - Login emite token o mecanismo aprobado.
+    - Permisos se evalúan por empresa.
+    - Accesos y acciones protegidas quedan auditadas.
+  - Tests requeridos:
+    - Unit tests de permisos.
+    - Controller tests.
+    - Security tests.
+
+- [ ] TASK-056: Implementar licenciamiento por empresa
+  - Estado: PENDING
+  - Requisitos: RF-027, RNF-017, RN-027.
+  - Acceptance criteria: AC-049.
+  - Descripcion: Agregar estado de licencia por empresa para habilitar, suspender o limitar operaciones segun plan contratado.
+  - Dependencias:
+    - TASK-055.
+  - Archivos propuestos:
+    - `services/tenant-service/**`
+    - contratos de validacion de licencia consumidos por servicios de negocio.
+  - Completion criteria:
+    - Licencia activa permite operar.
+    - Licencia suspendida o vencida bloquea nuevas transacciones y emision fiscal con error estructurado.
+    - Consultas y exportaciones permitidas quedan documentadas.
+  - Tests requeridos:
+    - Unit tests.
+    - Controller tests.
+    - E2E de bloqueo por licencia.
+
+- [ ] TASK-057: Migrar legacy pendiente al modelo Clean Architecture completo
+  - Estado: PENDING
+  - Requisitos: RF-015, RN-015, RN-029.
+  - Acceptance criteria: AC-025, AC-026, AC-027, AC-028, AC-029, AC-050, AC-051.
+  - Descripcion: Migrar funcionalmente todo codigo legacy pendiente al modelo Clean Architecture y microservicios activos antes de eliminar componentes antiguos.
+  - Dependencias:
+    - TASK-047.
+    - TASK-048.
+    - TASK-049.
+    - TASK-050.
+    - TASK-051.
+    - TASK-052.
+    - TASK-053.
+    - TASK-054.
+    - TASK-055.
+    - TASK-056.
+  - Alcance:
+    - Clientes/proveedores legacy hacia tercero fiscal.
+    - Producto/categoria legacy hacia items de inventario/catalogo.
+    - Compras/gastos legacy hacia compras, gastos y cuentas por pagar nuevas.
+    - Facturas/detalles legacy hacia ventas/documentos nuevos cuando aplique.
+    - Auditoria/accesos legacy hacia audit/identity.
+  - Completion criteria:
+    - Matriz legacy -> destino actualizada con estado `reemplazado`.
+    - Flujo E2E completo pasa sin depender de endpoints legacy.
+    - Compilacion completa sin referencias obligatorias al codigo que se va a eliminar.
+  - Tests requeridos:
+    - `.\mvnw.cmd test`.
+    - E2E completo desde cero.
+    - Consultas SQL read-only de tablas activas.
+
+- [ ] TASK-058: Depurar y eliminar codigo muerto, endpoints y tablas legacy
+  - Estado: PENDING
+  - Requisitos: RF-015, RNF-018, RN-015, RN-028, RN-029.
+  - Acceptance criteria: AC-036, AC-050, AC-051.
+  - Descripcion: Eliminar solo componentes legacy demostrados como reemplazados, no usados y cubiertos por pruebas.
+  - Dependencias:
+    - TASK-057.
+  - Alcance:
+    - Eliminar clases, DTOs, mappers, repositorios, servicios y controladores legacy sin referencias.
+    - Eliminar o archivar migraciones/tablas legacy solo con plan de datos aprobado.
+    - Actualizar README, docs y scripts.
+  - Completion criteria:
+    - `rg` no encuentra referencias a componentes eliminados.
+    - Compilacion y suite completa pasan.
+    - E2E completo pasa.
+    - La matriz de limpieza documenta cada eliminacion.
+  - Tests requeridos:
+    - `.\mvnw.cmd test`.
+    - E2E completo desde cero.
+    - `docker compose config`.
+
+- [ ] TASK-059: Definir e implementar mensajeria asincrona con NATS JetStream y Outbox/Inbox
+  - Estado: PENDING
+  - Requisitos: RF-008, RF-009, RF-011, RF-014, RNF-010, RNF-014, RN-008, RN-014, RN-030.
+  - Acceptance criteria: AC-010, AC-013, AC-014, AC-018, AC-021, AC-022, AC-024, AC-031, AC-033, AC-035.
+  - Descripcion: Migrar los efectos posteriores y eventos transversales del flujo fiscal desde llamadas sincronas directas hacia eventos durables con NATS JetStream, usando Outbox/Inbox e idempotencia por empresa para desacoplar microservicios sin perder trazabilidad.
+  - Dependencias:
+    - TASK-058.
+  - Alcance:
+    - Definir contratos de eventos `SaleConfirmed`, `ElectronicDocumentValidated`, `InventoryMovementRegistered`, `AccountingEntryPosted` y `AuditEventRequested`.
+    - Crear infraestructura local NATS JetStream en Docker Compose solo cuando esta tarea sea aprobada para implementacion.
+    - Implementar Outbox en productores iniciales y Inbox en consumidores iniciales.
+    - Hacer consumidores idempotentes por `companyId`, `eventId`, `sourceType` y `sourceId`.
+    - Configurar reintentos controlados y DLQ para eventos no procesables.
+    - Mantener `X-Correlation-Id` o `correlationId` en eventos para trazabilidad.
+    - Actualizar E2E para validar que inventario, contabilidad y auditoria se materializan por eventos.
+  - Fuera de alcance:
+    - Implementar autenticacion/login.
+    - Integrar proveedor DIAN real.
+    - Reemplazar todos los endpoints REST de negocio.
+    - Introducir programacion reactiva sin una necesidad tecnica especifica.
+  - Archivos propuestos:
+    - `specs/api-contract.md`
+    - `specs/design.md`
+    - `specs/infrastructure.md`
+    - `docker-compose.yml`
+    - `.env.example`
+    - `services/*/src/main/java/**/infrastructure/messaging/**`
+    - migraciones Flyway de outbox/inbox por servicio productor/consumidor.
+    - `scripts/e2e-from-zero.ps1`
+    - `README.md`
+  - Completion criteria:
+    - NATS JetStream esta documentado y configurado localmente sin secretos.
+    - Cada productor persistente publica eventos desde Outbox despues de confirmar la transaccion local.
+    - Cada consumidor registra Inbox y evita reprocesar eventos duplicados.
+    - La caida temporal de un consumidor no impide que otros servicios sigan operando.
+    - La prueba E2E demuestra el flujo fiscal completo con efectos asincronos.
+  - Tests requeridos:
+    - Unit tests de productores Outbox.
+    - Unit tests de consumidores Inbox e idempotencia.
+    - Tests de adaptadores de mensajeria con test doubles o contenedor local cuando aplique.
+    - `.\mvnw.cmd test`.
+    - `docker compose config`.
+    - Prueba E2E Docker desde cero.
+  - Nota de prioridad:
+    - Esta tarea no debe ejecutarse antes de afinar toda la logica de negocio core y demostrar que backend, casos de uso, endpoints y persistencia funcionan correctamente sin broker.

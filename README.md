@@ -127,6 +127,7 @@ BILLING_DB_USERNAME=factura_user
 BILLING_DB_PASSWORD=change_me
 DIAN_PROVIDER_SERVICE_URL=http://dian-provider-service:8089
 ACCOUNTING_SERVICE_URL=http://accounting-service:8090
+AUDIT_SERVICE_URL=http://audit-service:8091
 
 DIAN_PROVIDER_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
 DIAN_PROVIDER_DB_USERNAME=factura_user
@@ -280,6 +281,13 @@ El proyecto incluye `docker-compose.yml` con:
 - `dian-provider-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/dian-provider-service clean spring-boot:run`.
 - `accounting-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/accounting-service clean spring-boot:run`.
 - `audit-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/audit-service clean spring-boot:run`.
+
+Politica de arranque local:
+
+- Los microservicios no tienen `depends_on` hacia otros microservicios.
+- La unica dependencia de arranque declarada para servicios de aplicacion es `postgres`.
+- Las llamadas REST entre servicios ocurren en runtime; si un servicio par no esta disponible, el contenedor llamador debe permanecer iniciado y el caso de uso debe fallar de forma controlada.
+- La prueba E2E espera la salud de cada servicio requerido antes de ejecutar el flujo completo.
 
 Crear `.env` desde `.env.example` y ajustar puertos si es necesario. En esta maquina se uso PostgreSQL en el puerto host `15432` porque `5432` y `5433` estaban ocupados o reservados.
 
@@ -542,9 +550,11 @@ Los asientos se generan desde reglas activas por empresa y son idempotentes por 
 
 Los eventos requieren `X-Company-Id` y almacenan detalle seguro sin secretos en `audit.audit_event`.
 
+`billing-service` publica automaticamente un evento `ELECTRONIC_DOCUMENT`/`SALE`/`CONFIRM_SALE` cuando confirma una venta POS/factura y obtiene resultado del proveedor DIAN mock. Los productores de inventario y contabilidad quedan pendientes para un lote posterior.
+
 ## Guia De Pruebas Docker
 
-La guia E2E desde cero para microservicios, con empresa nueva, inventario, venta POS, proveedor DIAN mock, asiento contable, consultas SQL y checklist AC-024/AC-031/AC-032/AC-035 esta en:
+La guia E2E desde cero para microservicios, con empresa nueva, inventario, venta POS, proveedor DIAN mock, asiento contable, auditoria central, consultas SQL y checklist AC-024/AC-031/AC-032/AC-035 esta en:
 
 ```text
 docs/e2e-from-zero-test-guide.md
@@ -725,7 +735,7 @@ Pendiente:
 - Representacion grafica oficial.
 - XML UBL y anexos tecnicos definitivos.
 - Seguridad/autenticacion/autorizacion.
-- Auditoria/identity y modulo de gastos fuera del legacy.
+- Productores de auditoria restantes desde inventario y contabilidad, identity-service y modulo de gastos fuera del legacy.
 
 ## Git
 

@@ -123,6 +123,18 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RF-013: El sistema debe permitir crear empresas/tenants reales y usar su identificador como frontera obligatoria de datos de negocio.
 - RF-014: El sistema debe ejecutar el flujo completo de venta desde inventario hasta documento electronico, proveedor DIAN mock, descuento de stock y asiento contable automatico.
 - RF-015: El sistema debe migrar los modulos legacy a bounded contexts con Clean Architecture antes de eliminar codigo o tablas antiguas.
+- RF-016: El sistema debe administrar clientes/adquirentes con nombre completo o razon social, tipo de documento, numero de documento, digito de verificacion cuando aplique, tipo de persona, contacto y datos fiscales necesarios para facturacion.
+- RF-017: El sistema debe calcular automaticamente el digito de verificacion para terceros y empresas con tipo de documento NIT, usando el algoritmo oficial DIAN documentado.
+- RF-018: El sistema debe administrar proveedores como terceros que venden bienes, servicios publicos, servicios intangibles, insumos, gastos o activos al negocio.
+- RF-019: El sistema debe administrar items vendibles diferenciando bienes fisicos, servicios/intangibles e insumos no vendibles cuando aplique.
+- RF-020: El sistema debe permitir que un servicio o intangible se facture como item vendible sin descontar automaticamente insumos asociados.
+- RF-021: El sistema debe permitir registrar referencias de insumos sugeridos para servicios, solo como informacion operativa, sin generar consumos automaticos.
+- RF-022: El sistema debe permitir movimientos manuales de inventario para insumos por compra, consumo, desperdicio, ajuste de entrada y ajuste de salida.
+- RF-023: El sistema debe registrar compras, gastos, cuentas por pagar y pagos basicos asociados a proveedores, inventario y contabilidad.
+- RF-024: El sistema debe generar factura electronica o POS electronico tanto para bienes fisicos como para servicios, conservando snapshot fiscal de lineas, impuestos y tercero adquirente.
+- RF-025: El sistema debe exponer reportes operativos minimos de ventas, inventario/kardex, compras/gastos, documentos electronicos, cuentas por cobrar/pagar y libros contables.
+- RF-026: El sistema debe implementar usuarios, roles y permisos por empresa antes de operar en escenarios reales multiempresa.
+- RF-027: El sistema debe implementar licenciamiento por empresa para habilitar, suspender o limitar el uso de la plataforma segun condiciones comerciales.
 
 ## Requisitos no funcionales
 
@@ -139,6 +151,11 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RNF-011: Cada microservicio fisico debe tener artefacto de build independiente, contenedor propio, healthcheck y configuracion externa por variables de entorno.
 - RNF-012: La comunicacion inicial entre microservicios sera REST sincrona con `X-Correlation-Id`, `X-Company-Id` e idempotencia en comandos criticos.
 - RNF-013: La extraccion fisica debe mantener pruebas unitarias, pruebas de controlador, pruebas de persistencia y pruebas end-to-end locales en Docker Compose.
+- RNF-014: La mensajeria asincrona objetivo usara NATS JetStream con patron Outbox/Inbox cuando el flujo funcional core este completo, probado y depurado.
+- RNF-015: Los casos de uso de identificacion fiscal deben ser deterministas y probados con datos de NIT validos e invalidos.
+- RNF-016: Los reportes iniciales deben ejecutarse por empresa, rango de fechas y filtros basicos sin exponer informacion de otros tenants.
+- RNF-017: Las reglas de licenciamiento deben evaluarse antes de ejecutar comandos de negocio que creen documentos, usuarios o transacciones segun el plan contratado.
+- RNF-018: La limpieza legacy debe ejecutarse solo despues de una matriz de reemplazo, prueba E2E aprobada y verificacion de referencias con compilacion completa.
 
 ## Reglas de negocio
 
@@ -157,6 +174,21 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RN-013: La unidad minima de despliegue sera el microservicio por bounded context, no un contenedor por endpoint individual.
 - RN-014: Un documento fiscal aceptado por el proveedor DIAN mock debe afectar inventario y contabilidad una sola vez por empresa, aunque el comando se reintente.
 - RN-015: Las tablas y clases legacy solo podran eliminarse despues de demostrar que el flujo equivalente existe en Clean Architecture, que la prueba end-to-end pasa y que no quedan referencias de compilacion o runtime.
+- RN-016: Para tipo de documento NIT, el digito de verificacion se calcula automaticamente a partir del numero base; no se debe capturar como valor libre salvo importacion historica controlada.
+- RN-017: Para tipos de documento distintos a NIT, el digito de verificacion debe quedar nulo o vacio.
+- RN-018: El tipo de persona debe ser `NATURAL` o `JURIDICA`; una persona juridica debe usar razon social y una persona natural debe permitir nombre completo.
+- RN-019: Un tercero puede tener rol `CUSTOMER`, `SUPPLIER` o ambos dentro de una misma empresa sin duplicar la identificacion fiscal.
+- RN-020: Un bien fisico con stock activo debe validar disponibilidad y descontar stock cuando la venta/documento sea efectivo segun politica aprobada.
+- RN-021: Un servicio/intangible puede venderse y facturarse, pero no debe descontar insumos automaticamente por receta.
+- RN-022: Los insumos asociados a servicios deben afectarse mediante movimientos manuales de inventario por compra, consumo, desperdicio o ajuste.
+- RN-023: Un movimiento manual de consumo o desperdicio de insumo requiere motivo, producto/insumo, cantidad, usuario o proceso origen, fecha y empresa.
+- RN-024: Las compras de productos o insumos incrementan inventario al confirmarse; los gastos sin inventario no deben crear stock.
+- RN-025: Las compras, gastos y cuentas por pagar deben contabilizarse con reglas parametrizables por empresa y cuentas PUC aprobadas.
+- RN-026: Ninguna venta, compra, gasto, movimiento o reporte puede operar sin `company_id`.
+- RN-027: Una empresa con licencia suspendida no debe poder emitir documentos fiscales ni crear nuevas transacciones de negocio, salvo consultas y acciones administrativas permitidas.
+- RN-028: Los reportes deben basarse en datos persistidos por los microservicios activos, no en tablas legacy que esten pendientes de eliminacion.
+- RN-029: La depuracion de tablas legacy debe ocurrir despues de migrar clientes, proveedores, productos, servicios, compras, gastos, facturas, auditoria y datos contables necesarios al modelo Clean Architecture.
+- RN-030: La integracion NATS JetStream se implementara despues de cerrar la logica backend core, migrar legacy pendiente y aprobar la depuracion.
 
 ## Supuestos
 
@@ -167,6 +199,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - Mientras no exista proveedor tecnologico, contrato tecnico, certificado y credenciales reales, la integracion DIAN se implementara con un adaptador dummy local sin llamadas externas.
 - La migracion fisica a microservicios se hara por bounded context para mantener un balance entre independencia de despliegue y complejidad operacional.
 - En local se usara Docker Compose con contenedores por microservicio; la separacion de bases de datos podra iniciar con esquemas o bases separadas en PostgreSQL y evolucionar a instancias independientes.
+- NATS JetStream se adopta como opcion objetivo para mensajeria asincrona por ser open source, liviano y viable para un producto vendible mediante licencias de uso.
 
 ## Restricciones
 
@@ -179,6 +212,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - Cada refactor debe preservar compatibilidad publica o documentar y aprobar cualquier ruptura antes de implementarla.
 - No crear nanoservicios por endpoint; cada artefacto debe representar una capacidad de negocio cohesionada.
 - No eliminar codigo, tablas ni migraciones legacy hasta completar la matriz de reemplazo y la prueba end-to-end aprobada.
+- No introducir broker, login ni infraestructura adicional antes de completar y validar el flujo core de negocio por API, persistencia PostgreSQL y prueba end-to-end desde cero.
 
 ## Criterios de aceptacion
 

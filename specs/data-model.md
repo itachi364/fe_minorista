@@ -110,11 +110,21 @@ Regla de migracion TASK-033:
 
 - `thirdparty.cliente`
 - `thirdparty.proveedor`
+- `thirdparty.third_party` como modelo objetivo consolidado.
+- `thirdparty.third_party_role` como roles cliente/proveedor por empresa.
 
 Regla de migracion TASK-033:
 
 - `thirdparty.cliente` y `thirdparty.proveedor` incluyen `company_id` nullable y constraint unico por `(company_id, id_tipo_documento, numero_documento)`.
 - La implementacion conserva endpoints legacy durante la extraccion fisica. La obligatoriedad estricta de `X-Company-Id` se endurecera cuando los contratos `/api/v1` queden estabilizados.
+
+Modelo objetivo:
+
+- `thirdparty.third_party` consolida identidad fiscal de clientes y proveedores.
+- `thirdparty.third_party_role` permite que el mismo tercero sea `CUSTOMER`, `SUPPLIER` o ambos sin duplicar documento.
+- Para NIT se calcula automaticamente `verification_digit`; para otros documentos queda nulo.
+- Campos clave: `company_id`, `person_type`, `identification_type_code`, `identification_number`, `verification_digit`, `full_name`, `business_name`, `trade_name`, `email`, `phone`, `address`, `municipality_code`, `tax_responsibilities`, `active`.
+- Restriccion objetivo: `unique(company_id, identification_type_code, identification_number)`.
 
 ### Inventario
 
@@ -123,6 +133,7 @@ Regla de migracion TASK-033:
 - `inventory.inventory_movement`
 - `inventory.purchase`
 - `inventory.purchase_line`
+- `inventory.service_supply_reference`
 
 Estado TASK-034:
 
@@ -131,6 +142,7 @@ Estado TASK-034:
 - `inventory.purchase` e `inventory.purchase_line` reemplazan el modelo legacy de compras para el flujo nuevo.
 - `inventory.stock_balance` mantiene stock simple por empresa/producto.
 - `inventory.inventory_movement` mantiene kardex inmutable por empresa/producto y documento origen.
+- El modelo objetivo debe ampliar `inventory.product` para soportar bienes fisicos, servicios e insumos mediante `item_type`, `sale_enabled`, `purchase_enabled` y `stock_tracked`.
 
 #### `inventory.product`
 
@@ -142,6 +154,10 @@ Estado TASK-034:
 | `barcode` | varchar(80) | No | Codigo de barras unico por empresa cuando exista. |
 | `name` | varchar(180) | Si | Nombre comercial del producto. |
 | `description` | varchar(500) | No | Descripcion operativa. |
+| `item_type` | varchar(30) | Si | `PHYSICAL_GOOD`, `SERVICE` o `SUPPLY`. |
+| `sale_enabled` | boolean | Si | Indica si el item puede venderse/facturarse. |
+| `purchase_enabled` | boolean | Si | Indica si el item puede comprarse. |
+| `stock_tracked` | boolean | Si | Indica si el item afecta stock y kardex. |
 | `sale_price` | numeric(19,2) | Si | Precio de venta base. |
 | `cost` | numeric(19,2) | Si | Costo vigente inicial. |
 | `active` | boolean | Si | Indica si el producto esta disponible para operar. |
@@ -177,7 +193,7 @@ Restricciones:
 | `id` | uuid | Si | Identificador del movimiento. |
 | `company_id` | uuid | Si | Empresa propietaria del movimiento. |
 | `product_id` | uuid | Si | Producto afectado. |
-| `movement_type` | varchar(30) | Si | `PURCHASE_IN`, `SALE_OUT`, `RETURN_IN`, `ADJUSTMENT_IN`, `ADJUSTMENT_OUT`. |
+| `movement_type` | varchar(30) | Si | `PURCHASE_IN`, `SALE_OUT`, `RETURN_IN`, `ADJUSTMENT_IN`, `ADJUSTMENT_OUT`, `CONSUMPTION_OUT`, `WASTE_OUT`. |
 | `quantity` | numeric(19,4) | Si | Cantidad afectada. |
 | `unit_cost` | numeric(19,2) | Si | Costo unitario asociado al movimiento. |
 | `previous_stock` | numeric(19,4) | Si | Stock antes del movimiento. |
@@ -186,6 +202,7 @@ Restricciones:
 | `source_document_id` | uuid | Si | Documento origen logico. |
 | `idempotency_key` | varchar(120) | Si | Clave de idempotencia del comando. |
 | `created_by` | uuid | No | Usuario o proceso que origino el movimiento. |
+| `reason` | varchar(300) | No | Motivo operativo requerido en consumos, desperdicios y ajustes manuales. |
 | `movement_at` | timestamptz | Si | Fecha del movimiento. |
 
 Restricciones:
@@ -200,6 +217,39 @@ Restricciones:
 - Al confirmarse pasa a `CONFIRMED` y genera movimientos `PURCHASE_IN`.
 - La confirmacion es idempotente por compra y linea, usando la clave de idempotencia de la compra.
 - `purchase_line` guarda producto, cantidad, costo unitario, subtotal, impuesto y total.
+
+#### `inventory.service_supply_reference`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador de la referencia. |
+| `company_id` | uuid | Si | Empresa propietaria. |
+| `service_product_id` | uuid | Si | Item tipo `SERVICE`. |
+| `supply_product_id` | uuid | Si | Item tipo `SUPPLY` o item con stock usado como insumo. |
+| `notes` | varchar(300) | No | Observacion operativa. |
+| `active` | boolean | Si | Estado de la referencia. |
+| `created_at` | timestamptz | Si | Fecha de creacion. |
+
+Reglas:
+
+- Esta tabla no genera movimientos automaticos.
+- Sirve para sugerir insumos frecuentes de un servicio.
+- El consumo real debe registrarse mediante `inventory.inventory_movement`.
+
+### Gastos y cuentas por pagar
+
+Modelo objetivo inicial, ubicado en `accounting-service` o en un bounded context de compras/gastos si se aprueba extraerlo despues:
+
+- `accounting.expense`
+- `accounting.accounts_payable`
+- `accounting.accounts_payable_payment`
+
+Reglas:
+
+- Un gasto confirmado no afecta stock.
+- Una compra o gasto a credito crea cuenta por pagar.
+- Un pago parcial disminuye saldo y conserva trazabilidad.
+- Todo registro se aisla por `company_id` y se contabiliza mediante reglas PUC parametrizables.
 
 
 ### Facturacion/POS
@@ -268,7 +318,7 @@ Antes de eliminar tablas publicas legacy se debe construir una matriz de reempla
 | `cliente` | `thirdparty-service` | `thirdparty.cliente` | migrado fisicamente; pendiente endurecer `X-Company-Id` obligatorio en rutas compatibles |
 | `proveedor` | `thirdparty-service` | `thirdparty.proveedor` | migrado fisicamente; pendiente endurecer `X-Company-Id` obligatorio en rutas compatibles |
 | `compra`, `detalle_compra` | `inventory-service` | `inventory.purchase`, `inventory.purchase_line`, `inventory.inventory_movement` | migrado funcionalmente; limpiar historicos solo con plan aprobado |
-| `gastos`, `detalle_gasto` | `expenses-service` futuro o `accounting-service` segun decision posterior | pendiente | mantener; no existe microservicio fisico de gastos |
+| `gastos`, `detalle_gasto` | `accounting-service` inicialmente; `expenses/procurement-service` solo si se aprueba despues | `accounting.expense`, `accounting.accounts_payable` objetivo | mantener hasta implementar gastos/cuentas por pagar y migrar datos |
 | `factura`, `detalle_factura` | `billing-service` | `billing.sale`, `billing.sale_line`, `billing.electronic_document` | parcial; POS nuevo cubierto, factura electronica completa e historicos pendientes |
 | `billing_issuer_profile`, `billing_numbering_resolution` | `billing-service` | `billing.issuer_profile`, `billing.numbering_resolution` | migrado funcionalmente en TASK-041; mantener tablas legacy hasta migrar/respaldar datos |
 | `billing_electronic_pos_document`, `billing_electronic_pos_document_line` | `billing-service` | `billing.sale`, `billing.sale_line`, `billing.electronic_document` | parcial; mantener hasta cerrar POS directo y numeracion real |

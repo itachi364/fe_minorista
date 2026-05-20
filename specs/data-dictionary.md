@@ -85,6 +85,36 @@
 
 Campos equivalentes a `thirdparty.customer`, orientados a proveedor.
 
+## thirdparty.third_party objetivo
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---:|---:|---|
+| id | uuid/bigint | Si | Identificador del tercero fiscal. |
+| company_id | ref | Si | Empresa propietaria del tercero. |
+| person_type | varchar(20) | Si | NATURAL, JURIDICA. |
+| identification_type_code | varchar(20) | Si | Codigo del tipo de documento, por ejemplo NIT, CC, CE. |
+| identification_number | varchar(30) | Si | Numero base del documento sin digito de verificacion separado. |
+| verification_digit | varchar(2) | No | Digito de verificacion calculado automaticamente solo para NIT. |
+| full_name | varchar(220) | No | Nombre completo para persona natural. |
+| business_name | varchar(220) | No | Razon social para persona juridica. |
+| trade_name | varchar(220) | No | Nombre comercial. |
+| email | varchar(150) | No | Correo de contacto. |
+| phone | varchar(50) | No | Telefono. |
+| address | varchar(250) | No | Direccion. |
+| municipality_code | varchar(20) | No | Codigo municipio DIAN/DANE cuando aplique. |
+| tax_responsibilities | jsonb | No | Responsabilidades fiscales. |
+| active | boolean | Si | Estado. |
+
+## thirdparty.third_party_role objetivo
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---:|---:|---|
+| id | uuid/bigint | Si | Identificador. |
+| company_id | ref | Si | Empresa. |
+| third_party_id | ref | Si | Tercero fiscal. |
+| role | varchar(30) | Si | CUSTOMER, SUPPLIER. |
+| active | boolean | Si | Estado del rol. |
+
 ## inventory.category
 
 | Campo | Tipo | Requerido | Descripcion |
@@ -106,6 +136,10 @@ Campos equivalentes a `thirdparty.customer`, orientados a proveedor.
 | sku | varchar(80) | No | Codigo interno. |
 | name | varchar(200) | Si | Nombre. |
 | description | varchar(500) | No | Descripcion. |
+| item_type | varchar(30) | Si | PHYSICAL_GOOD, SERVICE, SUPPLY. |
+| sale_enabled | boolean | Si | Permite vender o facturar el item. |
+| purchase_enabled | boolean | Si | Permite comprar el item. |
+| stock_tracked | boolean | Si | Permite afectar stock/kardex. |
 | sale_price | numeric(19,2) | Si | Precio de venta base. |
 | tax_type_id | ref | No | Tipo de impuesto principal. |
 | active | boolean | Si | Estado. |
@@ -127,7 +161,7 @@ Campos equivalentes a `thirdparty.customer`, orientados a proveedor.
 | id | uuid/bigint | Si | Identificador. |
 | company_id | ref | Si | Empresa. |
 | product_id | ref | Si | Producto. |
-| movement_type | varchar(40) | Si | PURCHASE_IN, SALE_OUT, RETURN_IN, ADJUSTMENT_IN, ADJUSTMENT_OUT. |
+| movement_type | varchar(40) | Si | PURCHASE_IN, SALE_OUT, RETURN_IN, ADJUSTMENT_IN, ADJUSTMENT_OUT, CONSUMPTION_OUT, WASTE_OUT. |
 | quantity | numeric(19,4) | Si | Cantidad movida. |
 | previous_stock | numeric(19,4) | Si | Stock antes del movimiento. |
 | resulting_stock | numeric(19,4) | Si | Stock despues del movimiento. |
@@ -135,6 +169,17 @@ Campos equivalentes a `thirdparty.customer`, orientados a proveedor.
 | source_id | uuid/bigint | Si | Documento origen. |
 | reason | varchar(250) | No | Motivo. |
 | movement_at | timestamp | Si | Fecha del movimiento. |
+
+## inventory.service_supply_reference objetivo
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---:|---:|---|
+| id | uuid/bigint | Si | Identificador. |
+| company_id | ref | Si | Empresa. |
+| service_product_id | ref | Si | Item tipo SERVICE. |
+| supply_product_id | ref | Si | Item tipo SUPPLY o bien controlado usado como insumo. |
+| notes | varchar(300) | No | Observacion operativa. |
+| active | boolean | Si | Estado. |
 
 ## inventory.purchase
 
@@ -161,6 +206,50 @@ Campos equivalentes a `thirdparty.customer`, orientados a proveedor.
 | unit_price | numeric(19,2) | Si | Precio unitario. |
 | tax_amount | numeric(19,2) | Si | Impuesto. |
 | line_total | numeric(19,2) | Si | Total linea. |
+
+## accounting.expense objetivo
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---:|---:|---|
+| id | uuid/bigint | Si | Identificador. |
+| company_id | ref | Si | Empresa. |
+| supplier_id | ref | Si | Proveedor. |
+| expense_date | date | Si | Fecha del gasto. |
+| concept | varchar(250) | Si | Concepto del gasto. |
+| subtotal | numeric(19,2) | Si | Subtotal. |
+| tax_total | numeric(19,2) | Si | Impuestos. |
+| total | numeric(19,2) | Si | Total. |
+| payment_condition | varchar(30) | Si | CASH, CREDIT. |
+| evidence_url | varchar(500) | No | Evidencia o soporte externo. |
+| status | varchar(30) | Si | DRAFT, CONFIRMED, CANCELLED. |
+
+## accounting.accounts_payable objetivo
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---:|---:|---|
+| id | uuid/bigint | Si | Identificador. |
+| company_id | ref | Si | Empresa. |
+| supplier_id | ref | Si | Proveedor. |
+| source_type | varchar(40) | Si | PURCHASE, EXPENSE. |
+| source_id | uuid/bigint | Si | Documento origen. |
+| issue_date | date | Si | Fecha origen. |
+| due_date | date | No | Fecha de vencimiento. |
+| original_amount | numeric(19,2) | Si | Valor inicial. |
+| paid_amount | numeric(19,2) | Si | Valor pagado acumulado. |
+| balance | numeric(19,2) | Si | Saldo pendiente. |
+| status | varchar(30) | Si | OPEN, PARTIALLY_PAID, PAID, CANCELLED. |
+
+## accounting.accounts_payable_payment objetivo
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---:|---:|---|
+| id | uuid/bigint | Si | Identificador. |
+| company_id | ref | Si | Empresa. |
+| accounts_payable_id | ref | Si | Cuenta por pagar. |
+| payment_date | date | Si | Fecha de pago. |
+| amount | numeric(19,2) | Si | Valor pagado. |
+| payment_method_id | ref | No | Medio de pago. |
+| accounting_entry_id | ref | No | Asiento contable asociado. |
 
 ## billing.issuer_profile
 

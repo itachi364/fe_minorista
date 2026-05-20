@@ -20,10 +20,12 @@ Clean Architecture basada en microservicios.
 - Terceros.
 - Catalogos fiscales.
 - Inventario.
+- Compras, gastos y cuentas por pagar, inicialmente dentro de inventario/contabilidad hasta justificar un bounded context independiente.
 - Facturacion electronica y POS.
 - Integracion proveedor tecnologico DIAN.
 - Contabilidad.
 - Reportes.
+- Licenciamiento por empresa.
 
 ## Comunicacion
 
@@ -35,8 +37,9 @@ Fase inicial:
 
 Fase posterior:
 
-- Eventos para `DocumentValidated`, `InventoryMovementRegistered`, `AccountingEntryPosted`.
-- Broker de mensajeria si el volumen o resiliencia lo exige.
+- NATS JetStream con Outbox/Inbox despues de cerrar la logica backend core, migrar legacy pendiente y aprobar depuracion.
+- Eventos para `SaleConfirmed`, `ElectronicDocumentValidated`, `InventoryMovementRegistered`, `AccountingEntryPosted` y `AuditEventRequested`.
+- Consumidores idempotentes por empresa, evento y documento origen.
 
 ## Persistencia
 
@@ -91,6 +94,8 @@ La estrategia inicial de comunicacion sera REST sincrona con `X-Correlation-Id`,
 5. `accounting-service`, porque ya tiene dominio avanzado y puede exponerse como servicio independiente.
 6. `billing-service`, porque orquesta venta, documento fiscal, proveedor, inventario y contabilidad.
 7. `audit-service`, para consultas y consolidacion de auditoria fiscal/tecnica.
+8. `identity-service` y licenciamiento, antes de escenarios reales multiempresa.
+9. Reportes minimos sobre datos limpios del modelo nuevo.
 
 ## Regla para depuracion legacy
 
@@ -101,6 +106,17 @@ Ningun paquete legacy ni tabla legacy debe eliminarse por intuicion. La depuraci
 - Pruebas automatizadas o checklist end-to-end que cubra el reemplazo.
 - Verificacion de que no existan referencias de compilacion ni de runtime.
 - Migracion o respaldo de datos cuando aplique.
+
+## Regla de orden para backend core, depuracion y NATS
+
+El orden aprobado para las proximas fases es:
+
+1. Completar logica de negocio backend: clientes/adquirentes fiscales, proveedores, NIT con digito de verificacion automatico, bienes, servicios, insumos, movimientos manuales, compras, gastos, cuentas por pagar, reportes, usuarios/roles y licencias.
+2. Migrar el legacy pendiente al modelo Clean Architecture y microservicios existentes, manteniendo compatibilidad hasta aprobar ruptura.
+3. Eliminar codigo, endpoints y tablas legacy solo despues de matriz de reemplazo, E2E aprobado y verificacion de referencias.
+4. Introducir NATS JetStream con Outbox/Inbox para desacoplar efectos posteriores y auditoria.
+
+NATS no debe introducirse antes de que el flujo de negocio funcione completamente por API, persistencia PostgreSQL y pruebas locales desde cero.
 
 ## Recomendacion de migracion incremental
 

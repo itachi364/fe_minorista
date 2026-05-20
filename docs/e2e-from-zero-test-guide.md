@@ -17,7 +17,7 @@ No usa credenciales reales, certificados DIAN ni datos productivos.
 | `accounting-service` | `8090` | Crea cuentas PUC, regla y asiento contable |
 | `billing-service` | `8088` | Crea venta, confirma POS y orquesta efectos posteriores |
 
-`legacy-monolith` no participa en esta prueba. `audit-service` ya existe como microservicio fisico, pero aun no recibe eventos automaticos del flujo E2E; por eso la auditoria de esta prueba queda limitada a trazas persistidas del documento, proveedor mock y marcas `inventoryAppliedAt`/`accountingAppliedAt`.
+`legacy-monolith` no participa en esta prueba. `audit-service` participa como microservicio fisico y recibe desde `billing-service` el evento fiscal `ELECTRONIC_DOCUMENT`/`SALE`/`CONFIRM_SALE` cuando la venta POS queda confirmada.
 
 ## Limitaciones conocidas
 
@@ -42,9 +42,11 @@ DIAN_MOCK_DEFAULT_STATUS=ACCEPTED
 Levante los servicios requeridos:
 
 ```powershell
-docker compose up -d postgres tenant-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service billing-service
+docker compose up -d postgres tenant-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service audit-service billing-service
 docker compose ps
 ```
+
+Docker Compose no encadena microservicios con `depends_on`; solo PostgreSQL es dependencia de arranque. El script E2E valida la salud de cada servicio antes de invocar el flujo.
 
 Healthchecks esperados:
 
@@ -199,5 +201,5 @@ Esto borra los datos locales del volumen PostgreSQL. Ejecutelo solo si quiere em
 
 ```powershell
 docker compose down -v
-docker compose up -d postgres tenant-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service billing-service
+docker compose up -d postgres tenant-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service audit-service billing-service
 ```

@@ -95,8 +95,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      catalog-service:
-        condition: service_healthy
 
   inventory-service:
     image: eclipse-temurin:17-jdk
@@ -136,6 +134,7 @@ services:
       INVENTORY_SERVICE_URL: http://inventory-service:${INVENTORY_SERVICE_PORT:-8087}
       DIAN_PROVIDER_SERVICE_URL: http://dian-provider-service:${DIAN_PROVIDER_SERVICE_PORT:-8089}
       ACCOUNTING_SERVICE_URL: http://accounting-service:${ACCOUNTING_SERVICE_PORT:-8090}
+      AUDIT_SERVICE_URL: http://audit-service:${AUDIT_SERVICE_PORT:-8091}
       JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
     ports:
       - "${BILLING_SERVICE_PORT:-8088}:${BILLING_SERVICE_PORT:-8088}"
@@ -151,12 +150,6 @@ services:
       start_period: 60s
     depends_on:
       postgres:
-        condition: service_healthy
-      inventory-service:
-        condition: service_healthy
-      dian-provider-service:
-        condition: service_healthy
-      accounting-service:
         condition: service_healthy
 
   dian-provider-service:

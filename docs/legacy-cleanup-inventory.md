@@ -47,7 +47,7 @@ La prueba `scripts/e2e-from-zero.ps1` valida el flujo local desde empresa nueva 
 | `dian-provider-service` | Si | Registra envio mock aceptado. |
 | `accounting-service` | Si | Crea PUC basico, regla y asiento balanceado. |
 | `legacy-monolith` | No | No es requerido por la prueba E2E; retirado de Docker Compose en TASK-040 lote 1. |
-| `audit-service` | No | Implementado en TASK-042; aun no recibe eventos automaticos del flujo E2E. |
+| `audit-service` | Si, para confirmacion fiscal de ventas desde `billing-service` | Implementado en TASK-042 y conectado parcialmente en TASK-043. |
 
 ## Endpoints legacy y reemplazos
 
@@ -144,7 +144,7 @@ Estos elementos son candidatos, no eliminaciones aprobadas:
 | `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/thirdparty/**` | Reemplazado por `thirdparty-service` | Endurecer aislamiento por empresa o documentar compatibilidad legacy. |
 | `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/inventory/**` | Reemplazado por `inventory-service` para compras/stock/kardex | Verificar migracion de historicos de compra. |
 | `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/accounting/**` | Reemplazado por `accounting-service` | Verificar que no existan datos contables utiles en public schema. |
-| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/billing/**` | Parcial | Emisor/resolucion migrados a `billing-service` y auditoria central a `audit-service`; falta cerrar POS directo, productores de eventos y migracion historica. |
+| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/billing/**` | Parcial | Emisor/resolucion migrados a `billing-service` y auditoria central conectada desde `billing-service`; falta cerrar POS directo, productores restantes y migracion historica. |
 | `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/controller/GastoController.java` y `expenses/**` | Pendiente | Crear bounded context fisico de gastos o mover responsabilidad a contabilidad aprobada. |
 | `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/models/**`, `DTO/**`, `repository/**`, `mapper/**` | Legacy interno del monolito | Eliminar junto con el modulo o por lotes, nunca antes de validar compilacion. |
 | `services/legacy-monolith/src/test/java/**` | Pruebas del monolito transitorio | Remover cuando el modulo salga del reactor Maven. |
@@ -152,14 +152,14 @@ Estos elementos son candidatos, no eliminaciones aprobadas:
 ## Codigo que no debe eliminarse todavia
 
 - `catalog-service` y `thirdparty-service` mantienen controladores con rutas legacy compatibles. Aunque el nombre del paquete sea `controller`, forman parte del microservicio fisico actual y sus pruebas cubren compatibilidad.
-- `services/audit-service` ya es microservicio activo; no es codigo muerto, pero necesita integracion automatica desde los productores de eventos.
+- `services/audit-service` ya es microservicio activo; `billing-service` publica confirmaciones fiscales, pero aun falta integrar productores de inventario y contabilidad.
 - `services/legacy-monolith` completo no debe eliminarse en un solo paso hasta cerrar las brechas de gastos, identity/accesos e historicos.
 - Las migraciones legacy no deben borrarse sin una estrategia de datos. En Flyway, retirar migraciones ya aplicadas puede romper ambientes existentes.
 
 ## Riesgos antes de TASK-040
 
 1. Gastos no tiene microservicio fisico independiente ni decision final de bounded context.
-2. `audit-service` ya existe, pero los productores de eventos aun no estan conectados automaticamente.
+2. `audit-service` ya recibe eventos de `billing-service`; faltan productores de inventario y contabilidad.
 3. Algunas rutas compatibles de catalogo y terceros todavia no exigen `X-Company-Id`.
 4. Existen tablas duplicadas entre public legacy y esquemas de microservicio; se requiere plan de migracion/respaldo antes de eliminarlas.
 5. `legacy-monolith` ya no hace parte del reactor Maven activo por defecto; retirarlo del repositorio exige cerrar gastos, identity/accesos, historicos, README y pruebas.

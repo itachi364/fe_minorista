@@ -41,7 +41,7 @@ class DianProviderHttpAdapterTest {
         server.start();
         String baseUrl = "http://localhost:" + server.getAddress().getPort();
         DianProviderHttpAdapter adapter = new DianProviderHttpAdapter(
-                new BillingProperties("http://inventory", baseUrl, "http://accounting", "ACCEPTED"));
+                new BillingProperties("http://inventory", baseUrl, "http://accounting", "http://audit", "ACCEPTED"));
 
         var result = adapter.submitElectronicPos(sale(), DOCUMENT_ID, "confirm-1");
 

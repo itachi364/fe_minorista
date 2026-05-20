@@ -108,7 +108,8 @@ Estado TASK-036:
 - Expone `POST /api/v1/audit-events` y `GET /api/v1/audit-events`.
 - Persiste eventos en `audit.audit_event` aislados por `company_id`.
 - Registra `event_type`, `resource_type`, `resource_id`, `action`, `result`, `user_id`, `detail` seguro y `occurred_at`.
-- La integracion automatica desde otros microservicios se hara por lotes mediante REST sincrono o eventos aprobados; en esta tarea el servicio queda disponible y verificable de forma independiente.
+- TASK-043 conecta `billing-service` como primer productor automatico mediante REST sincrono best-effort para `ELECTRONIC_DOCUMENT`/`SALE`/`CONFIRM_SALE`.
+- La integracion automatica desde `inventory-service` y `accounting-service` se hara por lotes posteriores mediante REST sincrono o eventos aprobados.
 
 ## Comunicacion inicial entre microservicios
 
@@ -118,6 +119,24 @@ Estado TASK-036:
 - `Idempotency-Key` sera obligatorio en comandos fiscales, inventario y contabilizacion automatica.
 - Los errores entre servicios deben usar el contrato estandar definido en `specs/api-contract.md`.
 - Los eventos `SaleConfirmed`, `ElectronicDocumentValidated`, `InventoryMovementRegistered` y `AccountingEntryPosted` se mantienen como contratos conceptuales hasta aprobar broker y patron outbox/inbox.
+
+## Politica de arranque local de microservicios
+
+- En Docker Compose ningun microservicio debe depender del arranque o healthcheck de otro microservicio.
+- La unica dependencia de arranque permitida para los servicios de aplicacion es `postgres`, porque los servicios requieren base de datos para migraciones, persistencia y lectura de datos.
+- Las relaciones REST entre microservicios son dependencias de runtime de casos de uso especificos, no dependencias de arranque del contenedor.
+- Si un microservicio par no esta disponible, el servicio llamador debe mantenerse iniciado y responder con error controlado cuando se invoque el caso de uso que requiere esa integracion.
+- La prueba E2E y los scripts operativos son responsables de esperar la salud de cada servicio requerido antes de ejecutar el flujo completo.
+
+## Mensajeria asincrona objetivo
+
+- La opcion objetivo para eventos asincronos sera NATS JetStream por ser open source, liviano y adecuado para una plataforma vendible mediante licencias de uso.
+- NATS JetStream no se implementara hasta cerrar primero el flujo funcional core del backend: tenant, configuracion fiscal, reglas contables, inventario, venta, POS electronico mock, descuento de stock, asiento contable y auditoria.
+- La migracion asincrona debe usar patron Outbox/Inbox para publicar y consumir eventos sin perder operaciones cuando un servicio o el broker no este disponible.
+- Los consumidores deben ser idempotentes por `companyId`, tipo de evento, recurso origen e identificador de evento.
+- Los eventos objetivo iniciales son `SaleConfirmed`, `ElectronicDocumentValidated`, `InventoryMovementRegistered`, `AccountingEntryPosted` y `AuditEventRequested`.
+- Los flujos HTTP sincronicos que permanezcan despues de introducir eventos deberan evaluarse con timeouts, reintentos controlados y circuit breaker cuando apliquen.
+- La programacion reactiva no es prioridad inicial; solo se evaluara si aparece una necesidad concreta de concurrencia o streaming que no pueda resolverse con el modelo actual.
 
 ## Flujo end-to-end objetivo antes de depuracion legacy
 
@@ -133,15 +152,15 @@ Estado TASK-036:
 10. `dian-provider-service` responde mediante mock local deterministico.
 11. Si el documento queda aceptado, `billing-service` solicita a `inventory-service` registrar `SALE_OUT`.
 12. `billing-service` solicita a `accounting-service` generar asiento contable desde la regla aprobada.
-13. `audit-service` registra trazabilidad fiscal/tecnica consultable cuando los productores queden integrados.
-14. La prueba E2E verifica por API y PostgreSQL empresa, configuraciones, inventario, documento, envio mock y asiento; auditoria central queda disponible como microservicio y pendiente de integracion automatica.
+13. `billing-service` registra en `audit-service` la trazabilidad fiscal/tecnica de la confirmacion de venta y documento electronico.
+14. La prueba E2E verifica por API y PostgreSQL empresa, configuraciones, inventario, documento, envio mock, asiento y auditoria central.
 
 ## Politica de consistencia inicial entre servicios
 
 - El flujo local usara orquestacion sincrona desde `billing-service`.
 - La afectacion de inventario y contabilidad debe ser idempotente por `company_id`, `source_type` y `source_id`.
 - Si una llamada posterior a la validacion fiscal falla, el sistema debe registrar el error y permitir reintento seguro sin duplicar numeracion, movimientos ni asientos.
-- La implementacion asincrona queda diferida hasta aprobar broker, outbox/inbox y contratos de reintento.
+- La implementacion asincrona queda diferida hasta cerrar el flujo core y aprobar la tarea NATS JetStream con Outbox/Inbox, contratos de eventos, reintentos y DLQ.
 
 ## Flujo de factura electronica
 
@@ -240,6 +259,61 @@ Toda transicion fiscal debe registrar evento de trazabilidad con estado anterior
 - El dominio no permite que un movimiento deje el stock resultante en valor negativo.
 - La disponibilidad para venta se calcula como `currentStock - reservedStock`.
 - Una solicitud de venta debe rechazarse cuando la cantidad solicitada supera la disponibilidad calculada, salvo configuracion futura explicitamente aprobada.
+
+### Politica objetivo de terceros fiscales
+
+- El modelo objetivo consolida clientes y proveedores como terceros fiscales por empresa.
+- Un tercero puede cumplir rol de cliente, proveedor o ambos sin duplicar su identificacion.
+- Los datos minimos son tipo de persona, tipo de documento, numero de documento, digito de verificacion cuando aplique, nombre completo o razon social, contacto, direccion y estado.
+- El tipo de persona sera `NATURAL` o `JURIDICA`.
+- Para NIT, el digito de verificacion se calcula automaticamente desde el numero base mediante el algoritmo DIAN: pesos de derecha a izquierda `3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71`; se suma cada digito multiplicado por su peso; si el residuo modulo 11 es 0 el DV es 0, si es 1 el DV es 1, en otros casos el DV es `11 - residuo`.
+- Para tipos de documento distintos a NIT, el digito de verificacion debe quedar nulo o vacio.
+- El servicio de terceros debe exponer el DV calculado en la respuesta y rechazar inconsistencias cuando una importacion o actualizacion incluya un DV que no corresponde.
+
+### Politica objetivo de bienes, servicios e insumos
+
+- El inventario debe manejar un catalogo de items operativos por empresa con tipo `PHYSICAL_GOOD`, `SERVICE` o `SUPPLY`.
+- `PHYSICAL_GOOD` representa bienes tangibles vendidos por el negocio y puede tener control de stock.
+- `SERVICE` representa servicios o intangibles vendibles, como corte de pelo, manicura o consultoria.
+- `SUPPLY` representa insumos comprados o consumidos por la operacion, vendibles solo si la empresa lo configura explicitamente.
+- Un item vendible puede facturarse en POS electronico o factura electronica.
+- Un bien fisico con `stockTracked=true` valida disponibilidad y descuenta stock al confirmarse la venta.
+- Un servicio no descuenta automaticamente insumos, aunque tenga referencias de insumos sugeridos.
+- Los insumos usados por servicios se afectan manualmente con movimientos `CONSUMPTION_OUT`, `WASTE_OUT`, `ADJUSTMENT_IN` o `ADJUSTMENT_OUT`, porque la cantidad real usada depende de la operacion y no existe algoritmo aprobado.
+- La relacion servicio-insumo sera una referencia operativa opcional para ayudar al usuario a recordar insumos comunes; no genera movimientos automaticos ni reservas.
+
+### Politica objetivo de compras, gastos y cuentas por pagar
+
+- Una compra con lineas de inventario incrementa stock solo cuando se confirma.
+- Un gasto sin inventario registra proveedor, concepto, subtotal, impuestos, total, evidencia opcional y estado, pero no genera movimientos de stock.
+- Una compra o gasto puede crear cuenta por pagar cuando no se paga de contado.
+- Las cuentas por pagar deben asociarse a proveedor, documento origen, fecha de vencimiento, saldo y estado.
+- Los pagos parciales o totales disminuyen el saldo de la cuenta por pagar y generan trazabilidad contable.
+- La contabilizacion de compras, gastos, IVA descontable, proveedores, caja y bancos debe seguir reglas parametrizables por empresa basadas en PUC.
+
+### Politica objetivo de reportes minimos
+
+- Los reportes iniciales deben filtrar siempre por empresa.
+- Reportes operativos minimos: ventas por periodo, documentos electronicos por estado, inventario disponible, kardex por item, compras/gastos por periodo, cuentas por pagar y cuentas por cobrar.
+- Reportes contables minimos: libro diario, libro mayor, balance de comprobacion simple y saldos por cuenta.
+- Los reportes deben consultar tablas del modelo Clean Architecture activo; no deben depender de tablas legacy pendientes de depuracion.
+
+### Politica objetivo de identidad, permisos y licenciamiento
+
+- `identity-service` debe administrar usuarios, roles, permisos y membresias por empresa.
+- Los roles minimos sugeridos son `OWNER`, `ADMIN`, `CASHIER`, `ACCOUNTANT` y `AUDITOR`.
+- La autorizacion debe evaluar empresa, rol y permiso antes de ejecutar comandos de negocio.
+- `tenant-service` debe administrar el estado de licencia de cada empresa: activa, suspendida, vencida o cancelada.
+- Una licencia suspendida o vencida bloquea nuevas transacciones de negocio y emision fiscal, pero permite consultas, exportaciones y administracion necesaria segun politica aprobada.
+- La auditoria debe registrar accesos, cambios de configuracion, emision fiscal, movimientos de inventario, compras, gastos, pagos y cambios de licencia.
+
+### Orden objetivo antes de limpieza y NATS
+
+1. Definir y cerrar la logica backend faltante de terceros, items vendibles, servicios, insumos, compras, gastos, reportes, permisos y licencias.
+2. Implementar y probar esos casos de uso por API y PostgreSQL en microservicios Clean Architecture.
+3. Migrar el legacy pendiente al modelo nuevo y demostrar equivalencia funcional.
+4. Ejecutar depuracion y eliminacion de codigo/tablas legacy solo con matriz de reemplazo aprobada.
+5. Implementar NATS JetStream con Outbox/Inbox cuando el flujo core ya este estable.
 
 ### Politica inicial de plan de cuentas PUC
 

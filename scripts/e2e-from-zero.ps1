@@ -6,7 +6,8 @@ param(
     [string]$InventoryUrl = "http://localhost:8087",
     [string]$BillingUrl = "http://localhost:8088",
     [string]$ProviderUrl = "http://localhost:8089",
-    [string]$AccountingUrl = "http://localhost:8090"
+    [string]$AccountingUrl = "http://localhost:8090",
+    [string]$AuditUrl = "http://localhost:8091"
 )
 
 $ErrorActionPreference = "Stop"
@@ -104,7 +105,7 @@ function Assert-NotEmpty {
 
 if ($StartContainers) {
     Write-Host "Starting Docker Compose services..."
-    docker compose up -d postgres tenant-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service billing-service
+    docker compose up -d postgres tenant-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service audit-service billing-service
 }
 
 Wait-Health "tenant-service" $TenantUrl
@@ -113,6 +114,7 @@ Wait-Health "thirdparty-service" $ThirdpartyUrl
 Wait-Health "inventory-service" $InventoryUrl
 Wait-Health "accounting-service" $AccountingUrl
 Wait-Health "dian-provider-service" $ProviderUrl
+Wait-Health "audit-service" $AuditUrl
 Wait-Health "billing-service" $BillingUrl
 
 $suffix = (Get-Date -Format "yyyyMMddHHmmss")
@@ -289,6 +291,13 @@ if (@($journal.entries).Count -lt 1) {
     throw "Expected at least one accounting entry in journal."
 }
 
+Write-Host "Verifying audit event..."
+$auditEvents = @(Invoke-Api -Method Get -Uri "$AuditUrl/api/v1/audit-events?resourceType=SALE&resourceId=$saleId" -Headers $companyHeaders)
+$saleAuditEvent = @($auditEvents | Where-Object { $_.action -eq "CONFIRM_SALE" -and $_.result -eq "SUCCESS" })
+if ($saleAuditEvent.Count -lt 1) {
+    throw "Expected at least one successful CONFIRM_SALE audit event, got $($saleAuditEvent.Count)."
+}
+
 Write-Host "Verifying tenant isolation..."
 $otherHeaders = @{ "X-Company-Id" = $otherCompanyId }
 
@@ -330,6 +339,12 @@ catch {
     if ($_.ToString() -like "*Accounting account was visible*") {
         throw
     }
+}
+
+$otherAuditResponse = Invoke-Api -Method Get -Uri "$AuditUrl/api/v1/audit-events?resourceType=SALE&resourceId=$saleId" -Headers $otherHeaders
+$otherAuditCount = if ($null -eq $otherAuditResponse) { 0 } else { @($otherAuditResponse).Count }
+if ($otherAuditCount -ne 0) {
+    throw "Audit event was visible from another company."
 }
 
 Write-Host ""

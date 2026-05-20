@@ -40,7 +40,7 @@ class InventoryMovementHttpAdapterTest {
         server.start();
         String baseUrl = "http://localhost:" + server.getAddress().getPort();
         InventoryMovementHttpAdapter adapter = new InventoryMovementHttpAdapter(
-                new BillingProperties(baseUrl, "http://provider", "http://accounting", "ACCEPTED"));
+                new BillingProperties(baseUrl, "http://provider", "http://accounting", "http://audit", "ACCEPTED"));
 
         adapter.applySaleOut(sale(productId), "confirm-1");
 

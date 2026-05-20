@@ -191,13 +191,18 @@ Estado TASK-033:
 
 ```json
 {
-  "identificationTypeId": "uuid",
+  "role": "CUSTOMER",
+  "personType": "JURIDICA",
+  "identificationTypeCode": "NIT",
   "identificationNumber": "900123456",
-  "verificationDigit": "7",
-  "name": "Cliente Prueba",
+  "fullName": null,
+  "businessName": "Cliente Prueba SAS",
+  "tradeName": "Cliente Prueba",
   "email": "cliente@example.com",
   "phone": "3000000000",
   "address": "Calle 1 # 2-3",
+  "municipalityCode": "11001",
+  "taxResponsibilities": ["O-13"],
   "taxRegime": "RESPONSABLE_IVA"
 }
 ```
@@ -205,6 +210,10 @@ Estado TASK-033:
 Reglas:
 
 - `identificationTypeId + identificationNumber` es unico por empresa.
+- `identificationTypeCode=NIT` calcula `verificationDigit` automaticamente; el request no debe tratar el DV como dato libre.
+- Para tipos de documento distintos a NIT, `verificationDigit` debe quedar nulo o vacio.
+- `personType` debe ser `NATURAL` o `JURIDICA`.
+- Un tercero puede tener rol `CUSTOMER`, `SUPPLIER` o `BOTH`.
 - Ninguna consulta puede retornar terceros de otra empresa.
 
 ## inventory-service
@@ -244,6 +253,10 @@ Estado TASK-034:
   "barcode": "7701234567890",
   "name": "Cafe 500g",
   "description": "Bolsa de cafe",
+  "itemType": "PHYSICAL_GOOD",
+  "saleEnabled": true,
+  "purchaseEnabled": true,
+  "stockTracked": true,
   "salePrice": 15000,
   "cost": 9000,
   "initialStock": 10
@@ -267,11 +280,22 @@ Estado TASK-034:
 ```json
 {
   "productId": "uuid",
-  "movementType": "ADJUSTMENT_IN",
+  "movementType": "CONSUMPTION_OUT",
   "quantity": 4,
   "unitCost": 9000,
-  "sourceDocumentType": "ADJUSTMENT",
-  "sourceDocumentId": "uuid"
+  "sourceDocumentType": "MANUAL_SUPPLY_CONSUMPTION",
+  "sourceDocumentId": "uuid",
+  "reason": "Consumo operativo de insumo usado en servicios"
+}
+```
+
+### ServiceSupplyReferenceRequest
+
+```json
+{
+  "serviceId": "uuid",
+  "supplyProductId": "uuid",
+  "notes": "Insumo sugerido para manicura; el consumo real se registra manualmente."
 }
 ```
 
@@ -303,6 +327,11 @@ Reglas:
 - Una compra confirmada aumenta stock.
 - Stock negativo no esta permitido en la fase inicial.
 - Todo movimiento debe referenciar documento origen.
+- Los tipos de item objetivo son `PHYSICAL_GOOD`, `SERVICE` y `SUPPLY`.
+- Un `SERVICE` puede facturarse, pero no descuenta insumos automaticamente.
+- Las referencias servicio-insumo son informativas y no generan kardex.
+- Los movimientos manuales de insumos incluyen `CONSUMPTION_OUT` y `WASTE_OUT`.
+- Los gastos sin inventario no deben crear movimientos de stock.
 
 ## billing-service
 
@@ -627,7 +656,8 @@ Estado TASK-042:
 - Persistencia propia bajo schema `audit`.
 - Registra eventos de auditoria fiscal/tecnica por empresa mediante `X-Company-Id`.
 - Permite consultar eventos por recurso, rango de fechas y usuario.
-- La integracion automatica desde `billing-service`, `inventory-service` y `accounting-service` queda para una tarea posterior por lotes.
+- TASK-043 conecta `billing-service` como primer productor automatico para eventos de confirmacion de venta y documento electronico.
+- La integracion automatica desde `inventory-service` y `accounting-service` queda para lotes posteriores.
 
 ### Endpoints
 
@@ -642,9 +672,9 @@ Estado TASK-042:
   "eventType": "ELECTRONIC_DOCUMENT",
   "resourceType": "SALE",
   "resourceId": "sale-1",
-  "action": "VALIDATED",
+  "action": "CONFIRM_SALE",
   "result": "SUCCESS",
-  "detail": "{\"status\":\"ACCEPTED\"}"
+  "detail": "{\"documentStatus\":\"VALIDATED\",\"providerStatus\":\"ACCEPTED\"}"
 }
 ```
 
@@ -658,9 +688,9 @@ Estado TASK-042:
   "eventType": "ELECTRONIC_DOCUMENT",
   "resourceType": "SALE",
   "resourceId": "sale-1",
-  "action": "VALIDATED",
+  "action": "CONFIRM_SALE",
   "result": "SUCCESS",
-  "detail": "{\"status\":\"ACCEPTED\"}",
+  "detail": "{\"documentStatus\":\"VALIDATED\",\"providerStatus\":\"ACCEPTED\"}",
   "occurredAt": "2026-05-20T10:00:00Z"
 }
 ```
@@ -671,6 +701,111 @@ Reglas:
 - Operaciones fiscales, cambios de resolucion, emision, anulacion, ajustes e integraciones externas son auditables.
 - `detail` debe contener detalle seguro, sin certificados, API keys, tokens, credenciales, payloads completos del proveedor ni datos sensibles innecesarios.
 - Ninguna consulta debe retornar eventos de otra empresa.
+- `billing-service` publica `ELECTRONIC_DOCUMENT`/`SALE`/`CONFIRM_SALE` despues de confirmar una venta nueva. El resultado es `SUCCESS` cuando el documento queda `VALIDATED`; de lo contrario es `FAILURE`.
+- La publicacion inicial desde `billing-service` es sincrona y best-effort para no revertir una emision fiscal ya persistida; el patron outbox/inbox queda pendiente para endurecer garantias de entrega.
+
+## Contratos objetivo pendientes antes de limpieza legacy
+
+Estos contratos deben estabilizarse antes de eliminar codigo o tablas legacy asociadas.
+
+### thirdparty-service: ThirdPartyResponse
+
+```json
+{
+  "id": "uuid",
+  "companyId": "uuid",
+  "roles": ["CUSTOMER", "SUPPLIER"],
+  "personType": "JURIDICA",
+  "identificationTypeCode": "NIT",
+  "identificationNumber": "900123456",
+  "verificationDigit": "7",
+  "fullName": null,
+  "businessName": "Cliente Proveedor SAS",
+  "tradeName": "Cliente Proveedor",
+  "email": "contacto@example.com",
+  "phone": "3000000000",
+  "address": "Calle 1 # 2-3",
+  "municipalityCode": "11001",
+  "taxResponsibilities": ["O-13"],
+  "active": true
+}
+```
+
+### inventory-service: items de servicio e insumos
+
+- `POST /api/v1/products` debe aceptar `itemType`, `saleEnabled`, `purchaseEnabled` y `stockTracked`.
+- `POST /api/v1/service-supply-references` crea una referencia informativa entre un servicio y un insumo.
+- `GET /api/v1/products/{serviceId}/supply-references` lista insumos sugeridos.
+- `POST /api/v1/inventory-movements` debe aceptar `CONSUMPTION_OUT` y `WASTE_OUT`.
+
+Regla: crear o confirmar una venta de servicio no invoca automaticamente `CONSUMPTION_OUT`.
+
+### inventory-service/accounting-service: compras, gastos y cuentas por pagar
+
+- `POST /api/v1/purchases`
+- `POST /api/v1/purchases/{purchaseId}/confirm`
+- `POST /api/v1/expenses`
+- `POST /api/v1/expenses/{expenseId}/confirm`
+- `GET /api/v1/accounts-payable?status=&supplierId=&from=&to=`
+- `POST /api/v1/accounts-payable/{payableId}/payments`
+
+### ExpenseRequest
+
+```json
+{
+  "supplierId": "uuid",
+  "expenseDate": "2026-05-20",
+  "concept": "Servicio publico energia",
+  "subtotal": 100000,
+  "taxTotal": 19000,
+  "total": 119000,
+  "paymentCondition": "CREDIT",
+  "dueDate": "2026-06-20",
+  "evidenceUrl": "https://example.local/evidence.pdf"
+}
+```
+
+### identity-service: roles y permisos
+
+- `POST /api/v1/users`
+- `POST /api/v1/auth/login`
+- `GET /api/v1/me`
+- `POST /api/v1/companies/{companyId}/memberships`
+- `PUT /api/v1/companies/{companyId}/memberships/{membershipId}/roles`
+- `GET /api/v1/companies/{companyId}/permissions`
+
+Roles minimos: `OWNER`, `ADMIN`, `CASHIER`, `ACCOUNTANT`, `AUDITOR`.
+
+### tenant-service: licenciamiento
+
+- `POST /api/v1/companies/{companyId}/license`
+- `GET /api/v1/companies/{companyId}/license`
+- `PUT /api/v1/companies/{companyId}/license/suspend`
+- `PUT /api/v1/companies/{companyId}/license/activate`
+
+### CompanyLicenseResponse
+
+```json
+{
+  "companyId": "uuid",
+  "planCode": "SMALL_BUSINESS",
+  "status": "ACTIVE",
+  "validFrom": "2026-05-01",
+  "validTo": "2027-05-01",
+  "maxUsers": 5,
+  "maxMonthlyDocuments": 1000
+}
+```
+
+### reporting-service
+
+- `GET /api/v1/reports/sales?from=&to=`
+- `GET /api/v1/reports/electronic-documents?from=&to=&status=`
+- `GET /api/v1/reports/inventory-stock`
+- `GET /api/v1/reports/kardex?productId=&from=&to=`
+- `GET /api/v1/reports/purchases-expenses?from=&to=&supplierId=`
+- `GET /api/v1/reports/accounts-payable?status=&supplierId=`
+- `GET /api/v1/reports/accounts-receivable?status=&customerId=`
 
 ## Eventos internos propuestos
 

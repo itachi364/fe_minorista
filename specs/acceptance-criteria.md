@@ -59,3 +59,21 @@
 - AC-034: Dado un producto comprado o ajustado inicialmente, cuando se consulte el stock o kardex, entonces debe reflejar costo, cantidad, documento origen y trazabilidad del movimiento.
 - AC-035: Dado el flujo end-to-end local desde cero, cuando se creen empresa, configuraciones, inventario, venta y documento electronico, entonces los datos deben quedar persistidos y verificables por API y por consultas PostgreSQL.
 - AC-036: Dado un inventario de codigo y tablas legacy, cuando se ejecute la depuracion, entonces solo deben eliminarse elementos demostrados como reemplazados, no usados y cubiertos por pruebas o checklist de migracion.
+
+## Backend core pendiente antes de depuracion
+
+- AC-037: Dado un tercero con tipo de documento NIT, cuando se registre o actualice su numero base, entonces el sistema debe calcular automaticamente el digito de verificacion y retornarlo en la respuesta.
+- AC-038: Dado un tercero con tipo de documento distinto a NIT, cuando se registre o actualice, entonces el digito de verificacion debe quedar nulo o vacio.
+- AC-039: Dado un mismo numero de identificacion por empresa, cuando el tercero sea cliente y proveedor, entonces el sistema debe permitir ambos roles sin duplicar la identidad fiscal.
+- AC-040: Dado un bien fisico con stock controlado, cuando se venda y el documento quede efectivo, entonces el sistema debe descontar su propio stock.
+- AC-041: Dado un servicio o intangible facturable, cuando se venda y facture, entonces el sistema debe generar la linea fiscal sin descontar automaticamente insumos asociados.
+- AC-042: Dado un insumo usado en un servicio, cuando el usuario registre consumo, desperdicio o ajuste manual, entonces el sistema debe actualizar stock y kardex con motivo, cantidad, origen, usuario y empresa.
+- AC-043: Dada una compra confirmada de productos o insumos, entonces debe incrementar stock, registrar kardex y generar contabilizacion segun reglas PUC de la empresa.
+- AC-044: Dado un gasto sin inventario, cuando se registre y confirme, entonces no debe afectar stock y debe generar cuenta por pagar o pago contable segun la forma de pago.
+- AC-045: Dada una cuenta por pagar, cuando se registre un pago parcial o total, entonces el saldo debe disminuir y quedar trazabilidad contable.
+- AC-046: Dada una venta de bienes o servicios, cuando se emita POS electronico o factura electronica, entonces el documento debe conservar snapshot fiscal de tercero, lineas, impuestos, totales, prefijo y consecutivo.
+- AC-047: Dado un reporte operativo o contable, cuando se consulte por empresa y periodo, entonces solo debe incluir datos de esa empresa y debe provenir del modelo Clean Architecture activo.
+- AC-048: Dado un usuario con roles por empresa, cuando intente ejecutar una accion protegida, entonces el sistema debe permitirla o rechazarla segun permisos configurados.
+- AC-049: Dada una empresa con licencia suspendida o vencida, cuando intente emitir documentos o crear nuevas transacciones, entonces el sistema debe bloquear la operacion con error estructurado.
+- AC-050: Dado el flujo completo despues de migrar legacy pendiente, cuando se ejecute la prueba E2E desde cero, entonces debe cubrir empresa, licencia, usuario, configuracion fiscal, terceros, items, compras/gastos, inventario, venta, documento electronico, DIAN mock, contabilidad, reportes y auditoria.
+- AC-051: Dada la tarea de limpieza legacy, entonces debe existir matriz de reemplazo con codigo, endpoints, tablas, datos a migrar, pruebas y decision de eliminar o conservar por cada componente.

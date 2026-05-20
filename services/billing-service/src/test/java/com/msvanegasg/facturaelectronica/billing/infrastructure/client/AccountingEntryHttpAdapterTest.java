@@ -42,7 +42,7 @@ class AccountingEntryHttpAdapterTest {
         server.start();
         String baseUrl = "http://localhost:" + server.getAddress().getPort();
         AccountingEntryHttpAdapter adapter = new AccountingEntryHttpAdapter(
-                new BillingProperties("http://inventory", "http://provider", baseUrl, "ACCEPTED"));
+                new BillingProperties("http://inventory", "http://provider", baseUrl, "http://audit", "ACCEPTED"));
 
         adapter.postSale(confirmedSale(), "confirm-1");
 

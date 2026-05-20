@@ -20,7 +20,8 @@ class MockElectronicDocumentProviderAdapterTest {
     @Test
     void returnsAcceptedMockResponse() {
         var adapter = new MockElectronicDocumentProviderAdapter(
-                new BillingProperties("http://inventory", "http://provider", "http://accounting", "ACCEPTED"));
+                new BillingProperties("http://inventory", "http://provider", "http://accounting", "http://audit",
+                        "ACCEPTED"));
         UUID documentId = UUID.fromString("55555555-5555-5555-5555-555555555555");
 
         var result = adapter.submitElectronicPos(sale(), documentId, "confirm-1");

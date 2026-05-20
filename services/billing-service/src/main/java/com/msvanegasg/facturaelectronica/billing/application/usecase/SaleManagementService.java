@@ -8,6 +8,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.billing.application.dto.AssignFiscalNumberCommand;
+import com.msvanegasg.facturaelectronica.billing.application.dto.AuditEventCommand;
+import com.msvanegasg.facturaelectronica.billing.application.dto.AuditResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.CreateSaleCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalNumberResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ProviderSubmissionResult;
@@ -16,6 +18,7 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.AssignFiscalNumberUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageSaleUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AccountingEntryPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.AuditEventPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ElectronicDocumentProviderPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGeneratorPort;
@@ -40,19 +43,21 @@ public class SaleManagementService implements ManageSaleUseCase {
     private final ElectronicDocumentProviderPort providerPort;
     private final InventoryMovementPort inventoryMovementPort;
     private final AccountingEntryPort accountingEntryPort;
+    private final AuditEventPort auditEventPort;
     private final AssignFiscalNumberUseCase assignFiscalNumberUseCase;
     private final IdGeneratorPort idGenerator;
     private final ClockPort clock;
 
     public SaleManagementService(SaleRepositoryPort saleRepository, InventoryAvailabilityPort inventoryAvailability,
             ElectronicDocumentProviderPort providerPort, InventoryMovementPort inventoryMovementPort,
-            AccountingEntryPort accountingEntryPort, AssignFiscalNumberUseCase assignFiscalNumberUseCase,
-            IdGeneratorPort idGenerator, ClockPort clock) {
+            AccountingEntryPort accountingEntryPort, AuditEventPort auditEventPort,
+            AssignFiscalNumberUseCase assignFiscalNumberUseCase, IdGeneratorPort idGenerator, ClockPort clock) {
         this.saleRepository = Objects.requireNonNull(saleRepository);
         this.inventoryAvailability = Objects.requireNonNull(inventoryAvailability);
         this.providerPort = Objects.requireNonNull(providerPort);
         this.inventoryMovementPort = Objects.requireNonNull(inventoryMovementPort);
         this.accountingEntryPort = Objects.requireNonNull(accountingEntryPort);
+        this.auditEventPort = Objects.requireNonNull(auditEventPort);
         this.assignFiscalNumberUseCase = Objects.requireNonNull(assignFiscalNumberUseCase);
         this.idGenerator = Objects.requireNonNull(idGenerator);
         this.clock = Objects.requireNonNull(clock);
@@ -88,7 +93,9 @@ public class SaleManagementService implements ManageSaleUseCase {
         ElectronicDocument document = documentFromProvider(documentId, sale, documentType, fiscalNumber, provider,
                 idempotencyKey, now);
         Sale confirmed = saleRepository.save(sale.confirm(document, now));
-        return BillingResultMapper.toSaleResult(applyPostValidationEffects(confirmed));
+        Sale completed = applyPostValidationEffects(confirmed);
+        auditEventPort.register(toAuditEvent(completed));
+        return BillingResultMapper.toSaleResult(completed);
     }
 
     @Override
@@ -158,6 +165,24 @@ public class SaleManagementService implements ManageSaleUseCase {
             current = saleRepository.save(current.withElectronicDocument(currentDocument));
         }
         return current;
+    }
+
+    private static AuditEventCommand toAuditEvent(Sale sale) {
+        ElectronicDocument document = sale.electronicDocument();
+        AuditResult result = document.status() == ElectronicDocumentStatus.VALIDATED
+                ? AuditResult.SUCCESS
+                : AuditResult.FAILURE;
+        String detail = """
+                {"saleId":"%s","documentId":"%s","documentType":"%s","documentStatus":"%s","providerStatus":"%s","providerTrackingId":"%s","inventoryApplied":%s,"accountingApplied":%s}
+                """.formatted(sale.id(), document.id(), document.documentType(), document.status(),
+                document.providerStatus(), valueOrEmpty(document.providerTrackingId()), document.inventoryApplied(),
+                document.accountingApplied()).trim();
+        return new AuditEventCommand(sale.companyId(), sale.createdBy(), "ELECTRONIC_DOCUMENT", "SALE",
+                sale.id().toString(), "CONFIRM_SALE", result, detail);
+    }
+
+    private static String valueOrEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     private static void validate(CreateSaleCommand command) {
