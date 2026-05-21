@@ -13,6 +13,7 @@ import com.msvanegasg.facturaelectronica.inventory.application.port.out.Inventor
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.ProductRepositoryPort;
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.StockBalanceRepositoryPort;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.InventoryMovement;
+import com.msvanegasg.facturaelectronica.inventory.domain.model.Product;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.StockBalance;
 
 public class RegisterInventoryMovementService implements RegisterInventoryMovementUseCase {
@@ -48,15 +49,18 @@ public class RegisterInventoryMovementService implements RegisterInventoryMoveme
     }
 
     private InventoryMovementResult createMovement(RegisterInventoryMovementCommand command) {
-        productRepository.findByCompanyIdAndId(command.companyId(), command.productId())
+        Product product = productRepository.findByCompanyIdAndId(command.companyId(), command.productId())
                 .orElseThrow(() -> new ProductNotFoundException(command.productId()));
+        if (!product.stockTracked()) {
+            throw new IllegalStateException("inventory movements are only allowed for stock tracked items");
+        }
         var now = clock.now();
         StockBalance previous = stockBalanceRepository.findByCompanyIdAndProductId(command.companyId(),
                 command.productId()).orElseGet(() -> StockBalance.empty(command.companyId(), command.productId(), now));
         StockBalance resulting = previous.apply(command.movementType(), command.quantity(), command.unitCost(), now);
         InventoryMovement movement = InventoryMovement.from(idGenerator.newId(), previous, resulting,
                 command.movementType(), command.quantity(), command.unitCost(), command.sourceDocumentType(),
-                command.sourceDocumentId(), command.idempotencyKey(), command.createdBy(), now);
+                command.sourceDocumentId(), command.idempotencyKey(), command.reason(), command.createdBy(), now);
         stockBalanceRepository.save(resulting);
         return InventoryResultMapper.toMovementResult(movementRepository.save(movement));
     }
@@ -70,5 +74,8 @@ public class RegisterInventoryMovementService implements RegisterInventoryMoveme
         Objects.requireNonNull(command.unitCost(), "unitCost is required");
         Objects.requireNonNull(command.sourceDocumentType(), "sourceDocumentType is required");
         Objects.requireNonNull(command.sourceDocumentId(), "sourceDocumentId is required");
+        if (command.movementType().requiresReason() && (command.reason() == null || command.reason().isBlank())) {
+            throw new IllegalArgumentException("reason is required for " + command.movementType());
+        }
     }
 }

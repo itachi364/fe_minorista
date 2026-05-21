@@ -47,7 +47,7 @@ public class InventoryMovementPersistenceAdapter implements InventoryMovementRep
         return new InventoryMovement(entity.getId(), entity.getCompanyId(), entity.getProductId(),
                 entity.getMovementType(), entity.getQuantity(), entity.getUnitCost(), entity.getPreviousStock(),
                 entity.getResultingStock(), entity.getSourceDocumentType(), entity.getSourceDocumentId(),
-                entity.getIdempotencyKey(), entity.getCreatedBy(), entity.getMovementAt());
+                entity.getIdempotencyKey(), entity.getReason(), entity.getCreatedBy(), entity.getMovementAt());
     }
 
     private static InventoryMovementJpaEntity toEntity(InventoryMovement movement) {
@@ -63,6 +63,7 @@ public class InventoryMovementPersistenceAdapter implements InventoryMovementRep
         entity.setSourceDocumentType(movement.sourceDocumentType());
         entity.setSourceDocumentId(movement.sourceDocumentId());
         entity.setIdempotencyKey(movement.idempotencyKey());
+        entity.setReason(movement.reason());
         entity.setCreatedBy(movement.createdBy());
         entity.setMovementAt(movement.movementAt());
         return entity;

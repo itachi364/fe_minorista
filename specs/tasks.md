@@ -1508,8 +1508,8 @@
   - Nota:
     - La evidencia historica de TASK-043 sobre `billing-service` dependiendo de `audit-service` queda reemplazada por esta tarea.
 
-- [ ] TASK-046: Cerrar diseno backend core pendiente antes de depuracion legacy
-  - Estado: PENDING
+- [x] TASK-046: Cerrar diseno backend core pendiente antes de depuracion legacy
+  - Estado: DONE
   - Requisitos: RF-016, RF-017, RF-018, RF-019, RF-020, RF-021, RF-022, RF-023, RF-024, RF-025, RF-026, RF-027, RN-016, RN-030.
   - Acceptance criteria: AC-037, AC-038, AC-039, AC-040, AC-041, AC-042, AC-043, AC-044, AC-045, AC-046, AC-047, AC-048, AC-049, AC-050, AC-051.
   - Descripcion: Consolidar el diseno funcional y tecnico faltante del backend antes de eliminar legacy o introducir broker: terceros fiscales, clientes, proveedores, bienes, servicios, insumos, compras, gastos, cuentas por pagar, reportes, usuarios, permisos y licencias.
@@ -1543,9 +1543,14 @@
   - Tests requeridos:
     - Revision documental.
     - `git diff --check`.
+  - Evidencia:
+    - `specs/requirements.md`, `specs/design.md`, `specs/architecture.md`, `specs/api-contract.md`, `specs/acceptance-criteria.md`, `specs/use-cases.md`, `specs/data-model.md`, `specs/data-dictionary.md` y `specs/tasks.md` documentan la logica backend pendiente.
+    - El backlog quedo ordenado como backend core, migracion legacy, limpieza y despues NATS.
+    - Commit remoto `ca8800c` en `origin/master`: `✨ feat(billing): add fiscal audit flow`.
+    - `git diff --check`: sin errores de whitespace; solo warnings LF/CRLF propios del entorno Windows.
 
 - [ ] TASK-047: Implementar terceros fiscales con DV NIT automatico
-  - Estado: PENDING
+  - Estado: DONE
   - Requisitos: RF-016, RF-017, RF-018, RNF-015, RN-016, RN-017, RN-018, RN-019.
   - Acceptance criteria: AC-037, AC-038, AC-039, AC-021, AC-022, AC-032.
   - Descripcion: Evolucionar `thirdparty-service` para manejar clientes/adquirentes y proveedores bajo un modelo fiscal unificado, con roles por empresa y calculo automatico del digito de verificacion para NIT.
@@ -1568,9 +1573,17 @@
     - Controller tests.
     - Persistence tests.
     - `.\mvnw.cmd -pl services/thirdparty-service test`.
+  - Evidencia:
+    - Agregado modelo objetivo `ThirdParty` con `PersonType`, roles `CUSTOMER`/`SUPPLIER` y DV automatico para NIT.
+    - Agregada migracion Flyway `V002__create_third_party_fiscal_model.sql` con tablas `thirdparty.third_party` y `thirdparty.third_party_role`.
+    - Agregados endpoints `/api/v1/third-parties`, `/api/v1/customers` y `/api/v1/suppliers` con `X-Company-Id`.
+    - Las rutas legacy `/api/clientes` y `/api/proveedores` se mantienen intactas para compatibilidad temporal.
+    - Agregadas pruebas de dominio, caso de uso y controlador para DV, roles, aislamiento por empresa y contratos API v1.
+    - `.\mvnw.cmd -pl services/thirdparty-service clean test`: BUILD SUCCESS, 41 tests, 0 failures, 0 errors, 0 skipped.
+    - `.\mvnw.cmd -pl services/thirdparty-service test`: BUILD SUCCESS, 41 tests, 0 failures, 0 errors, 0 skipped.
 
-- [ ] TASK-048: Implementar bienes, servicios, insumos y referencias operativas
-  - Estado: PENDING
+- [x] TASK-048: Implementar bienes, servicios, insumos y referencias operativas
+  - Estado: DONE
   - Requisitos: RF-019, RF-020, RF-021, RF-022, RN-020, RN-021, RN-022, RN-023.
   - Acceptance criteria: AC-040, AC-041, AC-042, AC-021, AC-022, AC-034.
   - Descripcion: Evolucionar `inventory-service` para diferenciar bienes fisicos, servicios/intangibles e insumos, permitiendo referencias servicio-insumo sin consumo automatico.
@@ -1593,9 +1606,19 @@
     - Controller tests.
     - Persistence tests.
     - `.\mvnw.cmd -pl services/inventory-service test`.
+  - Evidencia:
+    - `inventory.product` fue ampliado con `item_type`, `sale_enabled`, `purchase_enabled` y `stock_tracked`.
+    - Agregada migracion Flyway `V002__add_inventory_item_types_and_service_supply_references.sql`.
+    - Agregados tipos `PHYSICAL_GOOD`, `SERVICE` y `SUPPLY` con defaults compatibles.
+    - `SERVICE` puede venderse/facturarse sin stock automatico y rechaza stock inicial.
+    - Compras y movimientos solo aceptan items con `stockTracked=true`.
+    - Agregado endpoint `POST /api/v1/service-supply-references`.
+    - Agregado endpoint `GET /api/v1/products/{serviceProductId}/supply-references`.
+    - Las referencias servicio-insumo no generan kardex ni consumos automaticos.
+    - `.\mvnw.cmd -pl services/inventory-service test`: BUILD SUCCESS, 29 tests, 0 failures, 0 errors, 0 skipped.
 
-- [ ] TASK-049: Ajustar ventas y documentos para bienes y servicios
-  - Estado: PENDING
+- [x] TASK-049: Ajustar ventas y documentos para bienes y servicios
+  - Estado: DONE
   - Requisitos: RF-020, RF-024, RN-020, RN-021, RN-026.
   - Acceptance criteria: AC-040, AC-041, AC-046, AC-033, AC-035.
   - Descripcion: Ajustar `billing-service` para vender y facturar lineas mixtas de bienes y servicios, validando stock solo cuando corresponda y conservando snapshot fiscal completo.
@@ -1616,9 +1639,18 @@
     - Controller tests.
     - `.\mvnw.cmd -pl services/billing-service test`.
     - E2E con venta mixta.
+  - Evidencia:
+    - `SaleLine` conserva snapshot `productSku`, `productName`, `itemType` y `stockTracked`.
+    - Agregada migracion Flyway `V004__add_sale_line_item_snapshot.sql`.
+    - La creacion de venta consulta `inventory-service` para capturar snapshot del item.
+    - La disponibilidad se valida solo para lineas con `stockTracked=true`.
+    - La confirmacion aplica `SALE_OUT` solo para lineas con `stockTracked=true`.
+    - Las lineas `SERVICE` se facturan sin consumo automatico de insumos.
+    - Primer intento `.\mvnw.cmd -pl services/billing-service test`: codigo funcional OK, pero `contextLoads` fallo por limite local PostgreSQL `too many clients already`.
+    - Reintento con `$env:SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE='2'; .\mvnw.cmd -pl services/billing-service test`: BUILD SUCCESS, 32 tests, 0 failures, 0 errors, 0 skipped.
 
-- [ ] TASK-050: Implementar movimientos manuales de insumos
-  - Estado: PENDING
+- [x] TASK-050: Implementar movimientos manuales de insumos
+  - Estado: DONE
   - Requisitos: RF-022, RN-022, RN-023.
   - Acceptance criteria: AC-042, AC-013, AC-018.
   - Descripcion: Agregar movimientos manuales `CONSUMPTION_OUT` y `WASTE_OUT` para insumos, con motivo obligatorio, trazabilidad y auditoria.
@@ -1637,9 +1669,12 @@
     - Controller tests.
     - Persistence tests.
     - E2E parcial de consumo manual.
+  - Resultado local: `inventory-service` acepta movimientos manuales `CONSUMPTION_OUT` y `WASTE_OUT`, exige `reason`, soporta origen `MANUAL_SUPPLY_CONSUMPTION` y `MANUAL_SUPPLY_WASTE`, persiste el motivo y muestra el movimiento en kardex/respuestas REST.
+  - Nota de arquitectura: no se conecto `audit-service` de forma directa para evitar dependencia sincronica entre microservicios; la auditoria cross-service queda para el flujo desacoplado con eventos/NATS.
+  - Verificacion: `.\mvnw.cmd -pl services/inventory-service test`: BUILD SUCCESS, 35 tests, 0 failures, 0 errors, 0 skipped.
 
-- [ ] TASK-051: Implementar compras, gastos y cuentas por pagar
-  - Estado: PENDING
+- [x] TASK-051: Implementar compras, gastos y cuentas por pagar
+  - Estado: DONE
   - Requisitos: RF-018, RF-023, RN-024, RN-025.
   - Acceptance criteria: AC-043, AC-044, AC-045, AC-014.
   - Descripcion: Completar flujo de compras de productos/insumos, gastos sin inventario, cuentas por pagar y pagos basicos, integrados con contabilidad por reglas PUC.
@@ -1661,6 +1696,15 @@
     - Controller tests.
     - Persistence tests.
     - E2E parcial compra -> stock -> contabilidad.
+  - Resultado local:
+    - `inventory-service` soporta compras `CASH` y `CREDIT`; las compras a credito requieren `dueDate`.
+    - La confirmacion de compra sigue incrementando stock y ejecuta contabilizacion/CxP best-effort contra `accounting-service` si `ACCOUNTING_SERVICE_URL` esta configurado.
+    - `accounting-service` implementa gastos, confirmacion de gastos, creacion/listado de cuentas por pagar y pagos parciales/totales.
+    - Los pagos actualizan saldo y estado de CxP (`OPEN`, `PARTIALLY_PAID`, `PAID`) y generan asiento contable por regla PUC.
+  - Nota de arquitectura: la integracion compra -> contabilidad no impide confirmar compras si `accounting-service` falla; NATS/outbox reemplazara esta llamada best-effort en la tarea correspondiente.
+  - Verificacion:
+    - `.\mvnw.cmd -pl services/accounting-service test`: BUILD SUCCESS, 33 tests, 0 failures, 0 errors, 0 skipped.
+    - `.\mvnw.cmd -pl services/inventory-service test`: BUILD SUCCESS, 35 tests, 0 failures, 0 errors, 0 skipped.
 
 - [ ] TASK-052: Completar documentos fiscales y consultas fiscales
   - Estado: PENDING

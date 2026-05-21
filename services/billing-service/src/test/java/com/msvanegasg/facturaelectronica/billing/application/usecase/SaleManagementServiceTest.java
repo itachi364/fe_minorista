@@ -23,6 +23,7 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.AuditEventComma
 import com.msvanegasg.facturaelectronica.billing.application.dto.AuditResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalNumberResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.CreateSaleCommand;
+import com.msvanegasg.facturaelectronica.billing.application.dto.InventoryProductSnapshot;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ProviderSubmissionResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineCommand;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AuditEventPort;
@@ -40,6 +41,7 @@ import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
+import com.msvanegasg.facturaelectronica.billing.domain.model.SaleItemType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
 
 @ExtendWith(MockitoExtension.class)
@@ -83,6 +85,7 @@ class SaleManagementServiceTest {
     void createsSaleWhenStockIsAvailable() {
         SaleManagementService service = service();
         when(saleRepository.findByCompanyIdAndIdempotencyKey(COMPANY_ID, "sale-1")).thenReturn(Optional.empty());
+        when(inventoryAvailability.findProduct(COMPANY_ID, PRODUCT_ID)).thenReturn(productSnapshot(PRODUCT_ID));
         when(idGenerator.newId()).thenReturn(LINE_ID, SALE_ID);
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
         when(clock.now()).thenReturn(NOW);
@@ -91,6 +94,8 @@ class SaleManagementServiceTest {
         var result = service.create(command("sale-1"));
 
         assertThat(result.status()).isEqualTo(SaleStatus.DRAFT);
+        assertThat(result.lines().get(0).itemType()).isEqualTo(SaleItemType.PHYSICAL_GOOD);
+        assertThat(result.lines().get(0).stockTracked()).isTrue();
         assertThat(result.subtotal()).isEqualByComparingTo("30000.00");
         assertThat(result.taxTotal()).isEqualByComparingTo("5700.00");
         assertThat(result.total()).isEqualByComparingTo("35700.00");
@@ -110,11 +115,37 @@ class SaleManagementServiceTest {
     @Test
     void rejectsSaleWhenStockIsInsufficient() {
         when(saleRepository.findByCompanyIdAndIdempotencyKey(COMPANY_ID, "sale-1")).thenReturn(Optional.empty());
+        when(inventoryAvailability.findProduct(COMPANY_ID, PRODUCT_ID)).thenReturn(productSnapshot(PRODUCT_ID));
         when(idGenerator.newId()).thenReturn(LINE_ID);
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(false);
 
         assertThatThrownBy(() -> service().create(command("sale-1")))
                 .isInstanceOf(InsufficientStockException.class);
+    }
+
+    @Test
+    void createsMixedSaleWithoutCheckingServiceStock() {
+        UUID serviceProductId = UUID.fromString("66666666-6666-6666-6666-666666666666");
+        UUID serviceLineId = UUID.fromString("77777777-7777-7777-7777-777777777777");
+        when(saleRepository.findByCompanyIdAndIdempotencyKey(COMPANY_ID, "mixed-sale")).thenReturn(Optional.empty());
+        when(inventoryAvailability.findProduct(COMPANY_ID, PRODUCT_ID)).thenReturn(productSnapshot(PRODUCT_ID));
+        when(inventoryAvailability.findProduct(COMPANY_ID, serviceProductId)).thenReturn(serviceSnapshot(serviceProductId));
+        when(idGenerator.newId()).thenReturn(LINE_ID, serviceLineId, SALE_ID);
+        when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
+        when(clock.now()).thenReturn(NOW);
+        when(saleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service().create(new CreateSaleCommand(COMPANY_ID, null, null, SaleChannel.POS, "mixed-sale",
+                null, List.of(new SaleLineCommand(PRODUCT_ID, new BigDecimal("2.00"), new BigDecimal("15000.00"),
+                        BigDecimal.ZERO, "IVA_19", new BigDecimal("19.00")),
+                        new SaleLineCommand(serviceProductId, BigDecimal.ONE, new BigDecimal("35000.00"),
+                                BigDecimal.ZERO, "IVA_19", new BigDecimal("19.00")))));
+
+        assertThat(result.lines()).hasSize(2);
+        assertThat(result.lines().get(1).itemType()).isEqualTo(SaleItemType.SERVICE);
+        assertThat(result.lines().get(1).stockTracked()).isFalse();
+        org.mockito.Mockito.verify(inventoryAvailability, never())
+                .isAvailable(COMPANY_ID, serviceProductId, BigDecimal.ONE);
     }
 
     @Test
@@ -203,6 +234,16 @@ class SaleManagementServiceTest {
                 List.of(com.msvanegasg.facturaelectronica.billing.domain.model.SaleLine.calculate(LINE_ID, PRODUCT_ID,
                         new BigDecimal("2.00"), new BigDecimal("15000.00"), BigDecimal.ZERO, "IVA_19",
                         new BigDecimal("19.00"))));
+    }
+
+    private static InventoryProductSnapshot productSnapshot(UUID productId) {
+        return new InventoryProductSnapshot(productId, "SKU-1", "Producto", SaleItemType.PHYSICAL_GOOD, true, true,
+                new BigDecimal("9000.00"), new BigDecimal("10.00"));
+    }
+
+    private static InventoryProductSnapshot serviceSnapshot(UUID productId) {
+        return new InventoryProductSnapshot(productId, "SERV-1", "Manicura", SaleItemType.SERVICE, true, false,
+                BigDecimal.ZERO, BigDecimal.ZERO);
     }
 
     private static ElectronicDocument validatedDocument(Instant inventoryAppliedAt, Instant accountingAppliedAt) {

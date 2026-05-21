@@ -85,7 +85,7 @@
 
 Campos equivalentes a `thirdparty.customer`, orientados a proveedor.
 
-## thirdparty.third_party objetivo
+## thirdparty.third_party
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---:|---:|---|
@@ -105,7 +105,7 @@ Campos equivalentes a `thirdparty.customer`, orientados a proveedor.
 | tax_responsibilities | jsonb | No | Responsabilidades fiscales. |
 | active | boolean | Si | Estado. |
 
-## thirdparty.third_party_role objetivo
+## thirdparty.third_party_role
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---:|---:|---|
@@ -165,12 +165,12 @@ Campos equivalentes a `thirdparty.customer`, orientados a proveedor.
 | quantity | numeric(19,4) | Si | Cantidad movida. |
 | previous_stock | numeric(19,4) | Si | Stock antes del movimiento. |
 | resulting_stock | numeric(19,4) | Si | Stock despues del movimiento. |
-| source_type | varchar(40) | Si | SALE, PURCHASE, CREDIT_NOTE, ADJUSTMENT. |
-| source_id | uuid/bigint | Si | Documento origen. |
-| reason | varchar(250) | No | Motivo. |
+| source_document_type | varchar(40) | Si | SALE, PURCHASE, RETURN, ADJUSTMENT, INITIAL_STOCK, MANUAL_SUPPLY_CONSUMPTION, MANUAL_SUPPLY_WASTE. |
+| source_document_id | uuid/bigint | Si | Documento origen. |
+| reason | varchar(300) | No | Motivo obligatorio para CONSUMPTION_OUT y WASTE_OUT. |
 | movement_at | timestamp | Si | Fecha del movimiento. |
 
-## inventory.service_supply_reference objetivo
+## inventory.service_supply_reference
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---:|---:|---|
@@ -180,6 +180,13 @@ Campos equivalentes a `thirdparty.customer`, orientados a proveedor.
 | supply_product_id | ref | Si | Item tipo SUPPLY o bien controlado usado como insumo. |
 | notes | varchar(300) | No | Observacion operativa. |
 | active | boolean | Si | Estado. |
+| created_at | timestamp | Si | Fecha de creacion. |
+
+Reglas TASK-048:
+
+- `service_product_id` debe pertenecer a la misma empresa y ser `SERVICE`.
+- `supply_product_id` debe pertenecer a la misma empresa y ser un item con `stock_tracked=true`.
+- La referencia no crea stock, no descuenta insumos y no genera kardex.
 
 ## inventory.purchase
 
@@ -189,7 +196,7 @@ Campos equivalentes a `thirdparty.customer`, orientados a proveedor.
 | company_id | ref | Si | Empresa. |
 | supplier_id | ref | Si | Proveedor. |
 | purchase_date | timestamp | Si | Fecha de compra. |
-| subtotal | numeric(19,2) | Si | Subtotal. |
+| subtotal | numeric(38,2) | Si | Subtotal. |
 | tax_total | numeric(19,2) | Si | Impuestos. |
 | total | numeric(19,2) | Si | Total. |
 | status | varchar(30) | Si | DRAFT, CONFIRMED, CANCELLED. |
@@ -207,39 +214,41 @@ Campos equivalentes a `thirdparty.customer`, orientados a proveedor.
 | tax_amount | numeric(19,2) | Si | Impuesto. |
 | line_total | numeric(19,2) | Si | Total linea. |
 
-## accounting.expense objetivo
+## accounting_expense
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---:|---:|---|
 | id | uuid/bigint | Si | Identificador. |
 | company_id | ref | Si | Empresa. |
-| supplier_id | ref | Si | Proveedor. |
+| supplier_id | ref | No | Proveedor. |
 | expense_date | date | Si | Fecha del gasto. |
 | concept | varchar(250) | Si | Concepto del gasto. |
 | subtotal | numeric(19,2) | Si | Subtotal. |
-| tax_total | numeric(19,2) | Si | Impuestos. |
-| total | numeric(19,2) | Si | Total. |
+| tax_total | numeric(38,2) | Si | Impuestos. |
+| total | numeric(38,2) | Si | Total. |
 | payment_condition | varchar(30) | Si | CASH, CREDIT. |
+| due_date | date | No | Obligatorio si payment_condition=CREDIT. |
 | evidence_url | varchar(500) | No | Evidencia o soporte externo. |
-| status | varchar(30) | Si | DRAFT, CONFIRMED, CANCELLED. |
+| status | varchar(30) | Si | PENDING, CONFIRMED. |
+| idempotency_key | varchar(120) | Si | Clave de idempotencia. |
 
-## accounting.accounts_payable objetivo
+## accounting_accounts_payable
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---:|---:|---|
 | id | uuid/bigint | Si | Identificador. |
 | company_id | ref | Si | Empresa. |
-| supplier_id | ref | Si | Proveedor. |
+| supplier_id | ref | No | Proveedor. |
 | source_type | varchar(40) | Si | PURCHASE, EXPENSE. |
 | source_id | uuid/bigint | Si | Documento origen. |
 | issue_date | date | Si | Fecha origen. |
-| due_date | date | No | Fecha de vencimiento. |
-| original_amount | numeric(19,2) | Si | Valor inicial. |
-| paid_amount | numeric(19,2) | Si | Valor pagado acumulado. |
-| balance | numeric(19,2) | Si | Saldo pendiente. |
-| status | varchar(30) | Si | OPEN, PARTIALLY_PAID, PAID, CANCELLED. |
+| due_date | date | Si | Fecha de vencimiento. |
+| total_amount | numeric(38,2) | Si | Valor inicial. |
+| paid_amount | numeric(38,2) | Si | Valor pagado acumulado. |
+| balance | derivado | Si | Saldo pendiente calculado como total_amount - paid_amount. |
+| status | varchar(30) | Si | OPEN, PARTIALLY_PAID, PAID. |
 
-## accounting.accounts_payable_payment objetivo
+## accounting_accounts_payable_payment
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---:|---:|---|
@@ -247,9 +256,10 @@ Campos equivalentes a `thirdparty.customer`, orientados a proveedor.
 | company_id | ref | Si | Empresa. |
 | accounts_payable_id | ref | Si | Cuenta por pagar. |
 | payment_date | date | Si | Fecha de pago. |
-| amount | numeric(19,2) | Si | Valor pagado. |
-| payment_method_id | ref | No | Medio de pago. |
-| accounting_entry_id | ref | No | Asiento contable asociado. |
+| amount | numeric(38,2) | Si | Valor pagado. |
+| payment_method | varchar(80) | Si | Medio de pago operativo. |
+| reference | varchar(120) | No | Referencia del pago. |
+| created_by | ref | No | Usuario que registro el pago. |
 
 ## billing.issuer_profile
 
@@ -305,11 +315,21 @@ Campos equivalentes a `thirdparty.customer`, orientados a proveedor.
 | company_id | ref | Si | Empresa. |
 | sale_id | ref | Si | Venta. |
 | product_id | ref | Si | Producto. |
+| product_sku | varchar(80) | No | SKU del producto al momento de crear la venta. |
+| product_name | varchar(160) | No | Nombre del producto/servicio al momento de crear la venta. |
+| item_type | varchar(30) | Si | PHYSICAL_GOOD, SERVICE, SUPPLY. |
+| stock_tracked | boolean | Si | Snapshot que indica si la linea afecta inventario. |
 | quantity | numeric(19,4) | Si | Cantidad vendida. |
 | unit_price | numeric(19,2) | Si | Precio unitario. |
 | discount_amount | numeric(19,2) | Si | Descuento linea. |
 | tax_amount | numeric(19,2) | Si | Impuesto linea. |
 | line_total | numeric(19,2) | Si | Total linea. |
+
+Reglas TASK-049:
+
+- `stock_tracked=true` habilita validacion de disponibilidad y movimiento `SALE_OUT`.
+- `stock_tracked=false`, normalmente servicios, no descuenta stock ni insumos automaticamente.
+- El snapshot se toma desde `inventory-service` para conservar trazabilidad fiscal/operativa.
 
 ## billing.electronic_document
 

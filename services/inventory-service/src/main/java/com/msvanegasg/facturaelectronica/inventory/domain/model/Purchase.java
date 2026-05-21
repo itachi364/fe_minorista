@@ -2,6 +2,7 @@ package com.msvanegasg.facturaelectronica.inventory.domain.model;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -14,6 +15,8 @@ public record Purchase(
         BigDecimal subtotal,
         BigDecimal taxTotal,
         BigDecimal total,
+        PaymentCondition paymentCondition,
+        LocalDate dueDate,
         String evidenceUrl,
         String idempotencyKey,
         Instant createdAt,
@@ -27,6 +30,10 @@ public record Purchase(
         requireMoney(subtotal, "subtotal");
         requireMoney(taxTotal, "taxTotal");
         requireMoney(total, "total");
+        require(paymentCondition, "paymentCondition");
+        if (paymentCondition == PaymentCondition.CREDIT && dueDate == null) {
+            throw new IllegalArgumentException("dueDate is required for credit purchases");
+        }
         idempotencyKey = normalizeKey(idempotencyKey);
         require(createdAt, "createdAt");
         lines = List.copyOf(Objects.requireNonNull(lines, "lines are required"));
@@ -36,17 +43,19 @@ public record Purchase(
     }
 
     public static Purchase pending(UUID id, UUID companyId, UUID supplierId, BigDecimal subtotal, BigDecimal taxTotal,
-            BigDecimal total, String evidenceUrl, String idempotencyKey, Instant createdAt, List<PurchaseLine> lines) {
-        return new Purchase(id, companyId, supplierId, PurchaseStatus.PENDING, subtotal, taxTotal, total, evidenceUrl,
-                idempotencyKey, createdAt, null, lines.stream().map(line -> line.attachTo(id)).toList());
+            BigDecimal total, PaymentCondition paymentCondition, LocalDate dueDate, String evidenceUrl,
+            String idempotencyKey, Instant createdAt, List<PurchaseLine> lines) {
+        return new Purchase(id, companyId, supplierId, PurchaseStatus.PENDING, subtotal, taxTotal, total,
+                paymentCondition, dueDate, evidenceUrl, idempotencyKey, createdAt, null,
+                lines.stream().map(line -> line.attachTo(id)).toList());
     }
 
     public Purchase confirm(Instant confirmedAt) {
         if (status == PurchaseStatus.CONFIRMED) {
             return this;
         }
-        return new Purchase(id, companyId, supplierId, PurchaseStatus.CONFIRMED, subtotal, taxTotal, total, evidenceUrl,
-                idempotencyKey, createdAt, confirmedAt, lines);
+        return new Purchase(id, companyId, supplierId, PurchaseStatus.CONFIRMED, subtotal, taxTotal, total,
+                paymentCondition, dueDate, evidenceUrl, idempotencyKey, createdAt, confirmedAt, lines);
     }
 
     private static String normalizeKey(String value) {

@@ -49,7 +49,8 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
     }
 
     private static SaleLine toLineDomain(SaleLineJpaEntity entity) {
-        return new SaleLine(entity.getId(), entity.getProductId(), entity.getQuantity(), entity.getUnitPrice(),
+        return new SaleLine(entity.getId(), entity.getProductId(), entity.getProductSku(), entity.getProductName(),
+                entity.getItemType(), entity.isStockTracked(), entity.getQuantity(), entity.getUnitPrice(),
                 entity.getDiscountAmount(), entity.getTaxCode(), entity.getTaxRate(), entity.getSubtotal(),
                 entity.getTaxAmount(), entity.getTotal());
     }
@@ -90,6 +91,10 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
         SaleLineJpaEntity entity = new SaleLineJpaEntity();
         entity.setId(line.id());
         entity.setProductId(line.productId());
+        entity.setProductSku(line.productSku());
+        entity.setProductName(line.productName());
+        entity.setItemType(line.itemType());
+        entity.setStockTracked(line.stockTracked());
         entity.setQuantity(line.quantity());
         entity.setUnitPrice(line.unitPrice());
         entity.setDiscountAmount(line.discountAmount());

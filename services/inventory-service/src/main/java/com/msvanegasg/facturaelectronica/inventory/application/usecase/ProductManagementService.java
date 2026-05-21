@@ -16,6 +16,7 @@ import com.msvanegasg.facturaelectronica.inventory.application.port.out.ProductR
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.StockBalanceRepositoryPort;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.InventoryMovementType;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.InventorySourceDocumentType;
+import com.msvanegasg.facturaelectronica.inventory.domain.model.InventoryItemType;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.Product;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.StockBalance;
 
@@ -44,14 +45,22 @@ public class ProductManagementService implements ManageProductUseCase {
             throw new ProductAlreadyExistsException(command.sku());
         }
         var now = clock.now();
+        InventoryItemType itemType = command.itemType() == null ? InventoryItemType.PHYSICAL_GOOD : command.itemType();
+        boolean saleEnabled = resolve(command.saleEnabled(), itemType.defaultSaleEnabled());
+        boolean purchaseEnabled = resolve(command.purchaseEnabled(), itemType.defaultPurchaseEnabled());
+        boolean stockTracked = resolve(command.stockTracked(), itemType.defaultStockTracked());
         Product product = Product.create(idGenerator.newId(), command.companyId(), command.sku(), command.barcode(),
-                command.name(), command.description(), command.salePrice(), command.cost(), now);
+                command.name(), command.description(), itemType, saleEnabled, purchaseEnabled, stockTracked,
+                command.salePrice(), command.cost(), now);
+        if (!product.stockTracked() && command.initialStock() != null && command.initialStock().signum() > 0) {
+            throw new IllegalStateException("initial stock is only allowed for stock tracked items");
+        }
         Product saved = productRepository.save(product);
-        if (command.initialStock() != null && command.initialStock().signum() > 0) {
+        if (saved.stockTracked() && command.initialStock() != null && command.initialStock().signum() > 0) {
             movementUseCase.register(new RegisterInventoryMovementCommand(command.companyId(), saved.id(),
                     InventoryMovementType.ADJUSTMENT_IN, command.initialStock(), command.cost(),
                     InventorySourceDocumentType.INITIAL_STOCK, saved.id(), command.idempotencyKey(),
-                    command.createdBy()));
+                    "Initial stock", command.createdBy()));
         }
         return findById(saved.companyId(), saved.id());
     }
@@ -67,8 +76,15 @@ public class ProductManagementService implements ManageProductUseCase {
     @Override
     public StockAvailabilityResult checkAvailability(UUID companyId, UUID productId, BigDecimal quantity) {
         ProductResult product = findById(companyId, productId);
+        if (!product.stockTracked()) {
+            return new StockAvailabilityResult(companyId, productId, quantity, product.currentStock(), true);
+        }
         boolean available = product.currentStock().compareTo(quantity) >= 0;
         return new StockAvailabilityResult(companyId, productId, quantity, product.currentStock(), available);
+    }
+
+    private static boolean resolve(Boolean configured, boolean defaultValue) {
+        return configured == null ? defaultValue : configured.booleanValue();
     }
 
     private static void validate(CreateProductCommand command) {

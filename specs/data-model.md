@@ -126,6 +126,12 @@ Modelo objetivo:
 - Campos clave: `company_id`, `person_type`, `identification_type_code`, `identification_number`, `verification_digit`, `full_name`, `business_name`, `trade_name`, `email`, `phone`, `address`, `municipality_code`, `tax_responsibilities`, `active`.
 - Restriccion objetivo: `unique(company_id, identification_type_code, identification_number)`.
 
+Estado TASK-047:
+
+- `thirdparty.third_party` y `thirdparty.third_party_role` quedan creadas por Flyway en `thirdparty-service`.
+- El DV NIT se calcula en dominio y se persiste como snapshot fiscal.
+- Las tablas legacy `thirdparty.cliente` y `thirdparty.proveedor` se mantienen hasta ejecutar la migracion legacy completa.
+
 ### Inventario
 
 - `inventory.product`
@@ -142,7 +148,8 @@ Estado TASK-034:
 - `inventory.purchase` e `inventory.purchase_line` reemplazan el modelo legacy de compras para el flujo nuevo.
 - `inventory.stock_balance` mantiene stock simple por empresa/producto.
 - `inventory.inventory_movement` mantiene kardex inmutable por empresa/producto y documento origen.
-- El modelo objetivo debe ampliar `inventory.product` para soportar bienes fisicos, servicios e insumos mediante `item_type`, `sale_enabled`, `purchase_enabled` y `stock_tracked`.
+- TASK-048 amplia `inventory.product` para soportar bienes fisicos, servicios e insumos mediante `item_type`, `sale_enabled`, `purchase_enabled` y `stock_tracked`.
+- TASK-048 agrega `inventory.service_supply_reference` como referencia informativa entre servicios e insumos sin movimientos automaticos.
 
 #### `inventory.product`
 
@@ -168,6 +175,9 @@ Restricciones:
 
 - `unique(company_id, sku)`.
 - `unique(company_id, barcode)` cuando exista codigo de barras.
+- `item_type in ('PHYSICAL_GOOD', 'SERVICE', 'SUPPLY')`.
+- `SERVICE` no puede tener `stock_tracked=true`.
+- El stock inicial y los movimientos solo aplican a items con `stock_tracked=true`.
 
 #### `inventory.stock_balance`
 
@@ -198,7 +208,7 @@ Restricciones:
 | `unit_cost` | numeric(19,2) | Si | Costo unitario asociado al movimiento. |
 | `previous_stock` | numeric(19,4) | Si | Stock antes del movimiento. |
 | `resulting_stock` | numeric(19,4) | Si | Stock despues del movimiento. |
-| `source_document_type` | varchar(30) | Si | `PURCHASE`, `SALE`, `RETURN`, `ADJUSTMENT`, `INITIAL_STOCK`. |
+| `source_document_type` | varchar(40) | Si | `PURCHASE`, `SALE`, `RETURN`, `ADJUSTMENT`, `INITIAL_STOCK`, `MANUAL_SUPPLY_CONSUMPTION`, `MANUAL_SUPPLY_WASTE`. |
 | `source_document_id` | uuid | Si | Documento origen logico. |
 | `idempotency_key` | varchar(120) | Si | Clave de idempotencia del comando. |
 | `created_by` | uuid | No | Usuario o proceso que origino el movimiento. |
@@ -210,6 +220,7 @@ Restricciones:
 - `unique(company_id, source_document_type, source_document_id, movement_type, idempotency_key)`.
 - `quantity > 0`.
 - `unit_cost >= 0`.
+- `reason` obligatorio cuando `movement_type` es `CONSUMPTION_OUT` o `WASTE_OUT`.
 
 #### `inventory.purchase` y `inventory.purchase_line`
 
@@ -217,6 +228,8 @@ Restricciones:
 - Al confirmarse pasa a `CONFIRMED` y genera movimientos `PURCHASE_IN`.
 - La confirmacion es idempotente por compra y linea, usando la clave de idempotencia de la compra.
 - `purchase_line` guarda producto, cantidad, costo unitario, subtotal, impuesto y total.
+- `purchase.payment_condition` acepta `CASH` o `CREDIT`; si es `CREDIT`, `purchase.due_date` es obligatorio.
+- La contabilizacion y CxP de compras se invoca best-effort contra `accounting-service` cuando `ACCOUNTING_SERVICE_URL` esta configurado; NATS reemplazara esa llamada en TASK-045.
 
 #### `inventory.service_supply_reference`
 
@@ -234,15 +247,62 @@ Reglas:
 
 - Esta tabla no genera movimientos automaticos.
 - Sirve para sugerir insumos frecuentes de un servicio.
-- El consumo real debe registrarse mediante `inventory.inventory_movement`.
+- El consumo real debe registrarse manualmente mediante `inventory.inventory_movement` en TASK-050.
+- `service_product_id` debe apuntar a un item `SERVICE`.
+- `supply_product_id` debe apuntar a un item con stock controlado, normalmente `SUPPLY`.
 
 ### Gastos y cuentas por pagar
 
-Modelo objetivo inicial, ubicado en `accounting-service` o en un bounded context de compras/gastos si se aprueba extraerlo despues:
+Modelo fisico inicial en `accounting-service`, siguiendo el prefijo de tablas contables existente:
 
-- `accounting.expense`
-- `accounting.accounts_payable`
-- `accounting.accounts_payable_payment`
+- `accounting_expense`
+- `accounting_accounts_payable`
+- `accounting_accounts_payable_payment`
+
+#### `accounting_expense`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador del gasto. |
+| `company_id` | uuid | Si | Empresa propietaria. |
+| `supplier_id` | uuid | No | Proveedor/tercero asociado. |
+| `expense_date` | date | Si | Fecha del gasto. |
+| `concept` | varchar(250) | Si | Concepto operativo. |
+| `subtotal` | numeric(38,2) | Si | Base sin impuesto. |
+| `tax_total` | numeric(38,2) | Si | IVA/impuesto descontable. |
+| `total` | numeric(38,2) | Si | Total del gasto. |
+| `payment_condition` | varchar(20) | Si | `CASH` o `CREDIT`. |
+| `due_date` | date | No | Obligatorio si es credito. |
+| `status` | varchar(20) | Si | `PENDING` o `CONFIRMED`. |
+| `idempotency_key` | varchar(120) | Si | Idempotencia de creacion. |
+
+#### `accounting_accounts_payable`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador de la CxP. |
+| `company_id` | uuid | Si | Empresa propietaria. |
+| `supplier_id` | uuid | No | Proveedor/tercero asociado. |
+| `source_type` | varchar(40) | Si | `PURCHASE` o `EXPENSE`. |
+| `source_id` | uuid | Si | Documento origen. |
+| `issue_date` | date | Si | Fecha de origen. |
+| `due_date` | date | Si | Fecha de vencimiento. |
+| `total_amount` | numeric(38,2) | Si | Valor original. |
+| `paid_amount` | numeric(38,2) | Si | Valor pagado acumulado. |
+| `status` | varchar(20) | Si | `OPEN`, `PARTIALLY_PAID`, `PAID`. |
+
+#### `accounting_accounts_payable_payment`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador del pago. |
+| `company_id` | uuid | Si | Empresa propietaria. |
+| `accounts_payable_id` | uuid | Si | CxP pagada. |
+| `payment_date` | date | Si | Fecha del pago. |
+| `amount` | numeric(38,2) | Si | Valor pagado. |
+| `payment_method` | varchar(80) | Si | Metodo operativo usado. |
+| `reference` | varchar(120) | No | Referencia bancaria/externa. |
+| `created_by` | uuid | No | Usuario que registro el pago. |
 
 Reglas:
 
@@ -273,6 +333,13 @@ Estado TASK-035:
 - `billing.electronic_document` registra documento POS mock emitido en confirmacion, CUDE/QR simulado, estado fiscal y estado del proveedor.
 - La numeracion autorizada real y resoluciones migradas desde legacy se conectaran en una tarea posterior; en este corte se usa secuencia local mock para pruebas funcionales.
 
+Estado TASK-049:
+
+- `billing.sale_line` conserva snapshot del item vendido: `product_sku`, `product_name`, `item_type` y `stock_tracked`.
+- Las ventas pueden mezclar `PHYSICAL_GOOD` y `SERVICE`.
+- La afectacion de inventario posterior solo se ejecuta para lineas con `stock_tracked=true`.
+- Los servicios no generan consumo automatico de insumos ni kardex.
+
 Campos minimos adicionales para orquestacion:
 
 - `billing.sale.status`.
@@ -281,6 +348,8 @@ Campos minimos adicionales para orquestacion:
 - `billing.electronic_document.inventory_applied_at`.
 - `billing.electronic_document.accounting_applied_at`.
 - `billing.electronic_document.idempotency_key`.
+- `billing.sale_line.item_type`.
+- `billing.sale_line.stock_tracked`.
 
 ### Proveedor tecnologico DIAN
 

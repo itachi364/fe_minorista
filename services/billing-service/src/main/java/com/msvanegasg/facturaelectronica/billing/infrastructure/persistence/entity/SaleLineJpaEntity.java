@@ -3,8 +3,12 @@ package com.msvanegasg.facturaelectronica.billing.infrastructure.persistence.ent
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import com.msvanegasg.facturaelectronica.billing.domain.model.SaleItemType;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -22,6 +26,15 @@ public class SaleLineJpaEntity {
     private SaleJpaEntity sale;
     @Column(name = "product_id", nullable = false)
     private UUID productId;
+    @Column(name = "product_sku", length = 80)
+    private String productSku;
+    @Column(name = "product_name", length = 160)
+    private String productName;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "item_type", nullable = false, length = 30)
+    private SaleItemType itemType;
+    @Column(name = "stock_tracked", nullable = false)
+    private boolean stockTracked;
     @Column(nullable = false)
     private BigDecimal quantity;
     @Column(name = "unit_price", nullable = false)
@@ -45,6 +58,14 @@ public class SaleLineJpaEntity {
     public void setSale(SaleJpaEntity sale) { this.sale = sale; }
     public UUID getProductId() { return productId; }
     public void setProductId(UUID productId) { this.productId = productId; }
+    public String getProductSku() { return productSku; }
+    public void setProductSku(String productSku) { this.productSku = productSku; }
+    public String getProductName() { return productName; }
+    public void setProductName(String productName) { this.productName = productName; }
+    public SaleItemType getItemType() { return itemType; }
+    public void setItemType(SaleItemType itemType) { this.itemType = itemType; }
+    public boolean isStockTracked() { return stockTracked; }
+    public void setStockTracked(boolean stockTracked) { this.stockTracked = stockTracked; }
     public BigDecimal getQuantity() { return quantity; }
     public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
     public BigDecimal getUnitPrice() { return unitPrice; }

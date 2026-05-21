@@ -15,5 +15,6 @@ public record InventoryMovementRequest(
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal quantity,
         @NotNull @DecimalMin(value = "0.0") BigDecimal unitCost,
         @NotNull InventorySourceDocumentType sourceDocumentType,
-        @NotNull UUID sourceDocumentId) {
+        @NotNull UUID sourceDocumentId,
+        String reason) {
 }

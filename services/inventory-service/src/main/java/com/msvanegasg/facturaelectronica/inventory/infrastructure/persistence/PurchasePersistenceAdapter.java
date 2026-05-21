@@ -39,8 +39,9 @@ public class PurchasePersistenceAdapter implements PurchaseRepositoryPort {
 
     private static Purchase toDomain(PurchaseJpaEntity entity) {
         return new Purchase(entity.getId(), entity.getCompanyId(), entity.getSupplierId(), entity.getStatus(),
-                entity.getSubtotal(), entity.getTaxTotal(), entity.getTotal(), entity.getEvidenceUrl(),
-                entity.getIdempotencyKey(), entity.getCreatedAt(), entity.getConfirmedAt(),
+                entity.getSubtotal(), entity.getTaxTotal(), entity.getTotal(), entity.getPaymentCondition(),
+                entity.getDueDate(), entity.getEvidenceUrl(), entity.getIdempotencyKey(), entity.getCreatedAt(),
+                entity.getConfirmedAt(),
                 entity.getLines().stream().map(line -> toLineDomain(entity.getId(), line)).toList());
     }
 
@@ -58,6 +59,8 @@ public class PurchasePersistenceAdapter implements PurchaseRepositoryPort {
         entity.setSubtotal(purchase.subtotal());
         entity.setTaxTotal(purchase.taxTotal());
         entity.setTotal(purchase.total());
+        entity.setPaymentCondition(purchase.paymentCondition());
+        entity.setDueDate(purchase.dueDate());
         entity.setEvidenceUrl(purchase.evidenceUrl());
         entity.setIdempotencyKey(purchase.idempotencyKey());
         entity.setCreatedAt(purchase.createdAt());

@@ -27,6 +27,7 @@ import com.msvanegasg.facturaelectronica.inventory.application.port.out.StockBal
 import com.msvanegasg.facturaelectronica.inventory.domain.model.InventoryMovement;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.InventoryMovementType;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.InventorySourceDocumentType;
+import com.msvanegasg.facturaelectronica.inventory.domain.model.InventoryItemType;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.Product;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.StockBalance;
 
@@ -81,7 +82,7 @@ class RegisterInventoryMovementServiceTest {
                 StockBalance.empty(COMPANY_ID, PRODUCT_ID, NOW),
                 new StockBalance(COMPANY_ID, PRODUCT_ID, BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.TEN, NOW),
                 InventoryMovementType.PURCHASE_IN, BigDecimal.ONE, BigDecimal.TEN,
-                InventorySourceDocumentType.PURCHASE, SOURCE_ID, "purchase-1", null, NOW);
+                InventorySourceDocumentType.PURCHASE, SOURCE_ID, "purchase-1", null, null, NOW);
         when(movementRepository.findIdempotent(COMPANY_ID, InventorySourceDocumentType.PURCHASE, SOURCE_ID,
                 InventoryMovementType.PURCHASE_IN, "purchase-1")).thenReturn(Optional.of(existing));
 
@@ -106,6 +107,65 @@ class RegisterInventoryMovementServiceTest {
                 .hasMessage("stock is insufficient for movement");
     }
 
+    @Test
+    void registersConsumptionOutWithRequiredReasonAndDecreasesStock() {
+        RegisterInventoryMovementService service = service();
+        when(movementRepository.findIdempotent(COMPANY_ID, InventorySourceDocumentType.MANUAL_SUPPLY_CONSUMPTION,
+                SOURCE_ID, InventoryMovementType.CONSUMPTION_OUT, "consumption-1")).thenReturn(Optional.empty());
+        when(productRepository.findByCompanyIdAndId(COMPANY_ID, PRODUCT_ID)).thenReturn(Optional.of(supply()));
+        when(clock.now()).thenReturn(NOW);
+        when(idGenerator.newId()).thenReturn(MOVEMENT_ID);
+        when(stockBalanceRepository.findByCompanyIdAndProductId(COMPANY_ID, PRODUCT_ID))
+                .thenReturn(Optional.of(new StockBalance(COMPANY_ID, PRODUCT_ID, new BigDecimal("8.00"),
+                        BigDecimal.ZERO, new BigDecimal("1000.00"), NOW)));
+        when(movementRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(stockBalanceRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service.register(new RegisterInventoryMovementCommand(COMPANY_ID, PRODUCT_ID,
+                InventoryMovementType.CONSUMPTION_OUT, new BigDecimal("3.00"), new BigDecimal("1000.00"),
+                InventorySourceDocumentType.MANUAL_SUPPLY_CONSUMPTION, SOURCE_ID, "consumption-1",
+                "Consumo operativo de insumo usado en servicios", null));
+
+        assertThat(result.previousStock()).isEqualByComparingTo("8.00");
+        assertThat(result.resultingStock()).isEqualByComparingTo("5.00");
+        assertThat(result.reason()).isEqualTo("Consumo operativo de insumo usado en servicios");
+    }
+
+    @Test
+    void registersWasteOutWithRequiredReasonAndDecreasesStock() {
+        RegisterInventoryMovementService service = service();
+        when(movementRepository.findIdempotent(COMPANY_ID, InventorySourceDocumentType.MANUAL_SUPPLY_WASTE,
+                SOURCE_ID, InventoryMovementType.WASTE_OUT, "waste-1")).thenReturn(Optional.empty());
+        when(productRepository.findByCompanyIdAndId(COMPANY_ID, PRODUCT_ID)).thenReturn(Optional.of(supply()));
+        when(clock.now()).thenReturn(NOW);
+        when(idGenerator.newId()).thenReturn(MOVEMENT_ID);
+        when(stockBalanceRepository.findByCompanyIdAndProductId(COMPANY_ID, PRODUCT_ID))
+                .thenReturn(Optional.of(new StockBalance(COMPANY_ID, PRODUCT_ID, new BigDecimal("8.00"),
+                        BigDecimal.ZERO, new BigDecimal("1000.00"), NOW)));
+        when(movementRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(stockBalanceRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service.register(new RegisterInventoryMovementCommand(COMPANY_ID, PRODUCT_ID,
+                InventoryMovementType.WASTE_OUT, new BigDecimal("1.00"), new BigDecimal("1000.00"),
+                InventorySourceDocumentType.MANUAL_SUPPLY_WASTE, SOURCE_ID, "waste-1",
+                "Desperdicio por producto terminado", null));
+
+        assertThat(result.previousStock()).isEqualByComparingTo("8.00");
+        assertThat(result.resultingStock()).isEqualByComparingTo("7.00");
+        assertThat(result.reason()).isEqualTo("Desperdicio por producto terminado");
+    }
+
+    @Test
+    void rejectsConsumptionOutWithoutReason() {
+        RegisterInventoryMovementService service = service();
+
+        assertThatThrownBy(() -> service.register(new RegisterInventoryMovementCommand(COMPANY_ID, PRODUCT_ID,
+                InventoryMovementType.CONSUMPTION_OUT, new BigDecimal("3.00"), new BigDecimal("1000.00"),
+                InventorySourceDocumentType.MANUAL_SUPPLY_CONSUMPTION, SOURCE_ID, "consumption-1", " ", null)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("reason is required for CONSUMPTION_OUT");
+    }
+
     private RegisterInventoryMovementService service() {
         return new RegisterInventoryMovementService(productRepository, stockBalanceRepository, movementRepository,
                 idGenerator, clock);
@@ -113,11 +173,17 @@ class RegisterInventoryMovementServiceTest {
 
     private static RegisterInventoryMovementCommand command(InventoryMovementType type, String idempotencyKey) {
         return new RegisterInventoryMovementCommand(COMPANY_ID, PRODUCT_ID, type, new BigDecimal("3.00"),
-                new BigDecimal("1000.00"), InventorySourceDocumentType.PURCHASE, SOURCE_ID, idempotencyKey, null);
+                new BigDecimal("1000.00"), InventorySourceDocumentType.PURCHASE, SOURCE_ID, idempotencyKey, null,
+                null);
     }
 
     private static Product product() {
-        return Product.create(PRODUCT_ID, COMPANY_ID, "SKU-1", null, "Cafe", null, new BigDecimal("1500.00"),
-                new BigDecimal("1000.00"), NOW);
+        return Product.create(PRODUCT_ID, COMPANY_ID, "SKU-1", null, "Cafe", null, InventoryItemType.PHYSICAL_GOOD,
+                true, true, true, new BigDecimal("1500.00"), new BigDecimal("1000.00"), NOW);
+    }
+
+    private static Product supply() {
+        return Product.create(PRODUCT_ID, COMPANY_ID, "SUP-1", null, "Esmalte", null, InventoryItemType.SUPPLY,
+                false, true, true, BigDecimal.ZERO, new BigDecimal("1000.00"), NOW);
     }
 }

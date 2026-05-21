@@ -42,6 +42,8 @@ public class InventoryMovementJpaEntity {
     private UUID sourceDocumentId;
     @Column(name = "idempotency_key", nullable = false, length = 120)
     private String idempotencyKey;
+    @Column(length = 300)
+    private String reason;
     @Column(name = "created_by")
     private UUID createdBy;
     @Column(name = "movement_at", nullable = false)
@@ -69,6 +71,8 @@ public class InventoryMovementJpaEntity {
     public void setSourceDocumentId(UUID sourceDocumentId) { this.sourceDocumentId = sourceDocumentId; }
     public String getIdempotencyKey() { return idempotencyKey; }
     public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
+    public String getReason() { return reason; }
+    public void setReason(String reason) { this.reason = reason; }
     public UUID getCreatedBy() { return createdBy; }
     public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
     public Instant getMovementAt() { return movementAt; }

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
+import com.msvanegasg.facturaelectronica.billing.domain.model.SaleItemType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleLine;
 import com.msvanegasg.facturaelectronica.billing.infrastructure.config.BillingProperties;
 import com.sun.net.httpserver.HttpServer;
@@ -51,6 +52,23 @@ class InventoryMovementHttpAdapterTest {
         assertThat(handler.movementRequestBody).contains("\"unitCost\":9000.00");
     }
 
+    @Test
+    void skipsSaleOutForServiceLines() throws IOException {
+        UUID serviceProductId = UUID.fromString("66666666-6666-6666-6666-666666666666");
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        CapturingHandler handler = new CapturingHandler();
+        server.createContext("/api/v1/products/" + serviceProductId, handler::handleProduct);
+        server.createContext("/api/v1/inventory-movements", handler::handleMovement);
+        server.start();
+        String baseUrl = "http://localhost:" + server.getAddress().getPort();
+        InventoryMovementHttpAdapter adapter = new InventoryMovementHttpAdapter(
+                new BillingProperties(baseUrl, "http://provider", "http://accounting", "http://audit", "ACCEPTED"));
+
+        adapter.applySaleOut(serviceSale(serviceProductId), "confirm-1");
+
+        assertThat(handler.movementRequestBody).isNull();
+    }
+
     private static Sale sale(UUID productId) {
         return Sale.draft(UUID.fromString("22222222-2222-2222-2222-222222222222"),
                 UUID.fromString("11111111-1111-1111-1111-111111111111"), null, null, SaleChannel.POS, "sale-1", null,
@@ -58,6 +76,15 @@ class InventoryMovementHttpAdapterTest {
                 List.of(SaleLine.calculate(UUID.fromString("44444444-4444-4444-4444-444444444444"), productId,
                         new BigDecimal("2.00"), new BigDecimal("15000.00"), BigDecimal.ZERO, "IVA_19",
                         new BigDecimal("19.00"))));
+    }
+
+    private static Sale serviceSale(UUID productId) {
+        return Sale.draft(UUID.fromString("22222222-2222-2222-2222-222222222222"),
+                UUID.fromString("11111111-1111-1111-1111-111111111111"), null, null, SaleChannel.POS, "sale-1", null,
+                Instant.parse("2026-05-19T10:00:00Z"),
+                List.of(SaleLine.calculate(UUID.fromString("44444444-4444-4444-4444-444444444444"), productId,
+                        "SERV-1", "Manicura", SaleItemType.SERVICE, false, BigDecimal.ONE,
+                        new BigDecimal("35000.00"), BigDecimal.ZERO, "IVA_19", new BigDecimal("19.00"))));
     }
 
     private static final class CapturingHandler {
@@ -75,6 +102,10 @@ class InventoryMovementHttpAdapterTest {
                       "companyId": "11111111-1111-1111-1111-111111111111",
                       "sku": "SKU-1",
                       "name": "Producto",
+                      "itemType": "PHYSICAL_GOOD",
+                      "saleEnabled": true,
+                      "purchaseEnabled": true,
+                      "stockTracked": true,
                       "salePrice": 15000.00,
                       "cost": 9000.00,
                       "active": true,

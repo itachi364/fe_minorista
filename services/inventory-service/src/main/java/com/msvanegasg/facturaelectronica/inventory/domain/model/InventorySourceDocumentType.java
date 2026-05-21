@@ -5,5 +5,7 @@ public enum InventorySourceDocumentType {
     SALE,
     RETURN,
     ADJUSTMENT,
-    INITIAL_STOCK
+    INITIAL_STOCK,
+    MANUAL_SUPPLY_CONSUMPTION,
+    MANUAL_SUPPLY_WASTE
 }

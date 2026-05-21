@@ -5,12 +5,16 @@ import java.math.RoundingMode;
 import java.util.Objects;
 import java.util.UUID;
 
-public record SaleLine(UUID id, UUID productId, BigDecimal quantity, BigDecimal unitPrice, BigDecimal discountAmount,
-        String taxCode, BigDecimal taxRate, BigDecimal subtotal, BigDecimal taxAmount, BigDecimal total) {
+public record SaleLine(UUID id, UUID productId, String productSku, String productName, SaleItemType itemType,
+        boolean stockTracked, BigDecimal quantity, BigDecimal unitPrice, BigDecimal discountAmount, String taxCode,
+        BigDecimal taxRate, BigDecimal subtotal, BigDecimal taxAmount, BigDecimal total) {
 
     public SaleLine {
         require(id, "id");
         require(productId, "productId");
+        productSku = normalizeOptional(productSku, 80, "productSku");
+        productName = normalizeOptional(productName, 160, "productName");
+        itemType = itemType == null ? SaleItemType.PHYSICAL_GOOD : itemType;
         requirePositive(quantity, "quantity");
         requireNonNegative(unitPrice, "unitPrice");
         requireNonNegative(discountAmount, "discountAmount");
@@ -23,6 +27,13 @@ public record SaleLine(UUID id, UUID productId, BigDecimal quantity, BigDecimal 
 
     public static SaleLine calculate(UUID id, UUID productId, BigDecimal quantity, BigDecimal unitPrice,
             BigDecimal discountAmount, String taxCode, BigDecimal taxRate) {
+        return calculate(id, productId, null, null, SaleItemType.PHYSICAL_GOOD, true, quantity, unitPrice,
+                discountAmount, taxCode, taxRate);
+    }
+
+    public static SaleLine calculate(UUID id, UUID productId, String productSku, String productName,
+            SaleItemType itemType, boolean stockTracked, BigDecimal quantity, BigDecimal unitPrice,
+            BigDecimal discountAmount, String taxCode, BigDecimal taxRate) {
         requirePositive(quantity, "quantity");
         requireNonNegative(unitPrice, "unitPrice");
         BigDecimal safeDiscount = discountAmount == null ? BigDecimal.ZERO : discountAmount;
@@ -33,9 +44,25 @@ public record SaleLine(UUID id, UUID productId, BigDecimal quantity, BigDecimal 
         }
         BigDecimal taxable = gross.subtract(safeDiscount).setScale(2, RoundingMode.HALF_UP);
         BigDecimal tax = taxable.multiply(safeTaxRate).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-        return new SaleLine(id, productId, quantity, unitPrice, safeDiscount,
+        return new SaleLine(id, productId, productSku, productName, itemType, stockTracked, quantity, unitPrice,
+                safeDiscount,
                 taxCode == null || taxCode.isBlank() ? "NO_TAX" : taxCode, safeTaxRate, taxable, tax,
                 taxable.add(tax).setScale(2, RoundingMode.HALF_UP));
+    }
+
+    public boolean affectsInventory() {
+        return stockTracked;
+    }
+
+    private static String normalizeOptional(String value, int maxLength, String field) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.trim();
+        if (normalized.length() > maxLength) {
+            throw new IllegalArgumentException(field + " length is invalid");
+        }
+        return normalized;
     }
 
     private static void requirePositive(BigDecimal value, String field) {

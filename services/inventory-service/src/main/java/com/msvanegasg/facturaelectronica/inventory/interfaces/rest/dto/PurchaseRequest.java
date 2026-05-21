@@ -1,8 +1,11 @@
 package com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+
+import com.msvanegasg.facturaelectronica.inventory.domain.model.PaymentCondition;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
@@ -14,6 +17,8 @@ public record PurchaseRequest(
         @NotNull @DecimalMin(value = "0.0") BigDecimal subtotal,
         @NotNull @DecimalMin(value = "0.0") BigDecimal taxTotal,
         @NotNull @DecimalMin(value = "0.0") BigDecimal total,
+        PaymentCondition paymentCondition,
+        LocalDate dueDate,
         String evidenceUrl,
         @NotEmpty List<@Valid PurchaseLineRequest> lines) {
 }

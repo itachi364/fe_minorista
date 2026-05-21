@@ -8,5 +8,5 @@ import com.msvanegasg.facturaelectronica.inventory.domain.model.InventorySourceD
 
 public record RegisterInventoryMovementCommand(UUID companyId, UUID productId, InventoryMovementType movementType,
         BigDecimal quantity, BigDecimal unitCost, InventorySourceDocumentType sourceDocumentType, UUID sourceDocumentId,
-        String idempotencyKey, UUID createdBy) {
+        String idempotencyKey, String reason, UUID createdBy) {
 }

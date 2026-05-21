@@ -32,4 +32,14 @@ class StockBalanceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("stock is insufficient for movement");
     }
+
+    @Test
+    void consumptionOutDecreasesStockAndKeepsCost() {
+        StockBalance balance = StockBalance.empty(COMPANY_ID, PRODUCT_ID, NOW)
+                .apply(InventoryMovementType.PURCHASE_IN, new BigDecimal("5.00"), new BigDecimal("1200.00"), NOW)
+                .apply(InventoryMovementType.CONSUMPTION_OUT, new BigDecimal("2.00"), BigDecimal.ZERO, NOW);
+
+        assertThat(balance.currentStock()).isEqualByComparingTo("3.00");
+        assertThat(balance.averageCost()).isEqualByComparingTo("1200.00");
+    }
 }

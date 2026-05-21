@@ -72,6 +72,31 @@ class InventoryMovementControllerTest {
     }
 
     @Test
+    void registersManualSupplyConsumptionWithReason() throws Exception {
+        when(movementUseCase.register(any())).thenReturn(consumptionMovement());
+
+        mockMvc.perform(post("/api/v1/inventory-movements")
+                .header("X-Company-Id", COMPANY_ID)
+                .header("Idempotency-Key", "consumption-1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "productId": "22222222-2222-2222-2222-222222222222",
+                          "movementType": "CONSUMPTION_OUT",
+                          "quantity": 2.00,
+                          "unitCost": 9000.00,
+                          "sourceDocumentType": "MANUAL_SUPPLY_CONSUMPTION",
+                          "sourceDocumentId": "44444444-4444-4444-4444-444444444444",
+                          "reason": "Consumo operativo de insumo usado en servicios"
+                        }
+                        """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.movementType").value("CONSUMPTION_OUT"))
+                .andExpect(jsonPath("$.resultingStock").value(2))
+                .andExpect(jsonPath("$.reason").value("Consumo operativo de insumo usado en servicios"));
+    }
+
+    @Test
     void requiresIdempotencyKey() throws Exception {
         mockMvc.perform(post("/api/v1/inventory-movements")
                 .header("X-Company-Id", COMPANY_ID)
@@ -84,6 +109,13 @@ class InventoryMovementControllerTest {
     private static InventoryMovementResult movement() {
         return new InventoryMovementResult(MOVEMENT_ID, COMPANY_ID, PRODUCT_ID, InventoryMovementType.ADJUSTMENT_IN,
                 new BigDecimal("4.00"), new BigDecimal("9000.00"), BigDecimal.ZERO, new BigDecimal("4.00"),
-                InventorySourceDocumentType.ADJUSTMENT, SOURCE_ID, "adjustment-1", null, NOW);
+                InventorySourceDocumentType.ADJUSTMENT, SOURCE_ID, "adjustment-1", null, null, NOW);
+    }
+
+    private static InventoryMovementResult consumptionMovement() {
+        return new InventoryMovementResult(MOVEMENT_ID, COMPANY_ID, PRODUCT_ID, InventoryMovementType.CONSUMPTION_OUT,
+                new BigDecimal("2.00"), new BigDecimal("9000.00"), new BigDecimal("4.00"), new BigDecimal("2.00"),
+                InventorySourceDocumentType.MANUAL_SUPPLY_CONSUMPTION, SOURCE_ID, "consumption-1", null,
+                "Consumo operativo de insumo usado en servicios", NOW);
     }
 }

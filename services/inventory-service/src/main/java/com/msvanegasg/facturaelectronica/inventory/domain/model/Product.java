@@ -12,6 +12,10 @@ public record Product(
         String barcode,
         String name,
         String description,
+        InventoryItemType itemType,
+        boolean saleEnabled,
+        boolean purchaseEnabled,
+        boolean stockTracked,
         BigDecimal salePrice,
         BigDecimal cost,
         boolean active,
@@ -25,6 +29,10 @@ public record Product(
         barcode = normalizeOptional(barcode, 80, "barcode");
         name = normalizeRequired(name, 160, "name");
         description = normalizeOptional(description, 500, "description");
+        itemType = itemType == null ? InventoryItemType.PHYSICAL_GOOD : itemType;
+        if (itemType == InventoryItemType.SERVICE && stockTracked) {
+            throw new IllegalArgumentException("services must not track stock automatically");
+        }
         requireMoney(salePrice, "salePrice");
         requireMoney(cost, "cost");
         require(createdAt, "createdAt");
@@ -32,8 +40,10 @@ public record Product(
     }
 
     public static Product create(UUID id, UUID companyId, String sku, String barcode, String name, String description,
+            InventoryItemType itemType, boolean saleEnabled, boolean purchaseEnabled, boolean stockTracked,
             BigDecimal salePrice, BigDecimal cost, Instant now) {
-        return new Product(id, companyId, sku, barcode, name, description, salePrice, cost, true, now, now);
+        return new Product(id, companyId, sku, barcode, name, description, itemType, saleEnabled, purchaseEnabled,
+                stockTracked, salePrice, cost, true, now, now);
     }
 
     private static String normalizeRequired(String value, int maxLength, String field) {

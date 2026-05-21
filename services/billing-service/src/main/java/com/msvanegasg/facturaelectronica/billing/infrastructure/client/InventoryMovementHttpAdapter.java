@@ -23,7 +23,9 @@ public class InventoryMovementHttpAdapter implements InventoryMovementPort {
 
     @Override
     public void applySaleOut(Sale sale, String idempotencyKey) {
-        sale.lines().forEach(line -> applyLine(sale, line, idempotencyKey));
+        sale.lines().stream()
+                .filter(SaleLine::affectsInventory)
+                .forEach(line -> applyLine(sale, line, idempotencyKey));
     }
 
     private void applyLine(Sale sale, SaleLine line, String idempotencyKey) {
@@ -56,6 +58,7 @@ public class InventoryMovementHttpAdapter implements InventoryMovementPort {
     }
 
     record ProductResponse(UUID id, UUID companyId, String sku, String barcode, String name, String description,
-            BigDecimal salePrice, BigDecimal cost, boolean active, BigDecimal currentStock) {
+            String itemType, boolean saleEnabled, boolean purchaseEnabled, boolean stockTracked, BigDecimal salePrice,
+            BigDecimal cost, boolean active, BigDecimal currentStock) {
     }
 }

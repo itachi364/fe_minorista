@@ -21,7 +21,8 @@ final class InventoryResultMapper {
     static ProductResult toProductResult(Product product, StockBalance balance) {
         BigDecimal stock = balance == null ? BigDecimal.ZERO : balance.currentStock();
         return new ProductResult(product.id(), product.companyId(), product.sku(), product.barcode(), product.name(),
-                product.description(), product.salePrice(), product.cost(), product.active(), stock,
+                product.description(), product.itemType(), product.saleEnabled(), product.purchaseEnabled(),
+                product.stockTracked(), product.salePrice(), product.cost(), product.active(), stock,
                 product.createdAt(), product.updatedAt());
     }
 
@@ -29,12 +30,13 @@ final class InventoryResultMapper {
         return new InventoryMovementResult(movement.id(), movement.companyId(), movement.productId(),
                 movement.movementType(), movement.quantity(), movement.unitCost(), movement.previousStock(),
                 movement.resultingStock(), movement.sourceDocumentType(), movement.sourceDocumentId(),
-                movement.idempotencyKey(), movement.createdBy(), movement.movementAt());
+                movement.idempotencyKey(), movement.createdBy(), movement.reason(), movement.movementAt());
     }
 
     static PurchaseResult toPurchaseResult(Purchase purchase) {
         return new PurchaseResult(purchase.id(), purchase.companyId(), purchase.supplierId(), purchase.status(),
-                purchase.subtotal(), purchase.taxTotal(), purchase.total(), purchase.evidenceUrl(),
+                purchase.subtotal(), purchase.taxTotal(), purchase.total(), purchase.paymentCondition(),
+                purchase.dueDate(), purchase.evidenceUrl(),
                 purchase.idempotencyKey(), purchase.createdAt(), purchase.confirmedAt(),
                 purchase.lines().stream().map(InventoryResultMapper::toPurchaseLineResult).toList());
     }

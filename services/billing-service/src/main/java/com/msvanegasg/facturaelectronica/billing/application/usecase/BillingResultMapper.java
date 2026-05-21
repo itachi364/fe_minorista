@@ -25,9 +25,9 @@ final class BillingResultMapper {
     }
 
     private static SaleLineResult toLineResult(SaleLine line) {
-        return new SaleLineResult(line.id(), line.productId(), line.quantity(), line.unitPrice(),
-                line.discountAmount(), line.taxCode(), line.taxRate(), line.subtotal(), line.taxAmount(),
-                line.total());
+        return new SaleLineResult(line.id(), line.productId(), line.productSku(), line.productName(),
+                line.itemType(), line.stockTracked(), line.quantity(), line.unitPrice(), line.discountAmount(),
+                line.taxCode(), line.taxRate(), line.subtotal(), line.taxAmount(), line.total());
     }
 
     private static ElectronicDocumentResult toDocumentResult(ElectronicDocument document) {

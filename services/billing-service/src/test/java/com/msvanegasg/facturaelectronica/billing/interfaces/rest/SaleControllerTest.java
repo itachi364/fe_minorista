@@ -27,6 +27,7 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageSaleUseCase;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
+import com.msvanegasg.facturaelectronica.billing.domain.model.SaleItemType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
 import com.msvanegasg.facturaelectronica.billing.exception.BillingExceptionHandler;
 import com.msvanegasg.facturaelectronica.billing.observability.CorrelationId;
@@ -66,7 +67,9 @@ class SaleControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().string(CorrelationId.HEADER_NAME, "corr-billing"))
                 .andExpect(jsonPath("$.id").value(SALE_ID.toString()))
-                .andExpect(jsonPath("$.status").value("DRAFT"));
+                .andExpect(jsonPath("$.status").value("DRAFT"))
+                .andExpect(jsonPath("$.lines[0].itemType").value("PHYSICAL_GOOD"))
+                .andExpect(jsonPath("$.lines[0].stockTracked").value(true));
     }
 
     @Test
@@ -104,6 +107,7 @@ class SaleControllerTest {
                 BigDecimal.ZERO, new BigDecimal("5700.00"), new BigDecimal("35700.00"), "sale-1", null, NOW,
                 status == SaleStatus.CONFIRMED ? NOW : null,
                 List.of(new SaleLineResult(UUID.fromString("44444444-4444-4444-4444-444444444444"), PRODUCT_ID,
+                        "SKU-1", "Producto", SaleItemType.PHYSICAL_GOOD, true,
                         new BigDecimal("2.00"), new BigDecimal("15000.00"), BigDecimal.ZERO, "IVA_19",
                         new BigDecimal("19.00"), new BigDecimal("30000.00"), new BigDecimal("5700.00"),
                         new BigDecimal("35700.00"))),

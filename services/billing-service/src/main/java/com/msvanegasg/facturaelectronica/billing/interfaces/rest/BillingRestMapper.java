@@ -69,7 +69,8 @@ final class BillingRestMapper {
     }
 
     private static SaleLineResponse toLineResponse(SaleLineResult result) {
-        return new SaleLineResponse(result.id(), result.productId(), result.quantity(), result.unitPrice(),
+        return new SaleLineResponse(result.id(), result.productId(), result.productSku(), result.productName(),
+                result.itemType(), result.stockTracked(), result.quantity(), result.unitPrice(),
                 result.discountAmount(), result.taxCode(), result.taxRate(), result.subtotal(), result.taxAmount(),
                 result.total());
     }

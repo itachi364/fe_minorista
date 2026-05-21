@@ -4,7 +4,10 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+import com.msvanegasg.facturaelectronica.inventory.domain.model.InventoryItemType;
+
 public record ProductResponse(UUID id, UUID companyId, String sku, String barcode, String name, String description,
+        InventoryItemType itemType, boolean saleEnabled, boolean purchaseEnabled, boolean stockTracked,
         BigDecimal salePrice, BigDecimal cost, boolean active, BigDecimal currentStock, Instant createdAt,
         Instant updatedAt) {
 }

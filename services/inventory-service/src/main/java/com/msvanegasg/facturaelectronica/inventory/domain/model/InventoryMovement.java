@@ -17,6 +17,7 @@ public record InventoryMovement(
         InventorySourceDocumentType sourceDocumentType,
         UUID sourceDocumentId,
         String idempotencyKey,
+        String reason,
         UUID createdBy,
         Instant movementAt) {
 
@@ -32,16 +33,17 @@ public record InventoryMovement(
         require(sourceDocumentType, "sourceDocumentType");
         require(sourceDocumentId, "sourceDocumentId");
         idempotencyKey = normalizeKey(idempotencyKey);
+        reason = normalizeReason(reason, movementType);
         require(movementAt, "movementAt");
     }
 
     public static InventoryMovement from(UUID id, StockBalance previous, StockBalance resulting,
             InventoryMovementType type, BigDecimal quantity, BigDecimal unitCost,
-            InventorySourceDocumentType sourceType, UUID sourceId, String idempotencyKey, UUID createdBy,
-            Instant movementAt) {
+            InventorySourceDocumentType sourceType, UUID sourceId, String idempotencyKey, String reason,
+            UUID createdBy, Instant movementAt) {
         return new InventoryMovement(id, previous.companyId(), previous.productId(), type, quantity, unitCost,
-                previous.currentStock(), resulting.currentStock(), sourceType, sourceId, idempotencyKey, createdBy,
-                movementAt);
+                previous.currentStock(), resulting.currentStock(), sourceType, sourceId, idempotencyKey, reason,
+                createdBy, movementAt);
     }
 
     private static String normalizeKey(String value) {
@@ -49,6 +51,20 @@ public record InventoryMovement(
             throw new IllegalArgumentException("idempotencyKey is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeReason(String value, InventoryMovementType movementType) {
+        if (value == null || value.isBlank()) {
+            if (movementType.requiresReason()) {
+                throw new IllegalArgumentException("reason is required for " + movementType);
+            }
+            return null;
+        }
+        String normalized = value.trim();
+        if (normalized.length() > 300) {
+            throw new IllegalArgumentException("reason length is invalid");
+        }
+        return normalized;
     }
 
     private static void requirePositive(BigDecimal value, String field) {

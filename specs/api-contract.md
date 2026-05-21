@@ -167,25 +167,36 @@ Estado TASK-033:
 - Microservicio fisico implementado en `services/thirdparty-service`.
 - Contratos legacy compatibles mantenidos durante extraccion: `/api/clientes` y `/api/proveedores`.
 - `thirdparty-service` consulta `catalog-service` por REST para tipos de documento usando `CATALOG_SERVICE_URL`.
-- Los contratos `/api/v1/customers` y `/api/v1/suppliers` siguen siendo objetivo del contrato estable posterior.
+- TASK-047 agrega el modelo fiscal unificado `/api/v1/third-parties`, con roles cliente/proveedor y DV NIT automatico.
+- Los contratos `/api/v1/customers` y `/api/v1/suppliers` existen como vistas por rol sobre el modelo fiscal unificado.
 
-### Clientes
+### Terceros fiscales
+
+- `POST /api/v1/third-parties`
+- `GET /api/v1/third-parties/{thirdPartyId}`
+- `GET /api/v1/third-parties/by-document?identificationTypeCode=&identificationNumber=`
+- `PUT /api/v1/third-parties/{thirdPartyId}`
+- `PUT /api/v1/third-parties/{thirdPartyId}/activate`
+- `PUT /api/v1/third-parties/{thirdPartyId}/deactivate`
+
+### Clientes v1
 
 - `POST /api/v1/customers`
-- `GET /api/v1/customers/{customerId}`
-- `GET /api/v1/customers?identificationNumber=&identificationTypeId=&name=&active=`
-- `PUT /api/v1/customers/{customerId}`
-- `PUT /api/v1/customers/{customerId}/deactivate`
-- `PUT /api/v1/customers/{customerId}/activate`
+- `GET /api/v1/customers?active=`
 
-### Proveedores
+### Proveedores v1
 
 - `POST /api/v1/suppliers`
-- `GET /api/v1/suppliers/{supplierId}`
-- `GET /api/v1/suppliers?identificationNumber=&identificationTypeId=&name=&active=`
-- `PUT /api/v1/suppliers/{supplierId}`
-- `PUT /api/v1/suppliers/{supplierId}/deactivate`
-- `PUT /api/v1/suppliers/{supplierId}/activate`
+- `GET /api/v1/suppliers?active=`
+
+### Clientes/proveedores legacy compatibles
+
+- `GET /api/clientes`
+- `POST /api/clientes`
+- `PUT /api/clientes/documento/{numeroDocumento}/tipo/{tipoDocumento}`
+- `GET /api/proveedores`
+- `POST /api/proveedores`
+- `PUT /api/proveedores/documento/{numeroDocumento}/tipo/{tipoDocumento}`
 
 ### ThirdPartyRequest
 
@@ -228,12 +239,21 @@ Estado TASK-034:
 - `Idempotency-Key` es obligatorio en movimientos y compras; en creacion de producto se usa cuando se registra stock inicial.
 - Las rutas de busqueda/listado, actualizacion y desactivacion quedan como contrato objetivo posterior.
 
+Estado TASK-048:
+
+- `POST /api/v1/products` acepta `itemType`, `saleEnabled`, `purchaseEnabled` y `stockTracked`.
+- Si `itemType` se omite, se conserva compatibilidad y se crea `PHYSICAL_GOOD` con venta, compra y stock habilitados.
+- `SERVICE` es facturable, pero no puede tener stock automatico ni stock inicial.
+- `POST /api/v1/service-supply-references` y `GET /api/v1/products/{serviceProductId}/supply-references` permiten registrar insumos sugeridos para servicios sin generar movimientos de kardex.
+- Compras y movimientos solo afectan items con `stockTracked=true`.
+
 ### Productos
 
 - `POST /api/v1/products`
 - `GET /api/v1/products/{productId}`
 - `GET /api/v1/products/{productId}/availability?quantity=`
 - `GET /api/v1/products/{productId}/kardex`
+- `GET /api/v1/products/{serviceProductId}/supply-references`
 
 ### Compras
 
@@ -244,6 +264,11 @@ Estado TASK-034:
 
 - `POST /api/v1/inventory-movements`
 - Kardex por producto: `GET /api/v1/products/{productId}/kardex`
+
+### Referencias servicio-insumo
+
+- `POST /api/v1/service-supply-references`
+- `GET /api/v1/products/{serviceProductId}/supply-references`
 
 ### ProductRequest
 
@@ -260,6 +285,29 @@ Estado TASK-034:
   "salePrice": 15000,
   "cost": 9000,
   "initialStock": 10
+}
+```
+
+### ProductResponse
+
+```json
+{
+  "id": "uuid",
+  "companyId": "uuid",
+  "sku": "SKU-001",
+  "barcode": "7701234567890",
+  "name": "Cafe 500g",
+  "description": "Bolsa de cafe",
+  "itemType": "PHYSICAL_GOOD",
+  "saleEnabled": true,
+  "purchaseEnabled": true,
+  "stockTracked": true,
+  "salePrice": 15000,
+  "cost": 9000,
+  "active": true,
+  "currentStock": 10,
+  "createdAt": "2026-05-20T10:00:00Z",
+  "updatedAt": "2026-05-20T10:00:00Z"
 }
 ```
 
@@ -293,9 +341,23 @@ Estado TASK-034:
 
 ```json
 {
-  "serviceId": "uuid",
+  "serviceProductId": "uuid",
   "supplyProductId": "uuid",
   "notes": "Insumo sugerido para manicura; el consumo real se registra manualmente."
+}
+```
+
+### ServiceSupplyReferenceResponse
+
+```json
+{
+  "id": "uuid",
+  "companyId": "uuid",
+  "serviceProductId": "uuid",
+  "supplyProductId": "uuid",
+  "notes": "Insumo sugerido para manicura; el consumo real se registra manualmente.",
+  "active": true,
+  "createdAt": "2026-05-20T10:00:00Z"
 }
 ```
 
@@ -307,6 +369,8 @@ Estado TASK-034:
   "subtotal": 90000,
   "taxTotal": 17100,
   "total": 107100,
+  "paymentCondition": "CREDIT",
+  "dueDate": "2026-06-20",
   "evidenceUrl": "https://example.local/evidence.pdf",
   "lines": [
     {
@@ -325,12 +389,19 @@ Reglas:
 
 - Una venta facturada descuenta stock.
 - Una compra confirmada aumenta stock.
+- Una compra a credito requiere `dueDate`.
+- Si `ACCOUNTING_SERVICE_URL` esta configurado, `inventory-service` intenta contabilizar la compra confirmada y crear CxP en `accounting-service` de forma best-effort; el fallo de contabilidad no revierte stock ni confirmacion.
 - Stock negativo no esta permitido en la fase inicial.
 - Todo movimiento debe referenciar documento origen.
 - Los tipos de item objetivo son `PHYSICAL_GOOD`, `SERVICE` y `SUPPLY`.
 - Un `SERVICE` puede facturarse, pero no descuenta insumos automaticamente.
 - Las referencias servicio-insumo son informativas y no generan kardex.
+- `initialStock` solo se acepta cuando `stockTracked=true`.
+- La disponibilidad de un `SERVICE` sin stock se considera disponible para venta; la venta final se ajusta en `billing-service`.
 - Los movimientos manuales de insumos incluyen `CONSUMPTION_OUT` y `WASTE_OUT`.
+- `CONSUMPTION_OUT` debe usar `sourceDocumentType=MANUAL_SUPPLY_CONSUMPTION`.
+- `WASTE_OUT` debe usar `sourceDocumentType=MANUAL_SUPPLY_WASTE`.
+- `reason` es obligatorio para `CONSUMPTION_OUT` y `WASTE_OUT`.
 - Los gastos sin inventario no deben crear movimientos de stock.
 
 ## billing-service
@@ -345,6 +416,14 @@ Estado TASK-041:
 - La confirmacion exige emisor activo y resolucion vigente para `ELECTRONIC_POS` en ambiente `TEST`.
 - La confirmacion asigna prefijo y consecutivo desde `billing.numbering_resolution`, genera documento electronico POS y consume `dian-provider-service` por HTTP.
 - Si el proveedor acepta, aplica automaticamente `SALE_OUT` y asiento contable idempotente.
+
+Estado TASK-049:
+
+- La venta soporta lineas mixtas de bienes fisicos y servicios.
+- Cada linea guarda snapshot de `productSku`, `productName`, `itemType` y `stockTracked` obtenido desde `inventory-service`.
+- La disponibilidad de inventario se valida solo cuando `stockTracked=true`.
+- La confirmacion aplica `SALE_OUT` solo para lineas con `stockTracked=true`.
+- Las lineas tipo `SERVICE` no consumen insumos automaticamente.
 
 ### Emisor
 
@@ -402,6 +481,27 @@ Estado TASK-041:
   "taxResponsibilities": ["O-13"],
   "municipalityCode": "11001",
   "address": "Calle 1 # 2-3"
+}
+```
+
+### SaleLineResponse
+
+```json
+{
+  "id": "uuid",
+  "productId": "uuid",
+  "productSku": "SERV-1",
+  "productName": "Manicura",
+  "itemType": "SERVICE",
+  "stockTracked": false,
+  "quantity": 1,
+  "unitPrice": 35000,
+  "discountAmount": 0,
+  "taxCode": "IVA_19",
+  "taxRate": 19,
+  "subtotal": 35000,
+  "taxAmount": 6650,
+  "total": 41650
 }
 ```
 
@@ -502,6 +602,8 @@ Reglas:
 - El POS genera documento electronico a partir de la venta.
 - La afectacion de inventario ocurre cuando la venta/documento llegue al estado aprobado por la politica transaccional.
 - Si el proveedor devuelve `ACCEPTED`, `billing-service` aplica `SALE_OUT` en `inventory-service` y genera asiento `SALE_CONFIRMED` en `accounting-service`.
+- `SALE_OUT` solo se aplica a lineas con `stockTracked=true`; los servicios no generan consumo automatico de insumos.
+- El snapshot de linea fiscal/operativa se toma desde `inventory-service` al crear la venta.
 - Los campos `inventoryAppliedAt` y `accountingAppliedAt` evidencian la aplicacion idempotente de efectos posteriores.
 - Reintentar `POST /api/v1/sales/{saleId}/confirm` no debe duplicar documento, movimientos de inventario ni asiento contable.
 - En ambiente local, `POST /api/v1/electronic-pos/{documentId}/submit` usa proveedor DIAN mock sin llamadas externas.
@@ -710,6 +812,8 @@ Estos contratos deben estabilizarse antes de eliminar codigo o tablas legacy aso
 
 ### thirdparty-service: ThirdPartyResponse
 
+Implementado en TASK-047 para `/api/v1/third-parties`, `/api/v1/customers` y `/api/v1/suppliers`.
+
 ```json
 {
   "id": "uuid",
@@ -746,6 +850,7 @@ Regla: crear o confirmar una venta de servicio no invoca automaticamente `CONSUM
 - `POST /api/v1/purchases/{purchaseId}/confirm`
 - `POST /api/v1/expenses`
 - `POST /api/v1/expenses/{expenseId}/confirm`
+- `POST /api/v1/accounts-payable`
 - `GET /api/v1/accounts-payable?status=&supplierId=&from=&to=`
 - `POST /api/v1/accounts-payable/{payableId}/payments`
 
@@ -764,6 +869,37 @@ Regla: crear o confirmar una venta de servicio no invoca automaticamente `CONSUM
   "evidenceUrl": "https://example.local/evidence.pdf"
 }
 ```
+
+### AccountsPayableRequest
+
+```json
+{
+  "supplierId": "uuid",
+  "sourceType": "PURCHASE",
+  "sourceId": "uuid",
+  "issueDate": "2026-05-20",
+  "dueDate": "2026-06-20",
+  "totalAmount": 107100
+}
+```
+
+### PayablePaymentRequest
+
+```json
+{
+  "paymentDate": "2026-05-25",
+  "amount": 40000,
+  "paymentMethod": "BANK_TRANSFER",
+  "reference": "TRX-1"
+}
+```
+
+Reglas:
+
+- Un gasto confirmado no afecta stock.
+- Un gasto o compra a credito crea una cuenta por pagar asociada a `sourceType` y `sourceId`.
+- Un pago parcial reduce `balance` y deja estado `PARTIALLY_PAID`; un pago total deja estado `PAID`.
+- La contabilizacion depende de reglas PUC parametrizadas por empresa; si la regla no existe, el comando contable falla de forma explicita.
 
 ### identity-service: roles y permisos
 

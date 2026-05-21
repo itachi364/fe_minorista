@@ -12,6 +12,7 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.AuditEventComma
 import com.msvanegasg.facturaelectronica.billing.application.dto.AuditResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.CreateSaleCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalNumberResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.InventoryProductSnapshot;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ProviderSubmissionResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
@@ -81,7 +82,7 @@ public class SaleManagementService implements ManageSaleUseCase {
         if (sale.status() != SaleStatus.DRAFT) {
             return BillingResultMapper.toSaleResult(applyPostValidationEffects(sale));
         }
-        sale.lines().forEach(line -> ensureAvailable(sale.companyId(), line.productId(), line.quantity()));
+        sale.lines().forEach(line -> ensureAvailable(sale.companyId(), line));
         UUID documentId = idGenerator.newId();
         Instant now = clock.now();
         ElectronicDocumentType documentType = sale.saleChannel() == SaleChannel.POS
@@ -105,22 +106,30 @@ public class SaleManagementService implements ManageSaleUseCase {
     }
 
     private SaleResult createNew(CreateSaleCommand command) {
-        var lines = command.lines().stream().map(this::toLine).toList();
-        lines.forEach(line -> ensureAvailable(command.companyId(), line.productId(), line.quantity()));
+        var lines = command.lines().stream().map(line -> toLine(command.companyId(), line)).toList();
+        lines.forEach(line -> ensureAvailable(command.companyId(), line));
         Sale sale = Sale.draft(idGenerator.newId(), command.companyId(), command.customerId(), command.paymentMethodId(),
                 command.saleChannel() == null ? SaleChannel.POS : command.saleChannel(), command.idempotencyKey(),
                 command.createdBy(), clock.now(), lines);
         return BillingResultMapper.toSaleResult(saleRepository.save(sale));
     }
 
-    private SaleLine toLine(SaleLineCommand command) {
-        return SaleLine.calculate(idGenerator.newId(), command.productId(), command.quantity(), command.unitPrice(),
+    private SaleLine toLine(UUID companyId, SaleLineCommand command) {
+        InventoryProductSnapshot product = inventoryAvailability.findProduct(companyId, command.productId());
+        if (!product.saleEnabled()) {
+            throw new IllegalStateException("product is not enabled for sale");
+        }
+        return SaleLine.calculate(idGenerator.newId(), command.productId(), product.sku(), product.name(),
+                product.itemType(), product.stockTracked(), command.quantity(), command.unitPrice(),
                 command.discountAmount(), command.taxCode(), command.taxRate());
     }
 
-    private void ensureAvailable(UUID companyId, UUID productId, BigDecimal quantity) {
-        if (!inventoryAvailability.isAvailable(companyId, productId, quantity)) {
-            throw new InsufficientStockException(productId);
+    private void ensureAvailable(UUID companyId, SaleLine line) {
+        if (!line.affectsInventory()) {
+            return;
+        }
+        if (!inventoryAvailability.isAvailable(companyId, line.productId(), line.quantity())) {
+            throw new InsufficientStockException(line.productId());
         }
     }
 

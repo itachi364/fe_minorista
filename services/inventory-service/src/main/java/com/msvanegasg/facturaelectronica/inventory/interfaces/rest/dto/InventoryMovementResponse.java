@@ -10,5 +10,5 @@ import com.msvanegasg.facturaelectronica.inventory.domain.model.InventorySourceD
 public record InventoryMovementResponse(UUID id, UUID companyId, UUID productId, InventoryMovementType movementType,
         BigDecimal quantity, BigDecimal unitCost, BigDecimal previousStock, BigDecimal resultingStock,
         InventorySourceDocumentType sourceDocumentType, UUID sourceDocumentId, String idempotencyKey, UUID createdBy,
-        Instant movementAt) {
+        String reason, Instant movementAt) {
 }

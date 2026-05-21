@@ -11,9 +11,12 @@ import com.msvanegasg.facturaelectronica.inventory.application.port.in.RegisterI
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.ProductRepositoryPort;
+import com.msvanegasg.facturaelectronica.inventory.application.port.out.PurchaseAccountingPort;
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.PurchaseRepositoryPort;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.InventoryMovementType;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.InventorySourceDocumentType;
+import com.msvanegasg.facturaelectronica.inventory.domain.model.PaymentCondition;
+import com.msvanegasg.facturaelectronica.inventory.domain.model.Product;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.Purchase;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.PurchaseLine;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.PurchaseStatus;
@@ -25,14 +28,17 @@ public class PurchaseManagementService implements ManagePurchaseUseCase {
     private final PurchaseRepositoryPort purchaseRepository;
     private final ProductRepositoryPort productRepository;
     private final RegisterInventoryMovementUseCase movementUseCase;
+    private final PurchaseAccountingPort purchaseAccountingPort;
     private final IdGeneratorPort idGenerator;
     private final ClockPort clock;
 
     public PurchaseManagementService(PurchaseRepositoryPort purchaseRepository, ProductRepositoryPort productRepository,
-            RegisterInventoryMovementUseCase movementUseCase, IdGeneratorPort idGenerator, ClockPort clock) {
+            RegisterInventoryMovementUseCase movementUseCase, PurchaseAccountingPort purchaseAccountingPort,
+            IdGeneratorPort idGenerator, ClockPort clock) {
         this.purchaseRepository = Objects.requireNonNull(purchaseRepository);
         this.productRepository = Objects.requireNonNull(productRepository);
         this.movementUseCase = Objects.requireNonNull(movementUseCase);
+        this.purchaseAccountingPort = Objects.requireNonNull(purchaseAccountingPort);
         this.idGenerator = Objects.requireNonNull(idGenerator);
         this.clock = Objects.requireNonNull(clock);
     }
@@ -55,23 +61,32 @@ public class PurchaseManagementService implements ManagePurchaseUseCase {
         purchase.lines().forEach(line -> movementUseCase.register(new RegisterInventoryMovementCommand(companyId,
                     line.productId(), InventoryMovementType.PURCHASE_IN, line.quantity(), line.unitCost(),
                     InventorySourceDocumentType.PURCHASE, purchase.id(), purchase.idempotencyKey() + "-" + line.id(),
-                    createdBy)));
+                    "Purchase confirmation", createdBy)));
         Purchase confirmed = purchaseRepository.save(purchase.confirm(clock.now()));
+        purchaseAccountingPort.applyConfirmedPurchase(confirmed, createdBy);
         return InventoryResultMapper.toPurchaseResult(confirmed);
     }
 
     private PurchaseResult createNew(CreatePurchaseCommand command) {
         UUID purchaseId = idGenerator.newId();
         var lines = command.lines().stream().map(line -> toLine(command.companyId(), purchaseId, line)).toList();
+        PaymentCondition paymentCondition = command.paymentCondition() == null ? PaymentCondition.CASH
+                : command.paymentCondition();
         Purchase purchase = Purchase.pending(purchaseId, command.companyId(), command.supplierId(), command.subtotal(),
-                command.taxTotal(), command.total(), command.evidenceUrl(), command.idempotencyKey(), clock.now(),
-                lines);
+                command.taxTotal(), command.total(), paymentCondition, command.dueDate(), command.evidenceUrl(),
+                command.idempotencyKey(), clock.now(), lines);
         return InventoryResultMapper.toPurchaseResult(purchaseRepository.save(purchase));
     }
 
     private PurchaseLine toLine(UUID companyId, UUID purchaseId, PurchaseLineCommand command) {
-        productRepository.findByCompanyIdAndId(companyId, command.productId())
+        Product product = productRepository.findByCompanyIdAndId(companyId, command.productId())
                 .orElseThrow(() -> new ProductNotFoundException(command.productId()));
+        if (!product.purchaseEnabled()) {
+            throw new IllegalStateException("product is not enabled for purchases");
+        }
+        if (!product.stockTracked()) {
+            throw new IllegalStateException("purchase lines require stock tracked items");
+        }
         return new PurchaseLine(idGenerator.newId(), purchaseId, command.productId(), command.quantity(),
                 command.unitCost(), command.subtotal(), command.tax(), command.total());
     }

@@ -285,6 +285,7 @@ Toda transicion fiscal debe registrar evento de trazabilidad con estado anterior
 ### Politica objetivo de compras, gastos y cuentas por pagar
 
 - Una compra con lineas de inventario incrementa stock solo cuando se confirma.
+- Una compra confirmada intenta generar contabilizacion y cuenta por pagar mediante `accounting-service` cuando la URL esta configurada; la llamada es best-effort para no convertir la contabilidad en dependencia de disponibilidad de `inventory-service`.
 - Un gasto sin inventario registra proveedor, concepto, subtotal, impuestos, total, evidencia opcional y estado, pero no genera movimientos de stock.
 - Una compra o gasto puede crear cuenta por pagar cuando no se paga de contado.
 - Las cuentas por pagar deben asociarse a proveedor, documento origen, fecha de vencimiento, saldo y estado.

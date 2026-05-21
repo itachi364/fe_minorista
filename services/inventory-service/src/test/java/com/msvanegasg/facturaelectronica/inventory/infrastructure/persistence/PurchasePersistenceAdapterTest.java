@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.msvanegasg.facturaelectronica.inventory.domain.model.PaymentCondition;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.Purchase;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.PurchaseLine;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.PurchaseStatus;
@@ -42,6 +44,8 @@ class PurchasePersistenceAdapterTest {
         Purchase saved = adapter.save(purchase());
 
         assertThat(saved.id()).isEqualTo(PURCHASE_ID);
+        assertThat(saved.paymentCondition()).isEqualTo(PaymentCondition.CREDIT);
+        assertThat(saved.dueDate()).isEqualTo(LocalDate.of(2026, 6, 20));
         assertThat(saved.lines()).hasSize(1);
         assertThat(saved.lines().get(0).productId()).isEqualTo(PRODUCT_ID);
     }
@@ -60,7 +64,8 @@ class PurchasePersistenceAdapterTest {
 
     private static Purchase purchase() {
         return Purchase.pending(PURCHASE_ID, COMPANY_ID, null, new BigDecimal("90000.00"),
-                new BigDecimal("17100.00"), new BigDecimal("107100.00"), null, "purchase-1", NOW,
+                new BigDecimal("17100.00"), new BigDecimal("107100.00"), PaymentCondition.CREDIT,
+                LocalDate.of(2026, 6, 20), null, "purchase-1", NOW,
                 List.of(new PurchaseLine(LINE_ID, PURCHASE_ID, PRODUCT_ID, new BigDecimal("10.00"),
                         new BigDecimal("9000.00"), new BigDecimal("90000.00"), new BigDecimal("17100.00"),
                         new BigDecimal("107100.00"))));
@@ -74,6 +79,8 @@ class PurchasePersistenceAdapterTest {
         entity.setSubtotal(new BigDecimal("90000.00"));
         entity.setTaxTotal(new BigDecimal("17100.00"));
         entity.setTotal(new BigDecimal("107100.00"));
+        entity.setPaymentCondition(PaymentCondition.CREDIT);
+        entity.setDueDate(LocalDate.of(2026, 6, 20));
         entity.setIdempotencyKey("purchase-1");
         entity.setCreatedAt(NOW);
         PurchaseLineJpaEntity line = new PurchaseLineJpaEntity();

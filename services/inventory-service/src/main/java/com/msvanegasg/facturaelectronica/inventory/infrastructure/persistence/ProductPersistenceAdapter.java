@@ -36,8 +36,9 @@ public class ProductPersistenceAdapter implements ProductRepositoryPort {
 
     static Product toDomain(ProductJpaEntity entity) {
         return new Product(entity.getId(), entity.getCompanyId(), entity.getSku(), entity.getBarcode(),
-                entity.getName(), entity.getDescription(), entity.getSalePrice(), entity.getCost(), entity.isActive(),
-                entity.getCreatedAt(), entity.getUpdatedAt());
+                entity.getName(), entity.getDescription(), entity.getItemType(), entity.isSaleEnabled(),
+                entity.isPurchaseEnabled(), entity.isStockTracked(), entity.getSalePrice(), entity.getCost(),
+                entity.isActive(), entity.getCreatedAt(), entity.getUpdatedAt());
     }
 
     static ProductJpaEntity toEntity(Product product) {
@@ -48,6 +49,10 @@ public class ProductPersistenceAdapter implements ProductRepositoryPort {
         entity.setBarcode(product.barcode());
         entity.setName(product.name());
         entity.setDescription(product.description());
+        entity.setItemType(product.itemType());
+        entity.setSaleEnabled(product.saleEnabled());
+        entity.setPurchaseEnabled(product.purchaseEnabled());
+        entity.setStockTracked(product.stockTracked());
         entity.setSalePrice(product.salePrice());
         entity.setCost(product.cost());
         entity.setActive(product.active());

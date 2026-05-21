@@ -4,8 +4,12 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+import com.msvanegasg.facturaelectronica.inventory.domain.model.InventoryItemType;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -25,6 +29,15 @@ public class ProductJpaEntity {
     private String name;
     @Column(length = 500)
     private String description;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "item_type", nullable = false, length = 30)
+    private InventoryItemType itemType;
+    @Column(name = "sale_enabled", nullable = false)
+    private boolean saleEnabled;
+    @Column(name = "purchase_enabled", nullable = false)
+    private boolean purchaseEnabled;
+    @Column(name = "stock_tracked", nullable = false)
+    private boolean stockTracked;
     @Column(name = "sale_price", nullable = false)
     private BigDecimal salePrice;
     @Column(nullable = false)
@@ -48,6 +61,14 @@ public class ProductJpaEntity {
     public void setName(String name) { this.name = name; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public InventoryItemType getItemType() { return itemType; }
+    public void setItemType(InventoryItemType itemType) { this.itemType = itemType; }
+    public boolean isSaleEnabled() { return saleEnabled; }
+    public void setSaleEnabled(boolean saleEnabled) { this.saleEnabled = saleEnabled; }
+    public boolean isPurchaseEnabled() { return purchaseEnabled; }
+    public void setPurchaseEnabled(boolean purchaseEnabled) { this.purchaseEnabled = purchaseEnabled; }
+    public boolean isStockTracked() { return stockTracked; }
+    public void setStockTracked(boolean stockTracked) { this.stockTracked = stockTracked; }
     public BigDecimal getSalePrice() { return salePrice; }
     public void setSalePrice(BigDecimal salePrice) { this.salePrice = salePrice; }
     public BigDecimal getCost() { return cost; }

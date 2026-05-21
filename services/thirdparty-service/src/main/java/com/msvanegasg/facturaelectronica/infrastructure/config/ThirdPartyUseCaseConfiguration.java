@@ -5,13 +5,16 @@ import org.springframework.context.annotation.Configuration;
 
 import com.msvanegasg.facturaelectronica.thirdparty.application.port.in.ManageCustomerUseCase;
 import com.msvanegasg.facturaelectronica.thirdparty.application.port.in.ManageSupplierUseCase;
+import com.msvanegasg.facturaelectronica.thirdparty.application.port.in.ManageThirdPartyUseCase;
 import com.msvanegasg.facturaelectronica.thirdparty.application.port.out.CustomerRepositoryPort;
 import com.msvanegasg.facturaelectronica.thirdparty.application.port.out.DocumentTypeLookupPort;
 import com.msvanegasg.facturaelectronica.thirdparty.application.port.out.SupplierRepositoryPort;
+import com.msvanegasg.facturaelectronica.thirdparty.application.port.out.ThirdPartyRepositoryPort;
 import com.msvanegasg.facturaelectronica.thirdparty.application.usecase.CustomerManagementService;
 import com.msvanegasg.facturaelectronica.thirdparty.application.usecase.SupplierManagementService;
+import com.msvanegasg.facturaelectronica.thirdparty.application.usecase.ThirdPartyManagementService;
 
-@Configuration
+@Configuration("thirdPartyCleanUseCaseConfiguration")
 public class ThirdPartyUseCaseConfiguration {
 
     @Bean
@@ -24,5 +27,10 @@ public class ThirdPartyUseCaseConfiguration {
     ManageSupplierUseCase manageSupplierUseCase(SupplierRepositoryPort supplierRepositoryPort,
             DocumentTypeLookupPort documentTypeLookupPort) {
         return new SupplierManagementService(supplierRepositoryPort, documentTypeLookupPort);
+    }
+
+    @Bean
+    ManageThirdPartyUseCase manageThirdPartyUseCase(ThirdPartyRepositoryPort thirdPartyRepositoryPort) {
+        return new ThirdPartyManagementService(thirdPartyRepositoryPort);
     }
 }

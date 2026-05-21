@@ -5,16 +5,20 @@ import org.springframework.context.annotation.Configuration;
 
 import com.msvanegasg.facturaelectronica.inventory.application.port.in.ManageProductUseCase;
 import com.msvanegasg.facturaelectronica.inventory.application.port.in.ManagePurchaseUseCase;
+import com.msvanegasg.facturaelectronica.inventory.application.port.in.ManageServiceSupplyReferenceUseCase;
 import com.msvanegasg.facturaelectronica.inventory.application.port.in.RegisterInventoryMovementUseCase;
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.InventoryMovementRepositoryPort;
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.ProductRepositoryPort;
+import com.msvanegasg.facturaelectronica.inventory.application.port.out.PurchaseAccountingPort;
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.PurchaseRepositoryPort;
+import com.msvanegasg.facturaelectronica.inventory.application.port.out.ServiceSupplyReferenceRepositoryPort;
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.StockBalanceRepositoryPort;
 import com.msvanegasg.facturaelectronica.inventory.application.usecase.ProductManagementService;
 import com.msvanegasg.facturaelectronica.inventory.application.usecase.PurchaseManagementService;
 import com.msvanegasg.facturaelectronica.inventory.application.usecase.RegisterInventoryMovementService;
+import com.msvanegasg.facturaelectronica.inventory.application.usecase.ServiceSupplyReferenceManagementService;
 
 @Configuration
 public class InventoryUseCaseConfiguration {
@@ -38,8 +42,15 @@ public class InventoryUseCaseConfiguration {
     @Bean
     ManagePurchaseUseCase managePurchaseUseCase(PurchaseRepositoryPort purchaseRepository,
             ProductRepositoryPort productRepository, RegisterInventoryMovementUseCase movementUseCase,
+            PurchaseAccountingPort purchaseAccountingPort, IdGeneratorPort idGenerator, ClockPort clock) {
+        return new PurchaseManagementService(purchaseRepository, productRepository, movementUseCase,
+                purchaseAccountingPort, idGenerator, clock);
+    }
+
+    @Bean
+    ManageServiceSupplyReferenceUseCase manageServiceSupplyReferenceUseCase(
+            ServiceSupplyReferenceRepositoryPort referenceRepository, ProductRepositoryPort productRepository,
             IdGeneratorPort idGenerator, ClockPort clock) {
-        return new PurchaseManagementService(purchaseRepository, productRepository, movementUseCase, idGenerator,
-                clock);
+        return new ServiceSupplyReferenceManagementService(referenceRepository, productRepository, idGenerator, clock);
     }
 }

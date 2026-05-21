@@ -30,6 +30,7 @@ import com.msvanegasg.facturaelectronica.inventory.application.port.in.ManagePro
 import com.msvanegasg.facturaelectronica.inventory.application.port.in.RegisterInventoryMovementUseCase;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.InventoryMovementType;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.InventorySourceDocumentType;
+import com.msvanegasg.facturaelectronica.inventory.domain.model.InventoryItemType;
 import com.msvanegasg.facturaelectronica.inventory.exception.InventoryExceptionHandler;
 import com.msvanegasg.facturaelectronica.inventory.observability.CorrelationId;
 import com.msvanegasg.facturaelectronica.inventory.observability.CorrelationIdFilter;
@@ -71,6 +72,8 @@ class ProductControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().string(CorrelationId.HEADER_NAME, "corr-inventory"))
                 .andExpect(jsonPath("$.id").value(PRODUCT_ID.toString()))
+                .andExpect(jsonPath("$.itemType").value("PHYSICAL_GOOD"))
+                .andExpect(jsonPath("$.stockTracked").value(true))
                 .andExpect(jsonPath("$.currentStock").value(10));
     }
 
@@ -109,14 +112,15 @@ class ProductControllerTest {
 
     private static ProductResult product() {
         return new ProductResult(PRODUCT_ID, COMPANY_ID, "SKU-1", "770123", "Cafe", "Bolsa 500g",
-                new BigDecimal("15000.00"), new BigDecimal("9000.00"), true, new BigDecimal("10.00"), NOW, NOW);
+                InventoryItemType.PHYSICAL_GOOD, true, true, true, new BigDecimal("15000.00"),
+                new BigDecimal("9000.00"), true, new BigDecimal("10.00"), NOW, NOW);
     }
 
     private static InventoryMovementResult movement() {
         return new InventoryMovementResult(MOVEMENT_ID, COMPANY_ID, PRODUCT_ID, InventoryMovementType.PURCHASE_IN,
                 new BigDecimal("10.00"), new BigDecimal("9000.00"), BigDecimal.ZERO, new BigDecimal("10.00"),
                 InventorySourceDocumentType.PURCHASE, UUID.fromString("44444444-4444-4444-4444-444444444444"),
-                "purchase-1", null, NOW);
+                "purchase-1", null, null, NOW);
     }
 
     private static String productJson() {

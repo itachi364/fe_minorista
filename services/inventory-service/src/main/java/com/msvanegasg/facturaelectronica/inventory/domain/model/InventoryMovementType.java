@@ -5,9 +5,15 @@ public enum InventoryMovementType {
     SALE_OUT,
     RETURN_IN,
     ADJUSTMENT_IN,
-    ADJUSTMENT_OUT;
+    ADJUSTMENT_OUT,
+    CONSUMPTION_OUT,
+    WASTE_OUT;
 
     public boolean increasesStock() {
         return this == PURCHASE_IN || this == RETURN_IN || this == ADJUSTMENT_IN;
+    }
+
+    public boolean requiresReason() {
+        return this == CONSUMPTION_OUT || this == WASTE_OUT;
     }
 }

@@ -2,10 +2,12 @@ package com.msvanegasg.facturaelectronica.inventory.infrastructure.persistence.e
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.msvanegasg.facturaelectronica.inventory.domain.model.PaymentCondition;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.PurchaseStatus;
 
 import jakarta.persistence.CascadeType;
@@ -36,6 +38,11 @@ public class PurchaseJpaEntity {
     private BigDecimal taxTotal;
     @Column(nullable = false)
     private BigDecimal total;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_condition", nullable = false)
+    private PaymentCondition paymentCondition;
+    @Column(name = "due_date")
+    private LocalDate dueDate;
     @Column(name = "evidence_url", length = 500)
     private String evidenceUrl;
     @Column(name = "idempotency_key", nullable = false, length = 120)
@@ -69,6 +76,10 @@ public class PurchaseJpaEntity {
     public void setTaxTotal(BigDecimal taxTotal) { this.taxTotal = taxTotal; }
     public BigDecimal getTotal() { return total; }
     public void setTotal(BigDecimal total) { this.total = total; }
+    public PaymentCondition getPaymentCondition() { return paymentCondition; }
+    public void setPaymentCondition(PaymentCondition paymentCondition) { this.paymentCondition = paymentCondition; }
+    public LocalDate getDueDate() { return dueDate; }
+    public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
     public String getEvidenceUrl() { return evidenceUrl; }
     public void setEvidenceUrl(String evidenceUrl) { this.evidenceUrl = evidenceUrl; }
     public String getIdempotencyKey() { return idempotencyKey; }
