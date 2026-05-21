@@ -1549,7 +1549,7 @@
     - Commit remoto `ca8800c` en `origin/master`: `✨ feat(billing): add fiscal audit flow`.
     - `git diff --check`: sin errores de whitespace; solo warnings LF/CRLF propios del entorno Windows.
 
-- [ ] TASK-047: Implementar terceros fiscales con DV NIT automatico
+- [x] TASK-047: Implementar terceros fiscales con DV NIT automatico
   - Estado: DONE
   - Requisitos: RF-016, RF-017, RF-018, RNF-015, RN-016, RN-017, RN-018, RN-019.
   - Acceptance criteria: AC-037, AC-038, AC-039, AC-021, AC-022, AC-032.
