@@ -2,9 +2,9 @@
 
 ## Objetivo
 
-Este documento cubre la TASK-039. Su proposito es identificar que codigo, endpoints, modulos y tablas legacy ya tienen reemplazo en microservicios fisicos, que elementos aun deben migrarse y que puede proponerse para eliminacion en TASK-040.
+Este documento se actualiza para TASK-059. Su proposito es registrar que codigo legacy fue removido, que endpoints/tablas siguen protegidos por compatibilidad o datos historicos, y que elementos requieren migracion/respaldo antes de cualquier eliminacion destructiva.
 
-No elimina codigo ni datos. Cualquier eliminacion queda bloqueada hasta aprobacion explicita de TASK-040.
+TASK-059 lote 1 elimina el modulo `services/legacy-monolith` del repositorio activo. No elimina tablas ni datos `public.*`; cualquier depuracion de base de datos queda bloqueada hasta plan de migracion/respaldo aprobado.
 
 ## Evidencia revisada
 
@@ -16,7 +16,7 @@ rg -n "<module>|artifactId|packaging" pom.xml services\*\pom.xml
 rg -n "@(RestController|Controller)|@RequestMapping|@(GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping)" services\legacy-monolith\src\main\java
 rg -n "@(RestController|Controller)|@RequestMapping|@(GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping)" services\catalog-service\src\main\java services\thirdparty-service\src\main\java services\inventory-service\src\main\java services\billing-service\src\main\java services\accounting-service\src\main\java services\tenant-service\src\main\java services\dian-provider-service\src\main\java
 rg -n "CREATE TABLE|CREATE SCHEMA|CREATE INDEX|ALTER TABLE" services\*\src\main\resources\db\migration
-rg -n "legacy-monolith|LEGACY_MONOLITH|audit-service" pom.xml docker-compose.yml .env.example README.md specs
+rg -n "legacy-monolith|LEGACY_MONOLITH|audit-service" pom.xml docker-compose.yml .env.example README.md specs docs
 ```
 
 Resultado estructural:
@@ -25,13 +25,13 @@ Resultado estructural:
 | --- | --- | ---: |
 | `services/tenant-service` | Microservicio fisico activo | 28 |
 | `services/catalog-service` | Microservicio fisico activo con rutas legacy compatibles | 137 |
-| `services/thirdparty-service` | Microservicio fisico activo con rutas legacy compatibles | 72 |
+| `services/thirdparty-service` | Microservicio fisico activo solo con contratos canonicos `/api/v1` | 72 |
 | `services/inventory-service` | Microservicio fisico activo | 70 |
 | `services/billing-service` | Microservicio fisico activo para venta POS, configuracion fiscal y orquestacion | 87 |
 | `services/dian-provider-service` | Microservicio fisico activo con mock DIAN | 34 |
 | `services/accounting-service` | Microservicio fisico activo | 74 |
 | `services/audit-service` | Microservicio fisico activo para auditoria fiscal/tecnica | 30 |
-| `services/legacy-monolith` | Modulo transitorio legacy, fuera del reactor Maven activo por defecto | 430 |
+| `services/legacy-monolith` | Removido del repositorio activo en TASK-059 lote 1 | 0 |
 
 ## Componentes involucrados en el flujo E2E aprobado
 
@@ -39,14 +39,15 @@ La prueba `scripts/e2e-from-zero.ps1` valida el flujo local desde empresa nueva 
 
 | Componente | Participa en E2E | Evidencia funcional |
 | --- | --- | --- |
-| `tenant-service` | Si | Crea empresa y aisla por `company_id`. |
-| `catalog-service` | Si | Crea tipo de documento requerido por terceros. |
-| `thirdparty-service` | Si | Crea cliente y proveedor. |
+| `tenant-service` | Si | Crea empresa, licencia activa y valida acciones licenciadas. |
+| `identity-service` | Si | Crea usuario owner, login y membresia por empresa. |
+| `catalog-service` | Salud validada; no invoca endpoints legacy en el flujo principal | Conserva rutas compatibles pendientes de depuracion. |
+| `thirdparty-service` | Si | Crea cliente y proveedor por `/api/v1/customers` y `/api/v1/suppliers`. |
 | `inventory-service` | Si | Crea producto, stock inicial, kardex y `SALE_OUT`. |
 | `billing-service` | Si | Configura emisor/resolucion, crea venta, confirma POS y orquesta efectos posteriores. |
 | `dian-provider-service` | Si | Registra envio mock aceptado. |
-| `accounting-service` | Si | Crea PUC basico, regla y asiento balanceado. |
-| `legacy-monolith` | No | No es requerido por la prueba E2E; retirado de Docker Compose en TASK-040 lote 1. |
+| `accounting-service` | Si | Inicializa plantilla contable basica y genera asiento balanceado. |
+| `legacy-monolith` | No | Codigo removido en TASK-059 lote 1; no participa en build, Docker ni E2E. |
 | `audit-service` | Si, para confirmacion fiscal de ventas desde `billing-service` | Implementado en TASK-042 y conectado parcialmente en TASK-043. |
 
 ## Endpoints legacy y reemplazos
@@ -61,29 +62,29 @@ La prueba `scripts/e2e-from-zero.ps1` valida el flujo local desde empresa nueva 
 | Catalogos | `/api/impuesto` | `catalog-service` mantiene ruta compatible | Mantener temporal. |
 | Catalogos | `/api/parametros` | `catalog-service` mantiene ruta compatible | Mantener temporal. |
 | Catalogos | `/api/productos` | `catalog-service` compatible e `inventory-service /api/v1/products` para stock real | Migracion parcial: producto inventariable ya vive en inventario; catalogo conserva compatibilidad. |
-| Terceros | `/api/clientes` | `thirdparty-service` mantiene ruta compatible | Mantener temporal hasta endurecer `X-Company-Id`. |
-| Terceros | `/api/proveedores` | `thirdparty-service` mantiene ruta compatible | Mantener temporal hasta endurecer `X-Company-Id`. |
+| Terceros | `/api/clientes` | `thirdparty-service /api/v1/customers` y `/api/v1/third-parties` | Codigo y endpoint retirados en TASK-059 lote 2; tablas historicas preservadas. |
+| Terceros | `/api/proveedores` | `thirdparty-service /api/v1/suppliers` y `/api/v1/third-parties` | Codigo y endpoint retirados en TASK-059 lote 2; tablas historicas preservadas. |
 | Inventario | `/api/compras` | `inventory-service /api/v1/purchases` y `/api/v1/inventory-movements` | Reemplazado funcionalmente para flujo nuevo. |
-| Gastos | `/api/gastos` | No existe microservicio fisico de gastos | Migrar antes de eliminar. |
+| Gastos | `/api/gastos` | `accounting-service /api/v1/expenses` | Reemplazado funcionalmente para flujo nuevo de gastos; mantener datos legacy hasta auditoria/migracion. |
 | Billing legacy | `/api/v1/issuers` | `billing-service /api/v1/issuers` y `/api/v1/issuers/current` | Reemplazado funcionalmente en TASK-041. |
 | Billing legacy | `/api/v1/numbering-resolutions` | `billing-service /api/v1/numbering-resolutions` | Reemplazado funcionalmente en TASK-041. |
 | Billing legacy | `/api/v1/electronic-pos` | `billing-service /api/v1/sales` cubre venta POS con numeracion fiscal configurada | Migracion parcial: POS directo y artefactos oficiales siguen pendientes. |
 | Billing nuevo | `/api/v1/sales` | `billing-service` | Activo. |
 | Contabilidad | `/api/v1/accounts`, `/api/v1/accounting-rules`, `/api/v1/accounting-entries`, `/api/v1/reports/*` | `accounting-service` | Reemplazado funcionalmente. |
 | Proveedor DIAN mock | Proveedor dummy local del monolito | `dian-provider-service /api/v1/provider/*` | Reemplazado funcionalmente para mock. |
-| Auditoria | `auditoria`, `registro_accesos` sin API nueva | `audit-service /api/v1/audit-events` | Migrar/respaldar datos antes de eliminar legacy. |
+| Auditoria/accesos | `auditoria`, `registro_accesos` | `audit-service /api/v1/audit-events` e `identity.identity_access_audit` | Reemplazado funcionalmente para eventos nuevos; migrar/respaldar datos legacy antes de eliminar. |
 
 ## Matriz de tablas legacy
 
 | Tabla legacy | Reemplazo destino | Estado | Accion propuesta para TASK-040 |
 | --- | --- | --- | --- |
-| `roles` | `identity-service` futuro | Pendiente | Mantener. |
-| `usuarios` | `identity-service` futuro | Pendiente | Mantener. |
+| `roles` | `identity.company_membership_role` y roles de dominio `identity-service` | Reemplazado funcionalmente para usuarios nuevos | Mantener hasta migrar/respaldar datos legacy. |
+| `usuarios` | `identity.user_account`, `identity.company_membership`, `identity.user_session` | Reemplazado funcionalmente para usuarios nuevos | Mantener hasta migrar/respaldar datos legacy. |
 | `auditoria` | `audit.audit_event` | Reemplazado funcionalmente para auditoria generica | Mantener hasta migrar/respaldar datos legacy. |
-| `registro_accesos` | `audit.audit_event` o `identity-service` futuro | Parcial | Mantener hasta decidir ownership de accesos/identity y migrar datos. |
+| `registro_accesos` | `identity.identity_access_audit` y `audit.audit_event` segun tipo de evento | Reemplazado funcionalmente para accesos nuevos | Mantener hasta migrar/respaldar historicos. |
 | `tipodocumento` | `catalog.tipodocumento` | Reemplazado por catalogo fisico | Eliminar solo despues de migrar/respaldar datos requeridos. |
-| `cliente` | `thirdparty.cliente` | Reemplazado funcionalmente | Eliminar solo despues de verificar datos y endurecer aislamiento por empresa. |
-| `proveedor` | `thirdparty.proveedor` | Reemplazado funcionalmente | Eliminar solo despues de verificar datos y endurecer aislamiento por empresa. |
+| `cliente` | `thirdparty.third_party` y `thirdparty.third_party_role` | Codigo/endpoints legacy retirados en TASK-059 lote 2 | Tabla `thirdparty.cliente` se conserva solo para migracion/respaldo. |
+| `proveedor` | `thirdparty.third_party` y `thirdparty.third_party_role` | Codigo/endpoints legacy retirados en TASK-059 lote 2 | Tabla `thirdparty.proveedor` se conserva solo para migracion/respaldo. |
 | `categoria` | `catalog.categoria` | Reemplazado funcionalmente | Eliminar despues de validar dependencia de productos/catalogo. |
 | `producto` | `inventory.product`, `inventory.stock_balance`; `catalog.producto` temporal | Reemplazado para inventario nuevo, compatibilidad parcial en catalogo | Migrar datos utiles y eliminar duplicidad de ownership. |
 | `metodo_pago` | `catalog.metodo_pago` | Reemplazado funcionalmente | Eliminar despues de migrar datos requeridos. |
@@ -93,8 +94,8 @@ La prueba `scripts/e2e-from-zero.ps1` valida el flujo local desde empresa nueva 
 | `parametros` | `catalog.parametros` | Reemplazado funcionalmente | Eliminar despues de migrar datos requeridos. |
 | `compra` | `inventory.purchase` | Reemplazado para flujo nuevo | Eliminar despues de migrar datos historicos requeridos. |
 | `detalle_compra` | `inventory.purchase_line` e `inventory.inventory_movement` | Reemplazado para flujo nuevo | Eliminar despues de migrar datos historicos requeridos. |
-| `gastos` | Pendiente `expenses-service` o `accounting-service` | Pendiente | Mantener y decidir bounded context. |
-| `detalle_gasto` | Pendiente `expenses-service` o `accounting-service` | Pendiente | Mantener y decidir bounded context. |
+| `gastos` | `accounting.expense` y `accounting.accounting_accounts_payable` cuando aplica | Reemplazado funcionalmente para flujo nuevo | Mantener hasta migrar/respaldar historicos. |
+| `detalle_gasto` | `accounting.expense` agregado y asientos/reglas contables | Reemplazado funcionalmente para flujo nuevo | Mantener hasta migrar/respaldar historicos. |
 | `factura` | `billing.sale`, `billing.electronic_document` | Parcial: POS nuevo cubierto, factura electronica completa pendiente | Mantener hasta completar factura electronica y migrar historico. |
 | `detalle_factura` | `billing.sale_line` | Parcial | Mantener hasta completar factura electronica y migrar historico. |
 | `billing_issuer_profile` | `billing.issuer_profile` | Reemplazado funcionalmente en TASK-041 | Mantener hasta migrar/respaldar datos legacy y validar que no existan consumidores del monolito. |
@@ -136,44 +137,45 @@ El resultado debe adjuntarse o resumirse antes de aprobar cualquier migracion de
 
 ## Codigo candidato a eliminar
 
-Estos elementos son candidatos, no eliminaciones aprobadas:
+Estado de eliminacion de codigo:
 
 | Ruta | Estado | Condicion antes de eliminar |
 | --- | --- | --- |
-| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/catalog/**` | Reemplazado por `catalog-service` | Mantener rutas compatibles en `catalog-service` y ejecutar suite completa. |
-| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/thirdparty/**` | Reemplazado por `thirdparty-service` | Endurecer aislamiento por empresa o documentar compatibilidad legacy. |
-| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/inventory/**` | Reemplazado por `inventory-service` para compras/stock/kardex | Verificar migracion de historicos de compra. |
-| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/accounting/**` | Reemplazado por `accounting-service` | Verificar que no existan datos contables utiles en public schema. |
-| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/billing/**` | Parcial | Emisor/resolucion migrados a `billing-service` y auditoria central conectada desde `billing-service`; falta cerrar POS directo, productores restantes y migracion historica. |
-| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/controller/GastoController.java` y `expenses/**` | Pendiente | Crear bounded context fisico de gastos o mover responsabilidad a contabilidad aprobada. |
-| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/models/**`, `DTO/**`, `repository/**`, `mapper/**` | Legacy interno del monolito | Eliminar junto con el modulo o por lotes, nunca antes de validar compilacion. |
-| `services/legacy-monolith/src/test/java/**` | Pruebas del monolito transitorio | Remover cuando el modulo salga del reactor Maven. |
+| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/catalog/**` | Eliminado en TASK-059 lote 1 | Reemplazado por `catalog-service`; rutas compatibles activas permanecen en `catalog-service`. |
+| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/thirdparty/**` | Eliminado en TASK-059 lote 1 | Reemplazado por `thirdparty-service`; E2E usa `/api/v1/customers` y `/api/v1/suppliers`. |
+| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/inventory/**` | Eliminado en TASK-059 lote 1 | Reemplazado por `inventory-service`; historicos `public.compra`/`public.detalle_compra` se preservan. |
+| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/accounting/**` | Eliminado en TASK-059 lote 1 | Reemplazado por `accounting-service`; datos public contables se preservan. |
+| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/billing/**` | Eliminado en TASK-059 lote 1 | Flujo POS nuevo cubierto por `billing-service`; historicos `public.billing_*` se preservan. |
+| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/controller/GastoController.java` y `expenses/**` | Eliminado en TASK-059 lote 1 | Gastos nuevos viven en `accounting-service`; historicos `public.gastos`/`public.detalle_gasto` se preservan. |
+| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/models/**`, `DTO/**`, `repository/**`, `mapper/**` | Eliminado en TASK-059 lote 1 | Sin referencias desde microservicios activos. |
+| `services/legacy-monolith/src/test/java/**` | Eliminado en TASK-059 lote 1 | La suite activa cubre microservicios fisicos. |
+| `services/thirdparty-service/src/main/java/com/msvanegasg/facturaelectronica/controller/ClienteController.java`, `ProveedorController.java` y bloque `Customer`/`Supplier` asociado | Eliminado en TASK-059 lote 2 | Reemplazado por `ThirdPartyController` y modelo `third_party`; E2E usa `/api/v1/customers` y `/api/v1/suppliers`. |
 
 ## Codigo que no debe eliminarse todavia
 
-- `catalog-service` y `thirdparty-service` mantienen controladores con rutas legacy compatibles. Aunque el nombre del paquete sea `controller`, forman parte del microservicio fisico actual y sus pruebas cubren compatibilidad.
+- `catalog-service` mantiene controladores con rutas legacy compatibles. `thirdparty-service` retiro `/api/clientes` y `/api/proveedores` en TASK-059 lote 2; conserva `ThirdPartyController` con `/api/v1`.
 - `services/audit-service` ya es microservicio activo; `billing-service` publica confirmaciones fiscales, pero aun falta integrar productores de inventario y contabilidad.
-- `services/legacy-monolith` completo no debe eliminarse en un solo paso hasta cerrar las brechas de gastos, identity/accesos e historicos.
+- `services/legacy-monolith` fue eliminado como codigo en TASK-059 lote 1; las brechas de datos historicos se gestionan sobre tablas `public.*`, no reactivando el monolito.
 - Las migraciones legacy no deben borrarse sin una estrategia de datos. En Flyway, retirar migraciones ya aplicadas puede romper ambientes existentes.
 
-## Riesgos antes de TASK-040
+## Riesgos posteriores a TASK-059 lote 1
 
-1. Gastos no tiene microservicio fisico independiente ni decision final de bounded context.
+1. Gastos nuevos estan en `accounting-service`; falta auditoria/migracion de datos historicos legacy antes de eliminar tablas/clases antiguas.
 2. `audit-service` ya recibe eventos de `billing-service`; faltan productores de inventario y contabilidad.
-3. Algunas rutas compatibles de catalogo y terceros todavia no exigen `X-Company-Id`.
+3. Algunas rutas compatibles de catalogo siguen existiendo por compatibilidad; terceros legacy `/api/clientes` y `/api/proveedores` fueron retirados en TASK-059 lote 2.
 4. Existen tablas duplicadas entre public legacy y esquemas de microservicio; se requiere plan de migracion/respaldo antes de eliminarlas.
-5. `legacy-monolith` ya no hace parte del reactor Maven activo por defecto; retirarlo del repositorio exige cerrar gastos, identity/accesos, historicos, README y pruebas.
+5. El codigo `legacy-monolith` y el codigo legacy de terceros ya fueron retirados; queda pendiente plan de migracion/respaldo de datos historicos `public.*` y `thirdparty.cliente/proveedor`.
 
-## Recomendacion para TASK-040
+## Recomendacion posterior a TASK-059 lote 1
 
 Ejecutar la limpieza por lotes pequenos:
 
-1. Retirar `legacy-monolith` de Docker Compose solo si la prueba E2E pasa sin levantarlo. Ejecutado en TASK-040 lote 1; los servicios activos arrancan con `clean spring-boot:run` para evitar clases obsoletas en `target`.
-2. Sacar `legacy-monolith` del reactor Maven activo y dejarlo disponible solo bajo perfil `legacy-monolith`. Ejecutado en TASK-040 lote 2.
+1. Retiro de `legacy-monolith` de Docker Compose ejecutado previamente; TASK-059 lote 1 elimina el codigo fuente del modulo.
+2. Perfil Maven `legacy-monolith` eliminado en TASK-059 lote 1 porque el modulo ya no existe.
 3. Crear auditoria de conteos para tablas legacy y destino antes de borrar datos. Ejecutado en TASK-040 lote 3.
 4. Migrar o documentar datos necesarios de tablas publicas reemplazadas.
-5. Eliminar duplicados contables del monolito y validar `accounting-service`.
-6. Eliminar duplicados de catalogo/terceros/inventario del monolito si no quedan referencias.
+5. Codigo del monolito eliminado en TASK-059 lote 1; eliminar duplicados de tablas contables public solo con migracion/respaldo aprobado.
+6. Mantener auditoria de datos para catalogo/terceros/inventario `public.*` antes de eliminar tablas.
 7. Mantener temporalmente billing legacy hasta migrar datos historicos y cerrar POS directo/trazabilidad fiscal.
 8. Mantener gastos legacy hasta decidir `expenses-service` o integracion contable.
 9. Ejecutar `.\mvnw.cmd test`, `docker compose config` y `.\scripts\e2e-from-zero.ps1`.

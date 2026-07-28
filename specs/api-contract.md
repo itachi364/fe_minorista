@@ -118,20 +118,35 @@ Responsabilidad: empresas, configuracion multiempresa y estado del tenant.
 
 ## identity-service
 
-Responsabilidad: usuarios, roles, membresias por empresa y autenticacion.
+Responsabilidad: usuarios, roles, membresias por empresa, autenticacion, permisos y auditoria de acceso.
+
+Estado TASK-056:
+
+- Microservicio fisico implementado en `services/identity-service`.
+- Persistencia propia bajo schema `identity`.
+- Login con token opaco Bearer, token persistido como hash y expiracion configurable.
+- Passwords persistidos con hash PBKDF2, nunca en texto plano.
+- Roles por empresa: `OWNER`, `ADMIN`, `CASHIER`, `ACCOUNTANT`, `AUDITOR`.
+- Permisos derivados por rol y evaluados por `companyId`.
+- Auditoria interna de accesos para login, creacion de usuario y cambios de roles.
 
 ### Endpoints
 
 - `POST /api/v1/auth/login`
 - `POST /api/v1/users`
-- `GET /api/v1/users/{userId}`
-- `POST /api/v1/companies/{companyId}/users/{userId}/roles`
+- `GET /api/v1/me`
 - `GET /api/v1/me/companies`
+- `POST /api/v1/companies/{companyId}/memberships`
+- `POST /api/v1/companies/{companyId}/users/{userId}/roles`
+- `PUT /api/v1/companies/{companyId}/memberships/{membershipId}/roles`
+- `GET /api/v1/companies/{companyId}/permissions?userId=`
 
 Regla:
 
 - Un usuario puede pertenecer a varias empresas.
-- Todo token debe permitir determinar empresas autorizadas y roles por empresa.
+- Todo token permite determinar usuario autenticado, empresas autorizadas, roles y permisos por empresa.
+- La primera membresia `OWNER` de una empresa puede registrarse como bootstrap si no existen membresias previas para esa empresa.
+- Cambios posteriores de roles requieren token de usuario con permiso `ROLES_MANAGE` en la empresa.
 
 ## catalog-service
 
@@ -165,8 +180,8 @@ Responsabilidad: clientes y proveedores aislados por empresa.
 Estado TASK-033:
 
 - Microservicio fisico implementado en `services/thirdparty-service`.
-- Contratos legacy compatibles mantenidos durante extraccion: `/api/clientes` y `/api/proveedores`.
-- `thirdparty-service` consulta `catalog-service` por REST para tipos de documento usando `CATALOG_SERVICE_URL`.
+- TASK-059 lote 2 retira contratos legacy `/api/clientes` y `/api/proveedores`; el contrato canonico queda en `/api/v1`.
+- `thirdparty-service` ya no consulta `catalog-service` en runtime para crear terceros; recibe `identificationTypeCode` en el contrato v1 y calcula DV NIT en dominio.
 - TASK-047 agrega el modelo fiscal unificado `/api/v1/third-parties`, con roles cliente/proveedor y DV NIT automatico.
 - Los contratos `/api/v1/customers` y `/api/v1/suppliers` existen como vistas por rol sobre el modelo fiscal unificado.
 
@@ -191,12 +206,7 @@ Estado TASK-033:
 
 ### Clientes/proveedores legacy compatibles
 
-- `GET /api/clientes`
-- `POST /api/clientes`
-- `PUT /api/clientes/documento/{numeroDocumento}/tipo/{tipoDocumento}`
-- `GET /api/proveedores`
-- `POST /api/proveedores`
-- `PUT /api/proveedores/documento/{numeroDocumento}/tipo/{tipoDocumento}`
+Retirados en TASK-059 lote 2. Los consumidores deben usar `/api/v1/customers`, `/api/v1/suppliers` o `/api/v1/third-parties`.
 
 ### ThirdPartyRequest
 
@@ -682,14 +692,45 @@ Estado TASK-037:
 - Persistencia propia bajo schema `accounting`.
 - `POST /api/v1/accounting-entries` es idempotente por `companyId`, `sourceType` y `sourceId`; si el asiento ya existe, retorna el asiento existente.
 
+### Configuracion base contable
+
+- `POST /api/v1/accounting-setup/basic`
+
+Crea o reactiva una plantilla contable minima para pruebas operativas de pequenas empresas en Colombia. La plantilla no sustituye el PUC oficial completo ni una parametrizacion contable profesional; deja cuentas y reglas editables por empresa.
+
+Respuesta:
+
+```json
+{
+  "companyId": "uuid",
+  "templateName": "BASIC_COLOMBIA_SMALL_BUSINESS",
+  "accounts": [
+    {"code": "1105", "name": "Caja", "active": true}
+  ],
+  "rules": [
+    {"eventType": "SALE_CONFIRMED", "sourceType": "SALE", "active": true}
+  ]
+}
+```
+
+Reglas:
+
+- Crea las cuentas base `1105`, `1110`, `1305`, `1435`, `2205`, `2408`, `4135` y `5135` si no existen para la empresa.
+- Si una cuenta base existe inactiva, la reactiva sin duplicar codigo.
+- Reemplaza las reglas activas de venta, compra, gasto, pago de cuenta por pagar y recaudo de cuenta por cobrar, dejando la regla previa inactiva para conservar historial.
+
 ### Cuentas
 
 - `POST /api/v1/accounts`
 - `GET /api/v1/accounts?code=`
+- `GET /api/v1/accounts?active=`
 
 ### Reglas contables
 
 - `POST /api/v1/accounting-rules`
+- `PUT /api/v1/accounting-rules/active`
+- `POST /api/v1/accounting-rules/{eventType}/deactivate`
+- `GET /api/v1/accounting-rules?eventType=&active=`
 
 ### Asientos
 
@@ -746,7 +787,49 @@ Reglas:
 - En la implementacion local actual, `POST /api/v1/accounting-entries` genera un asiento `POSTED` inmediatamente desde reglas contables activas por empresa; el flujo draft/post-by-id queda pendiente hasta que se apruebe un modelo de borradores contables.
 - Reintentar la contabilizacion de una misma venta no debe crear un segundo asiento.
 - Las cuentas deben derivar del PUC colombiano o de una configuracion aprobada por empresa.
+- TASK-053 agrega configuracion base contable editable, consulta de cuentas por empresa/filtro activo, consulta de reglas por empresa/evento/estado, reemplazo de regla activa y desactivacion explicita de la regla activa.
+- `PUT /api/v1/accounting-rules/active` desactiva la regla activa previa para el evento y crea una nueva regla activa; `POST /api/v1/accounting-rules` conserva la validacion de no duplicar regla activa.
 - Un documento fiscal validado debe poder rastrearse hasta su asiento contable.
+
+### Cuentas por cobrar
+
+- `POST /api/v1/accounts-receivable`
+- `GET /api/v1/accounts-receivable?status=&customerId=&from=&to=`
+- `POST /api/v1/accounts-receivable/{receivableId}/payments`
+- `GET /api/v1/reports/accounts-receivable?status=&customerId=&from=&to=`
+
+### AccountsReceivableRequest
+
+```json
+{
+  "customerId": "uuid",
+  "sourceType": "SALE",
+  "sourceId": "uuid",
+  "issueDate": "2026-05-11",
+  "dueDate": "2026-06-10",
+  "totalAmount": 35700,
+  "idempotencyKey": "sale-credit-001"
+}
+```
+
+### ReceivablePaymentRequest
+
+```json
+{
+  "paymentDate": "2026-05-20",
+  "amount": 10000,
+  "paymentMethod": "BANK_TRANSFER",
+  "reference": "TRX-001"
+}
+```
+
+Reglas:
+
+- Todos los endpoints requieren `X-Company-Id`.
+- `sourceType` debe identificar el documento origen aprobado: `SALE`, `ELECTRONIC_INVOICE`, `ELECTRONIC_POS` u `OPENING_BALANCE`.
+- `totalAmount` debe ser mayor que cero y `dueDate` no debe ser anterior a `issueDate`.
+- Un pago no puede exceder el saldo pendiente.
+- El reporte de cuentas por cobrar debe consultar el modelo nuevo `accounting_accounts_receivable`, no tablas legacy ni solo saldos contables agregados.
 
 ## audit-service
 
@@ -906,26 +989,81 @@ Reglas:
 - `POST /api/v1/users`
 - `POST /api/v1/auth/login`
 - `GET /api/v1/me`
+- `GET /api/v1/me/companies`
 - `POST /api/v1/companies/{companyId}/memberships`
+- `POST /api/v1/companies/{companyId}/users/{userId}/roles`
 - `PUT /api/v1/companies/{companyId}/memberships/{membershipId}/roles`
-- `GET /api/v1/companies/{companyId}/permissions`
+- `GET /api/v1/companies/{companyId}/permissions?userId=`
 
 Roles minimos: `OWNER`, `ADMIN`, `CASHIER`, `ACCOUNTANT`, `AUDITOR`.
 
+Permisos iniciales: `USERS_MANAGE`, `ROLES_MANAGE`, `SALES_CREATE`, `FISCAL_DOCUMENTS_ISSUE`, `INVENTORY_MANAGE`, `ACCOUNTING_MANAGE`, `REPORTS_VIEW`, `AUDIT_VIEW`, `LICENSE_MANAGE`.
+
+#### CreateUserRequest
+
+```json
+{
+  "email": "owner@example.com",
+  "fullName": "Owner User",
+  "password": "secret123"
+}
+```
+
+#### LoginResponse
+
+```json
+{
+  "userId": "uuid",
+  "email": "owner@example.com",
+  "fullName": "Owner User",
+  "tokenType": "Bearer",
+  "accessToken": "opaque-token",
+  "expiresAt": "2026-07-16T22:00:00Z"
+}
+```
+
+#### MembershipRequest
+
+```json
+{
+  "userId": "uuid",
+  "roles": ["OWNER"]
+}
+```
+
+#### CompanyAccessResponse
+
+```json
+{
+  "companyId": "uuid",
+  "roles": ["OWNER"],
+  "permissions": ["ROLES_MANAGE", "REPORTS_VIEW"]
+}
+```
 ### tenant-service: licenciamiento
 
 - `POST /api/v1/companies/{companyId}/license`
 - `GET /api/v1/companies/{companyId}/license`
 - `PUT /api/v1/companies/{companyId}/license/suspend`
 - `PUT /api/v1/companies/{companyId}/license/activate`
+- `GET /api/v1/companies/{companyId}/license/validation?action=ISSUE_FISCAL_DOCUMENT`
 
-### CompanyLicenseResponse
+Acciones iniciales de validacion: `CREATE_TRANSACTION`, `ISSUE_FISCAL_DOCUMENT`, `CREATE_USER`.
+Los servicios consumidores deben evaluar este contrato antes de comandos de negocio que creen usuarios, transacciones o documentos fiscales.
+Si `allowed=false`, el servicio consumidor debe bloquear el comando con error estructurado usando `reasonCode` y `message`.
+Las consultas, exportaciones y acciones administrativas de recuperacion no requieren validacion de licencia en esta fase.
+Estado TASK-058 licencia consumidores:
+
+- `billing-service` valida licencia contra `tenant-service` antes de crear una venta nueva (`CREATE_TRANSACTION`) y antes de confirmar/emision fiscal (`ISSUE_FISCAL_DOCUMENT`).
+- `identity-service` valida licencia contra `tenant-service` antes de crear o actualizar una membresia/roles por empresa mediante accion `CREATE_USER`.
+- La creacion global de usuario en `identity-service` no consume licencia porque todavia no pertenece a una empresa; el control aplica al asociarlo a una empresa.
+- Los servicios consumidores usan `TENANT_SERVICE_URL` como configuracion externa y no dependen de otros contenedores para arrancar.
+
+### CompanyLicenseRequest
 
 ```json
 {
-  "companyId": "uuid",
   "planCode": "SMALL_BUSINESS",
-  "status": "ACTIVE",
   "validFrom": "2026-05-01",
   "validTo": "2027-05-01",
   "maxUsers": 5,
@@ -933,15 +1071,63 @@ Roles minimos: `OWNER`, `ADMIN`, `CASHIER`, `ACCOUNTANT`, `AUDITOR`.
 }
 ```
 
-### reporting-service
+### CompanyLicenseResponse
 
-- `GET /api/v1/reports/sales?from=&to=`
-- `GET /api/v1/reports/electronic-documents?from=&to=&status=`
-- `GET /api/v1/reports/inventory-stock`
+```json
+{
+  "id": "uuid",
+  "companyId": "uuid",
+  "planCode": "SMALL_BUSINESS",
+  "status": "ACTIVE",
+  "validFrom": "2026-05-01",
+  "validTo": "2027-05-01",
+  "maxUsers": 5,
+  "maxMonthlyDocuments": 1000,
+  "createdAt": "2026-05-19T10:00:00Z",
+  "updatedAt": "2026-05-19T10:00:00Z"
+}
+```
+
+### CompanyLicenseValidationResponse
+
+```json
+{
+  "companyId": "uuid",
+  "action": "ISSUE_FISCAL_DOCUMENT",
+  "allowed": false,
+  "status": "SUSPENDED",
+  "reasonCode": "LICENSE_SUSPENDED",
+  "message": "La licencia de la empresa esta suspendida."
+}
+```
+### Reportes minimos por servicio dueno del dato
+
+TASK-054 implementa los reportes minimos como endpoints de lectura en los servicios duenos del dato.
+El `reporting-service` fisico queda diferido hasta implementar Outbox/Inbox, eventos AWS y proyecciones.
+
+#### billing-service
+
+- `GET /api/v1/reports/sales?status=&from=&to=`
+- `GET /api/v1/reports/electronic-documents?documentType=&status=&customerId=&from=&to=&prefix=&number=&cufeCude=`
+
+#### inventory-service
+
+- `GET /api/v1/reports/inventory-stock?active=`
 - `GET /api/v1/reports/kardex?productId=&from=&to=`
-- `GET /api/v1/reports/purchases-expenses?from=&to=&supplierId=`
-- `GET /api/v1/reports/accounts-payable?status=&supplierId=`
-- `GET /api/v1/reports/accounts-receivable?status=&customerId=`
+- `GET /api/v1/reports/purchases?status=&supplierId=&from=&to=`
+
+#### accounting-service
+
+- `GET /api/v1/reports/expenses?status=&supplierId=&from=&to=`
+- `GET /api/v1/accounts-payable?status=&supplierId=&from=&to=`
+- `GET /api/v1/reports/journal?from=&to=`
+- `GET /api/v1/reports/ledger?from=&to=&accountCode=`
+- `GET /api/v1/reports/trial-balance?from=&to=&accountCode=`
+- `GET /api/v1/reports/accounts-receivable?status=&customerId=&from=&to=`
+
+#### Estado TASK-055
+
+- `GET /api/v1/reports/accounts-receivable?status=&customerId=&from=&to=` consulta el agregado de cartera por cobrar persistido en `accounting-service`.
 
 ## Eventos internos propuestos
 
@@ -1017,3 +1203,98 @@ Cuando los servicios existan fisicamente, cada contrato debe tener:
 - Definir si la primera implementacion sera monolito modular o servicios fisicos separados.
 - Definir broker de eventos si se decide asincronia.
 - Definir OpenAPI formal por servicio despues de estabilizar DTOs.
+
+### Estado TASK-052: documentos fiscales, consultas y notas
+
+Implementacion local agregada:
+
+- `GET /api/v1/sales?status=&from=&to=` lista ventas por empresa, estado y rango de fechas.
+- `POST /api/v1/electronic-pos?saleId=` confirma la venta indicada y retorna la venta con documento POS.
+- `POST /api/v1/electronic-pos/{documentId}/submit` retorna el estado persistido del documento POS; el envio real ya ocurre al confirmar la venta.
+- `GET /api/v1/electronic-pos/{documentId}` consulta documento POS por empresa.
+- `POST /api/v1/electronic-invoices?saleId=` confirma la venta indicada y retorna la venta con factura electronica.
+- `POST /api/v1/electronic-invoices/{documentId}/issue` retorna el estado persistido de la factura; el envio real ya ocurre al confirmar la venta.
+- `GET /api/v1/electronic-invoices/{documentId}` consulta factura por empresa.
+- `GET /api/v1/electronic-invoices?status=&customerId=&from=&to=&prefix=&number=&cufeCude=` consulta facturas por filtros fiscales.
+- `GET /api/v1/electronic-invoices/{documentId}/artifacts` retorna artefactos mock `XML`, `PDF` y `QR` para pruebas funcionales.
+- `GET /api/v1/electronic-invoices/{documentId}/events` retorna evento fiscal mock de envio/estado del proveedor.
+- `POST /api/v1/credit-notes` crea y envia una nota credito con numeracion propia.
+- `GET /api/v1/credit-notes/{noteId}` consulta nota credito.
+- `POST /api/v1/debit-notes` crea y envia una nota debito con numeracion propia.
+- `GET /api/v1/debit-notes/{noteId}` consulta nota debito.
+- `POST /api/v1/electronic-pos/{documentId}/adjustment-notes` crea y envia una nota de ajuste POS con numeracion propia.
+- `dian-provider-service` agrega `POST /api/v1/provider/credit-notes`, `POST /api/v1/provider/debit-notes` y `POST /api/v1/provider/pos-adjustment-notes`.
+
+### FiscalNoteRequest
+
+```json
+{
+  "originalDocumentId": "uuid",
+  "adjustmentKind": "CANCELLATION",
+  "reason": "Correccion de valor facturado",
+  "subtotal": 10000,
+  "taxTotal": 1900,
+  "total": 11900
+}
+```
+
+Reglas:
+
+- `adjustmentKind` solo aplica para `POS_ADJUSTMENT_NOTE`; si se omite en nota de ajuste POS, se toma `CORRECTION`.
+- Nota credito y nota debito requieren una factura electronica original `VALIDATED` de la misma empresa.
+- Nota de ajuste POS requiere un documento `ELECTRONIC_POS` original `VALIDATED` de la misma empresa.
+- Cada nota usa resolucion y consecutivo propio segun `documentType`: `CREDIT_NOTE`, `DEBIT_NOTE` o `POS_ADJUSTMENT_NOTE`.
+- La respuesta mock aceptada deja `status=VALIDATED`, `providerStatus=ACCEPTED`, CUFE/CUDE y QR simulados.
+- La idempotencia se conserva por `companyId` e `Idempotency-Key`.
+
+
+## BFF public API boundary
+
+El frontend objetivo consume solo el `bff-service` expuesto por API Gateway. Los microservicios internos no se publican directamente al navegador. El BFF debe:
+
+- Propagar `Authorization`, `X-Company-Id`, `X-Correlation-Id` e `Idempotency-Key`.
+- Agregar respuestas de varios servicios cuando el flujo de pantalla lo requiera.
+- Normalizar errores publicos sin exponer detalles internos.
+- Mantener contratos publicos versionados independientes de contratos internos.
+
+## Event envelope target
+
+Los eventos productivos se publicaran hacia EventBridge/SQS usando un envelope comun versionado. TASK-062 lote 1 ya persiste este envelope en Outbox local de productores:
+
+```json
+{
+  "eventId": "uuid",
+  "eventType": "SaleConfirmed",
+  "eventVersion": 1,
+  "occurredAt": "2026-07-21T00:00:00Z",
+  "companyId": "uuid",
+  "aggregateType": "SALE",
+  "aggregateId": "uuid",
+  "producer": "billing-service",
+  "correlationId": "string",
+  "idempotencyKey": "string",
+  "payload": {}
+}
+```
+
+Eventos canonicos iniciales:
+
+- `SaleConfirmed`: productor `billing-service`, agregado `SALE`; payload con `saleId`, `documentId`, `documentType`, `status`, `total`, `issuedAt`, items e indicadores de efectos de inventario/contabilidad.
+- `ElectronicDocumentValidated`: productor `billing-service`, agregado `ELECTRONIC_DOCUMENT`; payload con documento, tipo, prefijo, numero, CUFE/CUDE, estado de proveedor y total.
+- `AuditEventRequested`: productor del servicio que origina la accion; payload con `eventType`, `resourceType`, `resourceId`, `action`, `result`, `userId` opcional y `detail` seguro.
+- `ProviderSubmissionFailed`: productor `billing-service`, agregado `SALE`; payload con `saleId`, `documentId`, `documentType`, `documentIdempotencyKey`, `providerStatus=FAILED`, totales, lineas y datos de error tecnico. Solo `FAILED` entra a retry automatico; `REJECTED` requiere correccion manual.
+- `InventoryMovementRegistered`: productor `inventory-service`, agregado `INVENTORY_MOVEMENT`; payload con movimiento, producto, referencia, cantidad, costo unitario y stock resultante.
+- `AccountingEntryPosted`: productor `accounting-service`, agregado `ACCOUNTING_ENTRY`; payload con asiento, origen, fecha, descripcion, total debito y total credito.
+
+Consumidores Lambda deben persistir Inbox o estado equivalente antes de materializar efectos no idempotentes. Los eventos deben conservar `companyId`, `correlationId` e `idempotencyKey`; `payload` no debe contener secretos ni datos de autenticacion.
+
+## EventBridge delivery mapping
+
+El dispatcher Outbox publica cada evento canonico a EventBridge con:
+
+- `eventBusName`: `EVENTING_EVENT_BUS_NAME`.
+- `source`: `producer` del envelope, por ejemplo `billing-service`.
+- `detailType`: `eventType`, por ejemplo `SaleConfirmed`.
+- `detail`: envelope canonico JSON con `payload` como objeto JSON.
+
+Regla de error: si AWS SDK retorna `failedEntryCount > 0`, el evento queda `FAILED` en Outbox con `publishAttempts` incrementado y `lastError` seguro. No se deben registrar secretos ni credenciales en `lastError`.

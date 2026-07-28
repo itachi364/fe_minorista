@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.accounting.application.usecase;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -46,6 +47,14 @@ public class ChartOfAccountsService implements ManageChartOfAccountsUseCase {
         return accountRepository.findByCompanyIdAndCode(companyId, code.trim())
                 .map(this::toResult)
                 .orElseThrow(() -> new IllegalStateException("account was not found"));
+    }
+
+    @Override
+    public List<AccountResult> find(UUID companyId, Boolean active) {
+        Objects.requireNonNull(companyId, "companyId is required");
+        return accountRepository.findByCompanyId(companyId, active).stream()
+                .map(this::toResult)
+                .toList();
     }
 
     private AccountResult toResult(Account account) {

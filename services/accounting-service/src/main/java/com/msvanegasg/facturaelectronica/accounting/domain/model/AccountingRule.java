@@ -60,6 +60,13 @@ public final class AccountingRule {
         return new AccountingRule(id, companyId, eventType, sourceType, normalizedName, lines, active);
     }
 
+    public AccountingRule deactivate() {
+        if (!active) {
+            return this;
+        }
+        return restore(id, companyId, eventType, sourceType, name, lines, false);
+    }
+
     public UUID id() {
         return id;
     }

@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.accounting.application.port.in;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountResult;
@@ -10,4 +11,6 @@ public interface ManageChartOfAccountsUseCase {
     AccountResult create(CreateAccountCommand command);
 
     AccountResult findByCode(UUID companyId, String code);
+
+    List<AccountResult> find(UUID companyId, Boolean active);
 }

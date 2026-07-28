@@ -234,6 +234,14 @@ class QueryAccountingBooksServiceTest {
             return Optional.ofNullable(accounts.get(key(companyId, code)));
         }
 
+
+        @Override
+        public List<Account> findByCompanyId(UUID companyId, Boolean active) {
+            return accounts.values().stream()
+                    .filter(account -> account.companyId().equals(companyId))
+                    .filter(account -> active == null || account.active() == active)
+                    .toList();
+        }
         @Override
         public Account save(Account account) {
             accounts.put(key(account.companyId(), account.code()), account);

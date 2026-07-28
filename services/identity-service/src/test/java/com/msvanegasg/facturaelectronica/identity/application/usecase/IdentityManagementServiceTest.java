@@ -1,0 +1,194 @@
+package com.msvanegasg.facturaelectronica.identity.application.usecase;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import com.msvanegasg.facturaelectronica.identity.application.dto.AssignRolesCommand;
+import com.msvanegasg.facturaelectronica.identity.application.dto.CreateUserCommand;
+import com.msvanegasg.facturaelectronica.identity.application.dto.LoginCommand;
+import com.msvanegasg.facturaelectronica.identity.application.port.out.AccessAuditRepositoryPort;
+import com.msvanegasg.facturaelectronica.identity.application.port.out.ClockPort;
+import com.msvanegasg.facturaelectronica.identity.application.port.out.CompanyMembershipRepositoryPort;
+import com.msvanegasg.facturaelectronica.identity.application.port.out.IdGeneratorPort;
+import com.msvanegasg.facturaelectronica.identity.application.port.out.PasswordHasherPort;
+import com.msvanegasg.facturaelectronica.identity.application.port.out.TokenGeneratorPort;
+import com.msvanegasg.facturaelectronica.identity.application.port.out.TokenHashPort;
+import com.msvanegasg.facturaelectronica.identity.application.port.out.UserAccountRepositoryPort;
+import com.msvanegasg.facturaelectronica.identity.application.port.out.UserSessionRepositoryPort;
+import com.msvanegasg.facturaelectronica.identity.domain.model.AccessAuditEvent;
+import com.msvanegasg.facturaelectronica.identity.domain.model.CompanyMembership;
+import com.msvanegasg.facturaelectronica.identity.domain.model.PermissionCode;
+import com.msvanegasg.facturaelectronica.identity.domain.model.RoleCode;
+import com.msvanegasg.facturaelectronica.identity.domain.model.UserAccount;
+import com.msvanegasg.facturaelectronica.identity.domain.model.UserSession;
+
+class IdentityManagementServiceTest {
+
+    private static final UUID USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID SESSION_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    private static final UUID MEMBERSHIP_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
+    private static final UUID COMPANY_ID = UUID.fromString("44444444-4444-4444-4444-444444444444");
+    private static final Instant NOW = Instant.parse("2026-07-16T10:00:00Z");
+
+    private InMemoryUsers users;
+    private InMemoryMemberships memberships;
+    private InMemorySessions sessions;
+    private InMemoryAudit audit;
+    private IdentityManagementService service;
+
+    @BeforeEach
+    void setUp() {
+        users = new InMemoryUsers();
+        memberships = new InMemoryMemberships();
+        sessions = new InMemorySessions();
+        audit = new InMemoryAudit();
+        service = new IdentityManagementService(users, memberships, sessions, audit, new FixedPasswordHasher(),
+                () -> "plain-token", token -> "hash-" + token, new SequentialIds(USER_ID, SESSION_ID, MEMBERSHIP_ID,
+                        UUID.fromString("55555555-5555-5555-5555-555555555555"),
+                        UUID.fromString("66666666-6666-6666-6666-666666666666"),
+                        UUID.fromString("77777777-7777-7777-7777-777777777777"),
+                        UUID.fromString("88888888-8888-8888-8888-888888888888"),
+                        UUID.fromString("99999999-9999-9999-9999-999999999999"),
+                        UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")),
+                () -> NOW, Duration.ofHours(12));
+    }
+
+    @Test
+    void createsUserWithHashedPasswordAndAudit() {
+        var result = service.createUser(new CreateUserCommand("OWNER@EXAMPLE.COM", "Owner User", "secret123"));
+
+        assertThat(result.id()).isEqualTo(USER_ID);
+        assertThat(result.email()).isEqualTo("owner@example.com");
+        assertThat(users.byEmail.get("owner@example.com").passwordHash()).isEqualTo("hashed-secret123");
+        assertThat(audit.events).extracting(AccessAuditEvent::action).contains("CREATE_USER");
+    }
+
+    @Test
+    void loginIssuesOpaqueTokenAndPersistsHashedSession() {
+        service.createUser(new CreateUserCommand("owner@example.com", "Owner User", "secret123"));
+
+        var result = service.login(new LoginCommand("owner@example.com", "secret123"));
+
+        assertThat(result.accessToken()).isEqualTo("plain-token");
+        assertThat(result.expiresAt()).isEqualTo(NOW.plus(Duration.ofHours(12)));
+        assertThat(sessions.byHash).containsKey("hash-plain-token");
+        assertThat(audit.events).extracting(AccessAuditEvent::action).contains("LOGIN");
+    }
+
+    @Test
+    void bootstrapsFirstOwnerWithoutExistingMemberships() {
+        service.createUser(new CreateUserCommand("owner@example.com", "Owner User", "secret123"));
+
+        var membership = service.assignRoles(new AssignRolesCommand(COMPANY_ID, USER_ID, Set.of(RoleCode.OWNER), null));
+
+        assertThat(membership.roles()).containsExactly(RoleCode.OWNER);
+        assertThat(service.permissions(COMPANY_ID, USER_ID).permissions()).contains(PermissionCode.ROLES_MANAGE);
+    }
+
+    @Test
+    void deniesRoleAssignmentWhenActorDoesNotHavePermission() {
+        service.createUser(new CreateUserCommand("owner@example.com", "Owner User", "secret123"));
+        service.assignRoles(new AssignRolesCommand(COMPANY_ID, USER_ID, Set.of(RoleCode.OWNER), null));
+        UUID cashierId = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        users.save(UserAccount.create(cashierId, "cashier@example.com", "Cashier", "hashed-secret123", NOW));
+        memberships.save(CompanyMembership.create(UUID.fromString("88888888-8888-8888-8888-888888888888"), COMPANY_ID,
+                cashierId, Set.of(RoleCode.CASHIER), NOW));
+        var login = service.login(new LoginCommand("cashier@example.com", "secret123"));
+
+        assertThatThrownBy(() -> service.assignRoles(new AssignRolesCommand(COMPANY_ID, USER_ID,
+                Set.of(RoleCode.ADMIN), "Bearer " + login.accessToken())))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    private static final class InMemoryUsers implements UserAccountRepositoryPort {
+        private final Map<UUID, UserAccount> byId = new HashMap<>();
+        private final Map<String, UserAccount> byEmail = new HashMap<>();
+
+        @Override
+        public UserAccount save(UserAccount user) {
+            byId.put(user.id(), user);
+            byEmail.put(user.email(), user);
+            return user;
+        }
+
+        @Override
+        public Optional<UserAccount> findById(UUID id) { return Optional.ofNullable(byId.get(id)); }
+        @Override
+        public Optional<UserAccount> findByEmail(String email) { return Optional.ofNullable(byEmail.get(email)); }
+        @Override
+        public boolean existsByEmail(String email) { return byEmail.containsKey(email); }
+    }
+
+    private static final class InMemoryMemberships implements CompanyMembershipRepositoryPort {
+        private final Map<UUID, CompanyMembership> byId = new HashMap<>();
+
+        @Override
+        public CompanyMembership save(CompanyMembership membership) {
+            byId.put(membership.id(), membership);
+            return membership;
+        }
+
+        @Override
+        public Optional<CompanyMembership> findByIdAndCompanyId(UUID membershipId, UUID companyId) {
+            return Optional.ofNullable(byId.get(membershipId)).filter(m -> m.companyId().equals(companyId));
+        }
+
+        @Override
+        public Optional<CompanyMembership> findByCompanyIdAndUserId(UUID companyId, UUID userId) {
+            return byId.values().stream().filter(m -> m.companyId().equals(companyId) && m.userId().equals(userId))
+                    .findFirst();
+        }
+
+        @Override
+        public List<CompanyMembership> findByUserId(UUID userId) {
+            return byId.values().stream().filter(m -> m.userId().equals(userId)).toList();
+        }
+
+        @Override
+        public boolean existsByCompanyId(UUID companyId) {
+            return byId.values().stream().anyMatch(m -> m.companyId().equals(companyId));
+        }
+    }
+
+    private static final class InMemorySessions implements UserSessionRepositoryPort {
+        private final Map<String, UserSession> byHash = new HashMap<>();
+        @Override
+        public UserSession save(UserSession session) { byHash.put(session.tokenHash(), session); return session; }
+        @Override
+        public Optional<UserSession> findByTokenHash(String tokenHash) { return Optional.ofNullable(byHash.get(tokenHash)); }
+    }
+
+    private static final class InMemoryAudit implements AccessAuditRepositoryPort {
+        private final List<AccessAuditEvent> events = new ArrayList<>();
+        @Override
+        public AccessAuditEvent save(AccessAuditEvent event) { events.add(event); return event; }
+    }
+
+    private static final class FixedPasswordHasher implements PasswordHasherPort {
+        @Override
+        public String hash(String rawPassword) { return "hashed-" + rawPassword; }
+        @Override
+        public boolean matches(String rawPassword, String encodedPassword) { return encodedPassword.equals(hash(rawPassword)); }
+    }
+
+    private static final class SequentialIds implements IdGeneratorPort {
+        private final ArrayDeque<UUID> ids;
+        private SequentialIds(UUID... ids) { this.ids = new ArrayDeque<>(List.of(ids)); }
+        @Override
+        public UUID nextId() { return ids.removeFirst(); }
+    }
+}

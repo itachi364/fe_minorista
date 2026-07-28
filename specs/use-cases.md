@@ -230,19 +230,55 @@ Acceptance criteria: AC-047.
 Actor: Propietario o administrador.
 
 Flujo principal:
-1. El actor crea usuario o invita usuario existente.
-2. El sistema asigna rol y permisos dentro de una empresa.
-3. El sistema evalua permisos antes de comandos protegidos.
+1. El actor crea usuario con correo, nombre completo y password.
+2. El sistema persiste password con hash PBKDF2 y registra auditoria de creacion.
+3. El actor inicia sesion y recibe token opaco Bearer con expiracion.
+4. El actor asigna roles dentro de una empresa.
+5. El sistema deriva permisos por rol y empresa.
+6. El sistema rechaza cambios de roles cuando el usuario autenticado no tiene `ROLES_MANAGE`.
+7. El sistema registra auditoria de login y cambios de roles.
 
-Acceptance criteria: AC-048.
+Acceptance criteria: AC-048, AC-018, AC-032.
 
 ## UC-021: Administrar licencia de empresa
 
 Actor: Administrador de plataforma.
 
 Flujo principal:
-1. El actor registra plan, estado, vigencia y limites de licencia para una empresa.
-2. El sistema evalua la licencia antes de crear transacciones o emitir documentos.
-3. El sistema bloquea operaciones no permitidas con error estructurado.
+1. El actor registra plan, vigencia y limites de licencia para una empresa.
+2. El actor consulta, activa o suspende la licencia cuando cambian las condiciones comerciales.
+3. Un servicio consumidor solicita validacion de licencia antes de crear usuarios, transacciones o documentos fiscales.
+4. El sistema responde `allowed=true` cuando la licencia esta activa y vigente.
+5. El sistema responde `allowed=false` con `reasonCode` y `message` cuando la licencia esta suspendida, vencida o cancelada.
+
+Flujos alternos:
+- Si la empresa no existe, el sistema responde `RESOURCE_NOT_FOUND`.
+- Si no existe licencia configurada, el sistema responde `RESOURCE_NOT_FOUND`.
+- Las consultas, exportaciones y acciones administrativas de recuperacion quedan permitidas en esta fase sin consumir validacion de licencia.
 
 Acceptance criteria: AC-049.
+
+Nota UC-021 consumidores implementados en TASK-058: `billing-service` valida `CREATE_TRANSACTION` e `ISSUE_FISCAL_DOCUMENT`; `identity-service` valida `CREATE_USER` al asociar usuarios a una empresa mediante membresia/roles.
+## UC-019: Registrar cuenta por cobrar
+
+Actor: Cajero, administrador o proceso de facturacion.
+
+Flujo principal:
+1. El actor o el proceso de venta identifica una venta/documento fiscal con condicion de pago a credito.
+2. El sistema valida empresa, cliente, documento origen, fecha de emision, fecha de vencimiento y total.
+3. El sistema crea una cuenta por cobrar abierta con saldo inicial igual al total del documento.
+4. El sistema deja trazabilidad hacia la venta/documento fiscal y permite consulta por cliente, estado y periodo.
+
+Acceptance criteria: AC-052, AC-047.
+
+## UC-020: Registrar pago de cuenta por cobrar
+
+Actor: Cajero, administrador o contador.
+
+Flujo principal:
+1. El actor selecciona una cuenta por cobrar abierta o parcialmente pagada.
+2. El actor registra fecha, valor, metodo de pago, referencia y usuario responsable.
+3. El sistema valida que el pago no exceda el saldo pendiente.
+4. El sistema disminuye el saldo, actualiza estado y registra trazabilidad contable y operativa.
+
+Acceptance criteria: AC-053, AC-014, AC-015.

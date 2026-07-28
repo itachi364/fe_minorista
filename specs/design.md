@@ -118,7 +118,7 @@ Estado TASK-036:
 - `X-Company-Id` debe propagarse en toda operacion de negocio.
 - `Idempotency-Key` sera obligatorio en comandos fiscales, inventario y contabilizacion automatica.
 - Los errores entre servicios deben usar el contrato estandar definido en `specs/api-contract.md`.
-- Los eventos `SaleConfirmed`, `ElectronicDocumentValidated`, `InventoryMovementRegistered` y `AccountingEntryPosted` se mantienen como contratos conceptuales hasta aprobar broker y patron outbox/inbox.
+- Los eventos `SaleConfirmed`, `ElectronicDocumentValidated`, `InventoryMovementRegistered`, `AccountingEntryPosted` y `AuditEventRequested` ya tienen contrato canonico, registro durable en Outbox local y dispatcher condicional hacia EventBridge. `AuditEventRequested` ya tiene consumidor Lambda inicial con Inbox real; los demas consumidores se implementan por lotes dentro de TASK-062.
 
 ## Politica de arranque local de microservicios
 
@@ -130,13 +130,14 @@ Estado TASK-036:
 
 ## Mensajeria asincrona objetivo
 
-- La opcion objetivo para eventos asincronos sera NATS JetStream por ser open source, liviano y adecuado para una plataforma vendible mediante licencias de uso.
-- NATS JetStream no se implementara hasta cerrar primero el flujo funcional core del backend: tenant, configuracion fiscal, reglas contables, inventario, venta, POS electronico mock, descuento de stock, asiento contable y auditoria.
-- La migracion asincrona debe usar patron Outbox/Inbox para publicar y consumir eventos sin perder operaciones cuando un servicio o el broker no este disponible.
+- La opcion productiva objetivo para eventos asincronos en AWS sera Outbox/Inbox con publicacion hacia EventBridge/SQS y consumidores Lambda idempotentes.
+- La infraestructura event-driven se implementa por fases: contratos y Outbox local; publicadores EventBridge/SQS; consumidores Lambda con Inbox/idempotencia. Los primeros consumidores implementados son `audit-event-writer-lambda` para `AuditEventRequested`, `inventory-sale-effect-lambda` para efectos de inventario desde `SaleConfirmed` y `accounting-sale-entry-lambda` para asientos contables desde `SaleConfirmed` y `provider-submission-retry-lambda` para reintentos tecnicos de proveedor desde `ProviderSubmissionFailed`.
+- La migracion asincrona debe usar patron Outbox/Inbox para publicar y consumir eventos sin perder operaciones cuando un servicio, cola, bus o consumidor no este disponible temporalmente.
 - Los consumidores deben ser idempotentes por `companyId`, tipo de evento, recurso origen e identificador de evento.
-- Los eventos objetivo iniciales son `SaleConfirmed`, `ElectronicDocumentValidated`, `InventoryMovementRegistered`, `AccountingEntryPosted` y `AuditEventRequested`.
+- Los eventos objetivo iniciales son `SaleConfirmed`, `ElectronicDocumentValidated`, `InventoryMovementRegistered`, `AccountingEntryPosted`, `AuditEventRequested` y `ProviderSubmissionFailed`.
 - Los flujos HTTP sincronicos que permanezcan despues de introducir eventos deberan evaluarse con timeouts, reintentos controlados y circuit breaker cuando apliquen.
 - La programacion reactiva no es prioridad inicial; solo se evaluara si aparece una necesidad concreta de concurrencia o streaming que no pueda resolverse con el modelo actual.
+- No se usara broker self-hosted; la mensajeria productiva se implementara con servicios administrados AWS.
 
 ## Flujo end-to-end objetivo antes de depuracion legacy
 
@@ -160,7 +161,7 @@ Estado TASK-036:
 - El flujo local usara orquestacion sincrona desde `billing-service`.
 - La afectacion de inventario y contabilidad debe ser idempotente por `company_id`, `source_type` y `source_id`.
 - Si una llamada posterior a la validacion fiscal falla, el sistema debe registrar el error y permitir reintento seguro sin duplicar numeracion, movimientos ni asientos.
-- La implementacion asincrona queda diferida hasta cerrar el flujo core y aprobar la tarea NATS JetStream con Outbox/Inbox, contratos de eventos, reintentos y DLQ.
+- La implementacion asincrona queda diferida hasta cerrar el flujo core y aprobar la tarea de Outbox/Inbox con EventBridge/SQS, consumidores Lambda, contratos de eventos, reintentos y DLQ.
 
 ## Flujo de factura electronica
 
@@ -295,26 +296,31 @@ Toda transicion fiscal debe registrar evento de trazabilidad con estado anterior
 ### Politica objetivo de reportes minimos
 
 - Los reportes iniciales deben filtrar siempre por empresa.
-- Reportes operativos minimos: ventas por periodo, documentos electronicos por estado, inventario disponible, kardex por item, compras/gastos por periodo, cuentas por pagar y cuentas por cobrar.
+- Reportes operativos minimos: ventas por periodo, documentos electronicos por estado, inventario disponible, kardex por item, compras/gastos por periodo y cuentas por pagar.
+- El reporte de cuentas por cobrar queda implementado en TASK-055 sobre un agregado transaccional de cartera por cliente; no se infiere solo desde la cuenta PUC `1305`.
 - Reportes contables minimos: libro diario, libro mayor, balance de comprobacion simple y saldos por cuenta.
 - Los reportes deben consultar tablas del modelo Clean Architecture activo; no deben depender de tablas legacy pendientes de depuracion.
+- La implementacion inicial expone endpoints de lectura en `billing-service`, `inventory-service` y `accounting-service`, porque esos servicios son duenos del dato.
+- El `reporting-service` fisico queda diferido hasta la implementacion de Outbox/Inbox, eventos AWS y proyecciones de lectura consolidadas.
 
 ### Politica objetivo de identidad, permisos y licenciamiento
 
-- `identity-service` debe administrar usuarios, roles, permisos y membresias por empresa.
+- `identity-service` administra usuarios, roles, permisos y membresias por empresa desde TASK-056 como microservicio fisico Clean Architecture con schema `identity`.
 - Los roles minimos sugeridos son `OWNER`, `ADMIN`, `CASHIER`, `ACCOUNTANT` y `AUDITOR`.
 - La autorizacion debe evaluar empresa, rol y permiso antes de ejecutar comandos de negocio.
-- `tenant-service` debe administrar el estado de licencia de cada empresa: activa, suspendida, vencida o cancelada.
-- Una licencia suspendida o vencida bloquea nuevas transacciones de negocio y emision fiscal, pero permite consultas, exportaciones y administracion necesaria segun politica aprobada.
+- `tenant-service` administra desde TASK-057 el estado de licencia de cada empresa: activa, suspendida, vencida o cancelada.
+- La licencia se persiste en `tenant.company_license` con plan, vigencia, limites de usuarios/documentos y auditoria basica.
+- Los servicios de negocio consultan `GET /api/v1/companies/{companyId}/license/validation?action=...` antes de comandos que creen usuarios, transacciones o documentos fiscales.
+- Una licencia suspendida o vencida devuelve `allowed=false` con `reasonCode` estructurado y debe bloquear nuevas transacciones de negocio y emision fiscal, pero permite consultas, exportaciones y administracion necesaria segun politica aprobada.
 - La auditoria debe registrar accesos, cambios de configuracion, emision fiscal, movimientos de inventario, compras, gastos, pagos y cambios de licencia.
 
-### Orden objetivo antes de limpieza y NATS
+### Orden objetivo antes de limpieza y eventos cloud
 
 1. Definir y cerrar la logica backend faltante de terceros, items vendibles, servicios, insumos, compras, gastos, reportes, permisos y licencias.
 2. Implementar y probar esos casos de uso por API y PostgreSQL en microservicios Clean Architecture.
 3. Migrar el legacy pendiente al modelo nuevo y demostrar equivalencia funcional.
 4. Ejecutar depuracion y eliminacion de codigo/tablas legacy solo con matriz de reemplazo aprobada.
-5. Implementar NATS JetStream con Outbox/Inbox cuando el flujo core ya este estable.
+5. Implementar Outbox/Inbox con EventBridge/SQS y Lambdas cuando el flujo core ya este estable.
 
 ### Politica inicial de plan de cuentas PUC
 
@@ -339,6 +345,10 @@ Toda transicion fiscal debe registrar evento de trazabilidad con estado anterior
 - Las lineas con valor cero derivadas de una regla se omiten para soportar operaciones sin impuesto sin romper el balance.
 - La persistencia local usa tablas prefijadas `accounting_*` para evitar colisiones entre bounded contexts.
 - La administracion inicial de reglas contables se expone por REST y valida que las cuentas PUC existan antes de activar la regla.
+- TASK-053 permite listar cuentas PUC por empresa, listar reglas contables por empresa/evento/estado, reemplazar la regla activa de un evento y desactivar reglas activas sin eliminar historial.
+- TASK-053 incluye `POST /api/v1/accounting-setup/basic` para crear una plantilla minima editable por empresa con cuentas `1105`, `1110`, `1305`, `1435`, `2205`, `2408`, `4135` y `5135`, y reglas base para venta, compra, gasto y pago de cuenta por pagar.
+- La plantilla base es una ayuda operativa local; no carga el PUC oficial completo y debe poder ser reemplazada por parametrizacion de cada empresa.
+- El reemplazo de reglas conserva el historial dejando la regla anterior `active=false`; la generacion de asientos siempre usa la regla activa vigente al momento del comando.
 - En la implementacion local actual, los asientos se crean directamente en estado `POSTED`; el flujo de borradores contables queda pendiente hasta que sea aprobado.
 
 ### Politica inicial de libro diario y libro mayor
@@ -442,3 +452,108 @@ La implementacion concreta dependera del proveedor seleccionado.
 3. Introducir estructura Clean Architecture en el monolito actual como fase intermedia.
 4. Extraer microservicios por bounded context cuando los contratos esten estables.
 5. Mantener compatibilidad de endpoints existentes durante la migracion, si el usuario lo confirma.
+
+## Licenciamiento como politica transversal
+
+TASK-058 conecta el licenciamiento por empresa como politica de aplicacion en los servicios consumidores iniciales:
+
+- `billing-service` consulta `tenant-service` mediante el puerto `LicenseValidationPort` antes de crear ventas nuevas y antes de emitir/confirmar documentos fiscales.
+- `identity-service` consulta `tenant-service` mediante el puerto `LicenseValidationPort` antes de crear membresias o asignar roles dentro de una empresa.
+- Los adaptadores HTTP fallan cerrado con error de negocio cuando la licencia no puede validarse, evitando crear transacciones sin licencia activa.
+- Docker Compose solo conserva `postgres` como dependencia de arranque; las URLs entre microservicios se configuran por variables y no con `depends_on` entre servicios de negocio.
+
+## Context7 evidence
+
+- Library/tool: Context7 MCP.
+- Topic consulted: TASK-059 legacy cleanup.
+- Relevant finding: Context7 tools were not available in this Codex session after tool discovery; no framework, library, API or runtime behavior decision was introduced in this cleanup batch.
+- Decision impact: The implementation is limited to removing `services/legacy-monolith`, updating Maven/docs/specs, and preserving PostgreSQL legacy tables until a data migration/backup plan is approved.
+
+## TASK-059 legacy cleanup decision
+
+El lote 1 de TASK-059 elimina el codigo del monolito legacy porque no participa en el reactor Maven activo, Docker Compose ni el flujo E2E aprobado. Las tablas `public.*` legacy no se eliminan: la auditoria de datos muestra filas historicas en catalogo, terceros, billing y contabilidad que requieren migracion o respaldo aprobado antes de cualquier operacion destructiva.
+## TASK-059 lote 2 Context7 evidence
+
+- Library/tool: Spring Boot (`/spring-projects/spring-boot`).
+- Topic consulted: component scanning, `@SpringBootApplication`, `@EntityScan` and repository scanning during controller/config cleanup.
+- Relevant finding: `scanBasePackages` affects component scanning but does not replace JPA entity or repository scanning, which are configured separately through `@EntityScan` and repository annotations.
+- Decision impact: Removing thirdparty legacy controllers also requires removing legacy use-case beans, JPA entities and repositories from the active thirdparty scan path.
+
+- Library/tool: Flyway (`/flyway/flyway`).
+- Topic consulted: validation behavior when applied migration files are deleted or changed.
+- Relevant finding: Flyway validation reports applied migrations that are no longer resolved locally and checksum mismatches for changed migrations; repair is required only when such changes are intentional.
+- Decision impact: TASK-059 lote 2 does not delete or modify applied thirdparty migration files and preserves `thirdparty.cliente`/`thirdparty.proveedor` tables for a later migration/respaldo plan.
+
+## TASK-059 lote 2 legacy thirdparty cleanup decision
+
+El lote 2 de TASK-059 retira el codigo runtime legacy de terceros (`/api/clientes`, `/api/proveedores`, modelo `Customer`/`Supplier`, adaptadores, repositorios, mappers y cliente REST a catalogo). El contrato canonico queda en `/api/v1/third-parties`, `/api/v1/customers` y `/api/v1/suppliers`. Las migraciones Flyway y tablas `thirdparty.cliente`/`thirdparty.proveedor` se conservan temporalmente para migracion o respaldo aprobado.
+
+## Arquitectura cloud AWS objetivo
+
+### Frontend y entrada publica
+
+- El frontend objetivo sera una SPA servida desde Amazon S3 privado mediante CloudFront.
+- El navegador no consumira microservicios internos directamente.
+- API Gateway expone la entrada publica hacia un `bff-service`.
+- El `bff-service` vive en ECS Fargate y agrega respuestas, normaliza errores, propaga `Authorization`, `X-Company-Id`, `X-Correlation-Id` e `Idempotency-Key`, y protege al frontend de contratos internos inestables.
+
+### Computo backend
+
+- Los microservicios Spring Boot de larga vida se despliegan en ECS Fargate: `tenant-service`, `identity-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `audit-service` y `reporting-service` cuando se materialice.
+- Los procesos event-driven cortos se implementan como Lambdas: auditoria asincrona, efectos de inventario/contabilidad derivados de documentos, proyecciones de reportes, reintentos de estado del proveedor, notificaciones y tareas programadas de licencias.
+- La base de datos productiva objetivo sera RDS/Aurora PostgreSQL, separando datos por servicio mediante base o esquema segun la fase.
+- Los secretos, certificados y credenciales se resuelven desde Secrets Manager o Parameter Store en runtime.
+
+### Event-driven target
+
+- Los productores escriben primero en su transaccion local y registran Outbox.
+- TASK-062 lote 1 registra Outbox en `billing-service`, `inventory-service` y `accounting-service`.
+- TASK-062 lote 2 agrega dispatcher Outbox condicional por servicio: lee eventos `PENDING`/`FAILED`, publica a EventBridge con `source=producer` y `detailType=eventType`, y marca `PUBLISHED` o `FAILED` sin tumbar el microservicio.
+- TASK-062 lote 3 agrega consumidores reales iniciales: `audit-event-writer-lambda` valida Inbox en `audit_inbox_event` y materializa `AuditEventRequested` en `audit_event`; `inventory-sale-effect-lambda` valida Inbox en `inventory.inbox_event`, descuenta stock por lineas `stockTracked=true` y registra movimientos `SALE_OUT` idempotentes desde `SaleConfirmed`; `accounting-sale-entry-lambda` valida Inbox en `accounting_inbox_event`, aplica la regla contable activa `SALE_CONFIRMED`/`SALE` y crea asientos idempotentes; `provider-submission-retry-lambda` reintenta documentos con proveedor en `FAILED`, actualiza el documento y republica eventos de validacion si la DIAN mock acepta.
+- La caida de una Lambda o cola no debe impedir que los servicios HTTP permanezcan arriba ni debe revertir transacciones ya confirmadas localmente.
+
+
+## Consumidor Lambda de auditoria
+
+`audit-event-writer-lambda` consume `AuditEventRequested` desde la cola `audit-events`. El handler parsea el envelope entregado por EventBridge/SQS, normaliza el payload de auditoria, inserta primero en `audit_inbox_event` y despues en `audit_event`. Los duplicados no fallan el lote; los errores de parseo o persistencia devuelven el `messageId` en `SQSBatchResponse` para reintento selectivo y posterior DLQ de SQS.
+
+## Consumidor Lambda de inventario
+
+`inventory-sale-effect-lambda` consume la cola `inventory-effects` y procesa eventos `SaleConfirmed`. El payload del evento contiene el snapshot de lineas de venta, incluyendo `lineId`, producto, tipo de item, `stockTracked`, cantidad y costo unitario. El consumidor ignora eventos no soportados, inserta primero en `inventory.inbox_event`, bloquea el saldo de stock con transaccion JDBC, aplica `SALE_OUT` solo a lineas con inventario y reutiliza la misma clave de idempotencia del flujo sincronico para evitar descuentos duplicados durante la transicion.
+
+## Consumidor Lambda contable
+
+`accounting-sale-entry-lambda` consume la cola `accounting-effects` y procesa eventos `SaleConfirmed`. El payload incluye `saleId`, `customerId` opcional, `subtotal`, `taxTotal`, `total` e `issuedAt`. El consumidor registra Inbox en `accounting_inbox_event`, evita duplicados por `SALE`/`saleId`, consulta la regla activa `SALE_CONFIRMED`, valida cuentas PUC activas, crea el asiento balanceado y publica `AccountingEntryPosted` en `accounting_outbox_event` cuando el asiento es nuevo.
+
+## Consumidor Lambda de reintento proveedor
+
+`provider-submission-retry-lambda` consume la cola `provider-retries` y procesa `ProviderSubmissionFailed`/`ProviderSubmissionPending`. El consumidor carga el documento y snapshot de venta desde `billing`, ignora documentos ya `VALIDATED` o `REJECTED`, reenvia al `dian-provider-service` con la misma clave de idempotencia y actualiza `billing.electronic_document`. Si el proveedor acepta, publica `SaleConfirmed` y `ElectronicDocumentValidated` en `billing.outbox_event` para que inventario, contabilidad y reportes avancen por el canal asincrono. Si el proveedor sigue fallando, reporta el `messageId` en `SQSBatchResponse` para reintento y DLQ; si rechaza, marca `REJECTED` sin retry automatico.
+## Context7 evidence - AWS cloud target
+
+- Library/tool: AWS Documentation via Context7 (`/websites/aws_amazon`).
+- Topic consulted: ECS Fargate versus Lambda for long-running microservices and event-driven workloads.
+- Relevant finding: AWS describes Lambda as event-driven compute with native triggers, while Fargate is better aligned with services/containers that run continuously and need service-level control.
+- Decision impact: Spring Boot microservices and the BFF will target ECS Fargate; short, idempotent, event-triggered processes will target Lambda.
+- Library/tool: Terraform AWS Provider (`/hashicorp/terraform-provider-aws`).
+- Topic consulted: EventBridge, SQS, DLQ, Lambda event source mappings and Lambda permissions.
+- Relevant finding: The provider supports managed EventBridge rules/targets, SQS queues/DLQs, Lambda event source mappings and permissions required for AWS-native event-driven delivery.
+- Decision impact: TASK-062 uses local transactional Outbox/Inbox tables as the service boundary and keeps the production delivery target on EventBridge/SQS + Lambda, without self-hosted brokers.
+- Library/tool: AWS SDK for Java 2.x (`/websites/aws_amazon_sdk-for-java_developer-guide`).
+- Topic consulted: AWS SDK for Java 2.x EventBridge PutEvents.
+- Relevant finding: `PutEvents` publishes custom events with `source`, `detailType`, JSON `detail` and optional `eventBusName`; responses must inspect `failedEntryCount` and per-entry errors.
+- Decision impact: The Outbox dispatcher publishes each canonical event to EventBridge with `source=producer`, `detailType=eventType`, `detail` as the common event envelope and marks failures for retry.
+
+- Library/tool: AWS SDK for Java 2.x (`/websites/aws_amazon_sdk-for-java_developer-guide`).
+- Topic consulted: AWS SDK for Java 2.x SQS send message.
+- Relevant finding: SQS delivery uses `queueUrl` and `messageBody`; FIFO queues can add group/deduplication fields when needed.
+- Decision impact: Direct SQS publishing is not used in producers; EventBridge routes events to SQS queues managed by Terraform, preserving producer decoupling.
+
+- Library/tool: AWS Documentation via Context7 (`/websites/aws_amazon`).
+- Topic consulted: SPA/static website hosting with S3 and CloudFront.
+- Relevant finding: AWS documentation recommends CloudFront in front of S3 for HTTPS and secure private-origin delivery.
+- Decision impact: Frontend target is S3 + CloudFront; browser traffic enters backend through API Gateway/BFF, not directly to microservices.
+
+- Library/tool: AWS Lambda Java Support Libraries (`/aws/aws-lambda-java-libs`).
+- Topic consulted: Java SQS handlers and Lambda event objects.
+- Relevant finding: `aws-lambda-java-events` 3.16.0 provides `SQSEvent` for SQS-triggered Java Lambdas.
+- Decision impact: `audit-event-writer-lambda` uses `SQSEvent` plus `SQSBatchResponse` for partial item failures.

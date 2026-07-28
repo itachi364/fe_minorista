@@ -13,24 +13,14 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import com.msvanegasg.facturaelectronica.exception.cliente.ClienteAlreadyExistsException;
-import com.msvanegasg.facturaelectronica.exception.cliente.ClienteDocumentoNoModificableException;
-import com.msvanegasg.facturaelectronica.exception.cliente.ClienteInactivoException;
-import com.msvanegasg.facturaelectronica.exception.cliente.ClienteNotFoundException;
 import com.msvanegasg.facturaelectronica.exception.compra.CompraNotFoundException;
 import com.msvanegasg.facturaelectronica.exception.gasto.GastoInactivoException;
 import com.msvanegasg.facturaelectronica.exception.gasto.GastoNotFoundException;
 import com.msvanegasg.facturaelectronica.exception.impuesto.ImpuestoNotFoundException;
 import com.msvanegasg.facturaelectronica.exception.producto.ProductoCodigoNotFoundException;
 import com.msvanegasg.facturaelectronica.exception.producto.ProductoIdNotFoundException;
-import com.msvanegasg.facturaelectronica.exception.proveedor.ProveedorAlreadyExistsException;
-import com.msvanegasg.facturaelectronica.exception.proveedor.ProveedorDocumentoNoModificableException;
-import com.msvanegasg.facturaelectronica.exception.proveedor.ProveedorDocumentoNotFoundException;
-import com.msvanegasg.facturaelectronica.exception.proveedor.ProveedorNotFoundException;
 import com.msvanegasg.facturaelectronica.exception.tipodocumento.TipoDocumentoNoModificableException;
 import com.msvanegasg.facturaelectronica.exception.tipodocumento.TipoDocumentoNotFoundException;
-import com.msvanegasg.facturaelectronica.exception.util.DigitoVerificacionNoModificableException;
-import com.msvanegasg.facturaelectronica.exception.util.NitInvalidoException;
 import com.msvanegasg.facturaelectronica.observability.CorrelationId;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -84,11 +74,8 @@ public class GlobalExceptionHandler {
             PaisNotFoundException.class,
             MetodoPagoNotFoundException.class,
             ParametroNotFoundException.class,
-            ProveedorDocumentoNotFoundException.class,
-            ProveedorNotFoundException.class,
             TipoDocumentoNotFoundException.class,
             TipoGastoNotFoundException.class,
-            ClienteNotFoundException.class,
             ProductoCodigoNotFoundException.class,
             ProductoIdNotFoundException.class
     })
@@ -103,29 +90,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({
-            ClienteAlreadyExistsException.class,
-            ProveedorAlreadyExistsException.class
-    })
-    public ResponseEntity<ApiErrorResponse> handleDuplicateException(RuntimeException exception,
-            HttpServletRequest request) {
-        return buildResponseEntity(
-                HttpStatus.CONFLICT,
-                ApiErrorCode.DUPLICATE_RESOURCE,
-                safeMessage(exception.getMessage(), "El recurso ya existe."),
-                List.of(),
-                request);
-    }
-
-    @ExceptionHandler({
             IllegalStateException.class,
-            TipoClienteInvalidoException.class,
             GastoInactivoException.class,
-            ClienteInactivoException.class,
-            ClienteDocumentoNoModificableException.class,
-            ProveedorDocumentoNoModificableException.class,
-            DigitoVerificacionNoModificableException.class,
-            TipoDocumentoNoModificableException.class,
-            NitInvalidoException.class
+            TipoDocumentoNoModificableException.class
     })
     public ResponseEntity<ApiErrorResponse> handleBusinessRuleException(RuntimeException exception,
             HttpServletRequest request) {

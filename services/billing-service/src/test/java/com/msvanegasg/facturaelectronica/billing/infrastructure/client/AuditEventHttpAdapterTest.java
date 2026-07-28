@@ -34,8 +34,7 @@ class AuditEventHttpAdapterTest {
         server.start();
         String baseUrl = "http://localhost:" + server.getAddress().getPort();
         AuditEventHttpAdapter adapter = new AuditEventHttpAdapter(
-                new BillingProperties("http://inventory", "http://provider", "http://accounting", baseUrl,
-                        "ACCEPTED"));
+                new BillingProperties("http://inventory", "http://provider", "http://accounting", baseUrl, "http://tenant", "ACCEPTED"));
 
         adapter.register(new AuditEventCommand(UUID.fromString("11111111-1111-1111-1111-111111111111"), null,
                 "ELECTRONIC_DOCUMENT", "SALE", "22222222-2222-2222-2222-222222222222", "CONFIRM_SALE",

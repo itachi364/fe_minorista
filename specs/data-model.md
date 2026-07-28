@@ -62,8 +62,10 @@ Decision de migracion fisica:
 
 - `tenant.company`
 - `identity.user_account`
-- `identity.role`
-- `identity.user_company`
+- `identity.company_membership`
+- `identity.company_membership_role`
+- `identity.user_session`
+- `identity.identity_access_audit`
 
 #### `tenant.company`
 
@@ -84,6 +86,91 @@ Restricciones:
 
 - `unique(identification_type_id, identification_number)`.
 - `status in ('ACTIVE', 'SUSPENDED')`.
+
+#### `tenant.company_license`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador de licencia. |
+| `company_id` | uuid | Si | Empresa propietaria de la licencia. |
+| `plan_code` | varchar(60) | Si | Codigo comercial del plan contratado. |
+| `status` | varchar(20) | Si | `ACTIVE`, `SUSPENDED`, `EXPIRED` o `CANCELLED`. |
+| `valid_from` | date | Si | Fecha inicial de vigencia. |
+| `valid_to` | date | Si | Fecha final de vigencia. |
+| `max_users` | integer | No | Limite de usuarios permitidos por plan. |
+| `max_monthly_documents` | integer | No | Limite mensual de documentos permitidos por plan. |
+| `created_at` | timestamptz | Si | Fecha de creacion. |
+| `updated_at` | timestamptz | Si | Fecha de ultima actualizacion. |
+
+Restricciones:
+
+- `unique(company_id)`.
+- `foreign key(company_id) references tenant.company(id)`.
+- `status in ('ACTIVE', 'SUSPENDED', 'EXPIRED', 'CANCELLED')`.
+- `valid_to >= valid_from`.
+- `max_users` y `max_monthly_documents` deben ser nulos o mayores que cero.
+#### `identity.user_account`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador del usuario. |
+| `email` | varchar(180) | Si | Correo normalizado en minuscula. |
+| `full_name` | varchar(180) | Si | Nombre completo. |
+| `password_hash` | varchar(500) | Si | Hash PBKDF2 del password. |
+| `status` | varchar(20) | Si | `ACTIVE` o `INACTIVE`. |
+| `created_at` | timestamptz | Si | Fecha de creacion. |
+| `updated_at` | timestamptz | Si | Fecha de ultima actualizacion. |
+
+Restricciones: `unique(email)`.
+
+#### `identity.company_membership`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador de membresia. |
+| `company_id` | uuid | Si | Empresa/tenant. |
+| `user_id` | uuid | Si | Usuario miembro. |
+| `active` | boolean | Si | Estado de la membresia. |
+| `created_at` | timestamptz | Si | Fecha de creacion. |
+| `updated_at` | timestamptz | Si | Fecha de ultima actualizacion. |
+
+Restricciones: `unique(company_id, user_id)`.
+
+#### `identity.company_membership_role`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `membership_id` | uuid | Si | Membresia asociada. |
+| `role` | varchar(40) | Si | Rol asignado. |
+
+Roles validos: `OWNER`, `ADMIN`, `CASHIER`, `ACCOUNTANT`, `AUDITOR`.
+
+#### `identity.user_session`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador de sesion. |
+| `user_id` | uuid | Si | Usuario autenticado. |
+| `token_hash` | varchar(120) | Si | Hash SHA-256 del token opaco. |
+| `expires_at` | timestamptz | Si | Fecha de expiracion. |
+| `created_at` | timestamptz | Si | Fecha de creacion. |
+| `revoked_at` | timestamptz | No | Fecha de revocacion futura. |
+
+Restricciones: `unique(token_hash)`.
+
+#### `identity.identity_access_audit`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador del evento de acceso. |
+| `company_id` | uuid | No | Empresa relacionada cuando aplique. |
+| `user_id` | uuid | No | Usuario relacionado cuando aplique. |
+| `action` | varchar(80) | Si | Accion ejecutada. |
+| `resource_type` | varchar(80) | Si | Tipo de recurso. |
+| `resource_id` | varchar(120) | No | Recurso asociado. |
+| `result` | varchar(40) | Si | `SUCCESS` o `FAILURE`. |
+| `detail` | varchar(500) | No | Detalle seguro sin secretos. |
+| `occurred_at` | timestamptz | Si | Fecha del evento. |
 
 ### Catalogos globales
 
@@ -108,15 +195,14 @@ Regla de migracion TASK-033:
 
 ### Terceros
 
-- `thirdparty.cliente`
-- `thirdparty.proveedor`
+- `thirdparty.cliente` y `thirdparty.proveedor` como tablas historicas preservadas temporalmente.
 - `thirdparty.third_party` como modelo objetivo consolidado.
 - `thirdparty.third_party_role` como roles cliente/proveedor por empresa.
 
 Regla de migracion TASK-033:
 
 - `thirdparty.cliente` y `thirdparty.proveedor` incluyen `company_id` nullable y constraint unico por `(company_id, id_tipo_documento, numero_documento)`.
-- La implementacion conserva endpoints legacy durante la extraccion fisica. La obligatoriedad estricta de `X-Company-Id` se endurecera cuando los contratos `/api/v1` queden estabilizados.
+- TASK-059 lote 2 retira endpoints legacy de terceros; el acceso runtime queda en `/api/v1` con `X-Company-Id` obligatorio.
 
 Modelo objetivo:
 
@@ -229,7 +315,7 @@ Restricciones:
 - La confirmacion es idempotente por compra y linea, usando la clave de idempotencia de la compra.
 - `purchase_line` guarda producto, cantidad, costo unitario, subtotal, impuesto y total.
 - `purchase.payment_condition` acepta `CASH` o `CREDIT`; si es `CREDIT`, `purchase.due_date` es obligatorio.
-- La contabilizacion y CxP de compras se invoca best-effort contra `accounting-service` cuando `ACCOUNTING_SERVICE_URL` esta configurado; NATS reemplazara esa llamada en TASK-045.
+- La contabilizacion y CxP de compras se invoca best-effort contra `accounting-service` cuando `ACCOUNTING_SERVICE_URL` esta configurado; Outbox/Inbox con EventBridge/SQS y Lambdas reemplazara esa llamada en la tarea event-driven aprobada.
 
 #### `inventory.service_supply_reference`
 
@@ -312,6 +398,49 @@ Reglas:
 - Todo registro se aisla por `company_id` y se contabiliza mediante reglas PUC parametrizables.
 
 
+### Cuentas por cobrar
+
+Modelo fisico implementado en `accounting-service`, siguiendo el prefijo de tablas contables existente:
+
+- `accounting_accounts_receivable`
+- `accounting_accounts_receivable_payment`
+
+#### `accounting_accounts_receivable`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador de la CxC. |
+| `company_id` | uuid | Si | Empresa propietaria. |
+| `customer_id` | uuid | Si | Cliente/tercero asociado. |
+| `source_type` | varchar(40) | Si | `SALE`, `ELECTRONIC_INVOICE`, `ELECTRONIC_POS` o `OPENING_BALANCE`. |
+| `source_id` | uuid | Si | Documento origen o registro inicial aprobado. |
+| `issue_date` | date | Si | Fecha de origen. |
+| `due_date` | date | Si | Fecha de vencimiento. |
+| `total_amount` | numeric(38,2) | Si | Valor original. |
+| `paid_amount` | numeric(38,2) | Si | Valor pagado acumulado. |
+| `status` | varchar(20) | Si | `OPEN`, `PARTIALLY_PAID`, `PAID`, `OVERDUE`, `CANCELLED`. |
+| `idempotency_key` | varchar(120) | Si | Idempotencia de creacion por empresa. |
+
+#### `accounting_accounts_receivable_payment`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador del recaudo. |
+| `company_id` | uuid | Si | Empresa propietaria. |
+| `accounts_receivable_id` | uuid | Si | CxC pagada. |
+| `payment_date` | date | Si | Fecha del recaudo. |
+| `amount` | numeric(38,2) | Si | Valor recaudado. |
+| `payment_method` | varchar(80) | Si | Metodo operativo usado. |
+| `reference` | varchar(120) | No | Referencia bancaria/externa. |
+| `created_by` | uuid | No | Usuario que registro el recaudo. |
+
+Reglas:
+
+- Una venta/documento a credito crea cuenta por cobrar cuando el documento queda efectivo segun politica fiscal/contable.
+- Un pago parcial disminuye saldo y conserva trazabilidad.
+- No se permiten pagos que excedan el saldo pendiente.
+- Todo registro se aisla por `company_id` y se contabiliza mediante reglas PUC parametrizables.
+
 ### Facturacion/POS
 
 - `billing.issuer_profile`
@@ -384,8 +513,8 @@ Antes de eliminar tablas publicas legacy se debe construir una matriz de reempla
 | `auditoria`, `registro_accesos` | `audit-service` e `identity-service` | `audit.audit_event`, tablas identity futuras | `audit.audit_event` migrado en TASK-042; mantener legacy hasta migrar/respaldar datos |
 | `tipodocumento`, `pais`, `impuesto`, `metodo_pago`, `parametros`, `categoria`, `tipo_gasto` | `catalog-service` | `catalog.*` | migrado fisicamente; eliminar solo despues de migracion/respaldo de datos |
 | `producto` | `inventory-service` y compatibilidad `catalog-service` | `inventory.product`, `inventory.stock_balance`, `catalog.producto` temporal | migrado funcionalmente para inventario; resolver ownership final antes de limpiar |
-| `cliente` | `thirdparty-service` | `thirdparty.cliente` | migrado fisicamente; pendiente endurecer `X-Company-Id` obligatorio en rutas compatibles |
-| `proveedor` | `thirdparty-service` | `thirdparty.proveedor` | migrado fisicamente; pendiente endurecer `X-Company-Id` obligatorio en rutas compatibles |
+| `cliente` | `thirdparty-service` | `thirdparty.third_party` y `thirdparty.third_party_role` | codigo/endpoints legacy retirados en TASK-059 lote 2; tabla `thirdparty.cliente` preservada solo para migracion/respaldo |
+| `proveedor` | `thirdparty-service` | `thirdparty.third_party` y `thirdparty.third_party_role` | codigo/endpoints legacy retirados en TASK-059 lote 2; tabla `thirdparty.proveedor` preservada solo para migracion/respaldo |
 | `compra`, `detalle_compra` | `inventory-service` | `inventory.purchase`, `inventory.purchase_line`, `inventory.inventory_movement` | migrado funcionalmente; limpiar historicos solo con plan aprobado |
 | `gastos`, `detalle_gasto` | `accounting-service` inicialmente; `expenses/procurement-service` solo si se aprueba despues | `accounting.expense`, `accounting.accounts_payable` objetivo | mantener hasta implementar gastos/cuentas por pagar y migrar datos |
 | `factura`, `detalle_factura` | `billing-service` | `billing.sale`, `billing.sale_line`, `billing.electronic_document` | parcial; POS nuevo cubierto, factura electronica completa e historicos pendientes |
@@ -471,3 +600,29 @@ Compra:
 - Bodegas multiples o unica bodega inicial.
 - Manejo de caja y cierres POS.
 - Plan de cuentas PUC inicial completo o subconjunto por actividad economica.
+
+### `billing.fiscal_note`
+
+Tabla agregada en TASK-052 para notas fiscales persistidas.
+
+| Columna | Tipo | Requerido | Descripcion |
+|---|---:|---:|---|
+| `id` | uuid | Si | Identificador de la nota. |
+| `company_id` | uuid | Si | Empresa propietaria. |
+| `original_document_id` | uuid | Si | Documento electronico original referenciado. |
+| `note_type` | varchar(40) | Si | `CREDIT_NOTE`, `DEBIT_NOTE`, `POS_ADJUSTMENT_NOTE`. |
+| `adjustment_kind` | varchar(30) | No | `CANCELLATION` o `CORRECTION`, solo para POS. |
+| `status` | varchar(30) | Si | Estado fiscal normalizado. |
+| `provider_status` | varchar(30) | Si | Estado del proveedor mock. |
+| `reason` | text | Si | Motivo de la nota. |
+| `prefix` | varchar(10) | Si | Prefijo fiscal asignado. |
+| `document_number` | bigint | Si | Consecutivo fiscal propio. |
+| `cufe_cude` | varchar(200) | Si | Identificador fiscal simulado. |
+| `qr_content` | text | Si | QR simulado. |
+| `subtotal`, `tax_total`, `total` | numeric(19,2) | Si | Valores fiscales de la nota. |
+| `provider_tracking_id` | varchar(120) | No | Tracking mock. |
+| `provider_error_code`, `provider_error_message` | varchar/text | No | Error seguro si el proveedor rechaza o falla. |
+| `idempotency_key` | varchar(120) | Si | Idempotencia por empresa. |
+| `issued_at` | timestamptz | Si | Fecha de emision mock. |
+
+Restricciones principales: FK a `billing.electronic_document(id)`, unicidad por `(company_id, prefix, document_number)` y por `(company_id, idempotency_key)`.

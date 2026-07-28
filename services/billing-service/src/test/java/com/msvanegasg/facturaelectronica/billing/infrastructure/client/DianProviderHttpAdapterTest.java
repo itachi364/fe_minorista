@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
@@ -41,9 +42,9 @@ class DianProviderHttpAdapterTest {
         server.start();
         String baseUrl = "http://localhost:" + server.getAddress().getPort();
         DianProviderHttpAdapter adapter = new DianProviderHttpAdapter(
-                new BillingProperties("http://inventory", baseUrl, "http://accounting", "http://audit", "ACCEPTED"));
+                new BillingProperties("http://inventory", baseUrl, "http://accounting", "http://audit", "http://tenant", "ACCEPTED"));
 
-        var result = adapter.submitElectronicPos(sale(), DOCUMENT_ID, "confirm-1");
+        var result = adapter.submit(sale(), DOCUMENT_ID, ElectronicDocumentType.ELECTRONIC_POS, "confirm-1");
 
         assertThat(result.status()).isEqualTo(ProviderStatus.ACCEPTED);
         assertThat(result.trackingId()).isEqualTo("mock-tracking");

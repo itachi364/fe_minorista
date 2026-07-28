@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.inventory.infrastructure.persistence;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,6 +23,18 @@ public class ProductPersistenceAdapter implements ProductRepositoryPort {
     @Override
     public Optional<Product> findByCompanyIdAndId(UUID companyId, UUID id) {
         return repository.findByCompanyIdAndId(companyId, id).map(ProductPersistenceAdapter::toDomain);
+    }
+
+    @Override
+    public List<Product> findByCompanyId(UUID companyId, Boolean active) {
+        if (active == null) {
+            return repository.findByCompanyIdOrderByNameAsc(companyId).stream()
+                    .map(ProductPersistenceAdapter::toDomain)
+                    .toList();
+        }
+        return repository.findByCompanyIdAndActiveOrderByNameAsc(companyId, active).stream()
+                .map(ProductPersistenceAdapter::toDomain)
+                .toList();
     }
 
     @Override

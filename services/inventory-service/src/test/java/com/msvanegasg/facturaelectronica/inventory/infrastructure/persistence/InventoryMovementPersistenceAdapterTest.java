@@ -6,6 +6,8 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.InventoryMovement;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.InventoryMovementType;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.InventorySourceDocumentType;
+import com.msvanegasg.facturaelectronica.inventory.infrastructure.persistence.entity.InventoryMovementJpaEntity;
 import com.msvanegasg.facturaelectronica.inventory.infrastructure.persistence.repository.InventoryMovementJpaRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,6 +32,32 @@ class InventoryMovementPersistenceAdapterTest {
 
     @Mock
     private InventoryMovementJpaRepository repository;
+
+
+    @Test
+    void findsKardexByDateRange() {
+        InventoryMovementJpaEntity entity = new InventoryMovementJpaEntity();
+        entity.setId(MOVEMENT_ID);
+        entity.setCompanyId(COMPANY_ID);
+        entity.setProductId(PRODUCT_ID);
+        entity.setMovementType(InventoryMovementType.PURCHASE_IN);
+        entity.setQuantity(BigDecimal.ONE);
+        entity.setUnitCost(BigDecimal.TEN);
+        entity.setPreviousStock(BigDecimal.ZERO);
+        entity.setResultingStock(BigDecimal.ONE);
+        entity.setSourceDocumentType(InventorySourceDocumentType.PURCHASE);
+        entity.setSourceDocumentId(SOURCE_ID);
+        entity.setIdempotencyKey("purchase-1");
+        entity.setMovementAt(NOW);
+        when(repository.findAllByCompanyIdAndProductIdAndMovementAtGreaterThanEqualAndMovementAtLessThanOrderByMovementAtAsc(any(), any(), any(), any())).thenReturn(List.of(entity));
+        InventoryMovementPersistenceAdapter adapter = new InventoryMovementPersistenceAdapter(repository);
+
+        List<InventoryMovement> result = adapter.findKardex(COMPANY_ID, PRODUCT_ID,
+                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).id()).isEqualTo(MOVEMENT_ID);
+    }
 
     @Test
     void savesAndRestoresManualSupplyMovementReason() {

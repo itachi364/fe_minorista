@@ -37,6 +37,23 @@ public class AccountingRulePersistenceAdapter implements AccountingRuleRepositor
     }
 
     @Override
+    public List<AccountingRule> findByCompanyId(UUID companyId, AccountingEventType eventType, Boolean active) {
+        List<AccountingRuleJpaEntity> rules;
+        if (eventType != null && active != null) {
+            rules = ruleRepository.findByCompanyIdAndEventTypeAndActiveOrderByNameAsc(companyId, eventType, active);
+        } else if (eventType != null) {
+            rules = ruleRepository.findByCompanyIdAndEventTypeOrderByActiveDescNameAsc(companyId, eventType);
+        } else if (active != null) {
+            rules = ruleRepository.findByCompanyIdAndActiveOrderByEventTypeAscNameAsc(companyId, active);
+        } else {
+            rules = ruleRepository.findByCompanyIdOrderByEventTypeAscNameAsc(companyId);
+        }
+        return rules.stream()
+                .map(rule -> toDomain(rule, lineRepository.findByRuleIdOrderByLineOrderAsc(rule.getId())))
+                .toList();
+    }
+
+    @Override
     @Transactional
     public AccountingRule save(AccountingRule rule) {
         AccountingRuleJpaEntity savedRule = ruleRepository.save(toEntity(rule));

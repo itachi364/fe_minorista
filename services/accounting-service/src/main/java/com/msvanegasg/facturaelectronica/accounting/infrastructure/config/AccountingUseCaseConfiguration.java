@@ -5,13 +5,17 @@ import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.msvanegasg.facturaelectronica.accounting.application.port.in.InitializeBasicAccountingSetupUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsPayableUseCase;
+import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsReceivableUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.GenerateAccountingEntryUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountingRulesUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageChartOfAccountsUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageExpenseUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.QueryAccountingBooksUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountsPayablePaymentRepositoryPort;
+import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountsReceivablePaymentRepositoryPort;
+import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountsReceivableRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountsPayableRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingEntryRepositoryPort;
@@ -19,11 +23,14 @@ import com.msvanegasg.facturaelectronica.accounting.application.port.out.Account
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.ExpenseRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.AccountsPayableManagementService;
+import com.msvanegasg.facturaelectronica.accounting.application.usecase.AccountsReceivableManagementService;
+import com.msvanegasg.facturaelectronica.accounting.application.usecase.BasicAccountingSetupService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.AccountingRuleManagementService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.ChartOfAccountsService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.ExpenseManagementService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.GenerateAccountingEntryService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.QueryAccountingBooksService;
+import com.msvanegasg.facturaelectronica.eventing.DomainEventPublisherPort;
 
 @Configuration
 public class AccountingUseCaseConfiguration {
@@ -31,6 +38,14 @@ public class AccountingUseCaseConfiguration {
     @Bean
     Clock accountingClock() {
         return Clock.systemUTC();
+    }
+
+    @Bean
+    InitializeBasicAccountingSetupUseCase initializeBasicAccountingSetupUseCase(
+            AccountRepositoryPort accountRepository,
+            AccountingRuleRepositoryPort ruleRepository,
+            IdGeneratorPort idGenerator) {
+        return new BasicAccountingSetupService(accountRepository, ruleRepository, idGenerator);
     }
 
     @Bean
@@ -53,8 +68,10 @@ public class AccountingUseCaseConfiguration {
             AccountingRuleRepositoryPort ruleRepository,
             AccountRepositoryPort accountRepository,
             AccountingEntryRepositoryPort entryRepository,
-            IdGeneratorPort idGenerator) {
-        return new GenerateAccountingEntryService(ruleRepository, accountRepository, entryRepository, idGenerator);
+            DomainEventPublisherPort eventPublisher,
+            IdGeneratorPort idGenerator, Clock accountingClock) {
+        return new GenerateAccountingEntryService(ruleRepository, accountRepository, entryRepository, eventPublisher,
+                idGenerator, accountingClock);
     }
 
     @Bean
@@ -72,6 +89,16 @@ public class AccountingUseCaseConfiguration {
                 accountingClock);
     }
 
+
+    @Bean
+    ManageAccountsReceivableUseCase manageAccountsReceivableUseCase(
+            AccountsReceivableRepositoryPort receivableRepository,
+            AccountsReceivablePaymentRepositoryPort paymentRepository,
+            GenerateAccountingEntryUseCase accountingEntryUseCase,
+            IdGeneratorPort idGenerator, Clock accountingClock) {
+        return new AccountsReceivableManagementService(receivableRepository, paymentRepository, accountingEntryUseCase,
+                idGenerator, accountingClock);
+    }
     @Bean
     ManageAccountsPayableUseCase manageAccountsPayableUseCase(AccountsPayableRepositoryPort payableRepository,
             AccountsPayablePaymentRepositoryPort paymentRepository, GenerateAccountingEntryUseCase accountingEntryUseCase,

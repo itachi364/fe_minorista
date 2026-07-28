@@ -1,6 +1,8 @@
 package com.msvanegasg.facturaelectronica.accounting.application.usecase;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingRuleLineResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingRuleResult;
@@ -10,6 +12,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAc
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingRuleRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.IdGeneratorPort;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEventType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingRule;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingRuleLine;
 
@@ -35,7 +38,35 @@ public class AccountingRuleManagementService implements ManageAccountingRulesUse
                 .ifPresent(rule -> {
                     throw new IllegalStateException("active accounting rule already exists for event type");
                 });
+        return createActiveRule(command);
+    }
 
+    @Override
+    public AccountingRuleResult replaceActive(CreateAccountingRuleCommand command) {
+        validate(command);
+        ruleRepository.findActiveByCompanyIdAndEventType(command.companyId(), command.eventType())
+                .ifPresent(rule -> ruleRepository.save(rule.deactivate()));
+        return createActiveRule(command);
+    }
+
+    @Override
+    public AccountingRuleResult deactivateActive(UUID companyId, AccountingEventType eventType) {
+        Objects.requireNonNull(companyId, "companyId is required");
+        Objects.requireNonNull(eventType, "eventType is required");
+        AccountingRule activeRule = ruleRepository.findActiveByCompanyIdAndEventType(companyId, eventType)
+                .orElseThrow(() -> new IllegalStateException("active accounting rule was not found"));
+        return toResult(ruleRepository.save(activeRule.deactivate()));
+    }
+
+    @Override
+    public List<AccountingRuleResult> find(UUID companyId, AccountingEventType eventType, Boolean active) {
+        Objects.requireNonNull(companyId, "companyId is required");
+        return ruleRepository.findByCompanyId(companyId, eventType, active).stream()
+                .map(AccountingRuleManagementService::toResult)
+                .toList();
+    }
+
+    private AccountingRuleResult createActiveRule(CreateAccountingRuleCommand command) {
         command.lines().forEach(line -> assertAccountExists(command, line));
         AccountingRule rule = AccountingRule.create(
                 idGenerator.newId(),

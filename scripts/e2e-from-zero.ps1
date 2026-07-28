@@ -1,6 +1,7 @@
 param(
     [switch]$StartContainers,
     [string]$TenantUrl = "http://localhost:8084",
+    [string]$IdentityUrl = "http://localhost:8092",
     [string]$CatalogUrl = "http://localhost:8085",
     [string]$ThirdpartyUrl = "http://localhost:8086",
     [string]$InventoryUrl = "http://localhost:8087",
@@ -105,10 +106,11 @@ function Assert-NotEmpty {
 
 if ($StartContainers) {
     Write-Host "Starting Docker Compose services..."
-    docker compose up -d postgres tenant-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service audit-service billing-service
+    docker compose up -d postgres tenant-service identity-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service audit-service billing-service
 }
 
 Wait-Health "tenant-service" $TenantUrl
+Wait-Health "identity-service" $IdentityUrl
 Wait-Health "catalog-service" $CatalogUrl
 Wait-Health "thirdparty-service" $ThirdpartyUrl
 Wait-Health "inventory-service" $InventoryUrl
@@ -119,7 +121,8 @@ Wait-Health "billing-service" $BillingUrl
 
 $suffix = (Get-Date -Format "yyyyMMddHHmmss")
 $identificationTypeId = [guid]::NewGuid().ToString()
-$userId = [guid]::NewGuid().ToString()
+$ownerEmail = "owner-$suffix@example.com"
+$ownerPassword = "secret123"
 
 Write-Host "Creating company..."
 $company = Invoke-Api -Method Post -Uri "$TenantUrl/api/v1/companies" -Body @{
@@ -134,6 +137,44 @@ $company = Invoke-Api -Method Post -Uri "$TenantUrl/api/v1/companies" -Body @{
 Assert-Equal $company.status "ACTIVE" "Company must be active"
 $companyId = $company.id
 
+Write-Host "Creating active company license..."
+$license = Invoke-Api -Method Post -Uri "$TenantUrl/api/v1/companies/$companyId/license" -Body @{
+    planCode = "SMALL_BUSINESS"
+    validFrom = "2026-01-01"
+    validTo = "2027-12-31"
+    maxUsers = 5
+    maxMonthlyDocuments = 1000
+}
+Assert-Equal $license.status "ACTIVE" "Company license must be active"
+
+$licenseValidation = Invoke-Api -Method Get -Uri "$TenantUrl/api/v1/companies/$companyId/license/validation?action=CREATE_TRANSACTION"
+Assert-Equal $licenseValidation.allowed "True" "License must allow transactions"
+
+Write-Host "Creating owner user and company membership..."
+$owner = Invoke-Api -Method Post -Uri "$IdentityUrl/api/v1/users" -Body @{
+    email = $ownerEmail
+    fullName = "Owner E2E $suffix"
+    password = $ownerPassword
+}
+$userId = $owner.id
+
+$membership = Invoke-Api -Method Post -Uri "$IdentityUrl/api/v1/companies/$companyId/memberships" -Body @{
+    userId = $userId
+    roles = @("OWNER")
+}
+Assert-Equal $membership.companyId $companyId "Owner membership must belong to company"
+
+$login = Invoke-Api -Method Post -Uri "$IdentityUrl/api/v1/auth/login" -Body @{
+    email = $ownerEmail
+    password = $ownerPassword
+}
+Assert-NotEmpty $login.accessToken "Login token is required"
+$authHeaders = @{ "Authorization" = "Bearer $($login.accessToken)" }
+$companies = @(Invoke-Api -Method Get -Uri "$IdentityUrl/api/v1/me/companies" -Headers $authHeaders)
+if (@($companies | Where-Object { $_.companyId -eq $companyId }).Count -ne 1) {
+    throw "Owner user must see the created company."
+}
+
 Write-Host "Creating second company for isolation checks..."
 $otherCompany = Invoke-Api -Method Post -Uri "$TenantUrl/api/v1/companies" -Body @{
     legalName = "E2E Otra Empresa SAS $suffix"
@@ -145,37 +186,42 @@ $otherCompany = Invoke-Api -Method Post -Uri "$TenantUrl/api/v1/companies" -Body
 }
 $otherCompanyId = $otherCompany.id
 
-$documentTypeCode = [int64]("8" + $suffix.Substring($suffix.Length - 8))
-Write-Host "Creating legacy document type $documentTypeCode..."
-Invoke-Api -Method Post -Uri "$CatalogUrl/api/tipos-documento" -Body @{
-    codigo = $documentTypeCode
-    nombre = "E2E CC $suffix"
-    descripcion = "Documento E2E"
-} | Out-Null
-
-Write-Host "Creating customer and supplier..."
-Invoke-Api -Method Post -Uri "$ThirdpartyUrl/api/clientes" -Body @{
-    nombre = "Cliente E2E $suffix"
-    idTipoDocumento = $documentTypeCode
-    numeroDocumento = [int64]("10" + $suffix.Substring($suffix.Length - 8))
-    direccion = "Calle 1 # 2-3"
-    telefono = "3001234567"
-    correoElectronico = "cliente-$suffix@example.com"
-} | Out-Null
-
-Invoke-Api -Method Post -Uri "$ThirdpartyUrl/api/proveedores" -Body @{
-    idTipoDocumento = $documentTypeCode
-    numeroDocumento = [int64]("20" + $suffix.Substring($suffix.Length - 8))
-    nombre = "Proveedor E2E $suffix"
-    telefono = "3007654321"
-    direccion = "Carrera 4 # 5-6"
-    correo = "proveedor-$suffix@example.com"
-} | Out-Null
-
+Write-Host "Creating customer and supplier with v1 third-party APIs..."
 $companyHeaders = @{
     "X-Company-Id" = $companyId
     "X-User-Id" = $userId
 }
+
+$customer = Invoke-Api -Method Post -Uri "$ThirdpartyUrl/api/v1/customers" -Headers $companyHeaders -Body @{
+    personType = "NATURAL"
+    identificationTypeCode = "CC"
+    identificationNumber = "10$suffix"
+    fullName = "Cliente E2E $suffix"
+    businessName = $null
+    tradeName = $null
+    email = "cliente-$suffix@example.com"
+    phone = "3001234567"
+    address = "Calle 1 # 2-3"
+    municipalityCode = "11001"
+    roles = @("CUSTOMER")
+}
+Assert-Equal $customer.companyId $companyId "Customer must belong to company"
+
+$supplier = Invoke-Api -Method Post -Uri "$ThirdpartyUrl/api/v1/suppliers" -Headers $companyHeaders -Body @{
+    personType = "JURIDICA"
+    identificationTypeCode = "NIT"
+    identificationNumber = "900123456"
+    verificationDigit = 8
+    fullName = $null
+    businessName = "Proveedor E2E SAS $suffix"
+    tradeName = "Proveedor E2E $suffix"
+    email = "proveedor-$suffix@example.com"
+    phone = "3007654321"
+    address = "Carrera 4 # 5-6"
+    municipalityCode = "11001"
+    roles = @("SUPPLIER")
+}
+Assert-Equal $supplier.companyId $companyId "Supplier must belong to company"
 
 Write-Host "Creating issuer and POS numbering resolution..."
 $issuer = Invoke-Api -Method Post -Uri "$BillingUrl/api/v1/issuers" -Headers $companyHeaders -Body @{
@@ -201,26 +247,13 @@ $resolution = Invoke-Api -Method Post -Uri "$BillingUrl/api/v1/numbering-resolut
 }
 Assert-Equal $resolution.currentNumber ($resolutionFromNumber - 1) "Resolution must start before first authorized number"
 
-Write-Host "Creating PUC accounts and sale rule..."
 $accountHeaders = @{ "X-Company-Id" = $companyId }
-foreach ($account in @(
-        @{ code = "1105"; name = "Caja" },
-        @{ code = "4135"; name = "Comercio al por mayor y al por menor" },
-        @{ code = "2408"; name = "IVA generado" }
-    )) {
-    Invoke-Api -Method Post -Uri "$AccountingUrl/api/v1/accounts" -Headers $accountHeaders -Body $account | Out-Null
-}
 
-Invoke-Api -Method Post -Uri "$AccountingUrl/api/v1/accounting-rules" -Headers $accountHeaders -Body @{
-    eventType = "SALE_CONFIRMED"
-    sourceType = "SALE"
-    name = "Regla venta POS E2E $suffix"
-    lines = @(
-        @{ accountCode = "1105"; side = "DEBIT"; amountType = "TOTAL"; description = "Ingreso a caja" },
-        @{ accountCode = "4135"; side = "CREDIT"; amountType = "SUBTOTAL"; description = "Ingreso operacional" },
-        @{ accountCode = "2408"; side = "CREDIT"; amountType = "TAX_TOTAL"; description = "IVA generado" }
-    )
-} | Out-Null
+Write-Host "Creating basic PUC accounting setup..."
+$accountingSetup = Invoke-Api -Method Post -Uri "$AccountingUrl/api/v1/accounting-setup/basic" -Headers $accountHeaders
+if (@($accountingSetup.accounts).Count -lt 1) {
+    throw "Basic accounting setup must create accounts."
+}
 
 Write-Host "Creating product with initial stock..."
 $product = Invoke-Api -Method Post -Uri "$InventoryUrl/api/v1/products" -Headers ($companyHeaders + @{ "Idempotency-Key" = "product-$suffix" }) -Body @{

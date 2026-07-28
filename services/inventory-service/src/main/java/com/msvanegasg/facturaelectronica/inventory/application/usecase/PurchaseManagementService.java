@@ -1,9 +1,11 @@
 package com.msvanegasg.facturaelectronica.inventory.application.usecase;
 
+import java.util.List;
 import java.util.Objects;
 
 import com.msvanegasg.facturaelectronica.inventory.application.dto.CreatePurchaseCommand;
 import com.msvanegasg.facturaelectronica.inventory.application.dto.PurchaseLineCommand;
+import com.msvanegasg.facturaelectronica.inventory.application.dto.PurchaseQuery;
 import com.msvanegasg.facturaelectronica.inventory.application.dto.PurchaseResult;
 import com.msvanegasg.facturaelectronica.inventory.application.dto.RegisterInventoryMovementCommand;
 import com.msvanegasg.facturaelectronica.inventory.application.port.in.ManagePurchaseUseCase;
@@ -49,6 +51,16 @@ public class PurchaseManagementService implements ManagePurchaseUseCase {
         return purchaseRepository.findByCompanyIdAndIdempotencyKey(command.companyId(), command.idempotencyKey())
                 .map(InventoryResultMapper::toPurchaseResult)
                 .orElseGet(() -> createNew(command));
+    }
+
+    @Override
+    public List<PurchaseResult> find(PurchaseQuery query) {
+        Objects.requireNonNull(query, "query is required");
+        Objects.requireNonNull(query.companyId(), "companyId is required");
+        if (query.from() != null && query.to() != null && query.from().isAfter(query.to())) {
+            throw new IllegalArgumentException("from cannot be after to");
+        }
+        return purchaseRepository.find(query).stream().map(InventoryResultMapper::toPurchaseResult).toList();
     }
 
     @Override

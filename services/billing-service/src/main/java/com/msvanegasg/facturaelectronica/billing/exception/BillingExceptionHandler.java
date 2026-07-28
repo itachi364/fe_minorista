@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.msvanegasg.facturaelectronica.billing.application.usecase.InsufficientStockException;
+import com.msvanegasg.facturaelectronica.billing.application.usecase.LicenseBlockedException;
 import com.msvanegasg.facturaelectronica.billing.application.usecase.SaleNotFoundException;
 import com.msvanegasg.facturaelectronica.billing.observability.CorrelationId;
 
@@ -46,7 +47,7 @@ public class BillingExceptionHandler {
                 request);
     }
 
-    @ExceptionHandler({ InsufficientStockException.class, IllegalStateException.class })
+    @ExceptionHandler({ InsufficientStockException.class, LicenseBlockedException.class, IllegalStateException.class })
     ResponseEntity<ApiErrorResponse> handleBusiness(RuntimeException exception, HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, ApiErrorCode.BUSINESS_RULE_VIOLATION, exception.getMessage(), List.of(),
                 request);

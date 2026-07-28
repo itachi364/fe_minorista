@@ -70,6 +70,18 @@ class DianProviderControllerTest {
     }
 
     @Test
+    void submitsCreditNote() throws Exception {
+        when(submitUseCase.submit(any())).thenReturn(result(ProviderDocumentType.CREDIT_NOTE));
+
+        mockMvc.perform(post("/api/v1/provider/credit-notes")
+                .header("Idempotency-Key", "note-1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.documentType").value("CREDIT_NOTE"))
+                .andExpect(jsonPath("$.status").value("ACCEPTED"));
+    }
+    @Test
     void findsSubmissionByTrackingId() throws Exception {
         when(findUseCase.findByTrackingId(COMPANY_ID, "mock-tracking")).thenReturn(result());
 
@@ -90,7 +102,11 @@ class DianProviderControllerTest {
     }
 
     private static ProviderSubmissionResult result() {
-        return new ProviderSubmissionResult(SUBMISSION_ID, COMPANY_ID, DOCUMENT_ID, ProviderDocumentType.ELECTRONIC_POS,
+        return result(ProviderDocumentType.ELECTRONIC_POS);
+    }
+
+    private static ProviderSubmissionResult result(ProviderDocumentType documentType) {
+        return new ProviderSubmissionResult(SUBMISSION_ID, COMPANY_ID, DOCUMENT_ID, documentType,
                 "mock-tracking", ProviderSubmissionStatus.ACCEPTED, "mock-cude", "mock-qr", null, null, NOW,
                 "{\"status\":\"ACCEPTED\"}");
     }

@@ -39,6 +39,8 @@ public class SaleLineJpaEntity {
     private BigDecimal quantity;
     @Column(name = "unit_price", nullable = false)
     private BigDecimal unitPrice;
+    @Column(name = "unit_cost", nullable = false)
+    private BigDecimal unitCost;
     @Column(name = "discount_amount", nullable = false)
     private BigDecimal discountAmount;
     @Column(name = "tax_code", nullable = false, length = 50)
@@ -70,6 +72,8 @@ public class SaleLineJpaEntity {
     public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
     public BigDecimal getUnitPrice() { return unitPrice; }
     public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
+    public BigDecimal getUnitCost() { return unitCost; }
+    public void setUnitCost(BigDecimal unitCost) { this.unitCost = unitCost; }
     public BigDecimal getDiscountAmount() { return discountAmount; }
     public void setDiscountAmount(BigDecimal discountAmount) { this.discountAmount = discountAmount; }
     public String getTaxCode() { return taxCode; }

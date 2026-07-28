@@ -1,18 +1,23 @@
 package com.msvanegasg.facturaelectronica.billing.interfaces.rest;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageSaleUseCase;
+import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.SaleRequest;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.SaleResponse;
 
@@ -41,6 +46,15 @@ public class SaleController {
     public SaleResponse confirm(@RequestHeader("X-Company-Id") UUID companyId,
             @RequestHeader("Idempotency-Key") String idempotencyKey, @PathVariable UUID saleId) {
         return BillingRestMapper.toResponse(saleUseCase.confirm(companyId, saleId, idempotencyKey));
+    }
+
+    @GetMapping
+    public List<SaleResponse> find(@RequestHeader("X-Company-Id") UUID companyId,
+            @RequestParam(required = false) SaleStatus status,
+            @RequestParam(required = false) LocalDate from,
+            @RequestParam(required = false) LocalDate to) {
+        return saleUseCase.find(new SaleQuery(companyId, status, from, to)).stream()
+                .map(BillingRestMapper::toResponse).toList();
     }
 
     @GetMapping("/{saleId}")

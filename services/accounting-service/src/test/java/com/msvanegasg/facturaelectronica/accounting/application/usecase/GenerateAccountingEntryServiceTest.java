@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.time.LocalDate;
 import java.util.ArrayDeque;
@@ -32,6 +35,9 @@ import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEvent
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingRule;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingRuleLine;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingSourceType;
+import com.msvanegasg.facturaelectronica.eventing.DomainEventEnvelope;
+import com.msvanegasg.facturaelectronica.eventing.DomainEventPublisherPort;
+import com.msvanegasg.facturaelectronica.eventing.EventTypes;
 
 class GenerateAccountingEntryServiceTest {
 
@@ -216,6 +222,25 @@ class GenerateAccountingEntryServiceTest {
         assertThat(otherCompanyResult.companyId()).isEqualTo(OTHER_COMPANY_ID);
         assertThat(otherCompanyResult.sourceId()).isEqualTo(SOURCE_ID);
     }
+    @Test
+    void generatePublishesAccountingEntryPostedEvent() {
+        TestContext context = TestContext.withDefaultAccounts();
+        context.rules.save(saleRule(COMPANY_ID));
+        CapturingPublisher publisher = new CapturingPublisher();
+        GenerateAccountingEntryService service = context.service(publisher);
+
+        AccountingEntryResult result = service.generate(saleCommand(COMPANY_ID, SOURCE_ID));
+
+        assertThat(publisher.events).hasSize(1);
+        DomainEventEnvelope event = publisher.events.get(0);
+        assertThat(event.eventType()).isEqualTo(EventTypes.ACCOUNTING_ENTRY_POSTED);
+        assertThat(event.companyId()).isEqualTo(COMPANY_ID);
+        assertThat(event.aggregateType()).isEqualTo("AccountingEntry");
+        assertThat(event.aggregateId()).isEqualTo(result.id());
+        assertThat(event.idempotencyKey()).isEqualTo("SALE:" + SOURCE_ID + ":accounting-entry-posted");
+        assertThat(event.payload()).containsEntry("sourceType", "SALE");
+        assertThat(event.payload()).containsEntry("sourceId", SOURCE_ID.toString());
+    }
 
     @Test
     void entryLineRejectsDebitAndCreditAtTheSameTime() {
@@ -311,6 +336,16 @@ class GenerateAccountingEntryServiceTest {
         return new BigDecimal(value);
     }
 
+
+    private static final class CapturingPublisher implements DomainEventPublisherPort {
+
+        private final List<DomainEventEnvelope> events = new ArrayList<>();
+
+        @Override
+        public void publish(DomainEventEnvelope event) {
+            events.add(event);
+        }
+    }
     private static final class TestContext {
 
         private final InMemoryAccountRepository accounts;
@@ -330,6 +365,10 @@ class GenerateAccountingEntryServiceTest {
 
         GenerateAccountingEntryService service() {
             return new GenerateAccountingEntryService(rules, accounts, entries, idGenerator);
+        }
+        GenerateAccountingEntryService service(DomainEventPublisherPort publisher) {
+            return new GenerateAccountingEntryService(rules, accounts, entries, publisher, idGenerator,
+                    Clock.fixed(Instant.parse("2026-05-19T10:00:00Z"), ZoneOffset.UTC));
         }
     }
 
@@ -351,6 +390,14 @@ class GenerateAccountingEntryServiceTest {
             return Optional.ofNullable(accounts.get(key(companyId, code)));
         }
 
+
+        @Override
+        public List<Account> findByCompanyId(UUID companyId, Boolean active) {
+            return accounts.values().stream()
+                    .filter(account -> account.companyId().equals(companyId))
+                    .filter(account -> active == null || account.active() == active)
+                    .toList();
+        }
         @Override
         public Account save(Account account) {
             accounts.put(key(account.companyId(), account.code()), account);
@@ -377,6 +424,15 @@ class GenerateAccountingEntryServiceTest {
             return Optional.ofNullable(rules.get(key(companyId, eventType))).filter(AccountingRule::active);
         }
 
+
+        @Override
+        public List<AccountingRule> findByCompanyId(UUID companyId, AccountingEventType eventType, Boolean active) {
+            return rules.values().stream()
+                    .filter(rule -> rule.companyId().equals(companyId))
+                    .filter(rule -> eventType == null || rule.eventType() == eventType)
+                    .filter(rule -> active == null || rule.active() == active)
+                    .toList();
+        }
         @Override
         public AccountingRule save(AccountingRule rule) {
             put(rule);

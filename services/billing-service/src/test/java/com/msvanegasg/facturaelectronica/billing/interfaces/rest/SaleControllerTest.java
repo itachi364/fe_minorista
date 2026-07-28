@@ -108,7 +108,7 @@ class SaleControllerTest {
                 status == SaleStatus.CONFIRMED ? NOW : null,
                 List.of(new SaleLineResult(UUID.fromString("44444444-4444-4444-4444-444444444444"), PRODUCT_ID,
                         "SKU-1", "Producto", SaleItemType.PHYSICAL_GOOD, true,
-                        new BigDecimal("2.00"), new BigDecimal("15000.00"), BigDecimal.ZERO, "IVA_19",
+                        new BigDecimal("2.00"), new BigDecimal("15000.00"), new BigDecimal("9000.00"), BigDecimal.ZERO, "IVA_19",
                         new BigDecimal("19.00"), new BigDecimal("30000.00"), new BigDecimal("5700.00"),
                         new BigDecimal("35700.00"))),
                 null);

@@ -1,10 +1,13 @@
 package com.msvanegasg.facturaelectronica.inventory.infrastructure.persistence;
 
+import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import com.msvanegasg.facturaelectronica.inventory.application.dto.PurchaseQuery;
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.PurchaseRepositoryPort;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.Purchase;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.PurchaseLine;
@@ -30,6 +33,14 @@ public class PurchasePersistenceAdapter implements PurchaseRepositoryPort {
     public Optional<Purchase> findByCompanyIdAndIdempotencyKey(UUID companyId, String idempotencyKey) {
         return repository.findByCompanyIdAndIdempotencyKey(companyId, idempotencyKey)
                 .map(PurchasePersistenceAdapter::toDomain);
+    }
+
+    @Override
+    public List<Purchase> find(PurchaseQuery query) {
+        return repository.findPurchases(query.companyId(), query.status(), query.supplierId(),
+                query.from() == null ? null : query.from().atStartOfDay().toInstant(ZoneOffset.UTC),
+                query.to() == null ? null : query.to().plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC))
+                .stream().map(PurchasePersistenceAdapter::toDomain).toList();
     }
 
     @Override

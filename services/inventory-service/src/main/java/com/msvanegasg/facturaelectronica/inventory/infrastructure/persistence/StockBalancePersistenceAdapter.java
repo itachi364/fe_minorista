@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.inventory.infrastructure.persistence;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,6 +24,13 @@ public class StockBalancePersistenceAdapter implements StockBalanceRepositoryPor
     public Optional<StockBalance> findByCompanyIdAndProductId(UUID companyId, UUID productId) {
         return repository.findByCompanyIdAndProductId(companyId, productId)
                 .map(StockBalancePersistenceAdapter::toDomain);
+    }
+
+    @Override
+    public List<StockBalance> findByCompanyId(UUID companyId) {
+        return repository.findByCompanyId(companyId).stream()
+                .map(StockBalancePersistenceAdapter::toDomain)
+                .toList();
     }
 
     @Override

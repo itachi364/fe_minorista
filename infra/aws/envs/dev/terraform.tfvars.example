@@ -1,0 +1,23 @@
+aws_region  = "us-east-1"
+project     = "facturaelectronica"
+environment = "dev"
+
+availability_zones   = ["us-east-1a", "us-east-1b"]
+vpc_cidr             = "10.40.0.0/16"
+public_subnet_cidrs  = ["10.40.0.0/24", "10.40.1.0/24"]
+private_subnet_cidrs = ["10.40.10.0/24", "10.40.11.0/24"]
+
+# Keep false in dev unless private services need outbound internet before VPC endpoints are added.
+enable_nat_gateway = false
+
+db_name           = "facturaelectronica"
+db_username       = "factura_admin"
+db_instance_class = "db.t4g.micro"
+# Upload services/audit-event-writer-lambda/target/audit-event-writer-lambda-0.0.1-SNAPSHOT.jar to this bucket/key to enable the Lambda consumer.
+lambda_artifact_bucket = ""
+audit_event_writer_lambda_s3_key = "lambdas/audit-event-writer-lambda.jar"
+inventory_sale_effect_lambda_s3_key = "lambdas/inventory-sale-effect-lambda.jar"
+accounting_sale_entry_lambda_s3_key = "lambdas/accounting-sale-entry-lambda.jar"
+provider_submission_retry_lambda_s3_key = "lambdas/provider-submission-retry-lambda.jar"
+# Example: "http://dian-provider-service.facturaelectronica.local"
+provider_retry_provider_base_url = ""

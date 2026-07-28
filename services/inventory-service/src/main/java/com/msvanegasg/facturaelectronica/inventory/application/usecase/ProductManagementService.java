@@ -1,8 +1,12 @@
 package com.msvanegasg.facturaelectronica.inventory.application.usecase;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import com.msvanegasg.facturaelectronica.inventory.application.dto.CreateProductCommand;
 import com.msvanegasg.facturaelectronica.inventory.application.dto.ProductResult;
@@ -71,6 +75,17 @@ public class ProductManagementService implements ManageProductUseCase {
                 .orElseThrow(() -> new ProductNotFoundException(productId));
         StockBalance balance = stockBalanceRepository.findByCompanyIdAndProductId(companyId, productId).orElse(null);
         return InventoryResultMapper.toProductResult(product, balance);
+    }
+
+
+    @Override
+    public List<ProductResult> findStock(UUID companyId, Boolean active) {
+        Objects.requireNonNull(companyId, "companyId is required");
+        Map<UUID, StockBalance> balances = stockBalanceRepository.findByCompanyId(companyId).stream()
+                .collect(Collectors.toMap(StockBalance::productId, Function.identity()));
+        return productRepository.findByCompanyId(companyId, active).stream()
+                .map(product -> InventoryResultMapper.toProductResult(product, balances.get(product.id())))
+                .toList();
     }
 
     @Override

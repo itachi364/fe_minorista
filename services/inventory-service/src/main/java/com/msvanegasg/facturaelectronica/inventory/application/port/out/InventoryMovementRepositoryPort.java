@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.inventory.application.port.out;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,6 +15,8 @@ public interface InventoryMovementRepositoryPort {
             UUID sourceDocumentId, InventoryMovementType movementType, String idempotencyKey);
 
     List<InventoryMovement> findKardex(UUID companyId, UUID productId);
+
+    List<InventoryMovement> findKardex(UUID companyId, UUID productId, LocalDate from, LocalDate to);
 
     InventoryMovement save(InventoryMovement movement);
 }

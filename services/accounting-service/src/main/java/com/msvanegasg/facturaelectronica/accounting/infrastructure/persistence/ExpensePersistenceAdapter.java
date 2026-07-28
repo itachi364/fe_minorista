@@ -1,10 +1,12 @@
 package com.msvanegasg.facturaelectronica.accounting.infrastructure.persistence;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import com.msvanegasg.facturaelectronica.accounting.application.dto.ExpenseQuery;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.ExpenseRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.Expense;
 import com.msvanegasg.facturaelectronica.accounting.infrastructure.persistence.entity.ExpenseJpaEntity;
@@ -28,6 +30,12 @@ public class ExpensePersistenceAdapter implements ExpenseRepositoryPort {
     public Optional<Expense> findByCompanyIdAndIdempotencyKey(UUID companyId, String idempotencyKey) {
         return repository.findByCompanyIdAndIdempotencyKey(companyId, idempotencyKey)
                 .map(ExpensePersistenceAdapter::toDomain);
+    }
+
+    @Override
+    public List<Expense> find(ExpenseQuery query) {
+        return repository.findExpenses(query.companyId(), query.status(), query.supplierId(), query.from(), query.to())
+                .stream().map(ExpensePersistenceAdapter::toDomain).toList();
     }
 
     @Override

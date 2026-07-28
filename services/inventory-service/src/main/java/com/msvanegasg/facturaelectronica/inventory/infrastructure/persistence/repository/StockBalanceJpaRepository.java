@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.inventory.infrastructure.persistence.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -11,4 +12,6 @@ import com.msvanegasg.facturaelectronica.inventory.infrastructure.persistence.en
 public interface StockBalanceJpaRepository extends JpaRepository<StockBalanceJpaEntity, StockBalanceId> {
 
     Optional<StockBalanceJpaEntity> findByCompanyIdAndProductId(UUID companyId, UUID productId);
+
+    List<StockBalanceJpaEntity> findByCompanyId(UUID companyId);
 }

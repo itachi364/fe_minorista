@@ -1,10 +1,16 @@
 package com.msvanegasg.facturaelectronica.billing.infrastructure.persistence;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import com.msvanegasg.facturaelectronica.billing.application.dto.ElectronicDocumentQuery;
+import com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.SaleRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
@@ -35,8 +41,38 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
     }
 
     @Override
+    public List<Sale> find(SaleQuery query) {
+        return repository.findSales(query.companyId(), query.status(), startOfDay(query.from()), startOfNextDay(query.to()))
+                .stream().map(SalePersistenceAdapter::toDomain).toList();
+    }
+
+    @Override
+    public List<Sale> findByElectronicDocument(ElectronicDocumentQuery query) {
+        return repository.findElectronicDocuments(query.companyId(), query.documentType(), query.status(),
+                query.customerId(), startOfDay(query.from()), startOfNextDay(query.to()), blankToNull(query.prefix()),
+                query.number(), blankToNull(query.cufeCude())).stream().map(SalePersistenceAdapter::toDomain).toList();
+    }
+
+    @Override
+    public Optional<Sale> findByCompanyIdAndElectronicDocumentId(UUID companyId, UUID documentId) {
+        return repository.findByCompanyIdAndElectronicDocumentId(companyId, documentId)
+                .map(SalePersistenceAdapter::toDomain);
+    }
+    @Override
     public Sale save(Sale sale) {
         return toDomain(repository.save(toEntity(sale)));
+    }
+
+    private static Instant startOfDay(LocalDate date) {
+        return date == null ? null : date.atStartOfDay().toInstant(ZoneOffset.UTC);
+    }
+
+    private static Instant startOfNextDay(LocalDate date) {
+        return date == null ? null : date.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     private static Sale toDomain(SaleJpaEntity entity) {
@@ -50,7 +86,7 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
 
     private static SaleLine toLineDomain(SaleLineJpaEntity entity) {
         return new SaleLine(entity.getId(), entity.getProductId(), entity.getProductSku(), entity.getProductName(),
-                entity.getItemType(), entity.isStockTracked(), entity.getQuantity(), entity.getUnitPrice(),
+                entity.getItemType(), entity.isStockTracked(), entity.getQuantity(), entity.getUnitPrice(), entity.getUnitCost(),
                 entity.getDiscountAmount(), entity.getTaxCode(), entity.getTaxRate(), entity.getSubtotal(),
                 entity.getTaxAmount(), entity.getTotal());
     }
@@ -97,6 +133,7 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
         entity.setStockTracked(line.stockTracked());
         entity.setQuantity(line.quantity());
         entity.setUnitPrice(line.unitPrice());
+        entity.setUnitCost(line.unitCost());
         entity.setDiscountAmount(line.discountAmount());
         entity.setTaxCode(line.taxCode());
         entity.setTaxRate(line.taxRate());

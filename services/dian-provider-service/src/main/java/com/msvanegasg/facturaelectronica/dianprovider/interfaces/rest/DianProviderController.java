@@ -46,6 +46,29 @@ public class DianProviderController {
                         .toCommand(ProviderDocumentType.ELECTRONIC_INVOICE, request, idempotencyKey)));
     }
 
+    @PostMapping("/credit-notes")
+    public ProviderSubmissionResponse submitCreditNote(@RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody ProviderSubmissionRequest request) {
+        return DianProviderRestMapper
+                .toResponse(submitUseCase.submit(DianProviderRestMapper
+                        .toCommand(ProviderDocumentType.CREDIT_NOTE, request, idempotencyKey)));
+    }
+
+    @PostMapping("/debit-notes")
+    public ProviderSubmissionResponse submitDebitNote(@RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody ProviderSubmissionRequest request) {
+        return DianProviderRestMapper
+                .toResponse(submitUseCase.submit(DianProviderRestMapper
+                        .toCommand(ProviderDocumentType.DEBIT_NOTE, request, idempotencyKey)));
+    }
+
+    @PostMapping("/pos-adjustment-notes")
+    public ProviderSubmissionResponse submitPosAdjustmentNote(@RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody ProviderSubmissionRequest request) {
+        return DianProviderRestMapper
+                .toResponse(submitUseCase.submit(DianProviderRestMapper
+                        .toCommand(ProviderDocumentType.POS_ADJUSTMENT_NOTE, request, idempotencyKey)));
+    }
     @GetMapping("/submissions/{trackingId}")
     public ProviderSubmissionResponse findByTrackingId(@RequestHeader("X-Company-Id") UUID companyId,
             @PathVariable String trackingId) {

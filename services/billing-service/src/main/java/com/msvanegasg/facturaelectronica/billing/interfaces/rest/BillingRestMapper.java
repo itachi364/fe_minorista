@@ -6,12 +6,18 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.ConfigureIssuer
 import com.msvanegasg.facturaelectronica.billing.application.dto.CreateNumberingResolutionCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.CreateSaleCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ElectronicDocumentResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalArtifactResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalEventResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalNoteResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.IssuerProfileResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.NumberingResolutionResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.ElectronicDocumentResponse;
+import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.FiscalArtifactResponse;
+import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.FiscalEventResponse;
+import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.FiscalNoteResponse;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.IssuerProfileRequest;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.IssuerProfileResponse;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.NumberingResolutionRequest;
@@ -70,12 +76,28 @@ final class BillingRestMapper {
 
     private static SaleLineResponse toLineResponse(SaleLineResult result) {
         return new SaleLineResponse(result.id(), result.productId(), result.productSku(), result.productName(),
-                result.itemType(), result.stockTracked(), result.quantity(), result.unitPrice(),
+                result.itemType(), result.stockTracked(), result.quantity(), result.unitPrice(), result.unitCost(),
                 result.discountAmount(), result.taxCode(), result.taxRate(), result.subtotal(), result.taxAmount(),
                 result.total());
     }
 
-    private static ElectronicDocumentResponse toDocumentResponse(ElectronicDocumentResult result) {
+    static FiscalNoteResponse toResponse(FiscalNoteResult result) {
+        return new FiscalNoteResponse(result.id(), result.companyId(), result.originalDocumentId(), result.noteType(),
+                result.adjustmentKind(), result.status(), result.providerStatus(), result.reason(), result.prefix(),
+                result.documentNumber(), result.cufeCude(), result.qrContent(), result.subtotal(), result.taxTotal(),
+                result.total(), result.providerTrackingId(), result.providerErrorCode(), result.providerErrorMessage(),
+                result.issuedAt());
+    }
+    static FiscalArtifactResponse toResponse(FiscalArtifactResult result) {
+        return new FiscalArtifactResponse(result.type(), result.storageUri(), result.contentHash(), result.content());
+    }
+
+    static FiscalEventResponse toResponse(FiscalEventResult result) {
+        return new FiscalEventResponse(result.documentId(), result.eventType(), result.result(), result.detail(),
+                result.occurredAt());
+    }
+
+    static ElectronicDocumentResponse toDocumentResponse(ElectronicDocumentResult result) {
         return new ElectronicDocumentResponse(result.id(), result.companyId(), result.saleId(), result.documentType(),
                 result.status(), result.providerStatus(), result.prefix(), result.documentNumber(), result.cufeCude(),
                 result.qrContent(), result.subtotal(), result.taxTotal(), result.total(), result.providerTrackingId(),

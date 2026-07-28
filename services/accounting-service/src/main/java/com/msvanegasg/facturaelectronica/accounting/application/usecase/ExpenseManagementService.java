@@ -1,10 +1,12 @@
 package com.msvanegasg.facturaelectronica.accounting.application.usecase;
 
 import java.time.Clock;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateExpenseCommand;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.ExpenseQuery;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.ExpenseResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.GenerateAccountingEntryCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.GenerateAccountingEntryUseCase;
@@ -43,6 +45,16 @@ public class ExpenseManagementService implements ManageExpenseUseCase {
         return expenseRepository.findByCompanyIdAndIdempotencyKey(command.companyId(), command.idempotencyKey())
                 .map(AccountingOperationsMapper::toResult)
                 .orElseGet(() -> createNew(command));
+    }
+
+    @Override
+    public List<ExpenseResult> find(ExpenseQuery query) {
+        Objects.requireNonNull(query, "query is required");
+        Objects.requireNonNull(query.companyId(), "companyId is required");
+        if (query.from() != null && query.to() != null && query.from().isAfter(query.to())) {
+            throw new IllegalArgumentException("from cannot be after to");
+        }
+        return expenseRepository.find(query).stream().map(AccountingOperationsMapper::toResult).toList();
     }
 
     @Override

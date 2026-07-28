@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -40,6 +41,18 @@ class ProductPersistenceAdapterTest {
         assertThat(saved.saleEnabled()).isTrue();
         assertThat(saved.purchaseEnabled()).isFalse();
         assertThat(saved.stockTracked()).isFalse();
+    }
+
+
+    @Test
+    void findsProductsByCompanyAndActiveStatus() {
+        when(repository.findByCompanyIdAndActiveOrderByNameAsc(COMPANY_ID, true)).thenReturn(List.of(entity()));
+        ProductPersistenceAdapter adapter = new ProductPersistenceAdapter(repository);
+
+        List<Product> result = adapter.findByCompanyId(COMPANY_ID, true);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).id()).isEqualTo(PRODUCT_ID);
     }
 
     @Test

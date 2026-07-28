@@ -22,7 +22,7 @@ Servicios esperados:
 - `dian-provider-service`
 - `accounting-service`
 
-`legacy-monolith` no se levanta por Docker Compose y no hace parte del reactor Maven por defecto.
+`legacy-monolith` fue removido del repositorio activo en TASK-059. Docker Compose no lo levanta y el reactor Maven ya no tiene perfil para compilarlo.
 
 ## Prueba E2E vigente
 
@@ -38,15 +38,6 @@ La guia detallada del flujo vigente esta en:
 docs/e2e-from-zero-test-guide.md
 ```
 
-## Monolito transitorio
+## Codigo legacy removido
 
-El monolito se conserva solo como referencia temporal mientras se cierran brechas de gastos, auditoria/identity, POS directo/historicos y migraciones de datos legacy.
-
-Para compilarlo o ejecutarlo bajo demanda debe activarse el perfil Maven explicito:
-
-```powershell
-.\mvnw.cmd -Plegacy-monolith -pl services/legacy-monolith test
-.\mvnw.cmd -Plegacy-monolith -pl services/legacy-monolith spring-boot:run
-```
-
-No usar esta guia para validar nuevas funcionalidades. Las nuevas validaciones deben ejecutarse contra los microservicios activos y registrarse en `specs/tasks.md`.
+El monolito transitorio fue eliminado del repositorio en TASK-059. Las validaciones nuevas deben ejecutarse contra los microservicios activos y registrarse en specs/tasks.md. Las tablas public.* legacy existentes no se eliminan desde Docker Compose y deben auditarse con scripts/legacy-data-audit.sql antes de cualquier migracion destructiva.

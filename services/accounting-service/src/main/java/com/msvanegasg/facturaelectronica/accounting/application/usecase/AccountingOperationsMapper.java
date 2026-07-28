@@ -1,10 +1,14 @@
 package com.msvanegasg.facturaelectronica.accounting.application.usecase;
 
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsPayablePaymentResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsReceivablePaymentResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsReceivableResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsPayableResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.ExpenseResult;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountsPayable;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountsPayablePayment;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountsReceivable;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountsReceivablePayment;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.Expense;
 
 final class AccountingOperationsMapper {
@@ -25,6 +29,19 @@ final class AccountingOperationsMapper {
                 payable.totalAmount(), payable.paidAmount(), payable.balance(), payable.status(), payable.createdAt());
     }
 
+
+    static AccountsReceivableResult toResult(AccountsReceivable receivable) {
+        return new AccountsReceivableResult(receivable.id(), receivable.companyId(), receivable.customerId(),
+                receivable.sourceType(), receivable.sourceId(), receivable.issueDate(), receivable.dueDate(),
+                receivable.totalAmount(), receivable.paidAmount(), receivable.balance(), receivable.status(),
+                receivable.idempotencyKey(), receivable.createdAt());
+    }
+
+    static AccountsReceivablePaymentResult toResult(AccountsReceivablePayment payment, AccountsReceivable receivable) {
+        return new AccountsReceivablePaymentResult(payment.id(), payment.companyId(), payment.accountsReceivableId(),
+                payment.paymentDate(), payment.amount(), payment.paymentMethod(), payment.reference(),
+                payment.createdBy(), payment.createdAt(), toResult(receivable));
+    }
     static AccountsPayablePaymentResult toResult(AccountsPayablePayment payment, AccountsPayable payable) {
         return new AccountsPayablePaymentResult(payment.id(), payment.companyId(), payment.accountsPayableId(),
                 payment.paymentDate(), payment.amount(), payment.paymentMethod(), payment.reference(),

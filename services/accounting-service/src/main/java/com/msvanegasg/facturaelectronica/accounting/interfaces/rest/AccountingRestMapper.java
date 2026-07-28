@@ -5,13 +5,17 @@ import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsPayablePaymentResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsReceivablePaymentResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsReceivableResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsPayableResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingEntryLineResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingEntryResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingRuleLineResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingRuleResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingSetupResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountsPayableCommand;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountsReceivableCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountingRuleCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountingRuleLineCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateExpenseCommand;
@@ -23,7 +27,11 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.JournalBookR
 import com.msvanegasg.facturaelectronica.accounting.application.dto.LedgerAccountSummaryResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.LedgerBookResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.RegisterPayablePaymentCommand;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.RegisterReceivablePaymentCommand;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountsPayablePaymentResponse;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountsReceivablePaymentResponse;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountsReceivableRequest;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountsReceivableResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountsPayableRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountsPayableResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountRequest;
@@ -35,6 +43,7 @@ import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.Accounti
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingRuleLineResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingRuleRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingRuleResponse;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingSetupResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.ExpenseRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.ExpenseResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.JournalBookEntryResponse;
@@ -43,6 +52,7 @@ import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.JournalB
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.LedgerAccountSummaryResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.LedgerBookResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.PayablePaymentRequest;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.ReceivablePaymentRequest;
 
 public final class AccountingRestMapper {
 
@@ -88,6 +98,18 @@ public final class AccountingRestMapper {
                 request.paymentMethod(), request.reference(), createdBy);
     }
 
+
+    public static RegisterReceivablePaymentCommand toCommand(UUID companyId, UUID receivableId,
+            ReceivablePaymentRequest request, UUID createdBy) {
+        return new RegisterReceivablePaymentCommand(companyId, receivableId, request.paymentDate(), request.amount(),
+                request.paymentMethod(), request.reference(), createdBy);
+    }
+
+    public static CreateAccountsReceivableCommand toCommand(UUID companyId, AccountsReceivableRequest request) {
+        return new CreateAccountsReceivableCommand(companyId, request.customerId(), request.sourceType(),
+                request.sourceId(), request.issueDate(), request.dueDate(), request.totalAmount(),
+                request.idempotencyKey());
+    }
     public static CreateAccountsPayableCommand toCommand(UUID companyId, AccountsPayableRequest request) {
         return new CreateAccountsPayableCommand(companyId, request.supplierId(), request.sourceType(),
                 request.sourceId(), request.issueDate(), request.dueDate(), request.totalAmount());
@@ -117,6 +139,14 @@ public final class AccountingRestMapper {
                 result.active());
     }
 
+
+    public static AccountingSetupResponse toResponse(AccountingSetupResult result) {
+        return new AccountingSetupResponse(
+                result.companyId(),
+                result.templateName(),
+                result.accounts().stream().map(AccountingRestMapper::toResponse).toList(),
+                result.rules().stream().map(AccountingRestMapper::toResponse).toList());
+    }
     public static AccountingEntryResponse toResponse(AccountingEntryResult result) {
         return new AccountingEntryResponse(
                 result.id(),
@@ -138,6 +168,18 @@ public final class AccountingRestMapper {
                 result.confirmedAt());
     }
 
+
+    public static AccountsReceivableResponse toResponse(AccountsReceivableResult result) {
+        return new AccountsReceivableResponse(result.id(), result.companyId(), result.customerId(), result.sourceType(),
+                result.sourceId(), result.issueDate(), result.dueDate(), result.totalAmount(), result.paidAmount(),
+                result.balance(), result.status(), result.idempotencyKey(), result.createdAt());
+    }
+
+    public static AccountsReceivablePaymentResponse toResponse(AccountsReceivablePaymentResult result) {
+        return new AccountsReceivablePaymentResponse(result.id(), result.companyId(), result.accountsReceivableId(),
+                result.paymentDate(), result.amount(), result.paymentMethod(), result.reference(), result.createdBy(),
+                result.createdAt(), toResponse(result.receivable()));
+    }
     public static AccountsPayableResponse toResponse(AccountsPayableResult result) {
         return new AccountsPayableResponse(result.id(), result.companyId(), result.supplierId(), result.sourceType(),
                 result.sourceId(), result.issueDate(), result.dueDate(), result.totalAmount(), result.paidAmount(),

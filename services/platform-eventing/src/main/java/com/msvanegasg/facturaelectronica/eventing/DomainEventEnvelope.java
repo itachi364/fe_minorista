@@ -1,0 +1,37 @@
+package com.msvanegasg.facturaelectronica.eventing;
+
+import java.time.Instant;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+
+public record DomainEventEnvelope(
+        UUID eventId,
+        String eventType,
+        int eventVersion,
+        Instant occurredAt,
+        UUID companyId,
+        String aggregateType,
+        UUID aggregateId,
+        String producer,
+        String correlationId,
+        String idempotencyKey,
+        Map<String, Object> payload) {
+
+    public DomainEventEnvelope {
+        Objects.requireNonNull(eventId, "eventId is required");
+        Objects.requireNonNull(eventType, "eventType is required");
+        Objects.requireNonNull(occurredAt, "occurredAt is required");
+        Objects.requireNonNull(companyId, "companyId is required");
+        Objects.requireNonNull(aggregateType, "aggregateType is required");
+        Objects.requireNonNull(aggregateId, "aggregateId is required");
+        Objects.requireNonNull(producer, "producer is required");
+        Objects.requireNonNull(idempotencyKey, "idempotencyKey is required");
+        payload = payload == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(payload));
+        if (eventVersion < 1) {
+            throw new IllegalArgumentException("eventVersion must be greater than zero");
+        }
+    }
+}

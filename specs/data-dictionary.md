@@ -526,3 +526,41 @@ Campos equivalentes a `billing.sale_line`, asociados a `electronic_document_id` 
 | result | varchar(40) | Si | SUCCESS, FAILURE. |
 | detail | jsonb | No | Detalle sin secretos. |
 | occurred_at | timestamp | Si | Fecha/hora. |
+
+## Event Outbox/Inbox por microservicio
+
+Tablas introducidas en TASK-062 lote 1 para preparar mensajeria AWS sin broker self-hosted. Cada tabla pertenece al esquema del servicio productor o consumidor.
+
+### `billing.outbox_event`, `inventory.outbox_event`, `accounting_outbox_event`
+
+| Campo | Tipo | Obligatorio | Descripcion |
+|---|---|---|---|
+| event_id | uuid | Si | Identificador global idempotente del evento. |
+| event_type | varchar(120) | Si | Nombre canonico del evento. |
+| event_version | integer | Si | Version del contrato del evento. |
+| occurred_at | timestamptz | Si | Fecha/hora de ocurrencia de negocio. |
+| company_id | uuid | Si | Empresa propietaria del evento. |
+| aggregate_type | varchar(80) | Si | Tipo de agregado origen. |
+| aggregate_id | uuid | Si | Identificador del agregado origen. |
+| producer | varchar(120) | Si | Microservicio productor. |
+| correlation_id | varchar(120) | No | Correlacion tecnica propagada. |
+| idempotency_key | varchar(180) | No | Llave funcional para deduplicacion. |
+| payload_json | jsonb | Si | Payload canonico sin secretos. |
+| status | varchar(30) | Si | Estado de publicacion local: `PENDING`, `PUBLISHED` o `FAILED`. |
+| publish_attempts | integer | Si | Intentos de publicacion del dispatcher. |
+| last_error | text | No | Error tecnico seguro del ultimo intento. |
+| published_at | timestamptz | No | Fecha/hora de publicacion exitosa. |
+| created_at | timestamptz | Si | Fecha/hora de persistencia en Outbox. |
+
+### `billing.inbox_event`, `inventory.inbox_event`, `accounting_inbox_event`
+
+| Campo | Tipo | Obligatorio | Descripcion |
+|---|---|---|---|
+| id | uuid | Si | Identificador local del registro Inbox. |
+| event_id | uuid | Si | Evento consumido. |
+| event_type | varchar(120) | Si | Tipo canonico consumido. |
+| company_id | uuid | Si | Empresa del evento. |
+| consumer | varchar(120) | Si | Consumidor que materializo o descarto idempotentemente el evento. |
+| processed_at | timestamptz | Si | Fecha/hora de procesamiento. |
+
+Regla: `event_id + consumer` debe ser unico para impedir reprocesamiento no idempotente.

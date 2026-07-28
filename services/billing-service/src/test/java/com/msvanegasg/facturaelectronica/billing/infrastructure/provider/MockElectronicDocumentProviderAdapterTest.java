@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
@@ -20,14 +21,13 @@ class MockElectronicDocumentProviderAdapterTest {
     @Test
     void returnsAcceptedMockResponse() {
         var adapter = new MockElectronicDocumentProviderAdapter(
-                new BillingProperties("http://inventory", "http://provider", "http://accounting", "http://audit",
-                        "ACCEPTED"));
+                new BillingProperties("http://inventory", "http://provider", "http://accounting", "http://audit", "http://tenant", "ACCEPTED"));
         UUID documentId = UUID.fromString("55555555-5555-5555-5555-555555555555");
 
-        var result = adapter.submitElectronicPos(sale(), documentId, "confirm-1");
+        var result = adapter.submit(sale(), documentId, ElectronicDocumentType.ELECTRONIC_POS, "confirm-1");
 
         assertThat(result.status()).isEqualTo(ProviderStatus.ACCEPTED);
-        assertThat(result.trackingId()).isEqualTo("mock-" + documentId);
+        assertThat(result.trackingId()).isEqualTo("mock-electronic_pos-" + documentId);
         assertThat(result.cufeCude()).isNotBlank();
         assertThat(result.qrContent()).startsWith("mock-qr:");
     }

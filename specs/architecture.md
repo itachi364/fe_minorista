@@ -37,7 +37,7 @@ Fase inicial:
 
 Fase posterior:
 
-- NATS JetStream con Outbox/Inbox despues de cerrar la logica backend core, migrar legacy pendiente y aprobar depuracion.
+- Outbox/Inbox en productores y consumidores, con EventBridge/SQS + Lambdas para produccion AWS despues de cerrar la logica backend core, migrar legacy pendiente y aprobar depuracion.
 - Eventos para `SaleConfirmed`, `ElectronicDocumentValidated`, `InventoryMovementRegistered`, `AccountingEntryPosted` y `AuditEventRequested`.
 - Consumidores idempotentes por empresa, evento y documento origen.
 
@@ -49,14 +49,21 @@ Fase posterior:
 
 ## Despliegue sugerido
 
-- `billing-service`
-- `inventory-service`
-- `accounting-service`
-- `dian-provider-service`
-- `thirdparty-service`
-- `catalog-service`
-- `identity-service`
-- PostgreSQL por servicio o por esquema en fase inicial.
+### Local development
+
+- Docker Compose con `postgres` y un contenedor por microservicio activo.
+- PostgreSQL por esquema/base en fase local.
+- Sin dependencias de arranque entre microservicios, salvo base de datos.
+
+### AWS production target
+
+- Frontend SPA en Amazon S3 privado servido por CloudFront.
+- Entrada publica por API Gateway hacia un BFF.
+- `bff-service` en ECS Fargate como fachada publica del frontend.
+- `billing-service`, `inventory-service`, `accounting-service`, `dian-provider-service`, `thirdparty-service`, `catalog-service`, `identity-service`, `tenant-service`, `audit-service` y `reporting-service` en ECS Fargate.
+- Procesos event-driven transversales en Lambda disparados por EventBridge/SQS.
+- Persistencia en RDS/Aurora PostgreSQL por base o esquema de servicio, segun fase de madurez.
+- Secretos y certificados en AWS Secrets Manager o Parameter Store, nunca en imagenes ni repositorio.
 
 ## Decision de extraccion fisica
 
@@ -107,16 +114,51 @@ Ningun paquete legacy ni tabla legacy debe eliminarse por intuicion. La depuraci
 - Verificacion de que no existan referencias de compilacion ni de runtime.
 - Migracion o respaldo de datos cuando aplique.
 
-## Regla de orden para backend core, depuracion y NATS
+## Regla de orden para backend core, depuracion y eventos cloud
 
 El orden aprobado para las proximas fases es:
 
 1. Completar logica de negocio backend: clientes/adquirentes fiscales, proveedores, NIT con digito de verificacion automatico, bienes, servicios, insumos, movimientos manuales, compras, gastos, cuentas por pagar, reportes, usuarios/roles y licencias.
 2. Migrar el legacy pendiente al modelo Clean Architecture y microservicios existentes, manteniendo compatibilidad hasta aprobar ruptura.
 3. Eliminar codigo, endpoints y tablas legacy solo despues de matriz de reemplazo, E2E aprobado y verificacion de referencias.
-4. Introducir NATS JetStream con Outbox/Inbox para desacoplar efectos posteriores y auditoria.
+4. Definir la arquitectura cloud AWS objetivo: Frontend CloudFront/S3, API Gateway/BFF, microservicios ECS Fargate, eventos EventBridge/SQS y Lambdas.
+5. Implementar Outbox/Inbox y consumidores Lambda para desacoplar efectos posteriores, auditoria, reportes y reintentos.
 
-NATS no debe introducirse antes de que el flujo de negocio funcione completamente por API, persistencia PostgreSQL y pruebas locales desde cero.
+La infraestructura event-driven no debe introducirse en runtime antes de que el flujo de negocio funcione completamente por API, persistencia PostgreSQL y pruebas locales desde cero. No se usaran brokers self-hosted; el destino productivo aprobado es AWS administrado con EventBridge/SQS + Lambda.
+
+
+## Clasificacion AWS de workloads
+
+### ECS Fargate
+
+Usar ECS Fargate para servicios HTTP de larga vida que deben mantener healthcheck, escalamiento por servicio, configuracion externa y despliegue independiente:
+
+- `bff-service`
+- `tenant-service`
+- `identity-service`
+- `catalog-service`
+- `thirdparty-service`
+- `inventory-service`
+- `billing-service`
+- `dian-provider-service`
+- `accounting-service`
+- `audit-service`
+- `reporting-service` cuando se materialice como servicio fisico
+
+### Lambda
+
+Usar Lambda para procesos cortos, idempotentes y disparados por eventos:
+
+- `audit-event-writer`
+- `inventory-sale-effect`
+- `accounting-sale-effect`
+- `accounting-purchase-effect`
+- `reporting-projection-updater`
+- `provider-submission-status-retry`
+- `license-expiration-check`
+- `notification-dispatcher`
+
+Cada Lambda debe consumir eventos con `eventId`, `companyId`, `correlationId`, `source`, `type`, `payloadVersion` e `idempotencyKey`, y registrar Inbox/estado de procesamiento cuando escriba datos propios.
 
 ## Recomendacion de migracion incremental
 

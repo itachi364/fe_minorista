@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.inventory.infrastructure.persistence.repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,4 +18,13 @@ public interface InventoryMovementJpaRepository extends JpaRepository<InventoryM
             InventoryMovementType movementType, String idempotencyKey);
 
     List<InventoryMovementJpaEntity> findAllByCompanyIdAndProductIdOrderByMovementAtAsc(UUID companyId, UUID productId);
+
+    List<InventoryMovementJpaEntity> findAllByCompanyIdAndProductIdAndMovementAtGreaterThanEqualOrderByMovementAtAsc(
+            UUID companyId, UUID productId, Instant from);
+
+    List<InventoryMovementJpaEntity> findAllByCompanyIdAndProductIdAndMovementAtLessThanOrderByMovementAtAsc(
+            UUID companyId, UUID productId, Instant to);
+
+    List<InventoryMovementJpaEntity> findAllByCompanyIdAndProductIdAndMovementAtGreaterThanEqualAndMovementAtLessThanOrderByMovementAtAsc(
+            UUID companyId, UUID productId, Instant from, Instant to);
 }

@@ -1,11 +1,13 @@
 package com.msvanegasg.facturaelectronica.billing.application.usecase;
 
 import com.msvanegasg.facturaelectronica.billing.application.dto.ElectronicDocumentResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalNoteResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.IssuerProfileResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.NumberingResolutionResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
+import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalNote;
 import com.msvanegasg.facturaelectronica.billing.domain.model.IssuerProfile;
 import com.msvanegasg.facturaelectronica.billing.domain.model.NumberingResolution;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
@@ -26,11 +28,11 @@ final class BillingResultMapper {
 
     private static SaleLineResult toLineResult(SaleLine line) {
         return new SaleLineResult(line.id(), line.productId(), line.productSku(), line.productName(),
-                line.itemType(), line.stockTracked(), line.quantity(), line.unitPrice(), line.discountAmount(),
+                line.itemType(), line.stockTracked(), line.quantity(), line.unitPrice(), line.unitCost(), line.discountAmount(),
                 line.taxCode(), line.taxRate(), line.subtotal(), line.taxAmount(), line.total());
     }
 
-    private static ElectronicDocumentResult toDocumentResult(ElectronicDocument document) {
+    static ElectronicDocumentResult toDocumentResult(ElectronicDocument document) {
         return new ElectronicDocumentResult(document.id(), document.companyId(), document.saleId(),
                 document.documentType(), document.status(), document.providerStatus(), document.prefix(),
                 document.documentNumber(), document.cufeCude(), document.qrContent(), document.subtotal(),
@@ -39,6 +41,13 @@ final class BillingResultMapper {
                 document.accountingAppliedAt());
     }
 
+    static FiscalNoteResult toFiscalNoteResult(FiscalNote note) {
+        return new FiscalNoteResult(note.id(), note.companyId(), note.originalDocumentId(), note.noteType(),
+                note.adjustmentKind(), note.status(), note.providerStatus(), note.reason(), note.prefix(),
+                note.documentNumber(), note.cufeCude(), note.qrContent(), note.subtotal(), note.taxTotal(),
+                note.total(), note.providerTrackingId(), note.providerErrorCode(), note.providerErrorMessage(),
+                note.issuedAt());
+    }
     static IssuerProfileResult toIssuerProfileResult(IssuerProfile issuerProfile) {
         return new IssuerProfileResult(issuerProfile.id(), issuerProfile.companyId(), issuerProfile.legalName(),
                 issuerProfile.nit(), issuerProfile.verificationDigit(), issuerProfile.taxResponsibilities(),

@@ -4,6 +4,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -11,9 +14,14 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.AssignFiscalNum
 import com.msvanegasg.facturaelectronica.billing.application.dto.AuditEventCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.AuditResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.CreateSaleCommand;
+import com.msvanegasg.facturaelectronica.billing.application.dto.ElectronicDocumentQuery;
+import com.msvanegasg.facturaelectronica.billing.application.dto.ElectronicDocumentResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalArtifactResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalEventResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalNumberResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.InventoryProductSnapshot;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ProviderSubmissionResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.AssignFiscalNumberUseCase;
@@ -25,17 +33,22 @@ import com.msvanegasg.facturaelectronica.billing.application.port.out.Electronic
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryAvailabilityPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryMovementPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.LicenseValidationPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.SaleRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.domain.model.CudeGenerator;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalEnvironment;
+import com.msvanegasg.facturaelectronica.billing.domain.model.LicenseAction;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleLine;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
+import com.msvanegasg.facturaelectronica.eventing.DomainEventEnvelope;
+import com.msvanegasg.facturaelectronica.eventing.DomainEventPublisherPort;
+import com.msvanegasg.facturaelectronica.eventing.EventTypes;
 
 public class SaleManagementService implements ManageSaleUseCase {
 
@@ -45,21 +58,36 @@ public class SaleManagementService implements ManageSaleUseCase {
     private final InventoryMovementPort inventoryMovementPort;
     private final AccountingEntryPort accountingEntryPort;
     private final AuditEventPort auditEventPort;
+    private final LicenseValidationPort licenseValidationPort;
     private final AssignFiscalNumberUseCase assignFiscalNumberUseCase;
+    private final DomainEventPublisherPort eventPublisher;
     private final IdGeneratorPort idGenerator;
     private final ClockPort clock;
 
     public SaleManagementService(SaleRepositoryPort saleRepository, InventoryAvailabilityPort inventoryAvailability,
             ElectronicDocumentProviderPort providerPort, InventoryMovementPort inventoryMovementPort,
             AccountingEntryPort accountingEntryPort, AuditEventPort auditEventPort,
-            AssignFiscalNumberUseCase assignFiscalNumberUseCase, IdGeneratorPort idGenerator, ClockPort clock) {
+            LicenseValidationPort licenseValidationPort, AssignFiscalNumberUseCase assignFiscalNumberUseCase,
+            IdGeneratorPort idGenerator, ClockPort clock) {
+        this(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort, accountingEntryPort,
+                auditEventPort, licenseValidationPort, assignFiscalNumberUseCase, DomainEventPublisherPort.noop(),
+                idGenerator, clock);
+    }
+
+    public SaleManagementService(SaleRepositoryPort saleRepository, InventoryAvailabilityPort inventoryAvailability,
+            ElectronicDocumentProviderPort providerPort, InventoryMovementPort inventoryMovementPort,
+            AccountingEntryPort accountingEntryPort, AuditEventPort auditEventPort,
+            LicenseValidationPort licenseValidationPort, AssignFiscalNumberUseCase assignFiscalNumberUseCase,
+            DomainEventPublisherPort eventPublisher, IdGeneratorPort idGenerator, ClockPort clock) {
         this.saleRepository = Objects.requireNonNull(saleRepository);
         this.inventoryAvailability = Objects.requireNonNull(inventoryAvailability);
         this.providerPort = Objects.requireNonNull(providerPort);
         this.inventoryMovementPort = Objects.requireNonNull(inventoryMovementPort);
         this.accountingEntryPort = Objects.requireNonNull(accountingEntryPort);
         this.auditEventPort = Objects.requireNonNull(auditEventPort);
+        this.licenseValidationPort = Objects.requireNonNull(licenseValidationPort);
         this.assignFiscalNumberUseCase = Objects.requireNonNull(assignFiscalNumberUseCase);
+        this.eventPublisher = Objects.requireNonNull(eventPublisher);
         this.idGenerator = Objects.requireNonNull(idGenerator);
         this.clock = Objects.requireNonNull(clock);
     }
@@ -82,6 +110,7 @@ public class SaleManagementService implements ManageSaleUseCase {
         if (sale.status() != SaleStatus.DRAFT) {
             return BillingResultMapper.toSaleResult(applyPostValidationEffects(sale));
         }
+        licenseValidationPort.ensureAllowed(companyId, LicenseAction.ISSUE_FISCAL_DOCUMENT);
         sale.lines().forEach(line -> ensureAvailable(sale.companyId(), line));
         UUID documentId = idGenerator.newId();
         Instant now = clock.now();
@@ -90,15 +119,64 @@ public class SaleManagementService implements ManageSaleUseCase {
                 : ElectronicDocumentType.ELECTRONIC_INVOICE;
         FiscalNumberResult fiscalNumber = assignFiscalNumberUseCase.assign(new AssignFiscalNumberCommand(
                 sale.companyId(), documentType, LocalDate.ofInstant(now, ZoneOffset.UTC), FiscalEnvironment.TEST));
-        ProviderSubmissionResult provider = providerPort.submitElectronicPos(sale, documentId, idempotencyKey);
+        ProviderSubmissionResult provider = providerPort.submit(sale, documentId, documentType, idempotencyKey);
         ElectronicDocument document = documentFromProvider(documentId, sale, documentType, fiscalNumber, provider,
                 idempotencyKey, now);
         Sale confirmed = saleRepository.save(sale.confirm(document, now));
         Sale completed = applyPostValidationEffects(confirmed);
+        publishConfirmedSaleEvents(completed);
         auditEventPort.register(toAuditEvent(completed));
         return BillingResultMapper.toSaleResult(completed);
     }
 
+    @Override
+    public List<SaleResult> find(SaleQuery query) {
+        Objects.requireNonNull(query, "query is required");
+        Objects.requireNonNull(query.companyId(), "companyId is required");
+        return saleRepository.find(query).stream().map(BillingResultMapper::toSaleResult).toList();
+    }
+
+    @Override
+    public List<ElectronicDocumentResult> findElectronicDocuments(ElectronicDocumentQuery query) {
+        Objects.requireNonNull(query, "query is required");
+        Objects.requireNonNull(query.companyId(), "companyId is required");
+        return saleRepository.findByElectronicDocument(query).stream()
+                .map(Sale::electronicDocument)
+                .filter(Objects::nonNull)
+                .map(BillingResultMapper::toDocumentResult)
+                .toList();
+    }
+
+    @Override
+    public ElectronicDocumentResult findElectronicDocument(UUID companyId, UUID documentId) {
+        Objects.requireNonNull(companyId, "companyId is required");
+        Objects.requireNonNull(documentId, "documentId is required");
+        Sale sale = saleRepository.findByCompanyIdAndElectronicDocumentId(companyId, documentId)
+                .orElseThrow(() -> new SaleNotFoundException(documentId));
+        return BillingResultMapper.toDocumentResult(sale.electronicDocument());
+    }
+
+    @Override
+    public List<FiscalArtifactResult> findArtifacts(UUID companyId, UUID documentId) {
+        ElectronicDocumentResult document = findElectronicDocument(companyId, documentId);
+        return List.of(
+                new FiscalArtifactResult("XML", "mock://billing/" + document.id() + ".xml",
+                        "mock-hash-xml-" + document.cufeCude(),
+                        "<Document id=\"" + document.id() + "\" type=\"" + document.documentType() + "\" />"),
+                new FiscalArtifactResult("PDF", "mock://billing/" + document.id() + ".pdf",
+                        "mock-hash-pdf-" + document.cufeCude(),
+                        "mock-graphic-representation:" + document.cufeCude()),
+                new FiscalArtifactResult("QR", "mock://billing/" + document.id() + ".qr",
+                        "mock-hash-qr-" + document.cufeCude(), document.qrContent()));
+    }
+
+    @Override
+    public List<FiscalEventResult> findFiscalEvents(UUID companyId, UUID documentId) {
+        ElectronicDocumentResult document = findElectronicDocument(companyId, documentId);
+        return List.of(new FiscalEventResult(document.id(), "PROVIDER_SUBMISSION", document.status().name(),
+                "providerStatus=" + document.providerStatus() + ";trackingId=" + valueOrEmpty(document.providerTrackingId()),
+                document.issuedAt()));
+    }
     @Override
     public SaleResult findById(UUID companyId, UUID saleId) {
         return BillingResultMapper.toSaleResult(saleRepository.findByCompanyIdAndId(companyId, saleId)
@@ -106,6 +184,7 @@ public class SaleManagementService implements ManageSaleUseCase {
     }
 
     private SaleResult createNew(CreateSaleCommand command) {
+        licenseValidationPort.ensureAllowed(command.companyId(), LicenseAction.CREATE_TRANSACTION);
         var lines = command.lines().stream().map(line -> toLine(command.companyId(), line)).toList();
         lines.forEach(line -> ensureAvailable(command.companyId(), line));
         Sale sale = Sale.draft(idGenerator.newId(), command.companyId(), command.customerId(), command.paymentMethodId(),
@@ -120,7 +199,7 @@ public class SaleManagementService implements ManageSaleUseCase {
             throw new IllegalStateException("product is not enabled for sale");
         }
         return SaleLine.calculate(idGenerator.newId(), command.productId(), product.sku(), product.name(),
-                product.itemType(), product.stockTracked(), command.quantity(), command.unitPrice(),
+                product.itemType(), product.stockTracked(), command.quantity(), command.unitPrice(), product.cost(),
                 command.discountAmount(), command.taxCode(), command.taxRate());
     }
 
@@ -176,6 +255,97 @@ public class SaleManagementService implements ManageSaleUseCase {
         return current;
     }
 
+    private void publishConfirmedSaleEvents(Sale sale) {
+        ElectronicDocument document = sale.electronicDocument();
+        if (document == null) {
+            return;
+        }
+        if (document.status() == ElectronicDocumentStatus.VALIDATED) {
+            eventPublisher.publish(event(EventTypes.SALE_CONFIRMED, sale, document, salePayload(sale, document),
+                    document.idempotencyKey() + ":sale-confirmed"));
+            eventPublisher.publish(event(EventTypes.ELECTRONIC_DOCUMENT_VALIDATED, sale, document,
+                    electronicDocumentPayload(sale, document), document.idempotencyKey() + ":document-validated"));
+        }
+        if (document.status() == ElectronicDocumentStatus.FAILED) {
+            eventPublisher.publish(event(EventTypes.PROVIDER_SUBMISSION_FAILED, sale, document,
+                    providerRetryPayload(sale, document), document.idempotencyKey() + ":provider-submission-failed"));
+        }
+        eventPublisher.publish(event(EventTypes.AUDIT_EVENT_REQUESTED, sale, document, auditPayload(sale),
+                document.idempotencyKey() + ":audit-requested"));
+    }
+
+    private DomainEventEnvelope event(String eventType, Sale sale, ElectronicDocument document,
+            Map<String, Object> payload, String idempotencyKey) {
+        return new DomainEventEnvelope(idGenerator.newId(), eventType, 1, clock.now(), sale.companyId(), "Sale",
+                sale.id(), "billing-service", null, idempotencyKey, payload);
+    }
+
+    private static Map<String, Object> salePayload(Sale sale, ElectronicDocument document) {
+        Map<String, Object> payload = electronicDocumentPayload(sale, document);
+        payload.put("saleChannel", sale.saleChannel().name());
+        payload.put("saleStatus", sale.status().name());
+        payload.put("customerId", sale.customerId() == null ? null : sale.customerId().toString());
+        payload.put("subtotal", sale.subtotal());
+        payload.put("taxTotal", sale.taxTotal());
+        payload.put("lines", sale.lines().stream().map(SaleManagementService::saleLinePayload).toList());
+        payload.put("inventoryApplied", document.inventoryApplied());
+        payload.put("accountingApplied", document.accountingApplied());
+        return payload;
+    }
+
+
+    private static Map<String, Object> saleLinePayload(SaleLine line) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("lineId", line.id().toString());
+        payload.put("productId", line.productId().toString());
+        payload.put("productSku", line.productSku());
+        payload.put("productName", line.productName());
+        payload.put("itemType", line.itemType().name());
+        payload.put("stockTracked", line.stockTracked());
+        payload.put("quantity", line.quantity());
+        payload.put("unitCost", line.unitCost());
+        payload.put("unitPrice", line.unitPrice());
+        payload.put("subtotal", line.subtotal());
+        payload.put("taxAmount", line.taxAmount());
+        payload.put("total", line.total());
+        return payload;
+    }
+    private static Map<String, Object> electronicDocumentPayload(Sale sale, ElectronicDocument document) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("saleId", sale.id().toString());
+        payload.put("documentId", document.id().toString());
+        payload.put("documentType", document.documentType().name());
+        payload.put("documentStatus", document.status().name());
+        payload.put("providerStatus", document.providerStatus().name());
+        payload.put("prefix", document.prefix());
+        payload.put("documentNumber", document.documentNumber());
+        payload.put("documentIdempotencyKey", document.idempotencyKey());
+        payload.put("cufeCude", document.cufeCude());
+        payload.put("total", document.total());
+        payload.put("issuedAt", document.issuedAt().toString());
+        return payload;
+    }
+
+    private static Map<String, Object> providerRetryPayload(Sale sale, ElectronicDocument document) {
+        Map<String, Object> payload = salePayload(sale, document);
+        payload.put("providerTrackingId", document.providerTrackingId());
+        payload.put("providerErrorCode", document.providerErrorCode());
+        payload.put("providerErrorMessage", document.providerErrorMessage());
+        return payload;
+    }
+    private static Map<String, Object> auditPayload(Sale sale) {
+        AuditEventCommand audit = toAuditEvent(sale);
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("companyId", audit.companyId().toString());
+        payload.put("userId", audit.userId() == null ? null : audit.userId().toString());
+        payload.put("eventType", audit.eventType());
+        payload.put("resourceType", audit.resourceType());
+        payload.put("resourceId", audit.resourceId());
+        payload.put("action", audit.action());
+        payload.put("result", audit.result().name());
+        payload.put("detail", audit.detail());
+        return payload;
+    }
     private static AuditEventCommand toAuditEvent(Sale sale) {
         ElectronicDocument document = sale.electronicDocument();
         AuditResult result = document.status() == ElectronicDocumentStatus.VALIDATED

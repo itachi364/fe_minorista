@@ -1,0 +1,106 @@
+# Infrastructure: AWS cloud target
+
+## Decision vigente
+
+La infraestructura productiva se define con Terraform y servicios administrados AWS. No se contempla despliegue on-premise ni brokers self-hosted.
+
+## Ambiente inicial
+
+`infra/aws/envs/dev` compone el primer ambiente cloud de desarrollo con modulos reutilizables.
+
+## Modulos Terraform
+
+- `network`: VPC, subnets publicas/privadas, rutas, NAT opcional y security groups base.
+- `database`: RDS PostgreSQL 16 con storage cifrado, backups, Secrets Manager gestionado por AWS y acceso privado.
+- `ecs`: ECS Fargate, ECR por servicio, CloudWatch Logs, IAM roles, Cloud Map privado, ALB interno y servicios con `desired_count = 0` inicial.
+- `api`: API Gateway HTTP API con VPC Link hacia el ALB interno del BFF.
+- `frontend`: S3 privado, CloudFront y Origin Access Control.
+- `messaging`: EventBridge custom bus, SQS queues, DLQ, reglas y policies para eventos iniciales.
+- `event_consumers`: Lambdas event-driven conectadas a SQS con fallos parciales, VPC privada e IAM minimo.
+- `secrets`: Secrets Manager para secretos de aplicacion sin valores versionados.
+
+## Servicios ECS iniciales
+
+- `bff-service`
+- `tenant-service`
+- `identity-service`
+- `catalog-service`
+- `thirdparty-service`
+- `inventory-service`
+- `billing-service`
+- `dian-provider-service`
+- `accounting-service`
+- `audit-service`
+
+Los servicios quedan con `desired_count = 0` hasta que existan imagenes publicadas en ECR, Dockerfiles productivos y pipeline de despliegue.
+
+## Mensajeria inicial
+
+El modulo `messaging` crea rutas base para:
+
+- `audit-events`
+- `inventory-effects`
+- `accounting-effects`
+- `reporting-projections`
+- `provider-retries`
+
+TASK-062 se implementa por lotes: el lote 1 registra contratos canonicos y Outbox/Inbox local en productores; los siguientes lotes agregaran publicadores hacia EventBridge/SQS, Lambdas consumidoras, reintentos e idempotencia operativa.
+
+## Lambdas event-driven
+
+`event_consumers` declara consumidores Lambda iniciales para eventos SQS generados por EventBridge.
+
+- `audit-event-writer-lambda`: fuente `audit-events`, handler `com.msvanegasg.facturaelectronica.auditlambda.AuditEventWriterHandler::handleRequest`, Inbox `audit_inbox_event`, materializa `AuditEventRequested` en `audit_event`.
+- `inventory-sale-effect-lambda`: fuente `inventory-effects`, handler `com.msvanegasg.facturaelectronica.inventorylambda.InventorySaleEffectHandler::handleRequest`, Inbox `inventory.inbox_event`, materializa `SaleConfirmed` como movimientos `SALE_OUT` idempotentes.
+- `accounting-sale-entry-lambda`: fuente `accounting-effects`, handler `com.msvanegasg.facturaelectronica.accountinglambda.AccountingSaleEntryHandler::handleRequest`, Inbox `accounting_inbox_event`, materializa `SaleConfirmed` como asientos `SALE_CONFIRMED`/`SALE` idempotentes.
+- Runtime: Java 17.
+- Fallos parciales: `function_response_types = ["ReportBatchItemFailures"]`.
+- Secretos: las Lambdas reciben el ARN del secreto de base de datos y leen el password desde Secrets Manager en runtime.
+- Activacion: si `lambda_artifact_bucket` esta vacio, Terraform no crea la Lambda para evitar applies con artefactos inexistentes.
+
+## Seguridad
+
+- No se versionan secretos reales.
+- RDS no es publico.
+- CloudFront accede a S3 mediante OAC.
+- API Gateway entra al BFF por VPC Link.
+- Microservicios y base de datos usan subnets privadas.
+- Secrets Manager aloja credenciales y certificados cuando existan.
+
+## Pendientes tecnicos
+
+- Agregar job CI para ejecutar `terraform fmt`, `terraform init`, `terraform validate` y `terraform plan` automaticamente.
+- Agregar backend remoto de Terraform state con S3 + DynamoDB lock antes de trabajo colaborativo real.
+- Definir estrategia de NAT gateway o VPC endpoints para egress privado de ECS hacia ECR, CloudWatch Logs, Secrets Manager y otros servicios AWS.
+- Crear Dockerfiles productivos multi-stage por microservicio.
+- Crear pipeline para build, scan, push a ECR y despliegue ECS.
+- Agregar HTTPS/custom domain con ACM y Route 53 cuando exista dominio.
+- Agregar WAF, alarmas, dashboards y presupuestos.
+
+## Context7 evidence
+
+- Library/tool: Terraform AWS Provider (`/hashicorp/terraform-provider-aws`).
+- Topic consulted: ECS Fargate, Lambda, API Gateway, SQS/EventBridge y recursos administrados en Terraform.
+- Relevant finding: El provider soporta recursos para ECS Fargate, API Gateway, Lambda, SQS event source mappings y recursos administrados AWS necesarios para el target.
+- Decision impact: Se crea IaC modular en Terraform para cloud AWS sin scripts imperativos.
+## Validacion TASK-061
+
+- `terraform version`: Terraform v1.15.8 en Windows amd64.
+- `terraform fmt -recursive -check infra/aws`: exitoso.
+- `terraform init -backend=false`: exitoso con provider `hashicorp/aws` v6.55.0.
+- `terraform validate`: exitoso sin warnings.
+- `terraform plan -refresh=false -out dev.tfplan`: exitoso, `Plan: 118 to add, 0 to change, 0 to destroy`.
+- Revision de plan contra referencias legacy/on-premise/NATS: sin hallazgos.
+- No se ejecuto `terraform apply`.
+## Avance TASK-062
+
+- Modulo compartido `platform-eventing` creado para envelope canonico, tipos de evento y puerto de publicacion.
+- `billing-service`, `inventory-service` y `accounting-service` tienen migraciones Flyway para Outbox/Inbox local.
+- Los productores iniciales escriben eventos en Outbox dentro del flujo transaccional local.
+- Validacion parcial: `./mvnw.cmd -pl services/platform-eventing,services/billing-service,services/inventory-service,services/accounting-service -am test` exitoso.
+- Dispatcher Outbox hacia EventBridge implementado en productores iniciales y deshabilitado por defecto con `EVENTING_EVENTBRIDGE_ENABLED=false`.
+- Implementados consumidores Lambda de auditoria, inventario, contabilidad y reintentos de proveedor con Inbox/estado idempotente y SQS partial batch response. Pendiente: consumidor de reportes y E2E Docker desde cero. Validacion actual: Terraform `fmt`/`validate` exitosos y suite Maven completa con 322 tests verdes.
+- Library/tool: AWS Lambda Java Support Libraries (`/aws/aws-lambda-java-libs`).
+- Topic consulted: SQS event handling with Java Lambda and `aws-lambda-java-events`.
+- Relevant finding: `SQSEvent` is the supported Java event model for SQS-triggered Lambda handlers; `aws-lambda-java-events` 3.16.0 provides the event objects.
+- Decision impact: `audit-event-writer-lambda`, `inventory-sale-effect-lambda`, `accounting-sale-entry-lambda` and `provider-submission-retry-lambda` implement Java 17 SQS handlers and return `SQSBatchResponse` so failed records can be retried without replaying the full batch.

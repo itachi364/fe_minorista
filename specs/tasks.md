@@ -390,7 +390,7 @@
   - Riesgos residuales:
     - `DetalleGasto` existe como entidad/repositorio legacy, pero no tiene servicio/controlador/DTO publico en el comportamiento actual; no se invento un nuevo contrato para evitar crear requisitos no aprobados. Su reubicacion fisica queda para TASK-020 y la eliminacion o conservacion para TASK-021.
     - `Compra` mantiene la integracion de stock compatible mediante el flujo existente de producto (`aumentar-stock`). El registro en `InventoryMovement` multiempresa requiere que el contrato de compra tenga `companyId`, `productId` multiempresa y `createdBy`; no se agregaron campos nuevos al JSON legacy sin aprobacion.
-  - Verificacion parcial: `mvnw.cmd "-Dtest=ProductManagementServiceTest,ProductoControllerTest" test` ejecutado con exito: 17 tests, 0 fallos. `mvnw.cmd "-Dtest=SupplierManagementServiceTest,ProveedorControllerTest,CustomerManagementServiceTest,ClienteControllerTest" test` ejecutado con exito: 28 tests, 0 fallos. `mvnw.cmd "-Dtest=PurchaseManagementServiceTest,CompraControllerTest,ExpenseManagementServiceTest,GastoControllerTest" test` ejecutado con exito: 20 tests, 0 fallos. Suite completa `mvnw.cmd test` con PostgreSQL local: 204 tests, 0 fallos.
+  - Verificacion: `mvnw.cmd "-Dtest=ProductManagementServiceTest,ProductoControllerTest" test` ejecutado con exito: 17 tests, 0 fallos. `mvnw.cmd "-Dtest=SupplierManagementServiceTest,ProveedorControllerTest,CustomerManagementServiceTest,ClienteControllerTest" test` ejecutado con exito: 28 tests, 0 fallos. `mvnw.cmd "-Dtest=PurchaseManagementServiceTest,CompraControllerTest,ExpenseManagementServiceTest,GastoControllerTest" test` ejecutado con exito: 20 tests, 0 fallos. Suite completa `mvnw.cmd test` con PostgreSQL local: 204 tests, 0 fallos.
 
 - [x] TASK-020: Migrar persistencia y contratos legacy a Clean Architecture completa
   - Estado: COMPLETED
@@ -501,7 +501,7 @@
     - Clients internos `ProductoClient`, `ProveedorClient` y `TipoDocumentoClient` extendidos con metodos migrados que devuelven contratos REST del bounded context (`ProductResponse`, `ProductStockIncreaseRequest`, `SupplierResponse`, `DocumentTypeResponse`) sin eliminar metodos legacy aun requeridos por servicios antiguos.
     - Adaptadores cliente `ProductInventoryAdapter`, `SupplierInventoryAdapter` y `DocumentTypeLookupAdapter` ya no dependen de DTOs legacy `AumentarStockRequestDTO`, `ProductoResponseDTO`, `ProveedorResponse2DTO` ni `TipoDocumentoResponseDTO`.
     - Busqueda de referencias `rg` sin imports legacy `models`, `DTO`, `repository` o `mapper` en `catalog`, `thirdparty`, `inventory`, `expenses` ni controladores migrados.
-  - Verificacion parcial: `mvnw.cmd "-Dtest=CategoryManagementServiceTest,CategoriaControllerTest" test` ejecutado con exito: 11 tests, 0 fallos. `mvnw.cmd "-Dtest=CountryManagementServiceTest,PaisControllerTest" test` ejecutado con exito: 10 tests, 0 fallos. `mvnw.cmd "-Dtest=PaymentMethodManagementServiceTest,MetodoPagoControllerTest" test` ejecutado con exito: 10 tests, 0 fallos. `mvnw.cmd "-Dtest=DocumentTypeManagementServiceTest,TipoDocumentoControllerTest" test` ejecutado con exito: 10 tests, 0 fallos. `mvnw.cmd "-Dtest=ExpenseTypeManagementServiceTest,TipoGastoControllerTest" test` ejecutado con exito: 12 tests, 0 fallos. `mvnw.cmd "-Dtest=ParameterManagementServiceTest,ParametroControllerTest" test` ejecutado con exito: 12 tests, 0 fallos. `mvnw.cmd "-Dtest=TaxManagementServiceTest,ImpuestoControllerTest" test` ejecutado con exito: 16 tests, 0 fallos. `mvnw.cmd "-Dtest=ProductManagementServiceTest,ProductoControllerTest" test` ejecutado con exito: 17 tests, 0 fallos. `mvnw.cmd "-Dtest=CustomerManagementServiceTest,ClienteControllerTest" test` ejecutado con exito: 13 tests, 0 fallos. `mvnw.cmd "-Dtest=SupplierManagementServiceTest,ProveedorControllerTest" test` ejecutado con exito: 15 tests, 0 fallos. `mvnw.cmd "-Dtest=ExpenseManagementServiceTest,GastoControllerTest" test` ejecutado con exito: 13 tests, 0 fallos. `mvnw.cmd "-Dtest=PurchaseManagementServiceTest,CompraControllerTest" test` ejecutado con exito: 7 tests, 0 fallos. `mvnw.cmd "-Dtest=PurchaseManagementServiceTest,CompraControllerTest,CustomerManagementServiceTest,ClienteControllerTest" test` ejecutado con exito: 20 tests, 0 fallos. Suite completa `mvnw.cmd test` con PostgreSQL local: 204 tests, 0 fallos.
+  - Verificacion: `mvnw.cmd "-Dtest=CategoryManagementServiceTest,CategoriaControllerTest" test` ejecutado con exito: 11 tests, 0 fallos. `mvnw.cmd "-Dtest=CountryManagementServiceTest,PaisControllerTest" test` ejecutado con exito: 10 tests, 0 fallos. `mvnw.cmd "-Dtest=PaymentMethodManagementServiceTest,MetodoPagoControllerTest" test` ejecutado con exito: 10 tests, 0 fallos. `mvnw.cmd "-Dtest=DocumentTypeManagementServiceTest,TipoDocumentoControllerTest" test` ejecutado con exito: 10 tests, 0 fallos. `mvnw.cmd "-Dtest=ExpenseTypeManagementServiceTest,TipoGastoControllerTest" test` ejecutado con exito: 12 tests, 0 fallos. `mvnw.cmd "-Dtest=ParameterManagementServiceTest,ParametroControllerTest" test` ejecutado con exito: 12 tests, 0 fallos. `mvnw.cmd "-Dtest=TaxManagementServiceTest,ImpuestoControllerTest" test` ejecutado con exito: 16 tests, 0 fallos. `mvnw.cmd "-Dtest=ProductManagementServiceTest,ProductoControllerTest" test` ejecutado con exito: 17 tests, 0 fallos. `mvnw.cmd "-Dtest=CustomerManagementServiceTest,ClienteControllerTest" test` ejecutado con exito: 13 tests, 0 fallos. `mvnw.cmd "-Dtest=SupplierManagementServiceTest,ProveedorControllerTest" test` ejecutado con exito: 15 tests, 0 fallos. `mvnw.cmd "-Dtest=ExpenseManagementServiceTest,GastoControllerTest" test` ejecutado con exito: 13 tests, 0 fallos. `mvnw.cmd "-Dtest=PurchaseManagementServiceTest,CompraControllerTest" test` ejecutado con exito: 7 tests, 0 fallos. `mvnw.cmd "-Dtest=PurchaseManagementServiceTest,CompraControllerTest,CustomerManagementServiceTest,ClienteControllerTest" test` ejecutado con exito: 20 tests, 0 fallos. Suite completa `mvnw.cmd test` con PostgreSQL local: 204 tests, 0 fallos.
 
 - [x] TASK-021: Eliminar codigo muerto legacy despues de migracion Clean Architecture completa
   - Estado: DONE
@@ -924,10 +924,10 @@
   - Evidencia:
     - `services/catalog-service` implementado como microservicio Spring Boot independiente con Clean Architecture, migracion Flyway propia y healthcheck.
     - `services/thirdparty-service` implementado como microservicio Spring Boot independiente con Clean Architecture, migracion Flyway propia y healthcheck.
-    - `thirdparty-service` elimina dependencia JPA directa hacia entidades de catalogo y consulta tipos de documento mediante contrato REST `CATALOG_SERVICE_URL`.
+    - `thirdparty-service` elimino dependencia JPA directa hacia entidades de catalogo; la consulta REST legacy de tipos de documento por `CATALOG_SERVICE_URL` fue retirada despues en TASK-059 lote 2.
     - Docker Compose actualizado con contenedores `catalog-service` en `${CATALOG_SERVICE_PORT:-8085}` y `thirdparty-service` en `${THIRDPARTY_SERVICE_PORT:-8086}`.
     - `catalog-service` conserva endpoints legacy compatibles de catalogos durante la extraccion.
-    - `thirdparty-service` conserva endpoints legacy compatibles de clientes y proveedores durante la extraccion.
+    - `thirdparty-service` conservo endpoints legacy compatibles de clientes y proveedores durante la extraccion; fueron retirados despues en TASK-059 lote 2.
     - Migraciones creadas: `catalog.*` y `thirdparty.*` con `company_id` preparado en datos configurables y terceros.
     - `.\mvnw.cmd -pl services/catalog-service test`: BUILD SUCCESS, 99 tests, 0 failures.
     - `.\mvnw.cmd -pl services/thirdparty-service test`: BUILD SUCCESS, 29 tests, 0 failures.
@@ -1229,6 +1229,33 @@
   - Tests requeridos:
     - Suite completa multi-modulo.
     - Prueba E2E Docker desde cero.
+  - Avance:
+    - Lote 1 implementado parcialmente: contratos de eventos canonicos y persistencia Outbox/Inbox local por servicio productor.
+    - Context7 consultado para Terraform AWS Provider sobre EventBridge, SQS, DLQ y Lambda event source mappings.
+    - Creado modulo `services/platform-eventing` con `DomainEventEnvelope`, `EventTypes` y `DomainEventPublisherPort`.
+    - Agregadas migraciones Outbox/Inbox en `billing-service`, `inventory-service` y `accounting-service`.
+    - Conectados productores iniciales: `SaleManagementService`, `RegisterInventoryMovementService` y `GenerateAccountingEntryService`.
+    - Ajustado escaneo JPA de los tres servicios para incluir entidades/repositorios de `infrastructure.messaging`.
+    - Pruebas agregadas para publicacion de `SaleConfirmed`/`ElectronicDocumentValidated`/`AuditEventRequested`, `InventoryMovementRegistered` y `AccountingEntryPosted`.
+    - Validacion parcial: `./mvnw.cmd -pl services/platform-eventing,services/billing-service,services/inventory-service,services/accounting-service -am test` exitoso: reactor `platform-eventing`, `inventory-service`, `billing-service` y `accounting-service` en `BUILD SUCCESS`.
+    - Suite completa: `./mvnw.cmd test` exitoso cargando `.env` y forzando URLs JDBC locales `localhost:15432`: 301 tests, 0 fallos, 0 errores, 0 omitidos.
+    - Nota operativa: `./mvnw.cmd test` sin variables falla en `tenant-service` por `DB_URL` no resuelto; cargando `.env` pero usando host Docker `postgres` desde Windows falla por conectividad. Para Maven local se debe usar `localhost:15432`.
+    - Lote 2 implementado parcialmente: dispatcher Outbox condicional hacia EventBridge para `billing-service`, `inventory-service` y `accounting-service`.
+    - Agregado BOM AWS SDK 2.29.6 y adapter `AwsEventBridgeOutboxEventDeliveryAdapter` en `platform-eventing`.
+    - Agregados repositorios de dispatch, configuracion EventBridge condicional y scheduler por servicio productor.
+    - `EVENTING_EVENTBRIDGE_ENABLED=false` mantiene local/Docker sin dependencia de credenciales AWS; al activarlo, el dispatcher publica con `source=producer`, `detailType=eventType` y envelope JSON en `detail`.
+    - Validacion parcial lote 2: `./mvnw.cmd -pl services/platform-eventing,services/billing-service,services/inventory-service,services/accounting-service -am test` exitoso con PostgreSQL local `localhost:15432`: reactor en `BUILD SUCCESS`.
+    - Suite completa lote 2: `./mvnw.cmd test` exitoso cargando `.env` y forzando URLs JDBC locales `localhost:15432`: 304 tests, 0 fallos, 0 errores, 0 omitidos.
+    - Lote 3 parcial implementado: consumidor `audit-event-writer-lambda` para `AuditEventRequested` desde SQS.
+    - Agregada migracion `audit-service` `V002__create_audit_inbox_event.sql` con Inbox idempotente `audit_inbox_event`.
+    - La Lambda parsea envelopes EventBridge/SQS, registra auditoria en `audit_event`, evita duplicados por `(event_id, consumer_name)` y responde `SQSBatchResponse` con fallos parciales.
+    - La Lambda obtiene password de RDS desde Secrets Manager por `AUDIT_DB_PASSWORD_SECRET_ARN`; Terraform no inyecta secretos en texto plano.
+    - Agregado modulo Terraform `event_consumers` y conexion `audit-events` -> Lambda con `ReportBatchItemFailures`, IAM minimo, VPC privada y CloudWatch Logs.
+    - El despliegue de la Lambda queda deshabilitado si `lambda_artifact_bucket` esta vacio; se habilita cuando CI publique el jar sombreado en S3.
+    - Validacion lote 3 parcial: `./mvnw.cmd -pl services/audit-event-writer-lambda -am test` exitoso: 4 tests, 0 fallos, 0 errores, 0 omitidos.
+    - Empaquetado Lambda: `./mvnw.cmd -pl services/audit-event-writer-lambda -am package -DskipTests` exitoso; jar sombreado generado para despliegue via S3.
+    - Validacion IaC lote 3 parcial: `terraform -chdir=infra/aws fmt -recursive`, `terraform -chdir=infra/aws/envs/dev init` y `terraform -chdir=infra/aws/envs/dev validate` exitosos.
+    - Suite completa lote 3 parcial: `./mvnw.cmd test` exitoso con PostgreSQL local `localhost:15432`: 308 tests, 0 fallos, 0 errores, 0 omitidos.
     - Validacion de migraciones Flyway.
   - Lote 1:
     - Retirar `legacy-monolith` de Docker Compose local sin eliminar el modulo Maven ni sus migraciones.
@@ -1473,7 +1500,7 @@
     - Verificar que cada contenedor de aplicacion pueda iniciar aunque otro microservicio no este disponible.
     - Actualizar README y specs si mencionan dependencias de arranque entre servicios.
   - Fuera de alcance:
-    - Implementar NATS JetStream, Outbox/Inbox o broker de eventos.
+    - Implementar Outbox/Inbox con EventBridge/SQS + Lambda.
     - Implementar circuit breaker.
     - Cambiar contratos REST o logica de negocio.
     - Eliminar codigo legacy.
@@ -1525,7 +1552,7 @@
   - Fuera de alcance:
     - Implementar Java, migraciones o Docker.
     - Eliminar codigo legacy.
-    - Implementar NATS.
+    - Implementar mensajeria event-driven productiva con EventBridge/SQS + Lambda.
   - Archivos propuestos:
     - `specs/requirements.md`
     - `specs/design.md`
@@ -1538,15 +1565,15 @@
     - `specs/tasks.md`
   - Completion criteria:
     - Las reglas nuevas quedan documentadas y trazables.
-    - El orden aprobado queda como backend core, migracion legacy, limpieza y despues NATS.
+    - El orden aprobado queda como backend core, migracion legacy, limpieza y despues event-driven AWS.
     - No se modifica codigo de aplicacion.
   - Tests requeridos:
     - Revision documental.
     - `git diff --check`.
   - Evidencia:
     - `specs/requirements.md`, `specs/design.md`, `specs/architecture.md`, `specs/api-contract.md`, `specs/acceptance-criteria.md`, `specs/use-cases.md`, `specs/data-model.md`, `specs/data-dictionary.md` y `specs/tasks.md` documentan la logica backend pendiente.
-    - El backlog quedo ordenado como backend core, migracion legacy, limpieza y despues NATS.
-    - Commit remoto `ca8800c` en `origin/master`: `✨ feat(billing): add fiscal audit flow`.
+    - El backlog quedo ordenado como backend core, migracion legacy, limpieza y despues event-driven AWS.
+    - Commit remoto `ca8800c` en `origin/master`: `feat(billing): add fiscal audit flow`.
     - `git diff --check`: sin errores de whitespace; solo warnings LF/CRLF propios del entorno Windows.
 
 - [x] TASK-047: Implementar terceros fiscales con DV NIT automatico
@@ -1577,7 +1604,7 @@
     - Agregado modelo objetivo `ThirdParty` con `PersonType`, roles `CUSTOMER`/`SUPPLIER` y DV automatico para NIT.
     - Agregada migracion Flyway `V002__create_third_party_fiscal_model.sql` con tablas `thirdparty.third_party` y `thirdparty.third_party_role`.
     - Agregados endpoints `/api/v1/third-parties`, `/api/v1/customers` y `/api/v1/suppliers` con `X-Company-Id`.
-    - Las rutas legacy `/api/clientes` y `/api/proveedores` se mantienen intactas para compatibilidad temporal.
+    - Las rutas legacy `/api/clientes` y `/api/proveedores` quedaron reemplazadas por `/api/v1`; fueron retiradas despues en TASK-059 lote 2.
     - Agregadas pruebas de dominio, caso de uso y controlador para DV, roles, aislamiento por empresa y contratos API v1.
     - `.\mvnw.cmd -pl services/thirdparty-service clean test`: BUILD SUCCESS, 41 tests, 0 failures, 0 errors, 0 skipped.
     - `.\mvnw.cmd -pl services/thirdparty-service test`: BUILD SUCCESS, 41 tests, 0 failures, 0 errors, 0 skipped.
@@ -1670,7 +1697,7 @@
     - Persistence tests.
     - E2E parcial de consumo manual.
   - Resultado local: `inventory-service` acepta movimientos manuales `CONSUMPTION_OUT` y `WASTE_OUT`, exige `reason`, soporta origen `MANUAL_SUPPLY_CONSUMPTION` y `MANUAL_SUPPLY_WASTE`, persiste el motivo y muestra el movimiento en kardex/respuestas REST.
-  - Nota de arquitectura: no se conecto `audit-service` de forma directa para evitar dependencia sincronica entre microservicios; la auditoria cross-service queda para el flujo desacoplado con eventos/NATS.
+  - Nota de arquitectura: no se conecto `audit-service` de forma directa para evitar dependencia sincronica entre microservicios; la auditoria cross-service queda para el flujo desacoplado con eventos con Outbox/Inbox y consumidores desacoplados.
   - Verificacion: `.\mvnw.cmd -pl services/inventory-service test`: BUILD SUCCESS, 35 tests, 0 failures, 0 errors, 0 skipped.
 
 - [x] TASK-051: Implementar compras, gastos y cuentas por pagar
@@ -1701,13 +1728,13 @@
     - La confirmacion de compra sigue incrementando stock y ejecuta contabilizacion/CxP best-effort contra `accounting-service` si `ACCOUNTING_SERVICE_URL` esta configurado.
     - `accounting-service` implementa gastos, confirmacion de gastos, creacion/listado de cuentas por pagar y pagos parciales/totales.
     - Los pagos actualizan saldo y estado de CxP (`OPEN`, `PARTIALLY_PAID`, `PAID`) y generan asiento contable por regla PUC.
-  - Nota de arquitectura: la integracion compra -> contabilidad no impide confirmar compras si `accounting-service` falla; NATS/outbox reemplazara esta llamada best-effort en la tarea correspondiente.
+  - Nota de arquitectura: la integracion compra -> contabilidad no impide confirmar compras si `accounting-service` falla; Outbox/Inbox con EventBridge/SQS y Lambdas reemplazara esta llamada best-effort en la tarea correspondiente.
   - Verificacion:
     - `.\mvnw.cmd -pl services/accounting-service test`: BUILD SUCCESS, 33 tests, 0 failures, 0 errors, 0 skipped.
     - `.\mvnw.cmd -pl services/inventory-service test`: BUILD SUCCESS, 35 tests, 0 failures, 0 errors, 0 skipped.
 
-- [ ] TASK-052: Completar documentos fiscales y consultas fiscales
-  - Estado: PENDING
+- [x] TASK-052: Completar documentos fiscales y consultas fiscales
+  - Estado: DONE
   - Requisitos: RF-003, RF-004, RF-005, RF-006, RF-007, RF-012, RF-024.
   - Acceptance criteria: AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-046.
   - Descripcion: Completar factura electronica, POS electronico, notas credito/debito, notas de ajuste POS, consultas por estado/documento/tercero y artefactos fiscales con proveedor mock.
@@ -1728,8 +1755,16 @@
     - Persistence tests.
     - E2E completo.
 
-- [ ] TASK-053: Completar contabilidad parametrizable PUC
-  - Estado: PENDING
+  - Resultado local TASK-052:
+    - `billing-service` agrega consultas de ventas/documentos fiscales, artefactos mock, eventos fiscales mock y notas credito/debito/ajuste POS persistidas en `billing.fiscal_note`.
+    - `billing-service` corrige el envio hacia `dian-provider-service` para usar endpoint de factura electronica cuando el documento es `ELECTRONIC_INVOICE`.
+    - `dian-provider-service` agrega endpoints mock para `credit-notes`, `debit-notes` y `pos-adjustment-notes`.
+    - `billing-service` registra `ManageFiscalNoteUseCase` como bean de Spring para exponer los endpoints de notas fiscales sin romper carga de contexto.
+  - Verificacion:
+    - `.\mvnw.cmd -pl services/billing-service,services/dian-provider-service test`: BUILD SUCCESS.
+    - `.\mvnw.cmd test` con `DB_URL=jdbc:postgresql://localhost:15432/facturaelectronica`: BUILD SUCCESS, 522 tests, 0 failures, 0 errors, 0 skipped.
+- [x] TASK-053: Completar contabilidad parametrizable PUC
+  - Estado: DONE
   - Requisitos: RF-009, RF-023, RN-025.
   - Acceptance criteria: AC-014, AC-015, AC-016, AC-043, AC-044, AC-045.
   - Descripcion: Completar reglas contables para ventas, compras, gastos, IVA generado, IVA descontable, inventario, proveedores, caja, bancos y cuentas por cobrar/pagar.
@@ -1747,19 +1782,36 @@
     - Unit tests de reglas.
     - Controller tests.
     - Persistence tests.
+  - Resultado local TASK-053:
+    - `accounting-service` lista cuentas PUC por empresa con filtro `active`.
+    - `accounting-service` lista reglas contables por empresa, evento y estado activo/inactivo.
+    - `accounting-service` permite reemplazar la regla activa de un evento, dejando la regla anterior inactiva para conservar historial.
+    - `accounting-service` permite desactivar explicitamente la regla activa de un evento.
+    - `accounting-service` expone `POST /api/v1/accounting-setup/basic` para crear/reactivar una plantilla contable minima editable por empresa.
+    - La plantilla base crea las cuentas `1105`, `1110`, `1305`, `1435`, `2205`, `2408`, `4135` y `5135`, y reemplaza reglas activas para venta, compra, gasto y pago de cuenta por pagar.
+    - No se carga aun un PUC oficial completo como semilla; el modelo sigue parametrizable por empresa.
+  - Verificacion:
+    - `.\mvnw.cmd -pl services/accounting-service test`: BUILD SUCCESS, 41 tests, 0 failures, 0 errors, 0 skipped.
+    - `.\mvnw.cmd test` cargando `.env` y `DB_URL=jdbc:postgresql://localhost:15432/facturaelectronica`: BUILD SUCCESS, 780 tests, 0 failures, 0 errors, 0 skipped.
 
-- [ ] TASK-054: Implementar reportes minimos operativos, fiscales y contables
-  - Estado: PENDING
+- [x] TASK-054: Implementar reportes minimos operativos, fiscales y contables
+  - Estado: DONE
   - Requisitos: RF-025, RNF-016, RN-028.
   - Acceptance criteria: AC-047, AC-015, AC-016.
   - Descripcion: Exponer reportes minimos por empresa para ventas, documentos electronicos, inventario/kardex, compras/gastos, cuentas por pagar/cobrar y contabilidad.
+  - Decision de implementacion:
+    - Los reportes minimos se exponen inicialmente en los servicios duenos del dato.
+    - `reporting-service` queda diferido hasta implementar Outbox/Inbox, eventos AWS y proyecciones.
   - Dependencias:
     - TASK-049.
     - TASK-051.
     - TASK-053.
   - Archivos propuestos:
-    - `services/reporting-service/**` si se extrae fisicamente.
-    - O endpoints de consulta iniciales en servicios duenos de datos si se difiere `reporting-service`.
+    - `services/billing-service/**`
+    - `services/inventory-service/**`
+    - `services/accounting-service/**`
+    - `specs/api-contract.md`
+    - `specs/design.md`
   - Completion criteria:
     - Cada reporte filtra por `company_id`.
     - Los datos provienen del modelo nuevo, no de tablas legacy.
@@ -1768,9 +1820,53 @@
     - Controller tests.
     - Query/persistence tests.
     - E2E de reportes basicos.
+  - Resultado local TASK-054:
+    - `billing-service` expone reportes de ventas y documentos electronicos en `/api/v1/reports/sales` y `/api/v1/reports/electronic-documents`.
+    - `inventory-service` expone reportes de inventario disponible, kardex y compras en `/api/v1/reports/inventory-stock`, `/api/v1/reports/kardex` y `/api/v1/reports/purchases`.
+    - `accounting-service` expone gastos, cuentas por pagar, cuentas por cobrar, libro diario, libro mayor y balance simple en endpoints de reporte existentes y nuevos.
+    - `accounting-service` expone `/api/v1/reports/accounts-receivable` usando el modelo nuevo de cartera por cobrar de TASK-055.
+  - Verificacion:
+    - `.\mvnw.cmd -pl services/inventory-service,services/billing-service,services/accounting-service test`: BUILD SUCCESS, 127 tests, 0 failures, 0 errors, 0 skipped.
+    - `.\mvnw.cmd test` cargando `.env` y `DB_URL=jdbc:postgresql://localhost:15432/facturaelectronica`: BUILD SUCCESS, 796 tests, 0 failures, 0 errors, 0 skipped.
 
-- [ ] TASK-055: Implementar usuarios, roles, permisos y auditoria de acceso
-  - Estado: PENDING
+- [x] TASK-055: Implementar cuentas por cobrar y recaudos
+  - Estado: DONE
+  - Requisitos: RF-025, RF-028, RN-026, RN-028, RN-031.
+  - Acceptance criteria: AC-047, AC-052, AC-053, AC-014, AC-015.
+  - Descripcion: Crear el modelo transaccional de cuentas por cobrar por empresa y cliente, registrar cartera desde ventas/documentos a credito o saldos iniciales aprobados, permitir pagos parciales/totales y exponer reporte de cartera.
+  - Dependencias:
+    - TASK-052.
+    - TASK-053.
+  - Relacionada:
+    - TASK-054 se cierra cuando este reporte quede implementado.
+  - Archivos propuestos:
+    - `services/accounting-service/**`
+    - migraciones Flyway para `accounting_accounts_receivable` y `accounting_accounts_receivable_payment`.
+    - `specs/api-contract.md`
+    - `specs/data-model.md`
+    - `specs/use-cases.md`
+  - Completion criteria:
+    - Cada cuenta por cobrar filtra y persiste `company_id`.
+    - Se puede crear CxC desde documento origen aprobado o saldo inicial controlado.
+    - Se pueden consultar CxC por empresa, cliente, estado y periodo.
+    - Pagos parciales/totales reducen saldo, actualizan estado y rechazan sobrepagos.
+    - El reporte `/api/v1/reports/accounts-receivable` usa el modelo nuevo, no tablas legacy ni inferencias desde `1305`.
+  - Tests requeridos:
+    - Unit tests de dominio/casos de uso.
+    - Controller tests.
+    - Persistence tests.
+    - Prueba de reporte de cuentas por cobrar.
+  - Resultado local TASK-055:
+    - `accounting-service` agrega dominio, DTOs, puertos, caso de uso, adaptadores JPA y migracion `V003__create_accounts_receivable.sql` para cartera por cobrar.
+    - Se exponen `POST /api/v1/accounts-receivable`, `GET /api/v1/accounts-receivable`, `POST /api/v1/accounts-receivable/{receivableId}/payments` y `GET /api/v1/reports/accounts-receivable`.
+    - Los recaudos parciales/totales disminuyen saldo, actualizan estado y rechazan sobrepagos.
+    - La plantilla contable basica agrega regla `ACCOUNTS_RECEIVABLE_PAYMENT_REGISTERED` para debitar caja y acreditar clientes `1305`.
+  - Verificacion:
+    - `.\mvnw.cmd -pl services/accounting-service test`: BUILD SUCCESS, 48 tests, 0 failures, 0 errors, 0 skipped.
+    - `.\mvnw.cmd test` cargando `.env` y `DB_URL=jdbc:postgresql://localhost:15432/facturaelectronica`: BUILD SUCCESS, 796 tests, 0 failures, 0 errors, 0 skipped.
+
+- [x] TASK-056: Implementar usuarios, roles, permisos y auditoria de acceso
+  - Estado: DONE
   - Requisitos: RF-026, RNF-017.
   - Acceptance criteria: AC-048, AC-018, AC-032.
   - Descripcion: Implementar `identity-service` para autenticacion, usuarios, membresias por empresa, roles, permisos y auditoria de acceso.
@@ -1782,34 +1878,48 @@
     - `docker-compose.yml` solo cuando se apruebe la implementacion.
   - Completion criteria:
     - Login emite token o mecanismo aprobado.
-    - Permisos se evalúan por empresa.
+    - Permisos se evaluan por empresa.
     - Accesos y acciones protegidas quedan auditadas.
   - Tests requeridos:
     - Unit tests de permisos.
     - Controller tests.
     - Security tests.
+  - Resultado local TASK-056:
+    - Se crea `identity-service` como modulo Maven independiente con Clean Architecture.
+    - Se implementa login con token opaco Bearer, token persistido como hash SHA-256 y expiracion configurable.
+    - Se implementa hash de passwords con PBKDF2.
+    - Se implementan usuarios, membresias por empresa, roles, permisos derivados y auditoria interna de accesos.
+    - Se crea migracion `V001__create_identity_schema.sql` con `identity.user_account`, `identity.company_membership`, `identity.company_membership_role`, `identity.user_session` e `identity.identity_access_audit`.
+  - Verificacion:
+    - `.\mvnw.cmd -pl services/identity-service test`: BUILD SUCCESS, 12 tests, 0 failures, 0 errors, 0 skipped.
+    - `.\mvnw.cmd clean test` cargando `.env` y `DB_URL=jdbc:postgresql://localhost:15432/facturaelectronica`: BUILD SUCCESS, 558 tests, 0 failures, 0 errors, 0 skipped.
 
-- [ ] TASK-056: Implementar licenciamiento por empresa
-  - Estado: PENDING
+- [x] TASK-057: Implementar licenciamiento por empresa
+  - Estado: DONE
   - Requisitos: RF-027, RNF-017, RN-027.
   - Acceptance criteria: AC-049.
   - Descripcion: Agregar estado de licencia por empresa para habilitar, suspender o limitar operaciones segun plan contratado.
   - Dependencias:
-    - TASK-055.
-  - Archivos propuestos:
+    - TASK-056.
+  - Archivos modificados:
     - `services/tenant-service/**`
-    - contratos de validacion de licencia consumidos por servicios de negocio.
+    - `specs/api-contract.md`
+    - `specs/data-model.md`
+    - `specs/design.md`
+    - `specs/use-cases.md`
+    - `specs/tasks.md`
   - Completion criteria:
     - Licencia activa permite operar.
-    - Licencia suspendida o vencida bloquea nuevas transacciones y emision fiscal con error estructurado.
+    - Licencia suspendida o vencida bloquea nuevas transacciones y emision fiscal con respuesta estructurada `allowed=false`, `reasonCode` y `message`.
     - Consultas y exportaciones permitidas quedan documentadas.
   - Tests requeridos:
     - Unit tests.
     - Controller tests.
-    - E2E de bloqueo por licencia.
-
-- [ ] TASK-057: Migrar legacy pendiente al modelo Clean Architecture completo
-  - Estado: PENDING
+    - Validacion de migracion Flyway en PostgreSQL local.
+  - Verificacion:
+    - `.\mvnw.cmd -pl services/tenant-service test` cargando `.env` y `DB_URL=jdbc:postgresql://localhost:15432/facturaelectronica`: BUILD SUCCESS, 28 tests, 0 failures, 0 errors, 0 skipped.
+- [x] TASK-058: Migrar legacy pendiente al modelo Clean Architecture completo
+  - Estado: DONE
   - Requisitos: RF-015, RN-015, RN-029.
   - Acceptance criteria: AC-025, AC-026, AC-027, AC-028, AC-029, AC-050, AC-051.
   - Descripcion: Migrar funcionalmente todo codigo legacy pendiente al modelo Clean Architecture y microservicios activos antes de eliminar componentes antiguos.
@@ -1824,6 +1934,7 @@
     - TASK-054.
     - TASK-055.
     - TASK-056.
+    - TASK-057.
   - Alcance:
     - Clientes/proveedores legacy hacia tercero fiscal.
     - Producto/categoria legacy hacia items de inventario/catalogo.
@@ -1838,14 +1949,18 @@
     - `.\mvnw.cmd test`.
     - E2E completo desde cero.
     - Consultas SQL read-only de tablas activas.
+  - Evidencia de cierre:
+    - `scripts/e2e-from-zero.ps1` paso completo con empresa, licencia, usuario, tercero fiscal, inventario, POS electronico, mock DIAN, contabilidad, auditoria y aislamiento multiempresa.
+    - `.\mvnw.cmd test` paso en el reactor completo.
+    - `docker compose config --quiet` paso.
 
-- [ ] TASK-058: Depurar y eliminar codigo muerto, endpoints y tablas legacy
-  - Estado: PENDING
+- [x] TASK-059: Depurar y eliminar codigo muerto, endpoints y tablas legacy
+  - Estado: DONE
   - Requisitos: RF-015, RNF-018, RN-015, RN-028, RN-029.
   - Acceptance criteria: AC-036, AC-050, AC-051.
   - Descripcion: Eliminar solo componentes legacy demostrados como reemplazados, no usados y cubiertos por pruebas.
   - Dependencias:
-    - TASK-057.
+    - TASK-058.
   - Alcance:
     - Eliminar clases, DTOs, mappers, repositorios, servicios y controladores legacy sin referencias.
     - Eliminar o archivar migraciones/tablas legacy solo con plan de datos aprobado.
@@ -1855,53 +1970,197 @@
     - Compilacion y suite completa pasan.
     - E2E completo pasa.
     - La matriz de limpieza documenta cada eliminacion.
+  - Avance:
+    - TASK-059 lote 1 elimina `services/legacy-monolith` y el perfil Maven `legacy-monolith`.
+    - No elimina tablas ni datos `public.*`; la auditoria read-only encontro filas historicas en catalogo, terceros, billing y contabilidad legacy.
+    - README, guia Docker local, inventario legacy y design documentados para indicar que el codigo legacy fue removido y los datos quedan preservados.
+    - En TASK-059 lote 1 Context7 no estuvo disponible; no se introdujo decision nueva de framework o libreria en ese lote.
+    - TASK-059 lote 2 usa Context7 para validar riesgos de Spring Boot component/entity/repository scanning y Flyway validation antes de limpiar terceros legacy.
+    - TASK-059 lote 2 elimina codigo runtime legacy de terceros: `/api/clientes`, `/api/proveedores`, modelo `Customer`/`Supplier`, puertos, casos de uso, adaptadores, repositorios, mappers, cliente REST de tipo documento y WebFlux del modulo.
+    - TASK-059 lote 2 conserva migraciones Flyway y tablas `thirdparty.cliente`/`thirdparty.proveedor` para migracion/respaldo aprobado; el runtime canonico queda en `/api/v1/third-parties`, `/api/v1/customers` y `/api/v1/suppliers`.
   - Tests requeridos:
     - `.\mvnw.cmd test`.
     - E2E completo desde cero.
     - `docker compose config`.
 
-- [ ] TASK-059: Definir e implementar mensajeria asincrona con NATS JetStream y Outbox/Inbox
-  - Estado: PENDING
-  - Requisitos: RF-008, RF-009, RF-011, RF-014, RNF-010, RNF-014, RN-008, RN-014, RN-030.
-  - Acceptance criteria: AC-010, AC-013, AC-014, AC-018, AC-021, AC-022, AC-024, AC-031, AC-033, AC-035.
-  - Descripcion: Migrar los efectos posteriores y eventos transversales del flujo fiscal desde llamadas sincronas directas hacia eventos durables con NATS JetStream, usando Outbox/Inbox e idempotencia por empresa para desacoplar microservicios sin perder trazabilidad.
+  - Verificacion TASK-059 lote 1:
+    - `.\mvnw.cmd test` ejecutado con PostgreSQL local en Docker y `SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=2`: BUILD SUCCESS.
+    - `docker compose config --quiet`: exitoso.
+    - `scripts/e2e-from-zero.ps1 -StartContainers`: exitoso; valida empresa, licencia, usuario, tercero, configuracion fiscal, contabilidad, inventario, venta POS, factura electronica mock DIAN, auditoria y aislamiento multiempresa.
+    - Se detecto un contenedor huerfano `facturaelectronica-app`; no se elimina en esta tarea porque requiere confirmacion separada.
+    - Se preservan tablas legacy `public.*` con datos historicos hasta definir plan aprobado de migracion, respaldo o eliminacion.
+  - Verificacion TASK-059 lote 2:
+    - `.\mvnw.cmd -q -pl services/thirdparty-service clean test` ejecutado con PostgreSQL local en Docker: BUILD SUCCESS; 13 tests, 0 fallos.
+    - `.\mvnw.cmd -q test` ejecutado con PostgreSQL local en Docker y pools Hikari reducidos: BUILD SUCCESS; 298 tests, 0 fallos, 0 errores, 0 omitidos.
+    - `docker compose config --quiet`: exitoso.
+    - `scripts/e2e-from-zero.ps1 -StartContainers`: exitoso; valida empresa, licencia, usuario, terceros v1, configuracion fiscal, contabilidad PUC basica, inventario, venta POS, factura electronica mock DIAN, auditoria y aislamiento multiempresa.
+    - `docker compose ps`: todos los contenedores requeridos quedaron `Up` y `healthy`.
+    - Se conservan migraciones Flyway y tablas `thirdparty.cliente`/`thirdparty.proveedor`; no hubo eliminacion de datos ni cambios destructivos de DB en este lote.
+- [x] TASK-060: Definir arquitectura cloud AWS, BFF y clasificacion ECS Fargate/Lambda
+  - Estado: DONE
+  - Requisitos: RNF-010, RNF-011, RNF-014, RNF-019, RNF-020, RNF-021, RN-030, RN-032, RN-033.
+  - Acceptance criteria: AC-054, AC-055, AC-056, AC-057, AC-058.
+  - Descripcion: Alinear SDD con el target cloud 100% AWS: frontend en CloudFront/S3, entrada publica por API Gateway/BFF, microservicios Spring Boot en ECS Fargate y procesos event-driven en Lambdas con EventBridge/SQS.
   - Dependencias:
-    - TASK-058.
+    - TASK-059.
+  - Alcance ejecutado:
+    - Revisar el repositorio y confirmar que no hay IaC AWS productiva existente.
+    - Confirmar que Docker Compose local no contiene contenedores legacy activos.
+    - Documentar BFF como frontera publica del frontend.
+    - Clasificar microservicios HTTP de larga vida para ECS Fargate.
+    - Clasificar procesos event-driven cortos e idempotentes para Lambda.
+    - Eliminar brokers self-hosted como opcion de arquitectura y fijar EventBridge/SQS + Lambda como unica mensajeria productiva.
+    - Actualizar requirements, design, architecture, api-contract, acceptance criteria y diagrama de arquitectura.
+  - Evidencia Context7:
+    - AWS docs via Context7 `/websites/aws_amazon`: Lambda esta orientado a computo event-driven; Fargate se alinea con servicios/containers de larga vida.
+    - AWS docs via Context7 `/websites/aws_amazon`: CloudFront delante de S3 permite servir frontend estatico con HTTPS y origen privado.
+  - Verificacion:
+    - `docker compose config --services` revisado: solo servicios activos de microservicios y PostgreSQL local.
+    - No se encontraron archivos IaC productivos AWS en el repo al momento de la definicion.
+
+- [x] TASK-061: Implementar IaC AWS inicial para frontend, BFF, ECS Fargate, RDS y servicios base
+  - Estado: DONE
+  - Requisitos: RNF-006, RNF-007, RNF-011, RNF-019, RNF-020, RNF-021.
+  - Acceptance criteria: AC-054, AC-055, AC-057.
+  - Descripcion: Crear la infraestructura como codigo productiva para el target AWS aprobado, sin incluir artefactos legacy.
+  - Dependencias:
+    - TASK-060.
+  - Alcance:
+    - Usar Terraform como herramienta IaC oficial, documentada en ADR-002.
+    - Crear VPC, subnets privadas/publicas, security groups, logs y parametros base.
+    - Crear S3 + CloudFront para frontend SPA.
+    - Crear API Gateway y conectividad privada hacia BFF.
+    - Crear ECS Fargate cluster, servicios y task definitions para BFF y microservicios activos.
+    - Crear RDS/Aurora PostgreSQL, secretos y parametros seguros.
+    - Crear ECR por artefacto desplegable.
+    - Excluir cualquier contenedor, modulo o ruta legacy eliminada.
+  - Completion criteria:
+    - IaC valida sintacticamente.
+    - Plan IaC no contiene servicios legacy.
+    - README documenta despliegue cloud y variables requeridas.
+  - Tests requeridos:
+    - Validacion/lint de IaC.
+    - Revision de plan sin aplicar cambios productivos.
+  - Avance:
+    - Creada estructura Terraform modular en `infra/aws` con ambiente `envs/dev`.
+    - Modulos creados: `network`, `database`, `ecs`, `api`, `frontend`, `messaging` y `secrets`.
+    - `ecs` crea ECR por servicio, ECS Fargate, CloudWatch Logs, Cloud Map privado, ALB interno para BFF y servicios con `desired_count = 0` inicial.
+    - `messaging` crea EventBridge bus, SQS queues, DLQ, reglas y policies para eventos iniciales.
+    - `frontend` crea S3 privado + CloudFront con OAC.
+    - `database` crea RDS PostgreSQL privado con password gestionado por AWS Secrets Manager.
+    - Creado `specs/infrastructure.md` y actualizado README.
+  - Verificacion parcial:
+    - `terraform version`: Terraform v1.15.8 en Windows amd64.
+    - `terraform fmt -recursive -check infra/aws`: exitoso.
+    - `terraform init -backend=false`: exitoso; provider `hashicorp/aws` v6.55.0 instalado y `.terraform.lock.hcl` generado para versionar.
+    - `terraform validate`: exitoso sin warnings despues de corregir argumentos deprecados.
+    - `terraform plan -refresh=false -out dev.tfplan`: exitoso; `Plan: 118 to add, 0 to change, 0 to destroy`.
+    - Revision del plan con `terraform show -no-color dev.tfplan | rg "legacy|monolith|facturaelectronica-app|NATS|JetStream|on-premise"`: sin hallazgos.
+    - `docker compose config --quiet`: exitoso.
+    - `git diff --check -- README.md specs/tasks.md specs/infrastructure.md infra/aws`: sin errores; solo warning LF/CRLF en README por entorno Windows.
+    - Busqueda de secretos en `infra/aws` y `specs/infrastructure.md`: sin hallazgos.
+    - Revision simple de balance de llaves en archivos `.tf`: sin diferencias detectadas.
+
+- [ ] TASK-062: Implementar event-driven AWS con Outbox/Inbox, EventBridge/SQS y Lambdas
+  - Estado: IN_PROGRESS
+  - Requisitos: RF-008, RF-009, RF-011, RF-014, RNF-010, RNF-014, RN-008, RN-014, RN-030, RN-032, RN-033.
+  - Acceptance criteria: AC-010, AC-013, AC-014, AC-018, AC-021, AC-022, AC-024, AC-031, AC-033, AC-035, AC-056, AC-058.
+  - Descripcion: Migrar efectos posteriores y eventos transversales desde llamadas best-effort hacia eventos durables con Outbox/Inbox, EventBridge/SQS y consumidores Lambda idempotentes.
+  - Dependencias:
+    - TASK-060.
+    - TASK-061.
   - Alcance:
     - Definir contratos de eventos `SaleConfirmed`, `ElectronicDocumentValidated`, `InventoryMovementRegistered`, `AccountingEntryPosted` y `AuditEventRequested`.
-    - Crear infraestructura local NATS JetStream en Docker Compose solo cuando esta tarea sea aprobada para implementacion.
-    - Implementar Outbox en productores iniciales y Inbox en consumidores iniciales.
-    - Hacer consumidores idempotentes por `companyId`, `eventId`, `sourceType` y `sourceId`.
-    - Configurar reintentos controlados y DLQ para eventos no procesables.
-    - Mantener `X-Correlation-Id` o `correlationId` en eventos para trazabilidad.
-    - Actualizar E2E para validar que inventario, contabilidad y auditoria se materializan por eventos.
-  - Fuera de alcance:
-    - Implementar autenticacion/login.
-    - Integrar proveedor DIAN real.
-    - Reemplazar todos los endpoints REST de negocio.
-    - Introducir programacion reactiva sin una necesidad tecnica especifica.
-  - Archivos propuestos:
-    - `specs/api-contract.md`
-    - `specs/design.md`
-    - `specs/infrastructure.md`
-    - `docker-compose.yml`
-    - `.env.example`
-    - `services/*/src/main/java/**/infrastructure/messaging/**`
-    - migraciones Flyway de outbox/inbox por servicio productor/consumidor.
-    - `scripts/e2e-from-zero.ps1`
-    - `README.md`
+    - Implementar Outbox en productores iniciales: `billing-service`, `inventory-service`, `accounting-service`.
+    - Implementar Inbox/idempotencia en consumidores que materialicen efectos.
+    - Implementar Lambdas iniciales: auditoria, efecto de inventario, efecto contable, proyecciones de reportes y reintentos de proveedor.
+    - Configurar reintentos controlados y DLQ.
+    - Mantener `correlationId`, `companyId` e `idempotencyKey` en eventos.
+    - Mantener pruebas automatizadas con test doubles; no introducir brokers self-hosted.
   - Completion criteria:
-    - NATS JetStream esta documentado y configurado localmente sin secretos.
-    - Cada productor persistente publica eventos desde Outbox despues de confirmar la transaccion local.
-    - Cada consumidor registra Inbox y evita reprocesar eventos duplicados.
-    - La caida temporal de un consumidor no impide que otros servicios sigan operando.
-    - La prueba E2E demuestra el flujo fiscal completo con efectos asincronos.
+    - Cada productor persistente publica eventos desde Outbox despues de confirmar su transaccion local.
+    - Cada consumidor registra Inbox o estado equivalente y evita reprocesar eventos duplicados.
+    - Caida temporal de consumidor/cola no revierte venta/factura ya persistida y permite reintento posterior.
+    - E2E demuestra que venta POS/factura, inventario, contabilidad, reportes y auditoria se completan via eventos.
   - Tests requeridos:
     - Unit tests de productores Outbox.
     - Unit tests de consumidores Inbox e idempotencia.
-    - Tests de adaptadores de mensajeria con test doubles o contenedor local cuando aplique.
-    - `.\mvnw.cmd test`.
-    - `docker compose config`.
+    - Integration tests de publicacion/consumo local con test doubles o contenedores aprobados.
+    - `./mvnw test` o `./mvnw.cmd test` segun entorno.
     - Prueba E2E Docker desde cero.
-  - Nota de prioridad:
-    - Esta tarea no debe ejecutarse antes de afinar toda la logica de negocio core y demostrar que backend, casos de uso, endpoints y persistencia funcionan correctamente sin broker.
+  - Avance:
+    - Lote 1 implementado parcialmente: contratos de eventos canonicos y persistencia Outbox/Inbox local por servicio productor.
+    - Context7 consultado para Terraform AWS Provider sobre EventBridge, SQS, DLQ y Lambda event source mappings.
+    - Creado modulo `services/platform-eventing` con `DomainEventEnvelope`, `EventTypes` y `DomainEventPublisherPort`.
+    - Agregadas migraciones Outbox/Inbox en `billing-service`, `inventory-service` y `accounting-service`.
+    - Conectados productores iniciales: `SaleManagementService`, `RegisterInventoryMovementService` y `GenerateAccountingEntryService`.
+    - Ajustado escaneo JPA de los tres servicios para incluir entidades/repositorios de `infrastructure.messaging`.
+    - Pruebas agregadas para publicacion de `SaleConfirmed`/`ElectronicDocumentValidated`/`AuditEventRequested`, `InventoryMovementRegistered` y `AccountingEntryPosted`.
+    - Validacion parcial: `./mvnw.cmd -pl services/platform-eventing,services/billing-service,services/inventory-service,services/accounting-service -am test` exitoso: reactor `platform-eventing`, `inventory-service`, `billing-service` y `accounting-service` en `BUILD SUCCESS`.
+    - Suite completa: `./mvnw.cmd test` exitoso cargando `.env` y forzando URLs JDBC locales `localhost:15432`: 301 tests, 0 fallos, 0 errores, 0 omitidos.
+    - Nota operativa: `./mvnw.cmd test` sin variables falla en `tenant-service` por `DB_URL` no resuelto; cargando `.env` pero usando host Docker `postgres` desde Windows falla por conectividad. Para Maven local se debe usar `localhost:15432`.
+    - Lote 2 implementado parcialmente: dispatcher Outbox condicional hacia EventBridge para `billing-service`, `inventory-service` y `accounting-service`.
+    - Agregado BOM AWS SDK 2.29.6 y adapter `AwsEventBridgeOutboxEventDeliveryAdapter` en `platform-eventing`.
+    - Agregados repositorios de dispatch, configuracion EventBridge condicional y scheduler por servicio productor.
+    - `EVENTING_EVENTBRIDGE_ENABLED=false` mantiene local/Docker sin dependencia de credenciales AWS; al activarlo, el dispatcher publica con `source=producer`, `detailType=eventType` y envelope JSON en `detail`.
+    - Validacion parcial lote 2: `./mvnw.cmd -pl services/platform-eventing,services/billing-service,services/inventory-service,services/accounting-service -am test` exitoso con PostgreSQL local `localhost:15432`: reactor en `BUILD SUCCESS`.
+    - Suite completa lote 2: `./mvnw.cmd test` exitoso cargando `.env` y forzando URLs JDBC locales `localhost:15432`: 304 tests, 0 fallos, 0 errores, 0 omitidos.
+    - Lote 3 parcial implementado: consumidor `audit-event-writer-lambda` para `AuditEventRequested` desde SQS.
+    - Agregada migracion `audit-service` `V002__create_audit_inbox_event.sql` con Inbox idempotente `audit_inbox_event`.
+    - La Lambda parsea envelopes EventBridge/SQS, registra auditoria en `audit_event`, evita duplicados por `(event_id, consumer_name)` y responde `SQSBatchResponse` con fallos parciales.
+    - La Lambda obtiene password de RDS desde Secrets Manager por `AUDIT_DB_PASSWORD_SECRET_ARN`; Terraform no inyecta secretos en texto plano.
+    - Agregado modulo Terraform `event_consumers` y conexion `audit-events` -> Lambda con `ReportBatchItemFailures`, IAM minimo, VPC privada y CloudWatch Logs.
+    - El despliegue de la Lambda queda deshabilitado si `lambda_artifact_bucket` esta vacio; se habilita cuando CI publique el jar sombreado en S3.
+    - Validacion lote 3 parcial: `./mvnw.cmd -pl services/audit-event-writer-lambda -am test` exitoso: 4 tests, 0 fallos, 0 errores, 0 omitidos.
+    - Empaquetado Lambda: `./mvnw.cmd -pl services/audit-event-writer-lambda -am package -DskipTests` exitoso; jar sombreado generado para despliegue via S3.
+    - Validacion IaC lote 3 parcial: `terraform -chdir=infra/aws fmt -recursive`, `terraform -chdir=infra/aws/envs/dev init` y `terraform -chdir=infra/aws/envs/dev validate` exitosos.
+    - Suite completa lote 3 parcial: `./mvnw.cmd test` exitoso con PostgreSQL local `localhost:15432`: 308 tests, 0 fallos, 0 errores, 0 omitidos.
+    - Lote 3 ampliado: agregado consumidor `inventory-sale-effect-lambda` para materializar efectos de inventario desde `SaleConfirmed` recibido por SQS.
+    - `billing-service` ahora incluye `documentIdempotencyKey` y snapshot de lineas en el payload `SaleConfirmed`: producto, SKU, nombre, tipo de item, `stockTracked`, cantidad, precio, costo unitario, impuestos y totales.
+    - Agregada migracion `billing-service` `V007__add_sale_line_unit_cost.sql` para persistir `billing.sale_line.unit_cost` como snapshot de costo usado por el consumidor asincrono.
+    - La Lambda de inventario parsea envelopes EventBridge/SQS, ignora eventos no soportados, registra Inbox idempotente en `inventory.inbox_event`, descuenta solo lineas `stockTracked=true` con movimiento `SALE_OUT` y reutiliza la clave `documentIdempotencyKey + "-inventory-" + lineId` para no duplicar descuentos si el flujo sincronico ya los aplico.
+    - Terraform conecta la cola `inventory-effects` con `inventory-sale-effect-lambda`, usando `ReportBatchItemFailures`, IAM minimo, VPC privada y password de RDS desde Secrets Manager.
+    - Validacion lote 3 inventario: `./mvnw.cmd -pl services/billing-service,services/inventory-sale-effect-lambda -am test` exitoso: reactor en `BUILD SUCCESS`, 45 tests del alcance, 0 fallos, 0 errores, 0 omitidos.
+    - Empaquetado Lambda inventario: `./mvnw.cmd -pl services/inventory-sale-effect-lambda -am package -DskipTests` exitoso; jar sombreado generado para despliegue via S3.
+    - Validacion IaC lote 3 inventario: `terraform -chdir=infra/aws fmt -recursive` y `terraform -chdir=infra/aws/envs/dev validate` exitosos.
+    - Suite completa lote 3 inventario: `./mvnw.cmd test` exitoso con PostgreSQL local `localhost:15432`: 312 tests, 0 fallos, 0 errores, 0 omitidos.
+    - Lote 3 contabilidad: agregado consumidor `accounting-sale-entry-lambda` para generar asientos desde `SaleConfirmed` recibido por SQS.
+    - `SaleConfirmed` fue enriquecido con `customerId`, `subtotal` y `taxTotal`; `customerId` puede ser nulo para ventas POS sin tercero identificado.
+    - La Lambda contable parsea envelopes EventBridge/SQS, ignora eventos no soportados, registra Inbox idempotente en `accounting_inbox_event`, aplica la regla activa `SALE_CONFIRMED`/`SALE`, valida cuentas activas y crea `accounting_entry`/`accounting_entry_line` sin duplicar si el flujo sincronico ya contabilizo la venta.
+    - La Lambda contable registra `AccountingEntryPosted` en `accounting_outbox_event` cuando crea un asiento nuevo, preservando la cadena de eventos.
+    - Terraform conecta la cola `accounting-effects` con `accounting-sale-entry-lambda`, usando `ReportBatchItemFailures`, IAM minimo, VPC privada y password de RDS desde Secrets Manager.
+    - Validacion lote 3 contabilidad: `./mvnw.cmd -pl services/billing-service,services/accounting-sale-entry-lambda -am test` exitoso: reactor en `BUILD SUCCESS`, 45 tests del alcance, 0 fallos, 0 errores, 0 omitidos.
+    - Empaquetado Lambda contable: `./mvnw.cmd -pl services/accounting-sale-entry-lambda -am package -DskipTests` exitoso; jar sombreado generado para despliegue via S3.
+    - Validacion IaC lote 3 contabilidad: `terraform -chdir=infra/aws fmt -recursive` y `terraform -chdir=infra/aws/envs/dev validate` exitosos.
+    - Suite completa lote 3 contabilidad: `./mvnw.cmd test` exitoso con PostgreSQL local `localhost:15432`: 316 tests, 0 fallos, 0 errores, 0 omitidos.
+    - Lote 3 proveedor: agregado evento canonico `ProviderSubmissionFailed`, emitido por `billing-service` cuando el proveedor queda en `FAILED` tecnico.
+    - Agregado consumidor `provider-submission-retry-lambda` para cola `provider-retries`; reintenta contra `dian-provider-service`, actualiza `billing.electronic_document`, registra intentos con `provider_retry_attempts`/`provider_last_retry_at` y publica nuevamente `SaleConfirmed` + `ElectronicDocumentValidated` cuando el proveedor acepta.
+    - El retry no procesa rechazos `REJECTED`; esos quedan para correccion manual porque son rechazo fiscal/de negocio, no falla tecnica.
+    - Terraform conecta `provider-retries` con `provider-submission-retry-lambda`, usando `ReportBatchItemFailures`, IAM minimo, VPC privada, password de RDS desde Secrets Manager y activacion solo cuando existan bucket de artefacto y URL del provider.
+    - Validacion lote 3 proveedor: `./mvnw.cmd -pl services/billing-service,services/inventory-sale-effect-lambda,services/accounting-sale-entry-lambda,services/provider-submission-retry-lambda -am test` exitoso: reactor en `BUILD SUCCESS`, 55 tests del alcance, 0 fallos, 0 errores, 0 omitidos.
+    - Empaquetado Lambda proveedor: `./mvnw.cmd -pl services/provider-submission-retry-lambda -am package -DskipTests` exitoso; jar sombreado generado para despliegue via S3.
+    - Validacion IaC lote 3 proveedor: `terraform -chdir=infra/aws fmt -recursive` y `terraform -chdir=infra/aws/envs/dev validate` exitosos.
+    - Suite completa lote 3 proveedor: `./mvnw.cmd test` exitoso con PostgreSQL local `localhost:15432`: 322 tests, 0 fallos, 0 errores, 0 omitidos.
+    - Pendiente del siguiente lote: consumidor Lambda para reportes; prueba E2E Docker desde cero.
+
+- [ ] TASK-063: Disenar e implementar frontend SPA y BFF inicial
+  - Estado: PENDING
+  - Requisitos: RF-010, RF-013, RF-014, RF-016, RF-019, RF-023, RF-025, RF-026, RF-027, RNF-019, RNF-020.
+  - Acceptance criteria: AC-054, AC-055.
+  - Descripcion: Crear la primera experiencia funcional del producto consumiendo solo el BFF, con pantallas minimas para probar empresa, configuracion, terceros, inventario, venta POS, factura mock, contabilidad y reportes.
+  - Dependencias:
+    - TASK-060.
+  - Alcance:
+    - Definir stack frontend con investigacion Context7 antes de implementar.
+    - Crear `bff-service` como fachada publica versionada.
+    - Crear SPA con rutas de empresa, configuracion fiscal, terceros, inventario, ventas POS/facturas, compras/gastos, contabilidad y reportes.
+    - Propagar `X-Company-Id`, `X-Correlation-Id` e `Idempotency-Key` desde BFF hacia servicios internos.
+    - Preparar build estatico para CloudFront/S3 y ejecucion de desarrollo sin infraestructura productiva local.
+  - Completion criteria:
+    - El frontend no llama microservicios internos directamente.
+    - BFF expone contratos publicos documentados.
+    - Flujo desde cero puede ejecutarse desde UI contra Docker local.
+  - Tests requeridos:
+    - Unit/component tests frontend.
+    - Contract tests BFF.
+    - E2E UI minimo para crear empresa, inventario y venta POS mock.

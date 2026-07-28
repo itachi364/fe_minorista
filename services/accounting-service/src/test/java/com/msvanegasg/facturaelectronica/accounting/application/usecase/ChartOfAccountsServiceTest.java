@@ -3,7 +3,9 @@ package com.msvanegasg.facturaelectronica.accounting.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -78,6 +80,20 @@ class ChartOfAccountsServiceTest {
         assertThat(auxiliary.level()).isEqualTo(AccountLevel.AUXILIARY);
     }
 
+
+    @Test
+    void findListsAccountsByCompanyAndActiveFlag() {
+        InMemoryAccountRepository repository = new InMemoryAccountRepository();
+        ChartOfAccountsService service = service(repository);
+        service.create(new CreateAccountCommand(COMPANY_ID, "4135", "Ingresos", null));
+        repository.save(Account.restore(UUID.randomUUID(), COMPANY_ID, "1105", "Caja", null, false));
+
+        List<AccountResult> activeAccounts = service.find(COMPANY_ID, true);
+        List<AccountResult> allAccounts = service.find(COMPANY_ID, null);
+
+        assertThat(activeAccounts).extracting(AccountResult::code).containsExactly("4135");
+        assertThat(allAccounts).extracting(AccountResult::code).containsExactly("1105", "4135");
+    }
     @Test
     void createRejectsInvalidPucCode() {
         ChartOfAccountsService service = service(new InMemoryAccountRepository());
@@ -114,6 +130,15 @@ class ChartOfAccountsServiceTest {
             return Optional.ofNullable(accounts.get(key(companyId, code)));
         }
 
+
+        @Override
+        public List<Account> findByCompanyId(UUID companyId, Boolean active) {
+            return accounts.values().stream()
+                    .filter(account -> account.companyId().equals(companyId))
+                    .filter(account -> active == null || account.active() == active)
+                    .sorted(Comparator.comparing(Account::code))
+                    .toList();
+        }
         @Override
         public Account save(Account account) {
             accounts.put(key(account.companyId(), account.code()), account);

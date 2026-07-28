@@ -1,5 +1,7 @@
 package com.msvanegasg.facturaelectronica.inventory.infrastructure.persistence;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,6 +36,31 @@ public class InventoryMovementPersistenceAdapter implements InventoryMovementRep
     @Override
     public List<InventoryMovement> findKardex(UUID companyId, UUID productId) {
         return repository.findAllByCompanyIdAndProductIdOrderByMovementAtAsc(companyId, productId).stream()
+                .map(InventoryMovementPersistenceAdapter::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<InventoryMovement> findKardex(UUID companyId, UUID productId, LocalDate from, LocalDate to) {
+        if (from == null && to == null) {
+            return findKardex(companyId, productId);
+        }
+        var fromInstant = from == null ? null : from.atStartOfDay().toInstant(ZoneOffset.UTC);
+        var toInstant = to == null ? null : to.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+        List<InventoryMovementJpaEntity> movements;
+        if (fromInstant != null && toInstant != null) {
+            movements = repository
+                    .findAllByCompanyIdAndProductIdAndMovementAtGreaterThanEqualAndMovementAtLessThanOrderByMovementAtAsc(
+                            companyId, productId, fromInstant, toInstant);
+        } else if (fromInstant != null) {
+            movements = repository
+                    .findAllByCompanyIdAndProductIdAndMovementAtGreaterThanEqualOrderByMovementAtAsc(
+                            companyId, productId, fromInstant);
+        } else {
+            movements = repository.findAllByCompanyIdAndProductIdAndMovementAtLessThanOrderByMovementAtAsc(
+                    companyId, productId, toInstant);
+        }
+        return movements.stream()
                 .map(InventoryMovementPersistenceAdapter::toDomain)
                 .toList();
     }

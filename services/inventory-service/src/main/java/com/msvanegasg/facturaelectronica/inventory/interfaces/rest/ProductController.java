@@ -1,6 +1,7 @@
 package com.msvanegasg.facturaelectronica.inventory.interfaces.rest;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.msvanegasg.facturaelectronica.inventory.application.dto.InventoryMovementQuery;
 import com.msvanegasg.facturaelectronica.inventory.application.port.in.ManageProductUseCase;
 import com.msvanegasg.facturaelectronica.inventory.application.port.in.RegisterInventoryMovementUseCase;
 import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.InventoryMovementResponse;
@@ -60,7 +62,10 @@ public class ProductController {
 
     @GetMapping("/{productId}/kardex")
     public List<InventoryMovementResponse> kardex(@RequestHeader("X-Company-Id") UUID companyId,
-            @PathVariable UUID productId) {
-        return InventoryRestMapper.toMovementResponses(movementUseCase.kardex(companyId, productId));
+            @PathVariable UUID productId,
+            @RequestParam(required = false) LocalDate from,
+            @RequestParam(required = false) LocalDate to) {
+        return InventoryRestMapper.toMovementResponses(
+                movementUseCase.kardex(new InventoryMovementQuery(companyId, productId, from, to)));
     }
 }

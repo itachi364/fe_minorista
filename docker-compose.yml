@@ -43,6 +43,33 @@ services:
       postgres:
         condition: service_healthy
 
+
+  identity-service:
+    image: eclipse-temurin:17-jdk
+    container_name: facturaelectronica-identity-service
+    working_dir: /workspace
+    environment:
+      SERVER_PORT: ${IDENTITY_SERVICE_PORT:-8092}
+      IDENTITY_DB_URL: ${IDENTITY_DB_URL:-${DB_URL}}
+      IDENTITY_DB_USERNAME: ${IDENTITY_DB_USERNAME:-${DB_USERNAME}}
+      IDENTITY_DB_PASSWORD: ${IDENTITY_DB_PASSWORD:-${DB_PASSWORD}}
+      TENANT_SERVICE_URL: http://tenant-service:${TENANT_SERVICE_PORT:-8084}
+      JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
+    ports:
+      - "${IDENTITY_SERVICE_PORT:-8092}:${IDENTITY_SERVICE_PORT:-8092}"
+    volumes:
+      - .:/workspace
+      - maven_cache:/root/.m2
+    command: ["sh", "./mvnw", "-pl", "services/identity-service", "clean", "spring-boot:run"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${IDENTITY_SERVICE_PORT:-8092}/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
   catalog-service:
     image: eclipse-temurin:17-jdk
     container_name: facturaelectronica-catalog-service
@@ -78,7 +105,6 @@ services:
       THIRDPARTY_DB_URL: ${THIRDPARTY_DB_URL:-${DB_URL}}
       THIRDPARTY_DB_USERNAME: ${THIRDPARTY_DB_USERNAME:-${DB_USERNAME}}
       THIRDPARTY_DB_PASSWORD: ${THIRDPARTY_DB_PASSWORD:-${DB_PASSWORD}}
-      CATALOG_SERVICE_URL: http://catalog-service:${CATALOG_SERVICE_PORT:-8085}
       JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
     ports:
       - "${THIRDPARTY_SERVICE_PORT:-8086}:${THIRDPARTY_SERVICE_PORT:-8086}"
@@ -106,6 +132,13 @@ services:
       INVENTORY_DB_USERNAME: ${INVENTORY_DB_USERNAME:-${DB_USERNAME}}
       INVENTORY_DB_PASSWORD: ${INVENTORY_DB_PASSWORD:-${DB_PASSWORD}}
       JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
+      EVENTING_EVENTBRIDGE_ENABLED: ${EVENTING_EVENTBRIDGE_ENABLED:-false}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      EVENTING_EVENT_BUS_NAME: ${EVENTING_EVENT_BUS_NAME:-facturaelectronica-dev-events}
+      EVENTING_OUTBOX_INITIAL_DELAY_MS: ${EVENTING_OUTBOX_INITIAL_DELAY_MS:-5000}
+      EVENTING_OUTBOX_FIXED_DELAY_MS: ${EVENTING_OUTBOX_FIXED_DELAY_MS:-5000}
+      EVENTING_OUTBOX_BATCH_SIZE: ${EVENTING_OUTBOX_BATCH_SIZE:-25}
+      EVENTING_OUTBOX_MAX_ATTEMPTS: ${EVENTING_OUTBOX_MAX_ATTEMPTS:-5}
     ports:
       - "${INVENTORY_SERVICE_PORT:-8087}:${INVENTORY_SERVICE_PORT:-8087}"
     volumes:
@@ -131,10 +164,18 @@ services:
       BILLING_DB_URL: ${BILLING_DB_URL:-${DB_URL}}
       BILLING_DB_USERNAME: ${BILLING_DB_USERNAME:-${DB_USERNAME}}
       BILLING_DB_PASSWORD: ${BILLING_DB_PASSWORD:-${DB_PASSWORD}}
+      EVENTING_EVENTBRIDGE_ENABLED: ${EVENTING_EVENTBRIDGE_ENABLED:-false}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      EVENTING_EVENT_BUS_NAME: ${EVENTING_EVENT_BUS_NAME:-facturaelectronica-dev-events}
+      EVENTING_OUTBOX_INITIAL_DELAY_MS: ${EVENTING_OUTBOX_INITIAL_DELAY_MS:-5000}
+      EVENTING_OUTBOX_FIXED_DELAY_MS: ${EVENTING_OUTBOX_FIXED_DELAY_MS:-5000}
+      EVENTING_OUTBOX_BATCH_SIZE: ${EVENTING_OUTBOX_BATCH_SIZE:-25}
+      EVENTING_OUTBOX_MAX_ATTEMPTS: ${EVENTING_OUTBOX_MAX_ATTEMPTS:-5}
       INVENTORY_SERVICE_URL: http://inventory-service:${INVENTORY_SERVICE_PORT:-8087}
       DIAN_PROVIDER_SERVICE_URL: http://dian-provider-service:${DIAN_PROVIDER_SERVICE_PORT:-8089}
       ACCOUNTING_SERVICE_URL: http://accounting-service:${ACCOUNTING_SERVICE_PORT:-8090}
       AUDIT_SERVICE_URL: http://audit-service:${AUDIT_SERVICE_PORT:-8091}
+      TENANT_SERVICE_URL: http://tenant-service:${TENANT_SERVICE_PORT:-8084}
       JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
     ports:
       - "${BILLING_SERVICE_PORT:-8088}:${BILLING_SERVICE_PORT:-8088}"
@@ -192,6 +233,13 @@ services:
       ACCOUNTING_DB_USERNAME: ${ACCOUNTING_DB_USERNAME:-${DB_USERNAME}}
       ACCOUNTING_DB_PASSWORD: ${ACCOUNTING_DB_PASSWORD:-${DB_PASSWORD}}
       JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
+      EVENTING_EVENTBRIDGE_ENABLED: ${EVENTING_EVENTBRIDGE_ENABLED:-false}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      EVENTING_EVENT_BUS_NAME: ${EVENTING_EVENT_BUS_NAME:-facturaelectronica-dev-events}
+      EVENTING_OUTBOX_INITIAL_DELAY_MS: ${EVENTING_OUTBOX_INITIAL_DELAY_MS:-5000}
+      EVENTING_OUTBOX_FIXED_DELAY_MS: ${EVENTING_OUTBOX_FIXED_DELAY_MS:-5000}
+      EVENTING_OUTBOX_BATCH_SIZE: ${EVENTING_OUTBOX_BATCH_SIZE:-25}
+      EVENTING_OUTBOX_MAX_ATTEMPTS: ${EVENTING_OUTBOX_MAX_ATTEMPTS:-5}
     ports:
       - "${ACCOUNTING_SERVICE_PORT:-8090}:${ACCOUNTING_SERVICE_PORT:-8090}"
     volumes:

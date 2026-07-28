@@ -23,6 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import com.msvanegasg.facturaelectronica.inventory.application.dto.InventoryMovementQuery;
 import com.msvanegasg.facturaelectronica.inventory.application.dto.InventoryMovementResult;
 import com.msvanegasg.facturaelectronica.inventory.application.dto.ProductResult;
 import com.msvanegasg.facturaelectronica.inventory.application.dto.StockAvailabilityResult;
@@ -92,7 +93,7 @@ class ProductControllerTest {
 
     @Test
     void returnsKardex() throws Exception {
-        when(movementUseCase.kardex(COMPANY_ID, PRODUCT_ID)).thenReturn(List.of(movement()));
+        when(movementUseCase.kardex(any(InventoryMovementQuery.class))).thenReturn(List.of(movement()));
 
         mockMvc.perform(get("/api/v1/products/{productId}/kardex", PRODUCT_ID)
                 .header("X-Company-Id", COMPANY_ID))

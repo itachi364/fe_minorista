@@ -135,6 +135,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RF-025: El sistema debe exponer reportes operativos minimos de ventas, inventario/kardex, compras/gastos, documentos electronicos, cuentas por cobrar/pagar y libros contables.
 - RF-026: El sistema debe implementar usuarios, roles y permisos por empresa antes de operar en escenarios reales multiempresa.
 - RF-027: El sistema debe implementar licenciamiento por empresa para habilitar, suspender o limitar el uso de la plataforma segun condiciones comerciales.
+- RF-028: El sistema debe administrar cuentas por cobrar por empresa, cliente, documento origen, vencimiento, saldo, pagos parciales/totales y estado de cartera.
 
 ## Requisitos no funcionales
 
@@ -151,11 +152,14 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RNF-011: Cada microservicio fisico debe tener artefacto de build independiente, contenedor propio, healthcheck y configuracion externa por variables de entorno.
 - RNF-012: La comunicacion inicial entre microservicios sera REST sincrona con `X-Correlation-Id`, `X-Company-Id` e idempotencia en comandos criticos.
 - RNF-013: La extraccion fisica debe mantener pruebas unitarias, pruebas de controlador, pruebas de persistencia y pruebas end-to-end locales en Docker Compose.
-- RNF-014: La mensajeria asincrona objetivo usara NATS JetStream con patron Outbox/Inbox cuando el flujo funcional core este completo, probado y depurado.
+- RNF-014: La mensajeria asincrona objetivo en produccion AWS usara patron Outbox/Inbox con EventBridge/SQS y consumidores Lambda cuando el flujo funcional core este completo, probado y depurado.
 - RNF-015: Los casos de uso de identificacion fiscal deben ser deterministas y probados con datos de NIT validos e invalidos.
 - RNF-016: Los reportes iniciales deben ejecutarse por empresa, rango de fechas y filtros basicos sin exponer informacion de otros tenants.
 - RNF-017: Las reglas de licenciamiento deben evaluarse antes de ejecutar comandos de negocio que creen documentos, usuarios o transacciones segun el plan contratado.
 - RNF-018: La limpieza legacy debe ejecutarse solo despues de una matriz de reemplazo, prueba E2E aprobada y verificacion de referencias con compilacion completa.
+- RNF-019: El despliegue cloud objetivo debe usar frontend estatico en Amazon S3 + CloudFront, entrada publica por API Gateway/BFF, microservicios Spring Boot en ECS Fargate, procesos event-driven en Lambda y persistencia en RDS/Aurora PostgreSQL.
+- RNF-020: Ningun microservicio de negocio debe exponerse directamente al navegador; el frontend debe consumir el BFF/API Gateway y los servicios internos deben permanecer privados.
+- RNF-021: La IaC productiva no debe incluir contenedores, artefactos o rutas legacy eliminadas; Docker Compose queda limitado a desarrollo local y pruebas.
 
 ## Reglas de negocio
 
@@ -188,7 +192,10 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RN-027: Una empresa con licencia suspendida no debe poder emitir documentos fiscales ni crear nuevas transacciones de negocio, salvo consultas y acciones administrativas permitidas.
 - RN-028: Los reportes deben basarse en datos persistidos por los microservicios activos, no en tablas legacy que esten pendientes de eliminacion.
 - RN-029: La depuracion de tablas legacy debe ocurrir despues de migrar clientes, proveedores, productos, servicios, compras, gastos, facturas, auditoria y datos contables necesarios al modelo Clean Architecture.
-- RN-030: La integracion NATS JetStream se implementara despues de cerrar la logica backend core, migrar legacy pendiente y aprobar la depuracion.
+- RN-030: La integracion event-driven productiva con Outbox/Inbox, EventBridge/SQS y Lambdas se implementara despues de cerrar la logica backend core, migrar legacy pendiente y aprobar la depuracion.
+- RN-031: Una cuenta por cobrar solo debe crearse desde una venta/documento fiscal valido para credito o por registro aprobado de cartera inicial; los pagos deben disminuir saldo sin permitir saldos negativos.
+- RN-032: Los procesos event-driven transversales como auditoria, proyecciones de reportes, reintentos de proveedor, notificaciones y efectos posteriores no criticos deben implementarse como Lambdas idempotentes disparadas por eventos, sin convertirlos en dependencias de arranque de los microservicios.
+- RN-033: La plataforma no usara brokers self-hosted en produccion; la mensajeria asincrona aprobada para cloud es EventBridge/SQS + Lambda.
 
 ## Supuestos
 
@@ -199,7 +206,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - Mientras no exista proveedor tecnologico, contrato tecnico, certificado y credenciales reales, la integracion DIAN se implementara con un adaptador dummy local sin llamadas externas.
 - La migracion fisica a microservicios se hara por bounded context para mantener un balance entre independencia de despliegue y complejidad operacional.
 - En local se usara Docker Compose con contenedores por microservicio; la separacion de bases de datos podra iniciar con esquemas o bases separadas en PostgreSQL y evolucionar a instancias independientes.
-- NATS JetStream se adopta como opcion objetivo para mensajeria asincrona por ser open source, liviano y viable para un producto vendible mediante licencias de uso.
+- Para produccion AWS se adopta EventBridge/SQS + Lambda como objetivo event-driven administrado. No se contempla despliegue on-premise ni broker self-hosted.
 
 ## Restricciones
 
@@ -212,7 +219,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - Cada refactor debe preservar compatibilidad publica o documentar y aprobar cualquier ruptura antes de implementarla.
 - No crear nanoservicios por endpoint; cada artefacto debe representar una capacidad de negocio cohesionada.
 - No eliminar codigo, tablas ni migraciones legacy hasta completar la matriz de reemplazo y la prueba end-to-end aprobada.
-- No introducir broker, login ni infraestructura adicional antes de completar y validar el flujo core de negocio por API, persistencia PostgreSQL y prueba end-to-end desde cero.
+- No introducir broker, login ni infraestructura adicional antes de completar y validar el flujo core de negocio por API, persistencia PostgreSQL y prueba end-to-end desde cero, salvo documentacion/planificacion SDD aprobada.
 
 ## Criterios de aceptacion
 

@@ -20,15 +20,17 @@ import com.msvanegasg.facturaelectronica.inventory.application.usecase.PurchaseM
 import com.msvanegasg.facturaelectronica.inventory.application.usecase.RegisterInventoryMovementService;
 import com.msvanegasg.facturaelectronica.inventory.application.usecase.ServiceSupplyReferenceManagementService;
 
+import com.msvanegasg.facturaelectronica.eventing.DomainEventPublisherPort;
+
 @Configuration
 public class InventoryUseCaseConfiguration {
 
     @Bean
     RegisterInventoryMovementUseCase registerInventoryMovementUseCase(ProductRepositoryPort productRepository,
             StockBalanceRepositoryPort stockBalanceRepository, InventoryMovementRepositoryPort movementRepository,
-            IdGeneratorPort idGenerator, ClockPort clock) {
+            DomainEventPublisherPort eventPublisher, IdGeneratorPort idGenerator, ClockPort clock) {
         return new RegisterInventoryMovementService(productRepository, stockBalanceRepository, movementRepository,
-                idGenerator, clock);
+                eventPublisher, idGenerator, clock);
     }
 
     @Bean

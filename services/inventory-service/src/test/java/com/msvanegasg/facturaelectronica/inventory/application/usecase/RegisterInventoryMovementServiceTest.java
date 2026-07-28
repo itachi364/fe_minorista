@@ -9,6 +9,8 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,6 +20,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.msvanegasg.facturaelectronica.inventory.application.dto.InventoryMovementQuery;
 import com.msvanegasg.facturaelectronica.inventory.application.dto.RegisterInventoryMovementCommand;
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.IdGeneratorPort;
@@ -30,6 +33,9 @@ import com.msvanegasg.facturaelectronica.inventory.domain.model.InventorySourceD
 import com.msvanegasg.facturaelectronica.inventory.domain.model.InventoryItemType;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.Product;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.StockBalance;
+import com.msvanegasg.facturaelectronica.eventing.DomainEventEnvelope;
+import com.msvanegasg.facturaelectronica.eventing.DomainEventPublisherPort;
+import com.msvanegasg.facturaelectronica.eventing.EventTypes;
 
 @ExtendWith(MockitoExtension.class)
 class RegisterInventoryMovementServiceTest {
@@ -38,6 +44,7 @@ class RegisterInventoryMovementServiceTest {
     private static final UUID PRODUCT_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final UUID MOVEMENT_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
     private static final UUID SOURCE_ID = UUID.fromString("44444444-4444-4444-4444-444444444444");
+    private static final UUID EVENT_ID = UUID.fromString("55555555-5555-5555-5555-555555555555");
     private static final Instant NOW = Instant.parse("2026-05-19T10:00:00Z");
 
     @Mock
@@ -54,6 +61,9 @@ class RegisterInventoryMovementServiceTest {
 
     @Mock
     private ClockPort clock;
+
+    @Mock
+    private DomainEventPublisherPort eventPublisher;
 
     @Test
     void registersMovementAndUpdatesStock() {
@@ -73,6 +83,34 @@ class RegisterInventoryMovementServiceTest {
         ArgumentCaptor<StockBalance> balanceCaptor = ArgumentCaptor.forClass(StockBalance.class);
         verify(stockBalanceRepository).save(balanceCaptor.capture());
         assertThat(balanceCaptor.getValue().currentStock()).isEqualByComparingTo("3.00");
+    }
+
+
+    @Test
+    void publishesInventoryMovementRegisteredEventForNewMovement() {
+        RegisterInventoryMovementService service = service(eventPublisher);
+        when(movementRepository.findIdempotent(COMPANY_ID, InventorySourceDocumentType.PURCHASE, SOURCE_ID,
+                InventoryMovementType.PURCHASE_IN, "purchase-1")).thenReturn(Optional.empty());
+        when(productRepository.findByCompanyIdAndId(COMPANY_ID, PRODUCT_ID)).thenReturn(Optional.of(product()));
+        when(clock.now()).thenReturn(NOW);
+        when(idGenerator.newId()).thenReturn(MOVEMENT_ID, EVENT_ID);
+        when(stockBalanceRepository.findByCompanyIdAndProductId(COMPANY_ID, PRODUCT_ID)).thenReturn(Optional.empty());
+        when(movementRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(stockBalanceRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.register(command(InventoryMovementType.PURCHASE_IN, "purchase-1"));
+
+        ArgumentCaptor<DomainEventEnvelope> eventCaptor = ArgumentCaptor.forClass(DomainEventEnvelope.class);
+        verify(eventPublisher).publish(eventCaptor.capture());
+        DomainEventEnvelope event = eventCaptor.getValue();
+        assertThat(event.eventId()).isEqualTo(EVENT_ID);
+        assertThat(event.eventType()).isEqualTo(EventTypes.INVENTORY_MOVEMENT_REGISTERED);
+        assertThat(event.companyId()).isEqualTo(COMPANY_ID);
+        assertThat(event.aggregateType()).isEqualTo("InventoryMovement");
+        assertThat(event.aggregateId()).isEqualTo(MOVEMENT_ID);
+        assertThat(event.idempotencyKey()).isEqualTo("purchase-1:inventory-movement-registered");
+        assertThat(event.payload()).containsEntry("movementType", "PURCHASE_IN");
+        assertThat(event.payload()).containsEntry("sourceDocumentId", SOURCE_ID.toString());
     }
 
     @Test
@@ -155,6 +193,25 @@ class RegisterInventoryMovementServiceTest {
         assertThat(result.reason()).isEqualTo("Desperdicio por producto terminado");
     }
 
+
+    @Test
+    void findsKardexByDateRange() {
+        RegisterInventoryMovementService service = service();
+        InventoryMovement movement = InventoryMovement.from(MOVEMENT_ID,
+                StockBalance.empty(COMPANY_ID, PRODUCT_ID, NOW),
+                new StockBalance(COMPANY_ID, PRODUCT_ID, BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.TEN, NOW),
+                InventoryMovementType.PURCHASE_IN, BigDecimal.ONE, BigDecimal.TEN,
+                InventorySourceDocumentType.PURCHASE, SOURCE_ID, "purchase-1", null, null, NOW);
+        when(movementRepository.findKardex(COMPANY_ID, PRODUCT_ID, LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 5, 31))).thenReturn(List.of(movement));
+
+        var result = service.kardex(new InventoryMovementQuery(COMPANY_ID, PRODUCT_ID,
+                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31)));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).id()).isEqualTo(MOVEMENT_ID);
+    }
+
     @Test
     void rejectsConsumptionOutWithoutReason() {
         RegisterInventoryMovementService service = service();
@@ -169,6 +226,11 @@ class RegisterInventoryMovementServiceTest {
     private RegisterInventoryMovementService service() {
         return new RegisterInventoryMovementService(productRepository, stockBalanceRepository, movementRepository,
                 idGenerator, clock);
+    }
+
+    private RegisterInventoryMovementService service(DomainEventPublisherPort publisher) {
+        return new RegisterInventoryMovementService(productRepository, stockBalanceRepository, movementRepository,
+                publisher, idGenerator, clock);
     }
 
     private static RegisterInventoryMovementCommand command(InventoryMovementType type, String idempotencyKey) {

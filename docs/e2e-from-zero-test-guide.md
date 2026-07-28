@@ -9,21 +9,22 @@ No usa credenciales reales, certificados DIAN ni datos productivos.
 | Componente | Puerto local | Rol en el flujo |
 | --- | ---: | --- |
 | `postgres` | `15432` o `${POSTGRES_HOST_PORT}` | Persistencia local |
-| `tenant-service` | `8084` | Crea empresa/tenant |
-| `catalog-service` | `8085` | Crea tipo de documento legacy requerido por terceros |
+| `tenant-service` | `8084` | Crea empresa/tenant y licencia activa |
+| `identity-service` | `8092` | Crea usuario owner, login y membresia por empresa |
+| `catalog-service` | `8085` | Se valida salud del servicio; no se usan endpoints legacy en el flujo principal |
 | `thirdparty-service` | `8086` | Crea cliente y proveedor de referencia |
 | `inventory-service` | `8087` | Crea producto, stock inicial, kardex y salida por venta |
 | `dian-provider-service` | `8089` | Simula aceptacion DIAN |
-| `accounting-service` | `8090` | Crea cuentas PUC, regla y asiento contable |
+| `accounting-service` | `8090` | Crea plantilla PUC basica, regla y asiento contable |
 | `billing-service` | `8088` | Crea venta, confirma POS y orquesta efectos posteriores |
 
-`legacy-monolith` no participa en esta prueba. `audit-service` participa como microservicio fisico y recibe desde `billing-service` el evento fiscal `ELECTRONIC_DOCUMENT`/`SALE`/`CONFIRM_SALE` cuando la venta POS queda confirmada.
+`legacy-monolith` fue removido del repositorio activo y no participa en esta prueba. `audit-service` participa como microservicio fisico y recibe desde `billing-service` el evento fiscal `ELECTRONIC_DOCUMENT`/`SALE`/`CONFIRM_SALE` cuando la venta POS queda confirmada.
 
 ## Limitaciones conocidas
 
-- `thirdparty-service` y parte de `catalog-service` conservan endpoints legacy sin `X-Company-Id`; se incluyen para completar el escenario funcional, pero no prueban aislamiento multiempresa.
+- El flujo principal usa `/api/v1/customers` y `/api/v1/suppliers`; las rutas legacy de terceros fueron retiradas en TASK-059 lote 2 y las rutas legacy de catalogo no se invocan en esta prueba.
 - `billing-service` crea emisor y resolucion POS reales para la corrida local; la integracion DIAN sigue en modo mock y no valida anexos tecnicos oficiales.
-- El aislamiento por `company_id` se verifica en servicios que ya lo implementan: `tenant-service`, `inventory-service`, `billing-service`, `dian-provider-service` y `accounting-service`.
+- El aislamiento por `company_id` se verifica en `tenant-service`, `identity-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service` cuando aplica al endpoint.
 - La integracion DIAN real queda fuera de alcance; `DIAN_PROVIDER_MODE=mock` y `DIAN_MOCK_DEFAULT_STATUS=ACCEPTED`.
 
 ## 1. Preparar entorno
@@ -42,7 +43,7 @@ DIAN_MOCK_DEFAULT_STATUS=ACCEPTED
 Levante los servicios requeridos:
 
 ```powershell
-docker compose up -d postgres tenant-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service audit-service billing-service
+docker compose up -d postgres tenant-service identity-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service audit-service billing-service
 docker compose ps
 ```
 
@@ -52,12 +53,14 @@ Healthchecks esperados:
 
 ```powershell
 curl.exe -s http://localhost:8084/actuator/health
+curl.exe -s http://localhost:8092/actuator/health
 curl.exe -s http://localhost:8085/actuator/health
 curl.exe -s http://localhost:8086/actuator/health
 curl.exe -s http://localhost:8087/actuator/health
 curl.exe -s http://localhost:8088/actuator/health
 curl.exe -s http://localhost:8089/actuator/health
 curl.exe -s http://localhost:8090/actuator/health
+curl.exe -s http://localhost:8091/actuator/health
 ```
 
 Cada respuesta debe incluir:
@@ -121,6 +124,21 @@ from tenant.company
 order by created_at desc
 limit 5;
 
+
+select id, company_id, plan_code, status, valid_from, valid_to, max_users, max_monthly_documents
+from tenant.company_license
+order by created_at desc
+limit 5;
+
+select id, email, full_name, active
+from identity.user_account
+order by created_at desc
+limit 5;
+
+select id, company_id, user_id, active
+from identity.company_membership
+order by created_at desc
+limit 5;
 select id, company_id, sku, name, sale_price, cost, current_stock
 from inventory.product
 order by created_at desc
@@ -201,5 +219,5 @@ Esto borra los datos locales del volumen PostgreSQL. Ejecutelo solo si quiere em
 
 ```powershell
 docker compose down -v
-docker compose up -d postgres tenant-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service audit-service billing-service
+docker compose up -d postgres tenant-service identity-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service audit-service billing-service
 ```

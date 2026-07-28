@@ -1,36 +1,78 @@
 flowchart TB
-  Client[Frontend / POS / Admin Client]
-  Gateway[API Gateway]
-  Identity[identity-service]
-  ThirdParty[thirdparty-service]
-  Catalog[catalog-service]
-  Billing[billing-service]
-  Inventory[inventory-service]
-  Accounting[accounting-service]
-  DianProvider[dian-provider-service]
+  Browser[Frontend SPA]
+  CloudFront[CloudFront]
+  S3[S3 private static assets]
+  ApiGateway[API Gateway]
+  Bff[bff-service - ECS Fargate]
+
+  Tenant[tenant-service - ECS Fargate]
+  Identity[identity-service - ECS Fargate]
+  Catalog[catalog-service - ECS Fargate]
+  ThirdParty[thirdparty-service - ECS Fargate]
+  Inventory[inventory-service - ECS Fargate]
+  Billing[billing-service - ECS Fargate]
+  DianProvider[dian-provider-service - ECS Fargate]
+  Accounting[accounting-service - ECS Fargate]
+  Audit[audit-service - ECS Fargate]
+  Reporting[reporting-service - ECS Fargate]
+
+  Outbox[(Service Outbox tables)]
+  EventBus[EventBridge / SQS]
+  AuditLambda[audit-event-writer - Lambda]
+  InventoryLambda[inventory-sale-effect - Lambda]
+  AccountingLambda[accounting-effect - Lambda]
+  ReportingLambda[reporting-projection-updater - Lambda]
+  ProviderRetryLambda[provider-status-retry - Lambda]
+
+  Rds[(RDS/Aurora PostgreSQL)]
+  Secrets[Secrets Manager / Parameter Store]
   TechProvider[Proveedor tecnologico DIAN]
-  Reporting[reporting-service]
 
-  Client --> Gateway
-  Gateway --> Identity
-  Gateway --> ThirdParty
-  Gateway --> Catalog
-  Gateway --> Billing
-  Gateway --> Inventory
-  Gateway --> Accounting
-  Gateway --> Reporting
+  Browser --> CloudFront
+  CloudFront --> S3
+  CloudFront --> ApiGateway
+  ApiGateway --> Bff
 
-  Billing --> ThirdParty
-  Billing --> Catalog
-  Billing --> Inventory
-  Billing --> Accounting
+  Bff --> Tenant
+  Bff --> Identity
+  Bff --> Catalog
+  Bff --> ThirdParty
+  Bff --> Inventory
+  Bff --> Billing
+  Bff --> Accounting
+  Bff --> Reporting
+
   Billing --> DianProvider
   DianProvider --> TechProvider
 
-  Inventory --> InventoryDb[(Inventory DB)]
-  Billing --> BillingDb[(Billing DB)]
-  Accounting --> AccountingDb[(Accounting DB)]
-  ThirdParty --> ThirdPartyDb[(ThirdParty DB)]
-  Catalog --> CatalogDb[(Catalog DB)]
-  Identity --> IdentityDb[(Identity DB)]
-  Reporting --> ReportingDb[(Reporting DB)]
+  Tenant --> Rds
+  Identity --> Rds
+  Catalog --> Rds
+  ThirdParty --> Rds
+  Inventory --> Rds
+  Billing --> Rds
+  DianProvider --> Rds
+  Accounting --> Rds
+  Audit --> Rds
+  Reporting --> Rds
+
+  Tenant --> Secrets
+  Identity --> Secrets
+  Billing --> Secrets
+  DianProvider --> Secrets
+
+  Billing --> Outbox
+  Inventory --> Outbox
+  Accounting --> Outbox
+  Outbox --> EventBus
+  EventBus --> AuditLambda
+  EventBus --> InventoryLambda
+  EventBus --> AccountingLambda
+  EventBus --> ReportingLambda
+  EventBus --> ProviderRetryLambda
+
+  AuditLambda --> Audit
+  InventoryLambda --> Inventory
+  AccountingLambda --> Accounting
+  ReportingLambda --> Reporting
+  ProviderRetryLambda --> DianProvider

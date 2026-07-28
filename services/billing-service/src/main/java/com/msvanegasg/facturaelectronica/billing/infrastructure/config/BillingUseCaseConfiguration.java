@@ -3,6 +3,7 @@ package com.msvanegasg.facturaelectronica.billing.infrastructure.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageFiscalNoteUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageSaleUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.AssignFiscalNumberUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.ConfigureIssuerProfileUseCase;
@@ -12,17 +13,23 @@ import com.msvanegasg.facturaelectronica.billing.application.port.out.Accounting
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AuditEventPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ElectronicDocumentProviderPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalNoteProviderPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalNoteRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryAvailabilityPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryMovementPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.LicenseValidationPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IssuerProfileRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.NumberingResolutionRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.SaleRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.usecase.AssignFiscalNumberService;
 import com.msvanegasg.facturaelectronica.billing.application.usecase.ConfigureIssuerProfileService;
 import com.msvanegasg.facturaelectronica.billing.application.usecase.CreateNumberingResolutionService;
+import com.msvanegasg.facturaelectronica.billing.application.usecase.FiscalNoteManagementService;
 import com.msvanegasg.facturaelectronica.billing.application.usecase.QueryFiscalConfigurationService;
 import com.msvanegasg.facturaelectronica.billing.application.usecase.SaleManagementService;
+
+import com.msvanegasg.facturaelectronica.eventing.DomainEventPublisherPort;
 
 @Configuration
 public class BillingUseCaseConfiguration {
@@ -31,10 +38,12 @@ public class BillingUseCaseConfiguration {
     ManageSaleUseCase manageSaleUseCase(SaleRepositoryPort saleRepository,
             InventoryAvailabilityPort inventoryAvailability, ElectronicDocumentProviderPort providerPort,
             InventoryMovementPort inventoryMovementPort, AccountingEntryPort accountingEntryPort,
-            AuditEventPort auditEventPort, AssignFiscalNumberUseCase assignFiscalNumberUseCase,
+            AuditEventPort auditEventPort, LicenseValidationPort licenseValidationPort,
+            AssignFiscalNumberUseCase assignFiscalNumberUseCase, DomainEventPublisherPort eventPublisher,
             IdGeneratorPort idGenerator, ClockPort clock) {
         return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
-                accountingEntryPort, auditEventPort, assignFiscalNumberUseCase, idGenerator, clock);
+                accountingEntryPort, auditEventPort, licenseValidationPort, assignFiscalNumberUseCase, eventPublisher,
+                idGenerator, clock);
     }
 
     @Bean
@@ -59,5 +68,13 @@ public class BillingUseCaseConfiguration {
     QueryFiscalConfigurationUseCase queryFiscalConfigurationUseCase(IssuerProfileRepositoryPort issuerProfileRepository,
             NumberingResolutionRepositoryPort numberingResolutionRepository) {
         return new QueryFiscalConfigurationService(issuerProfileRepository, numberingResolutionRepository);
+    }
+
+    @Bean
+    ManageFiscalNoteUseCase manageFiscalNoteUseCase(FiscalNoteRepositoryPort noteRepository,
+            SaleRepositoryPort saleRepository, FiscalNoteProviderPort providerPort,
+            AssignFiscalNumberUseCase assignFiscalNumberUseCase, IdGeneratorPort idGenerator, ClockPort clock) {
+        return new FiscalNoteManagementService(noteRepository, saleRepository, providerPort, assignFiscalNumberUseCase,
+                idGenerator, clock);
     }
 }

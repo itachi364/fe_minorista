@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.accounting.infrastructure.persistence;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,6 +24,14 @@ public class AccountingAccountPersistenceAdapter implements AccountRepositoryPor
     public Optional<Account> findByCompanyIdAndCode(UUID companyId, String code) {
         return accountRepository.findByCompanyIdAndCode(companyId, code)
                 .map(AccountingAccountPersistenceAdapter::toDomain);
+    }
+
+    @Override
+    public List<Account> findByCompanyId(UUID companyId, Boolean active) {
+        List<AccountingAccountJpaEntity> entities = active == null
+                ? accountRepository.findByCompanyIdOrderByCodeAsc(companyId)
+                : accountRepository.findByCompanyIdAndActiveOrderByCodeAsc(companyId, active);
+        return entities.stream().map(AccountingAccountPersistenceAdapter::toDomain).toList();
     }
 
     @Override

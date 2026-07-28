@@ -2,7 +2,10 @@ package com.msvanegasg.facturaelectronica.accounting.application.usecase;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingEntryLineResult;
@@ -20,23 +23,41 @@ import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEntry
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEntrySide;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingRule;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingRuleLine;
+import com.msvanegasg.facturaelectronica.eventing.DomainEventEnvelope;
+import com.msvanegasg.facturaelectronica.eventing.DomainEventPublisherPort;
+import com.msvanegasg.facturaelectronica.eventing.EventTypes;
 
 public class GenerateAccountingEntryService implements GenerateAccountingEntryUseCase {
 
     private final AccountingRuleRepositoryPort ruleRepository;
     private final AccountRepositoryPort accountRepository;
     private final AccountingEntryRepositoryPort entryRepository;
+    private final DomainEventPublisherPort eventPublisher;
     private final IdGeneratorPort idGenerator;
+    private final Clock clock;
 
     public GenerateAccountingEntryService(
             AccountingRuleRepositoryPort ruleRepository,
             AccountRepositoryPort accountRepository,
             AccountingEntryRepositoryPort entryRepository,
             IdGeneratorPort idGenerator) {
+        this(ruleRepository, accountRepository, entryRepository, DomainEventPublisherPort.noop(), idGenerator,
+                Clock.systemUTC());
+    }
+
+    public GenerateAccountingEntryService(
+            AccountingRuleRepositoryPort ruleRepository,
+            AccountRepositoryPort accountRepository,
+            AccountingEntryRepositoryPort entryRepository,
+            DomainEventPublisherPort eventPublisher,
+            IdGeneratorPort idGenerator,
+            Clock clock) {
         this.ruleRepository = Objects.requireNonNull(ruleRepository);
         this.accountRepository = Objects.requireNonNull(accountRepository);
         this.entryRepository = Objects.requireNonNull(entryRepository);
+        this.eventPublisher = Objects.requireNonNull(eventPublisher);
         this.idGenerator = Objects.requireNonNull(idGenerator);
+        this.clock = Objects.requireNonNull(clock);
     }
 
     @Override
@@ -68,7 +89,9 @@ public class GenerateAccountingEntryService implements GenerateAccountingEntryUs
                 command.sourceId(),
                 lines);
 
-        return toResult(entryRepository.save(entry));
+        AccountingEntry saved = entryRepository.save(entry);
+        publishAccountingEntryPosted(saved);
+        return toResult(saved);
     }
 
     private AccountingEntryLine toEntryLine(GenerateAccountingEntryCommand command, AccountingRuleLine ruleLine) {
@@ -108,6 +131,24 @@ public class GenerateAccountingEntryService implements GenerateAccountingEntryUs
         return amount.setScale(2, RoundingMode.HALF_UP);
     }
 
+    private void publishAccountingEntryPosted(AccountingEntry entry) {
+        eventPublisher.publish(new DomainEventEnvelope(idGenerator.newId(), EventTypes.ACCOUNTING_ENTRY_POSTED, 1,
+                clock.instant(), entry.companyId(), "AccountingEntry", entry.id(), "accounting-service", null,
+                entry.sourceType().name() + ":" + entry.sourceId() + ":accounting-entry-posted", entryPayload(entry)));
+    }
+
+    private static Map<String, Object> entryPayload(AccountingEntry entry) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("entryId", entry.id().toString());
+        payload.put("entryDate", entry.entryDate().toString());
+        payload.put("description", entry.description());
+        payload.put("sourceType", entry.sourceType().name());
+        payload.put("sourceId", entry.sourceId().toString());
+        payload.put("status", entry.status().name());
+        payload.put("debitTotal", entry.debitTotal());
+        payload.put("creditTotal", entry.creditTotal());
+        return payload;
+    }
     private AccountingEntryResult toResult(AccountingEntry entry) {
         return new AccountingEntryResult(
                 entry.id(),

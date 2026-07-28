@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -27,6 +28,7 @@ import com.msvanegasg.facturaelectronica.inventory.application.port.out.ProductR
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.StockBalanceRepositoryPort;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.InventoryItemType;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.Product;
+import com.msvanegasg.facturaelectronica.inventory.domain.model.StockBalance;
 
 @ExtendWith(MockitoExtension.class)
 class ProductManagementServiceTest {
@@ -75,6 +77,23 @@ class ProductManagementServiceTest {
         assertThat(result.stockTracked()).isFalse();
         assertThat(result.currentStock()).isZero();
         verify(movementUseCase, never()).register(any(RegisterInventoryMovementCommand.class));
+    }
+
+
+    @Test
+    void findsStockReportForCompany() {
+        ProductManagementService service = service();
+        Product product = Product.create(PRODUCT_ID, COMPANY_ID, "SKU-1", null, "Cafe", null,
+                InventoryItemType.PHYSICAL_GOOD, true, true, true, new BigDecimal("15000.00"),
+                new BigDecimal("9000.00"), NOW);
+        when(productRepository.findByCompanyId(COMPANY_ID, true)).thenReturn(List.of(product));
+        when(stockBalanceRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of(new StockBalance(COMPANY_ID,
+                PRODUCT_ID, new BigDecimal("12.00"), BigDecimal.ZERO, new BigDecimal("9000.00"), NOW)));
+
+        var result = service.findStock(COMPANY_ID, true);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).currentStock()).isEqualByComparingTo("12.00");
     }
 
     @Test

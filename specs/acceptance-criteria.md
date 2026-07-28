@@ -77,3 +77,12 @@
 - AC-049: Dada una empresa con licencia suspendida o vencida, cuando intente emitir documentos o crear nuevas transacciones, entonces el sistema debe bloquear la operacion con error estructurado.
 - AC-050: Dado el flujo completo despues de migrar legacy pendiente, cuando se ejecute la prueba E2E desde cero, entonces debe cubrir empresa, licencia, usuario, configuracion fiscal, terceros, items, compras/gastos, inventario, venta, documento electronico, DIAN mock, contabilidad, reportes y auditoria.
 - AC-051: Dada la tarea de limpieza legacy, entonces debe existir matriz de reemplazo con codigo, endpoints, tablas, datos a migrar, pruebas y decision de eliminar o conservar por cada componente.
+- AC-052: Dada una venta o documento fiscal configurado a credito, cuando quede efectivo, entonces debe crear o actualizar una cuenta por cobrar por cliente con saldo, vencimiento, estado y trazabilidad de documento origen.
+- AC-053: Dada una cuenta por cobrar abierta, cuando se registre un pago parcial o total, entonces el saldo debe disminuir, el estado debe actualizarse y debe quedar trazabilidad contable y operativa sin permitir sobrepago.
+
+
+- AC-054: La documentacion de arquitectura cloud identifica CloudFront/S3 para frontend, API Gateway/BFF para entrada publica, ECS Fargate para microservicios de larga vida, Lambda para procesos event-driven y RDS/Aurora PostgreSQL para persistencia.
+- AC-055: Ningun microservicio de negocio queda definido como exposicion directa al navegador; el contrato publico del frontend pasa por BFF/API Gateway.
+- AC-056: Los procesos event-driven quedan clasificados con contratos de evento, idempotencia, Outbox/Inbox y DLQ/reintentos antes de implementar infraestructura.
+- AC-057: La IaC productiva propuesta no incluye contenedores, artefactos, rutas ni servicios legacy eliminados.
+- AC-058: La arquitectura productiva no incluye brokers self-hosted; la mensajeria objetivo es AWS administrada con EventBridge/SQS + Lambda.

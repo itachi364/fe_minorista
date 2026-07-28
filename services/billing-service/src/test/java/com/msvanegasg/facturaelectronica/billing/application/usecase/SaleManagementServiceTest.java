@@ -3,7 +3,9 @@ package com.msvanegasg.facturaelectronica.billing.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,15 +36,20 @@ import com.msvanegasg.facturaelectronica.billing.application.port.out.Electronic
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryAvailabilityPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryMovementPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.LicenseValidationPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.SaleRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
+import com.msvanegasg.facturaelectronica.billing.domain.model.LicenseAction;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleItemType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
+import com.msvanegasg.facturaelectronica.eventing.DomainEventEnvelope;
+import com.msvanegasg.facturaelectronica.eventing.DomainEventPublisherPort;
+import com.msvanegasg.facturaelectronica.eventing.EventTypes;
 
 @ExtendWith(MockitoExtension.class)
 class SaleManagementServiceTest {
@@ -52,6 +59,9 @@ class SaleManagementServiceTest {
     private static final UUID LINE_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
     private static final UUID DOCUMENT_ID = UUID.fromString("44444444-4444-4444-4444-444444444444");
     private static final UUID PRODUCT_ID = UUID.fromString("55555555-5555-5555-5555-555555555555");
+    private static final UUID SALE_EVENT_ID = UUID.fromString("66666666-6666-6666-6666-666666666666");
+    private static final UUID DOCUMENT_EVENT_ID = UUID.fromString("77777777-7777-7777-7777-777777777777");
+    private static final UUID AUDIT_EVENT_ID = UUID.fromString("88888888-8888-8888-8888-888888888888");
     private static final Instant NOW = Instant.parse("2026-05-19T10:00:00Z");
 
     @Mock
@@ -73,6 +83,9 @@ class SaleManagementServiceTest {
     private AuditEventPort auditEventPort;
 
     @Mock
+    private LicenseValidationPort licenseValidationPort;
+
+    @Mock
     private AssignFiscalNumberUseCase assignFiscalNumberUseCase;
 
     @Mock
@@ -80,6 +93,9 @@ class SaleManagementServiceTest {
 
     @Mock
     private ClockPort clock;
+
+    @Mock
+    private DomainEventPublisherPort eventPublisher;
 
     @Test
     void createsSaleWhenStockIsAvailable() {
@@ -101,6 +117,19 @@ class SaleManagementServiceTest {
         assertThat(result.total()).isEqualByComparingTo("35700.00");
     }
 
+
+    @Test
+    void blocksNewSaleWhenLicenseIsNotAllowed() {
+        when(saleRepository.findByCompanyIdAndIdempotencyKey(COMPANY_ID, "sale-1")).thenReturn(Optional.empty());
+        doThrow(new LicenseBlockedException("La licencia de la empresa esta suspendida."))
+                .when(licenseValidationPort).ensureAllowed(COMPANY_ID, LicenseAction.CREATE_TRANSACTION);
+
+        assertThatThrownBy(() -> service().create(command("sale-1")))
+                .isInstanceOf(LicenseBlockedException.class);
+
+        verify(inventoryAvailability, never()).findProduct(any(), any());
+        verify(saleRepository, never()).save(any());
+    }
     @Test
     void createIsIdempotent() {
         Sale existing = draftSale();
@@ -153,7 +182,8 @@ class SaleManagementServiceTest {
         SaleManagementService service = service();
         when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
-        when(providerPort.submitElectronicPos(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
+        when(providerPort.submit(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
+                org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_POS),
                 org.mockito.ArgumentMatchers.eq("confirm-1")))
                 .thenReturn(new ProviderSubmissionResult(ProviderStatus.ACCEPTED, "mock-tracking", "mock-cude",
                         "mock-qr", null, null));
@@ -185,7 +215,74 @@ class SaleManagementServiceTest {
         assertThat(auditCaptor.getValue().result()).isEqualTo(AuditResult.SUCCESS);
         assertThat(auditCaptor.getValue().detail()).contains("\"documentId\":\"" + DOCUMENT_ID + "\"");
     }
+    @Test
+    void confirmPublishesDurableOutboxEvents() {
+        SaleManagementService service = service(eventPublisher);
+        when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
+        when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
+        when(providerPort.submit(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
+                org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_POS),
+                org.mockito.ArgumentMatchers.eq("confirm-1")))
+                .thenReturn(new ProviderSubmissionResult(ProviderStatus.ACCEPTED, "mock-tracking", "mock-cude",
+                        "mock-qr", null, null));
+        when(idGenerator.newId()).thenReturn(DOCUMENT_ID, SALE_EVENT_ID, DOCUMENT_EVENT_ID, AUDIT_EVENT_ID);
+        when(clock.now()).thenReturn(NOW);
+        when(assignFiscalNumberUseCase.assign(any()))
+                .thenReturn(new FiscalNumberResult(UUID.randomUUID(), "18760000001", "POS", 100));
+        when(saleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
+        service.confirm(COMPANY_ID, SALE_ID, "confirm-1");
+
+        ArgumentCaptor<DomainEventEnvelope> eventCaptor = ArgumentCaptor.forClass(DomainEventEnvelope.class);
+        verify(eventPublisher, times(3)).publish(eventCaptor.capture());
+        assertThat(eventCaptor.getAllValues()).extracting(DomainEventEnvelope::eventType)
+                .containsExactly(EventTypes.SALE_CONFIRMED, EventTypes.ELECTRONIC_DOCUMENT_VALIDATED,
+                        EventTypes.AUDIT_EVENT_REQUESTED);
+        assertThat(eventCaptor.getAllValues().get(0).aggregateId()).isEqualTo(SALE_ID);
+        assertThat(eventCaptor.getAllValues().get(0).payload()).containsEntry("documentId", DOCUMENT_ID.toString());
+        assertThat(eventCaptor.getAllValues().get(1).idempotencyKey()).isEqualTo("confirm-1:document-validated");
+        assertThat(eventCaptor.getAllValues().get(2).payload()).containsEntry("action", "CONFIRM_SALE");
+    }
+
+    @Test
+    void confirmPublishesProviderRetryEventWhenProviderFails() {
+        SaleManagementService service = service(eventPublisher);
+        when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
+        when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
+        when(providerPort.submit(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
+                org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_POS),
+                org.mockito.ArgumentMatchers.eq("confirm-1")))
+                .thenReturn(new ProviderSubmissionResult(ProviderStatus.FAILED, "mock-tracking", null, null,
+                        "MOCK_FAILED", "Fallo tecnico simulado"));
+        when(idGenerator.newId()).thenReturn(DOCUMENT_ID, SALE_EVENT_ID, AUDIT_EVENT_ID);
+        when(clock.now()).thenReturn(NOW);
+        when(assignFiscalNumberUseCase.assign(any()))
+                .thenReturn(new FiscalNumberResult(UUID.randomUUID(), "18760000001", "POS", 100));
+        when(saleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.confirm(COMPANY_ID, SALE_ID, "confirm-1");
+
+        ArgumentCaptor<DomainEventEnvelope> eventCaptor = ArgumentCaptor.forClass(DomainEventEnvelope.class);
+        verify(eventPublisher, times(2)).publish(eventCaptor.capture());
+        assertThat(eventCaptor.getAllValues()).extracting(DomainEventEnvelope::eventType)
+                .containsExactly(EventTypes.PROVIDER_SUBMISSION_FAILED, EventTypes.AUDIT_EVENT_REQUESTED);
+        assertThat(eventCaptor.getAllValues().get(0).payload()).containsEntry("providerStatus", "FAILED");
+        verify(inventoryMovementPort, never()).applySaleOut(any(), any());
+        verify(accountingEntryPort, never()).postSale(any(), any());
+    }
+
+    @Test
+    void blocksConfirmWhenLicenseIsNotAllowed() {
+        when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
+        doThrow(new LicenseBlockedException("La licencia de la empresa esta suspendida."))
+                .when(licenseValidationPort).ensureAllowed(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT);
+
+        assertThatThrownBy(() -> service().confirm(COMPANY_ID, SALE_ID, "confirm-1"))
+                .isInstanceOf(LicenseBlockedException.class);
+
+        verify(providerPort, never()).submit(any(), any(), any(), any());
+        verify(saleRepository, never()).save(any());
+    }
     @Test
     void confirmRetriesPendingEffectsWithoutGeneratingAnotherDocument() {
         Sale confirmed = draftSale().confirm(validatedDocument(null, null), NOW);
@@ -198,7 +295,7 @@ class SaleManagementServiceTest {
         assertThat(result.status()).isEqualTo(SaleStatus.CONFIRMED);
         assertThat(result.electronicDocument().inventoryAppliedAt()).isEqualTo(NOW);
         assertThat(result.electronicDocument().accountingAppliedAt()).isEqualTo(NOW);
-        verify(providerPort, never()).submitElectronicPos(any(), any(), any());
+        verify(providerPort, never()).submit(any(), any(), any(), any());
         verify(inventoryMovementPort).applySaleOut(any(), org.mockito.ArgumentMatchers.eq("confirm-1"));
         verify(accountingEntryPort).postSale(any(), org.mockito.ArgumentMatchers.eq("confirm-1"));
         verify(auditEventPort, never()).register(any());
@@ -212,7 +309,7 @@ class SaleManagementServiceTest {
         var result = service().confirm(COMPANY_ID, SALE_ID, "retry-confirm");
 
         assertThat(result.status()).isEqualTo(SaleStatus.CONFIRMED);
-        verify(providerPort, never()).submitElectronicPos(any(), any(), any());
+        verify(providerPort, never()).submit(any(), any(), any(), any());
         verify(inventoryMovementPort, never()).applySaleOut(any(), any());
         verify(accountingEntryPort, never()).postSale(any(), any());
         verify(auditEventPort, never()).register(any());
@@ -220,7 +317,12 @@ class SaleManagementServiceTest {
 
     private SaleManagementService service() {
         return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
-                accountingEntryPort, auditEventPort, assignFiscalNumberUseCase, idGenerator, clock);
+                accountingEntryPort, auditEventPort, licenseValidationPort, assignFiscalNumberUseCase, idGenerator, clock);
+    }
+    private SaleManagementService service(DomainEventPublisherPort publisher) {
+        return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
+                accountingEntryPort, auditEventPort, licenseValidationPort, assignFiscalNumberUseCase, publisher,
+                idGenerator, clock);
     }
 
     private static CreateSaleCommand command(String idempotencyKey) {
