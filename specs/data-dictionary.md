@@ -564,3 +564,33 @@ Tablas introducidas en TASK-062 lote 1 para preparar mensajeria AWS sin broker s
 | processed_at | timestamptz | Si | Fecha/hora de procesamiento. |
 
 Regla: `event_id + consumer` debe ser unico para impedir reprocesamiento no idempotente.
+
+### `reporting.reporting_inbox_event`
+
+| Campo | Tipo | Obligatorio | Descripcion |
+|---|---|---|---|
+| id | uuid | Si | Identificador local del registro Inbox. |
+| event_id | uuid | Si | Evento consumido. |
+| event_type | varchar(120) | Si | Tipo canonico consumido. |
+| company_id | uuid | Si | Empresa del evento. |
+| consumer_name | varchar(120) | Si | Consumidor que materializo o descarto idempotentemente el evento. |
+| processed_at | timestamptz | Si | Fecha/hora de procesamiento. |
+
+### `reporting.reporting_event_projection`
+
+| Campo | Tipo | Obligatorio | Descripcion |
+|---|---|---|---|
+| id | uuid | Si | Identificador de la proyeccion. |
+| event_id | uuid | Si | Evento canonico origen. |
+| event_type | varchar(120) | Si | Tipo de evento materializado. |
+| company_id | uuid | Si | Empresa propietaria. |
+| occurred_at | timestamptz | Si | Fecha/hora de ocurrencia del evento. |
+| period_date | date | Si | Fecha de periodo usada para filtros de reporte. |
+| aggregate_type | varchar(80) | Si | Tipo de agregado origen. |
+| aggregate_id | uuid | Si | Identificador del agregado origen. |
+| source_service | varchar(120) | Si | Servicio productor. |
+| status | varchar(80) | No | Estado derivado del payload, si aplica. |
+| amount | numeric(19,2) | No | Monto derivado del evento, si aplica. |
+| correlation_id | varchar(120) | No | Correlacion tecnica propagada. |
+| payload_json | jsonb | Si | Payload canonico completo para reconstruccion/diagnostico de reportes. |
+| created_at | timestamptz | Si | Fecha/hora de materializacion. |

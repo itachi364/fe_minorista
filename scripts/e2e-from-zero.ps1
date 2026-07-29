@@ -1,14 +1,14 @@
 param(
     [switch]$StartContainers,
-    [string]$TenantUrl = "http://localhost:8084",
-    [string]$IdentityUrl = "http://localhost:8092",
-    [string]$CatalogUrl = "http://localhost:8085",
-    [string]$ThirdpartyUrl = "http://localhost:8086",
-    [string]$InventoryUrl = "http://localhost:8087",
-    [string]$BillingUrl = "http://localhost:8088",
-    [string]$ProviderUrl = "http://localhost:8089",
-    [string]$AccountingUrl = "http://localhost:8090",
-    [string]$AuditUrl = "http://localhost:8091"
+    [string]$TenantUrl = "http://127.0.0.1:8084",
+    [string]$IdentityUrl = "http://127.0.0.1:8092",
+    [string]$CatalogUrl = "http://127.0.0.1:8085",
+    [string]$ThirdpartyUrl = "http://127.0.0.1:8086",
+    [string]$InventoryUrl = "http://127.0.0.1:8087",
+    [string]$BillingUrl = "http://127.0.0.1:8088",
+    [string]$ProviderUrl = "http://127.0.0.1:8089",
+    [string]$AccountingUrl = "http://127.0.0.1:8090",
+    [string]$AuditUrl = "http://127.0.0.1:8091"
 )
 
 $ErrorActionPreference = "Stop"

@@ -522,7 +522,7 @@ Los asientos se generan desde reglas activas por empresa y son idempotentes por 
 
 Los eventos requieren `X-Company-Id` y almacenan detalle seguro sin secretos en `audit.audit_event`.
 
-`billing-service` registra eventos canonicos en Outbox al confirmar una venta POS/factura y obtener resultado del proveedor DIAN mock. `inventory-service` registra `InventoryMovementRegistered` al crear movimientos y `accounting-service` registra `AccountingEntryPosted` al postear asientos. La entrega hacia EventBridge/SQS ya cuenta con dispatcher condicional, consumidor Lambda `audit-event-writer-lambda` para auditoria, consumidor Lambda `inventory-sale-effect-lambda` para descontar stock desde `SaleConfirmed` y consumidor Lambda `accounting-sale-entry-lambda` para generar asientos contables de forma idempotente y consumidor `provider-submission-retry-lambda` para reintentos tecnicos de proveedor. Sigue pendiente el consumidor de reportes.
+`billing-service` registra eventos canonicos en Outbox al confirmar una venta POS/factura y obtener resultado del proveedor DIAN mock. `inventory-service` registra `InventoryMovementRegistered` al crear movimientos y `accounting-service` registra `AccountingEntryPosted` al postear asientos. La entrega hacia EventBridge/SQS ya cuenta con dispatcher condicional, consumidor Lambda `audit-event-writer-lambda` para auditoria, consumidor Lambda `inventory-sale-effect-lambda` para descontar stock desde `SaleConfirmed`, consumidor Lambda `accounting-sale-entry-lambda` para generar asientos contables de forma idempotente, consumidor `provider-submission-retry-lambda` para reintentos tecnicos de proveedor y consumidor `reporting-projection-lambda` para proyecciones de reportes.
 
 ### Eventing AWS
 
@@ -542,10 +542,14 @@ Lambdas iniciales:
 - `audit-event-writer-lambda`: consume `audit-events` y persiste auditoria central con Inbox.
 - `inventory-sale-effect-lambda`: consume `inventory-effects`, procesa `SaleConfirmed`, descuenta lineas `stockTracked=true` y evita duplicados con la clave de idempotencia de la venta.
 - `accounting-sale-entry-lambda`: consume `accounting-effects`, procesa `SaleConfirmed`, aplica reglas `SALE_CONFIRMED`/`SALE` y crea asientos contables sin duplicar ventas ya contabilizadas.
+- `provider-submission-retry-lambda`: consume `provider-retries`, reintenta fallas tecnicas `FAILED` contra el proveedor DIAN mock y republica eventos si la validacion queda aceptada.
+- `reporting-projection-lambda`: consume `reporting-projections` y materializa eventos de ventas, documentos, inventario y contabilidad en `reporting.reporting_event_projection`.
 
 ## Guia De Pruebas Docker
 
 La guia E2E desde cero para microservicios, con empresa nueva, inventario, venta POS, proveedor DIAN mock, asiento contable, auditoria central, consultas SQL y checklist AC-024/AC-031/AC-032/AC-035 esta en:
+
+En Windows el script usa `127.0.0.1` por defecto para evitar bloqueos de resolucion de `localhost`.
 
 ```text
 docs/e2e-from-zero-test-guide.md

@@ -266,14 +266,17 @@ module "event_consumers" {
   inventory_effect_queue_arn          = module.messaging.queue_arns["inventory-effects"]
   accounting_effect_queue_arn         = module.messaging.queue_arns["accounting-effects"]
   provider_retry_queue_arn            = module.messaging.queue_arns["provider-retries"]
+  reporting_projection_queue_arn      = module.messaging.queue_arns["reporting-projections"]
   audit_event_writer_s3_bucket        = var.lambda_artifact_bucket
   audit_event_writer_s3_key           = var.audit_event_writer_lambda_s3_key
   inventory_sale_effect_s3_bucket     = var.lambda_artifact_bucket
   accounting_sale_entry_s3_bucket     = var.lambda_artifact_bucket
   provider_submission_retry_s3_bucket = var.lambda_artifact_bucket
+  reporting_projection_s3_bucket      = var.lambda_artifact_bucket
   inventory_sale_effect_s3_key        = var.inventory_sale_effect_lambda_s3_key
   accounting_sale_entry_s3_key        = var.accounting_sale_entry_lambda_s3_key
   provider_submission_retry_s3_key    = var.provider_submission_retry_lambda_s3_key
+  reporting_projection_s3_key         = var.reporting_projection_lambda_s3_key
   provider_retry_provider_base_url    = var.provider_retry_provider_base_url
   db_url                              = module.database.jdbc_url
   db_username                         = var.db_username

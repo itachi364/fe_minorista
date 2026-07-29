@@ -1288,6 +1288,14 @@ Eventos canonicos iniciales:
 
 Consumidores Lambda deben persistir Inbox o estado equivalente antes de materializar efectos no idempotentes. Los eventos deben conservar `companyId`, `correlationId` e `idempotencyKey`; `payload` no debe contener secretos ni datos de autenticacion.
 
+Consumidores iniciales TASK-062:
+
+- `audit-event-writer-lambda`: `AuditEventRequested` -> `audit.audit_event`.
+- `inventory-sale-effect-lambda`: `SaleConfirmed` -> `inventory.stock_balance` y `inventory.inventory_movement`.
+- `accounting-sale-entry-lambda`: `SaleConfirmed` -> `accounting.accounting_entry` y `accounting.accounting_outbox_event`.
+- `provider-submission-retry-lambda`: `ProviderSubmissionFailed`/`ProviderSubmissionPending` -> reintento tecnico de documento en `billing.electronic_document`.
+- `reporting-projection-lambda`: `SaleConfirmed`, `ElectronicDocumentValidated`, `InventoryMovementRegistered`, `AccountingEntryPosted` -> `reporting.reporting_event_projection`.
+
 ## EventBridge delivery mapping
 
 El dispatcher Outbox publica cada evento canonico a EventBridge con:

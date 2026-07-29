@@ -53,6 +53,8 @@ TASK-062 se implementa por lotes: el lote 1 registra contratos canonicos y Outbo
 - `audit-event-writer-lambda`: fuente `audit-events`, handler `com.msvanegasg.facturaelectronica.auditlambda.AuditEventWriterHandler::handleRequest`, Inbox `audit_inbox_event`, materializa `AuditEventRequested` en `audit_event`.
 - `inventory-sale-effect-lambda`: fuente `inventory-effects`, handler `com.msvanegasg.facturaelectronica.inventorylambda.InventorySaleEffectHandler::handleRequest`, Inbox `inventory.inbox_event`, materializa `SaleConfirmed` como movimientos `SALE_OUT` idempotentes.
 - `accounting-sale-entry-lambda`: fuente `accounting-effects`, handler `com.msvanegasg.facturaelectronica.accountinglambda.AccountingSaleEntryHandler::handleRequest`, Inbox `accounting_inbox_event`, materializa `SaleConfirmed` como asientos `SALE_CONFIRMED`/`SALE` idempotentes.
+- `provider-submission-retry-lambda`: fuente `provider-retries`, handler `com.msvanegasg.facturaelectronica.providerlambda.ProviderSubmissionRetryHandler::handleRequest`, reintenta fallas tecnicas de proveedor sin bloquear `billing-service`.
+- `reporting-projection-lambda`: fuente `reporting-projections`, handler `com.msvanegasg.facturaelectronica.reportinglambda.ReportingProjectionHandler::handleRequest`, Inbox `reporting.reporting_inbox_event`, materializa proyecciones en `reporting.reporting_event_projection`.
 - Runtime: Java 17.
 - Fallos parciales: `function_response_types = ["ReportBatchItemFailures"]`.
 - Secretos: las Lambdas reciben el ARN del secreto de base de datos y leen el password desde Secrets Manager en runtime.
@@ -99,8 +101,9 @@ TASK-062 se implementa por lotes: el lote 1 registra contratos canonicos y Outbo
 - Los productores iniciales escriben eventos en Outbox dentro del flujo transaccional local.
 - Validacion parcial: `./mvnw.cmd -pl services/platform-eventing,services/billing-service,services/inventory-service,services/accounting-service -am test` exitoso.
 - Dispatcher Outbox hacia EventBridge implementado en productores iniciales y deshabilitado por defecto con `EVENTING_EVENTBRIDGE_ENABLED=false`.
-- Implementados consumidores Lambda de auditoria, inventario, contabilidad y reintentos de proveedor con Inbox/estado idempotente y SQS partial batch response. Pendiente: consumidor de reportes y E2E Docker desde cero. Validacion actual: Terraform `fmt`/`validate` exitosos y suite Maven completa con 322 tests verdes.
+- Implementados consumidores Lambda de auditoria, inventario, contabilidad, reintentos de proveedor y proyecciones de reportes con Inbox/estado idempotente y SQS partial batch response.
+- Validacion actual: Terraform `fmt`/`validate` exitosos, suite Maven completa con 326 tests verdes y E2E Docker desde cero exitoso con `scripts/e2e-from-zero.ps1 -StartContainers`.
 - Library/tool: AWS Lambda Java Support Libraries (`/aws/aws-lambda-java-libs`).
 - Topic consulted: SQS event handling with Java Lambda and `aws-lambda-java-events`.
 - Relevant finding: `SQSEvent` is the supported Java event model for SQS-triggered Lambda handlers; `aws-lambda-java-events` 3.16.0 provides the event objects.
-- Decision impact: `audit-event-writer-lambda`, `inventory-sale-effect-lambda`, `accounting-sale-entry-lambda` and `provider-submission-retry-lambda` implement Java 17 SQS handlers and return `SQSBatchResponse` so failed records can be retried without replaying the full batch.
+- Decision impact: `audit-event-writer-lambda`, `inventory-sale-effect-lambda`, `accounting-sale-entry-lambda`, `provider-submission-retry-lambda` and `reporting-projection-lambda` implement Java 17 SQS handlers and return `SQSBatchResponse` so failed records can be retried without replaying the full batch.

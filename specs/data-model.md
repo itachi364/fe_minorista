@@ -43,6 +43,7 @@ Fase inicial:
 - `dian_provider`
 - `accounting`
 - `audit`
+- `reporting`
 
 Fase microservicios:
 

@@ -144,7 +144,7 @@ services:
     volumes:
       - .:/workspace
       - maven_cache:/root/.m2
-    command: ["sh", "./mvnw", "-pl", "services/inventory-service", "clean", "spring-boot:run"]
+    command: ["sh", "-c", "./mvnw -q -N -DskipTests install && ./mvnw -q -pl services/platform-eventing -DskipTests install && ./mvnw -pl services/inventory-service -DskipTests spring-boot:run"]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${INVENTORY_SERVICE_PORT:-8087}/actuator/health >/dev/null 2>&1 || exit 1"]
       interval: 15s
@@ -182,7 +182,7 @@ services:
     volumes:
       - .:/workspace
       - maven_cache:/root/.m2
-    command: ["sh", "./mvnw", "-pl", "services/billing-service", "clean", "spring-boot:run"]
+    command: ["sh", "-c", "./mvnw -q -N -DskipTests install && ./mvnw -q -pl services/platform-eventing -DskipTests install && ./mvnw -pl services/billing-service -DskipTests spring-boot:run"]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${BILLING_SERVICE_PORT:-8088}/actuator/health >/dev/null 2>&1 || exit 1"]
       interval: 15s
@@ -245,7 +245,7 @@ services:
     volumes:
       - .:/workspace
       - maven_cache:/root/.m2
-    command: ["sh", "./mvnw", "-pl", "services/accounting-service", "clean", "spring-boot:run"]
+    command: ["sh", "-c", "./mvnw -q -N -DskipTests install && ./mvnw -q -pl services/platform-eventing -DskipTests install && ./mvnw -pl services/accounting-service -DskipTests spring-boot:run"]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${ACCOUNTING_SERVICE_PORT:-8090}/actuator/health >/dev/null 2>&1 || exit 1"]
       interval: 15s

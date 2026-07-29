@@ -106,3 +106,20 @@ variable "tags" {
   description = "Tags applied to resources."
   default     = {}
 }
+
+variable "reporting_projection_queue_arn" {
+  type        = string
+  description = "SQS queue ARN for reporting projection messages."
+}
+
+variable "reporting_projection_s3_bucket" {
+  type        = string
+  description = "S3 bucket containing the reporting-projection-lambda shaded jar. Empty disables the function."
+  default     = ""
+}
+
+variable "reporting_projection_s3_key" {
+  type        = string
+  description = "S3 key for the reporting-projection-lambda shaded jar."
+  default     = "lambdas/reporting-projection-lambda.jar"
+}

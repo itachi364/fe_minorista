@@ -33,6 +33,7 @@
         <module>services/inventory-sale-effect-lambda</module>
         <module>services/accounting-sale-entry-lambda</module>
         <module>services/provider-submission-retry-lambda</module>
+        <module>services/reporting-projection-lambda</module>
     </modules>
 
     <properties>

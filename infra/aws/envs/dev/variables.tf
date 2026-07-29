@@ -95,3 +95,8 @@ variable "provider_retry_provider_base_url" {
   description = "Base URL for the DIAN provider service used by provider retry Lambda. Empty disables the function."
   default     = ""
 }
+variable "reporting_projection_lambda_s3_key" {
+  type        = string
+  description = "S3 key for the reporting-projection-lambda shaded jar."
+  default     = "lambdas/reporting-projection-lambda.jar"
+}

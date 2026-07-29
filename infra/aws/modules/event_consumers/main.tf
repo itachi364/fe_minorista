@@ -1,8 +1,9 @@
 locals {
-  audit_event_writer_enabled = var.audit_event_writer_s3_bucket != ""
-  inventory_effect_enabled   = var.inventory_sale_effect_s3_bucket != ""
-  accounting_effect_enabled  = var.accounting_sale_entry_s3_bucket != ""
-  provider_retry_enabled     = var.provider_submission_retry_s3_bucket != "" && var.provider_retry_provider_base_url != ""
+  audit_event_writer_enabled   = var.audit_event_writer_s3_bucket != ""
+  inventory_effect_enabled     = var.inventory_sale_effect_s3_bucket != ""
+  accounting_effect_enabled    = var.accounting_sale_entry_s3_bucket != ""
+  provider_retry_enabled       = var.provider_submission_retry_s3_bucket != "" && var.provider_retry_provider_base_url != ""
+  reporting_projection_enabled = var.reporting_projection_s3_bucket != ""
 }
 
 data "aws_iam_policy_document" "lambda_assume_role" {
@@ -450,6 +451,116 @@ resource "aws_lambda_event_source_mapping" "provider_submission_retry" {
 
   event_source_arn                   = var.provider_retry_queue_arn
   function_name                      = aws_lambda_function.provider_submission_retry[0].arn
+  batch_size                         = 10
+  maximum_batching_window_in_seconds = 5
+  function_response_types            = ["ReportBatchItemFailures"]
+}
+
+resource "aws_iam_role" "reporting_projection" {
+  count = local.reporting_projection_enabled ? 1 : 0
+
+  name               = "${var.name_prefix}-reporting-projection-lambda"
+  assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "reporting_projection_basic" {
+  count = local.reporting_projection_enabled ? 1 : 0
+
+  role       = aws_iam_role.reporting_projection[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "reporting_projection_vpc" {
+  count = local.reporting_projection_enabled ? 1 : 0
+
+  role       = aws_iam_role.reporting_projection[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+data "aws_iam_policy_document" "reporting_projection" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "sqs:ReceiveMessage",
+      "sqs:DeleteMessage",
+      "sqs:GetQueueAttributes",
+      "sqs:ChangeMessageVisibility"
+    ]
+    resources = [var.reporting_projection_queue_arn]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [var.db_password_secret_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "reporting_projection" {
+  count = local.reporting_projection_enabled ? 1 : 0
+
+  name   = "${var.name_prefix}-reporting-projection"
+  role   = aws_iam_role.reporting_projection[0].id
+  policy = data.aws_iam_policy_document.reporting_projection.json
+}
+
+resource "aws_cloudwatch_log_group" "reporting_projection" {
+  count = local.reporting_projection_enabled ? 1 : 0
+
+  name              = "/aws/lambda/${var.name_prefix}-reporting-projection"
+  retention_in_days = 30
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-reporting-projection-logs"
+  })
+}
+
+resource "aws_lambda_function" "reporting_projection" {
+  count = local.reporting_projection_enabled ? 1 : 0
+
+  function_name = "${var.name_prefix}-reporting-projection"
+  role          = aws_iam_role.reporting_projection[0].arn
+  runtime       = "java17"
+  handler       = "com.msvanegasg.facturaelectronica.reportinglambda.ReportingProjectionHandler::handleRequest"
+  s3_bucket     = var.reporting_projection_s3_bucket
+  s3_key        = var.reporting_projection_s3_key
+  memory_size   = 512
+  timeout       = 30
+  publish       = true
+
+  environment {
+    variables = {
+      REPORTING_DB_URL                      = var.db_url
+      REPORTING_DB_USERNAME                 = var.db_username
+      REPORTING_DB_PASSWORD_SECRET_ARN      = var.db_password_secret_arn
+      REPORTING_DB_PASSWORD_SECRET_JSON_KEY = "password"
+    }
+  }
+
+  vpc_config {
+    subnet_ids         = var.subnet_ids
+    security_group_ids = var.security_group_ids
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-reporting-projection"
+  })
+
+  depends_on = [
+    aws_cloudwatch_log_group.reporting_projection,
+    aws_iam_role_policy_attachment.reporting_projection_basic,
+    aws_iam_role_policy_attachment.reporting_projection_vpc,
+    aws_iam_role_policy.reporting_projection
+  ]
+}
+
+resource "aws_lambda_event_source_mapping" "reporting_projection" {
+  count = local.reporting_projection_enabled ? 1 : 0
+
+  event_source_arn                   = var.reporting_projection_queue_arn
+  function_name                      = aws_lambda_function.reporting_projection[0].arn
   batch_size                         = 10
   maximum_batching_window_in_seconds = 5
   function_response_types            = ["ReportBatchItemFailures"]

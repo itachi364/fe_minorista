@@ -509,7 +509,7 @@ El lote 2 de TASK-059 retira el codigo runtime legacy de terceros (`/api/cliente
 - Los productores escriben primero en su transaccion local y registran Outbox.
 - TASK-062 lote 1 registra Outbox en `billing-service`, `inventory-service` y `accounting-service`.
 - TASK-062 lote 2 agrega dispatcher Outbox condicional por servicio: lee eventos `PENDING`/`FAILED`, publica a EventBridge con `source=producer` y `detailType=eventType`, y marca `PUBLISHED` o `FAILED` sin tumbar el microservicio.
-- TASK-062 lote 3 agrega consumidores reales iniciales: `audit-event-writer-lambda` valida Inbox en `audit_inbox_event` y materializa `AuditEventRequested` en `audit_event`; `inventory-sale-effect-lambda` valida Inbox en `inventory.inbox_event`, descuenta stock por lineas `stockTracked=true` y registra movimientos `SALE_OUT` idempotentes desde `SaleConfirmed`; `accounting-sale-entry-lambda` valida Inbox en `accounting_inbox_event`, aplica la regla contable activa `SALE_CONFIRMED`/`SALE` y crea asientos idempotentes; `provider-submission-retry-lambda` reintenta documentos con proveedor en `FAILED`, actualiza el documento y republica eventos de validacion si la DIAN mock acepta.
+- TASK-062 lote 3 agrega consumidores reales iniciales: `audit-event-writer-lambda` valida Inbox en `audit_inbox_event` y materializa `AuditEventRequested` en `audit_event`; `inventory-sale-effect-lambda` valida Inbox en `inventory.inbox_event`, descuenta stock por lineas `stockTracked=true` y registra movimientos `SALE_OUT` idempotentes desde `SaleConfirmed`; `accounting-sale-entry-lambda` valida Inbox en `accounting_inbox_event`, aplica la regla contable activa `SALE_CONFIRMED`/`SALE` y crea asientos idempotentes; `provider-submission-retry-lambda` reintenta documentos con proveedor en `FAILED`, actualiza el documento y republica eventos de validacion si la DIAN mock acepta; `reporting-projection-lambda` consume eventos de ventas, documentos electronicos, inventario y contabilidad para mantener proyecciones consultables por empresa y periodo.
 - La caida de una Lambda o cola no debe impedir que los servicios HTTP permanezcan arriba ni debe revertir transacciones ya confirmadas localmente.
 
 
@@ -528,6 +528,10 @@ El lote 2 de TASK-059 retira el codigo runtime legacy de terceros (`/api/cliente
 ## Consumidor Lambda de reintento proveedor
 
 `provider-submission-retry-lambda` consume la cola `provider-retries` y procesa `ProviderSubmissionFailed`/`ProviderSubmissionPending`. El consumidor carga el documento y snapshot de venta desde `billing`, ignora documentos ya `VALIDATED` o `REJECTED`, reenvia al `dian-provider-service` con la misma clave de idempotencia y actualiza `billing.electronic_document`. Si el proveedor acepta, publica `SaleConfirmed` y `ElectronicDocumentValidated` en `billing.outbox_event` para que inventario, contabilidad y reportes avancen por el canal asincrono. Si el proveedor sigue fallando, reporta el `messageId` en `SQSBatchResponse` para reintento y DLQ; si rechaza, marca `REJECTED` sin retry automatico.
+
+## Consumidor Lambda de reportes
+
+`reporting-projection-lambda` consume la cola `reporting-projections` y procesa `SaleConfirmed`, `ElectronicDocumentValidated`, `InventoryMovementRegistered` y `AccountingEntryPosted`. El consumidor registra Inbox idempotente en `reporting.reporting_inbox_event` y materializa un resumen normalizado por `companyId`, periodo, agregado, estado, monto y payload JSON en `reporting.reporting_event_projection`. Los eventos no soportados se descartan como exitosos; errores de parseo o persistencia se reportan con `SQSBatchResponse` para reintento selectivo.
 ## Context7 evidence - AWS cloud target
 
 - Library/tool: AWS Documentation via Context7 (`/websites/aws_amazon`).
@@ -556,4 +560,4 @@ El lote 2 de TASK-059 retira el codigo runtime legacy de terceros (`/api/cliente
 - Library/tool: AWS Lambda Java Support Libraries (`/aws/aws-lambda-java-libs`).
 - Topic consulted: Java SQS handlers and Lambda event objects.
 - Relevant finding: `aws-lambda-java-events` 3.16.0 provides `SQSEvent` for SQS-triggered Java Lambdas.
-- Decision impact: `audit-event-writer-lambda` uses `SQSEvent` plus `SQSBatchResponse` for partial item failures.
+- Decision impact: `audit-event-writer-lambda`, `inventory-sale-effect-lambda`, `accounting-sale-entry-lambda`, `provider-submission-retry-lambda` and `reporting-projection-lambda` use `SQSEvent` plus `SQSBatchResponse` for partial item failures.

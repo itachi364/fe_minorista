@@ -2061,8 +2061,8 @@
     - Busqueda de secretos en `infra/aws` y `specs/infrastructure.md`: sin hallazgos.
     - Revision simple de balance de llaves en archivos `.tf`: sin diferencias detectadas.
 
-- [ ] TASK-062: Implementar event-driven AWS con Outbox/Inbox, EventBridge/SQS y Lambdas
-  - Estado: IN_PROGRESS
+- [x] TASK-062: Implementar event-driven AWS con Outbox/Inbox, EventBridge/SQS y Lambdas
+  - Estado: DONE
   - Requisitos: RF-008, RF-009, RF-011, RF-014, RNF-010, RNF-014, RN-008, RN-014, RN-030, RN-032, RN-033.
   - Acceptance criteria: AC-010, AC-013, AC-014, AC-018, AC-021, AC-022, AC-024, AC-031, AC-033, AC-035, AC-056, AC-058.
   - Descripcion: Migrar efectos posteriores y eventos transversales desde llamadas best-effort hacia eventos durables con Outbox/Inbox, EventBridge/SQS y consumidores Lambda idempotentes.
@@ -2141,7 +2141,16 @@
     - Empaquetado Lambda proveedor: `./mvnw.cmd -pl services/provider-submission-retry-lambda -am package -DskipTests` exitoso; jar sombreado generado para despliegue via S3.
     - Validacion IaC lote 3 proveedor: `terraform -chdir=infra/aws fmt -recursive` y `terraform -chdir=infra/aws/envs/dev validate` exitosos.
     - Suite completa lote 3 proveedor: `./mvnw.cmd test` exitoso con PostgreSQL local `localhost:15432`: 322 tests, 0 fallos, 0 errores, 0 omitidos.
-    - Pendiente del siguiente lote: consumidor Lambda para reportes; prueba E2E Docker desde cero.
+    - Lote 3 reportes: agregado consumidor `reporting-projection-lambda` para cola `reporting-projections` con soporte para `SaleConfirmed`, `ElectronicDocumentValidated`, `InventoryMovementRegistered` y `AccountingEntryPosted`.
+    - La Lambda de reportes parsea envelopes EventBridge/SQS, ignora eventos no soportados, registra Inbox idempotente en `reporting.reporting_inbox_event` y materializa resumen por empresa/periodo en `reporting.reporting_event_projection`.
+    - Terraform conecta `reporting-projections` con `reporting-projection-lambda`, usando `ReportBatchItemFailures`, IAM minimo, VPC privada y password de RDS desde Secrets Manager.
+    - Ajustado `docker-compose.yml` para que `inventory-service`, `billing-service` y `accounting-service` preparen el POM padre y `platform-eventing` dentro del contenedor antes de arrancar, sin introducir dependencias entre microservicios.
+    - Ajustado `scripts/e2e-from-zero.ps1` para usar `127.0.0.1` por defecto y evitar bloqueos de resolucion de `localhost` en Windows.
+    - Validacion lote 3 reportes: `./mvnw.cmd -pl services/reporting-projection-lambda -am test` exitoso: reactor en `BUILD SUCCESS`, 7 tests del alcance, 0 fallos, 0 errores, 0 omitidos.
+    - Empaquetado Lambda reportes: `./mvnw.cmd -pl services/reporting-projection-lambda -am package -DskipTests` exitoso; jar sombreado generado para despliegue via S3.
+    - Validacion IaC final: `terraform -chdir=infra/aws fmt -recursive` y `terraform -chdir=infra/aws/envs/dev validate` exitosos.
+    - Suite completa final: `./mvnw.cmd test` exitoso con PostgreSQL local `localhost:15432`: 326 tests, 0 fallos, 0 errores, 0 omitidos.
+    - E2E Docker desde cero final: `./scripts/e2e-from-zero.ps1 -StartContainers` exitoso con CompanyId `a96a0ac5-37c3-4418-a5b7-791a13f65626`, ProductId `4816d47c-95b4-4eb5-b780-8810caea8f2f`, SaleId `8675f0d6-6155-4bd8-baef-0070659803ad`, DocumentId `946779b1-bedd-4a9f-96b1-e2f4c168b427` y ProviderTrackingId `mock-electronic_pos-946779b1-bedd-4a9f-96b1-e2f4c168b427`.
 
 - [ ] TASK-063: Disenar e implementar frontend SPA y BFF inicial
   - Estado: PENDING
