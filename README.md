@@ -8,7 +8,7 @@ El proyecto migro desde una estructura legacy CRUD hacia Clean Architecture por 
 
 - Arquitectura Clean Architecture implementada por modulos.
 - PostgreSQL con migraciones Flyway versionadas.
-- Docker Compose local para PostgreSQL, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service`.
+- Docker Compose local para PostgreSQL, `bff-service`, frontend SPA, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service`.
 - POS electronico con emisor/resolucion fiscal persistidos en `billing-service`, proveedor DIAN mock configurable como microservicio HTTP y efectos posteriores idempotentes sobre inventario/contabilidad.
 - Persistencia JPA y endpoints REST para billing/POS, accounting y audit.
 - Limpieza legacy en curso: monolito removido, datos historicos `public.*` preservados hasta migracion aprobada.
@@ -39,6 +39,8 @@ services/<service>
 
 Estructura actual:
 
+- `services/bff-service`: frontera publica para la SPA y API Gateway.
+- `apps/facturaelectronica-web`: SPA React/Vite para pruebas funcionales.
 - `services/tenant-service`: microservicio fisico para empresas/tenants.
 - `services/catalog-service`: microservicio fisico para catalogos oficiales y configurables.
 - `services/thirdparty-service`: microservicio fisico para clientes/proveedores.
@@ -65,6 +67,7 @@ La unidad de despliegue objetivo es un artefacto/contenedor por microservicio, n
 - Flyway
 - Maven Wrapper
 - Docker Compose
+- Node.js 20 y npm 11 para la SPA local
 - JUnit 5, Mockito y AssertJ
 
 ## Requisitos
@@ -146,6 +149,74 @@ DB_URL=jdbc:postgresql://localhost:15432/facturaelectronica
 ```
 
 No se deben versionar `.env`, certificados, API keys ni credenciales reales.
+
+
+
+## Identidad Y Roles
+
+El modelo objetivo aprobado para identidad usa RBAC modular:
+
+- `ROOT` es un usuario global de plataforma, no pertenece a ninguna empresa y no depende de licencia empresarial.
+- `ROOT` registra empresas contratantes, gestiona licencias y entrega el administrador inicial de cada empresa.
+- Todos los roles distintos de `ROOT` son roles por empresa y se aislan por `company_id`.
+- Cada empresa puede crear roles propios y asignar permisos modulares a sus usuarios.
+- Un administrador empresarial no puede crear ni asignar roles con permisos iguales, superiores o no poseidos por el mismo.
+- Los permisos `GLOBAL_*` son exclusivos de `ROOT`.
+- El frontend debe ocultar modulos no permitidos, pero la autorizacion real siempre debe validarse en backend.
+Credenciales ROOT locales dummy para pruebas Docker:
+
+```text
+Usuario: root@example.com
+Password: RootDemo#2026!
+```
+
+Estas credenciales se controlan con `IDENTITY_ROOT_USER_*` y no deben usarse en produccion.
+
+ROOT puede crear empresas contratantes desde la SPA. Al crear una empresa, el `companyId` retornado queda como empresa activa y permite crear el administrador inicial con email, nombre completo, password inicial y rol empresarial `OWNER`.
+
+## Frontend Y BFF
+
+El frontend inicial vive en:
+
+```text
+apps/facturaelectronica-web
+```
+
+La SPA consume solamente el BFF por `/api/v1`. En desarrollo Vite usa proxy hacia `BFF_SERVICE_PORT`.
+
+El flujo operativo actual inicia con login desde la UI. Sin sesion activa solo se muestra la pantalla de login; los menus y formularios no se renderizan. La SPA llama `POST /api/v1/auth/login`, consulta `GET /api/v1/me/companies`, selecciona una empresa autorizada y valida internamente su licencia con `GET /api/v1/companies/{companyId}/license/validation?action=CREATE_TRANSACTION`.
+
+Despues del login exitoso con licencia activa, la SPA muestra un shell operativo profesional con sidebar, panel superior de sesion/empresa y formularios de empresa, terceros, inventario, configuracion fiscal, venta POS/factura y reportes con campos editables. El JSON de request se arma al enviar cada formulario y se envia al BFF con `Authorization`, `X-Company-Id`, `X-Correlation-Id` e `Idempotency-Key` cuando aplica. El campo `companyId` ya no se digita manualmente en la UI operativa; proviene de las empresas asociadas al usuario autenticado. Si la licencia no esta activa, la UI muestra un modal informativo, limpia la sesion automaticamente y vuelve al login. El encabezado autenticado incluye `Cerrar sesion`.
+
+Ejecutar BFF fuera de Docker:
+
+```powershell
+$env:BFF_SERVICE_PORT='8083'
+$env:TENANT_SERVICE_URL='http://localhost:8084'
+$env:IDENTITY_SERVICE_URL='http://localhost:8092'
+$env:CATALOG_SERVICE_URL='http://localhost:8085'
+$env:THIRDPARTY_SERVICE_URL='http://localhost:8086'
+$env:INVENTORY_SERVICE_URL='http://localhost:8087'
+$env:BILLING_SERVICE_URL='http://localhost:8088'
+$env:ACCOUNTING_SERVICE_URL='http://localhost:8090'
+$env:AUDIT_SERVICE_URL='http://localhost:8091'
+.\mvnw.cmd -pl services/bff-service spring-boot:run
+```
+
+Ejecutar SPA fuera de Docker:
+
+```powershell
+cd apps/facturaelectronica-web
+npm install
+npm run dev
+```
+
+URLs locales por defecto:
+
+```text
+BFF: http://localhost:8083
+SPA: http://localhost:5173
+```
 
 ## Ejecucion Local Sin Docker
 
@@ -252,6 +323,8 @@ http://localhost:8089
 El proyecto incluye `docker-compose.yml` con:
 
 - `postgres`: `postgres:16-alpine`.
+- `bff-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/bff-service clean spring-boot:run`.
+- `frontend`: `node:20-alpine`, ejecutando `npm install && npm run dev`.
 - `tenant-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/tenant-service clean spring-boot:run`.
 - `catalog-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/catalog-service clean spring-boot:run`.
 - `thirdparty-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/thirdparty-service clean spring-boot:run`.
@@ -285,6 +358,8 @@ docker compose up -d postgres
 Ver logs:
 
 ```powershell
+docker compose logs -f bff-service
+docker compose logs -f frontend
 docker compose logs -f tenant-service
 docker compose logs -f catalog-service
 docker compose logs -f thirdparty-service
@@ -707,7 +782,7 @@ Estado actual:
 
 - Docker Compose local disponible.
 - PostgreSQL local en contenedor.
-- `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service` locales montados como volumen y ejecutados con Maven Wrapper. Los comandos Compose usan `clean spring-boot:run` para evitar clases obsoletas durante la migracion.
+- `bff-service`, frontend SPA, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service` locales montados como volumen y ejecutados con Maven/npm. Los comandos Compose usan `clean spring-boot:run` para evitar clases obsoletas durante la migracion.
 - El monolito legacy fue removido del repositorio activo; Docker Compose solo levanta microservicios fisicos y PostgreSQL.
 
 Pendiente:

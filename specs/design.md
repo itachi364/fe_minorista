@@ -306,8 +306,12 @@ Toda transicion fiscal debe registrar evento de trazabilidad con estado anterior
 ### Politica objetivo de identidad, permisos y licenciamiento
 
 - `identity-service` administra usuarios, roles, permisos y membresias por empresa desde TASK-056 como microservicio fisico Clean Architecture con schema `identity`.
-- Los roles minimos sugeridos son `OWNER`, `ADMIN`, `CASHIER`, `ACCOUNTANT` y `AUDITOR`.
-- La autorizacion debe evaluar empresa, rol y permiso antes de ejecutar comandos de negocio.
+- Modelo objetivo aprobado en TASK-068: `ROOT` es un usuario global de plataforma, no pertenece a ninguna empresa, no depende de licencia empresarial y puede registrar empresas contratantes y entregar el administrador inicial.
+- Todos los roles distintos de `ROOT` son roles por empresa, configurables y aislados por `company_id`.
+- Cada empresa puede crear sus propios roles empresariales y asignar permisos modulares segun su operacion.
+- La autorizacion debe evaluar empresa, permisos efectivos y alcance global/empresarial antes de ejecutar comandos de negocio.
+- Un actor solo puede crear, editar o asignar roles con permisos estrictamente menores que sus permisos efectivos; no puede delegar permisos iguales, superiores ni permisos que no posee.
+- Los permisos `GLOBAL_*` son exclusivos de `ROOT` y estan prohibidos en roles empresariales.
 - `tenant-service` administra desde TASK-057 el estado de licencia de cada empresa: activa, suspendida, vencida o cancelada.
 - La licencia se persiste en `tenant.company_license` con plan, vigencia, limites de usuarios/documentos y auditoria basica.
 - Los servicios de negocio consultan `GET /api/v1/companies/{companyId}/license/validation?action=...` antes de comandos que creen usuarios, transacciones o documentos fiscales.
@@ -561,3 +565,156 @@ El lote 2 de TASK-059 retira el codigo runtime legacy de terceros (`/api/cliente
 - Topic consulted: Java SQS handlers and Lambda event objects.
 - Relevant finding: `aws-lambda-java-events` 3.16.0 provides `SQSEvent` for SQS-triggered Java Lambdas.
 - Decision impact: `audit-event-writer-lambda`, `inventory-sale-effect-lambda`, `accounting-sale-entry-lambda`, `provider-submission-retry-lambda` and `reporting-projection-lambda` use `SQSEvent` plus `SQSBatchResponse` for partial item failures.
+
+## TASK-063 frontend y BFF inicial
+
+El frontend inicial se implementa como una SPA React/Vite en `apps/facturaelectronica-web` y consume exclusivamente el `bff-service` por `/api/v1`. El navegador no llama microservicios internos directamente.
+
+`bff-service` es un microservicio Spring Boot sin persistencia propia en este lote. Su responsabilidad es exponer la frontera publica de API, enrutar contratos aprobados hacia servicios internos, propagar `Authorization`, `X-Company-Id`, `X-Correlation-Id` e `Idempotency-Key`, conservar respuestas JSON y devolver errores seguros cuando la ruta no esta expuesta o el servicio interno no responde.
+
+Rutas publicas iniciales del BFF:
+
+- `companies` -> `tenant-service`.
+- `auth`, `users`, `me` -> `identity-service`.
+- `catalogs`, `company-catalogs` -> `catalog-service`.
+- `third-parties`, `customers`, `suppliers` -> `thirdparty-service`.
+- `products`, `purchases`, `inventory-movements`, `service-supply-references` -> `inventory-service`.
+- `issuers`, `numbering-resolutions`, `sales`, `electronic-pos`, `electronic-invoices`, `credit-notes`, `debit-notes` -> `billing-service`.
+- `accounts`, `accounting-rules`, `accounting-setup`, `accounting-entries`, `accounts-payable`, `accounts-receivable`, `expenses` -> `accounting-service`.
+- `reports/sales`, `reports/electronic-documents` -> `billing-service`.
+- `reports/inventory-stock`, `reports/kardex`, `reports/purchases` -> `inventory-service`.
+- `reports/expenses`, `reports/journal`, `reports/ledger`, `reports/trial-balance`, `reports/accounts-receivable` -> `accounting-service`.
+- `audit-events` -> `audit-service`.
+
+El primer UI permite operar el flujo funcional por pasos: empresa, terceros, inventario, configuracion fiscal, venta POS/factura mock y reportes. Los formularios usan JSON editable para acelerar pruebas mientras se estabilizan formularios definitivos y autenticacion real.
+
+## TASK-063 Context7 evidence
+
+- Library/tool: React (`/reactjs/react.dev`).
+- Topic consulted: component purity and synchronization with external systems.
+- Relevant finding: React recommends keeping rendering pure and using Effects only to synchronize with external systems, with cleanup for async work.
+- Decision impact: La SPA mantiene el fetch encapsulado en `api/client.js`; los componentes gestionan estado de UI y no contienen reglas fiscales.
+
+- Library/tool: Vite (`/vitejs/vite`).
+- Topic consulted: env variables, dev server proxy and static production build.
+- Relevant finding: Vite uses `VITE_*` env variables for client code, supports `server.proxy`, and emits static assets through `vite build`.
+- Decision impact: `apps/facturaelectronica-web` usa `VITE_BFF_BASE_URL`, proxy local `/api` y build estatico apto para S3/CloudFront.
+
+- Library/tool: Spring Boot 3.5 (`/websites/spring_io_spring-boot_3_5`).
+- Topic consulted: Actuator health endpoints for production-ready services.
+- Relevant finding: Spring Boot Actuator exposes health endpoints for service monitoring.
+- Decision impact: `bff-service` incluye Actuator `health,info` como los demas microservicios.
+## TASK-065 login y formularios frontend
+
+La SPA deja de capturar manualmente `Authorization` y `X-Company-Id`. El flujo de sesion aprobado es:
+
+1. El usuario ingresa email y password.
+2. La SPA llama `POST /api/v1/auth/login` por medio del BFF.
+3. La SPA guarda en memoria `tokenType`, `accessToken`, `userId`, `email`, `fullName` y `expiresAt`.
+4. La SPA llama `GET /api/v1/me/companies` con `Authorization: Bearer <accessToken>`.
+5. La SPA selecciona una empresa activa del usuario; si hay varias, permite cambiarla desde el header operativo.
+6. La SPA llama `GET /api/v1/companies/{companyId}/license/validation?action=CREATE_TRANSACTION` para conocer si la empresa puede operar transacciones.
+7. Los comandos de negocio posteriores envian `Authorization`, `X-Company-Id`, `X-Correlation-Id` e `Idempotency-Key` desde el estado de sesion.
+
+Los formularios operativos son React controlled inputs. Cada campo que antes existia en el JSON editable queda representado por un input, select, checkbox o linea editable. El payload JSON se construye al enviar el formulario; la UI puede mostrar la respuesta del backend, pero el usuario no edita JSON crudo.
+
+Context7 evidence:
+
+- Library/tool: React (`/reactjs/react.dev`).
+- Topic consulted: controlled form inputs, object state updates and form submission.
+- Relevant finding: React documents controlled inputs with state, immutable object updates using spread syntax and `onSubmit` with `preventDefault` for form submission.
+- Decision impact: La SPA usa formularios controlados y construye payloads en submit, sin mutar estado ni depender de textarea JSON.
+## TASK-066 control de sesion y licencia en frontend
+
+La SPA usa un flujo de acceso cerrado: cuando no existe `session`, React renderiza solamente la pantalla de login. El shell operativo, menu lateral, formularios, paneles de respuesta y selector de empresa quedan fuera del arbol renderizado hasta que el login sea exitoso y exista una licencia activa.
+
+Flujo aprobado:
+
+1. `POST /api/v1/auth/login` autentica el usuario.
+2. `GET /api/v1/me/companies` obtiene las empresas autorizadas para el usuario autenticado.
+3. `GET /api/v1/companies/{companyId}/license/validation?action=CREATE_TRANSACTION` valida internamente la licencia de la primera empresa seleccionada.
+4. Si la licencia permite operar, se crea la sesion de UI y se habilitan menus y formularios.
+5. Si la licencia no permite operar o no hay empresa asociada, la sesion se limpia, se muestra un modal informativo y se conserva solo la pantalla de login.
+6. El cambio de empresa dispara validacion de licencia automaticamente; no existe boton manual de validacion.
+7. El boton superior `Cerrar sesion` limpia token, empresa, licencia, respuesta y errores.
+
+### Context7 evidence
+
+- Library/tool: React (`/reactjs/react.dev`).
+- Topic consulted: conditional rendering, state-driven UI and interaction side effects.
+- Relevant finding: React recomienda renderizado condicional basado en estado y ubicar efectos causados por interacciones en event handlers; el render debe permanecer puro.
+- Decision impact: `App.jsx` retorna una pantalla de login aislada cuando `session` es nula y ejecuta login/licencia/logout desde handlers controlados.
+
+## TASK-068 RBAC modular con ROOT global
+
+El modelo de autorizacion objetivo deja de depender de roles fijos hardcodeados y pasa a RBAC configurable con permisos persistidos.
+
+### Principios
+
+- `ROOT` es global de plataforma: administra clientes del software, empresas, licencias y administradores iniciales.
+- `ROOT` no tiene `company_id`, no consume licencia empresarial y no opera ventas, inventario ni contabilidad de una empresa salvo que se cree una membresia empresarial separada aprobada en el futuro.
+- Todo rol distinto de `ROOT` pertenece a una empresa especifica y se aisla por `company_id`.
+- El administrador inicial de empresa es creado o asignado por `ROOT` al activar la empresa contratante.
+- El administrador empresarial puede crear usuarios y roles dentro de su empresa, siempre que los permisos delegados sean estrictamente menores que sus permisos efectivos.
+- Las empresas son libres de crear nombres de roles propios: `Vendedor`, `Contador`, `Supervisor POS`, `Auxiliar Inventario`, etc.
+- El backend es la fuente de verdad de autorizacion; el frontend solo refleja permisos para mejorar experiencia.
+
+### Catalogo inicial de permisos
+
+Permisos globales exclusivos de `ROOT`:
+
+- `GLOBAL_COMPANIES_MANAGE`
+- `GLOBAL_LICENSES_MANAGE`
+- `GLOBAL_USERS_MANAGE`
+- `GLOBAL_ROLES_MANAGE`
+- `GLOBAL_AUDIT_VIEW`
+
+Permisos empresariales iniciales:
+
+- `COMPANY_USERS_MANAGE`
+- `COMPANY_ROLES_MANAGE`
+- `COMPANY_SETTINGS_MANAGE`
+- `SALES_CREATE`
+- `SALES_CANCEL`
+- `FISCAL_DOCUMENTS_ISSUE`
+- `INVENTORY_VIEW`
+- `INVENTORY_MANAGE`
+- `PURCHASES_MANAGE`
+- `ACCOUNTING_VIEW`
+- `ACCOUNTING_MANAGE`
+- `REPORTS_VIEW`
+- `AUDIT_VIEW`
+
+### Context7 evidence
+
+- Library/tool: Spring Security 6.5 (`/websites/spring_io_spring-security_reference_6_5`).
+- Topic consulted: authorities, permissions, role hierarchy and custom authorization managers.
+- Relevant finding: Spring Security soporta autorizacion por authorities/permisos, jerarquias de roles y gestores de autorizacion personalizados para reglas dinamicas.
+- Decision impact: `identity-service` debe calcular permisos efectivos desde BD y exponerlos al BFF/frontend; los microservicios deben validar permisos por accion mediante contratos internos o middleware aprobado, sin depender solo de nombres de roles fijos.
+## TASK-067 redise�o visual profesional
+
+La SPA adopta una presentacion de herramienta SaaS operativa: login centrado con panel de marca, shell autenticado con sidebar fijo en escritorio, area de trabajo clara, panel superior compacto, formularios densos y controles consistentes.
+
+Decisiones visuales:
+
+- Login aislado del shell operativo mientras no exista sesion valida.
+- Layout autenticado con sidebar oscuro, workspace claro y paneles blancos con bordes y sombra sutil.
+- Formularios con grid responsive y controles de altura estable para reducir saltos visuales.
+- Estados y badges con colores funcionales: activo/ok, advertencia y error.
+- Paneles de respuesta conservan estilo tecnico, pero mejor integrados al layout.
+- Responsive para escritorio, tablet y movil sin solapamientos.
+
+## TASK-072 bootstrap ROOT minimo
+
+`identity-service` incorpora una primera base funcional para pruebas del usuario global `ROOT` antes del RBAC modular completo. La tabla `identity.global_user_role` asocia usuarios a roles globales; inicialmente solo acepta `ROOT`. El login retorna `globalRoles` para que el BFF y la SPA distingan alcance global de alcance empresarial.
+
+En Docker local, el seed se controla con `IDENTITY_ROOT_USER_SEED_ENABLED`, `IDENTITY_ROOT_USER_EMAIL`, `IDENTITY_ROOT_USER_FULL_NAME` e `IDENTITY_ROOT_USER_PASSWORD`. Los valores por defecto son dummy y solo sirven para desarrollo. En produccion deben deshabilitarse o reemplazarse por secretos administrados.
+
+La SPA detecta `globalRoles: ["ROOT"]`, omite `GET /api/v1/me/companies` y validacion de licencia empresarial, y muestra un panel global inicial. La administracion completa de empresas, administradores, roles configurables y permisos queda en TASK-069/TASK-070/TASK-071.
+## TASK-073 flujo ROOT operativo
+
+El panel `ROOT` deja de ser una vista limitada de creacion de empresa y pasa a ser el shell global de plataforma. `ROOT` ve todos los modulos, pero las acciones empresariales siguen requiriendo un `companyId` activo. Cuando `ROOT` crea una empresa contratante, la SPA toma el `id` retornado por `tenant-service` y lo usa como empresa activa para configurar terceros, inventario, fiscal, ventas y reportes.
+
+Para entregar el administrador inicial, la SPA ejecuta dos comandos trazables: crea el usuario en `identity-service` y luego asigna `OWNER` en la empresa creada. En el modelo actual `OWNER` representa el administrador empresarial con todos los permisos de empresa; cuando se complete RBAC modular, este flujo migrara a roles configurables.
+
+En backend, `identity-service` reconoce el alcance global `ROOT` desde `identity.global_user_role` y permite que asigne roles empresariales sin exigir membresia previa ni licencia empresarial. Los usuarios no ROOT conservan las validaciones de licencia y permiso `ROLES_MANAGE`.

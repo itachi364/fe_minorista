@@ -627,3 +627,87 @@ Tabla agregada en TASK-052 para notas fiscales persistidas.
 | `issued_at` | timestamptz | Si | Fecha de emision mock. |
 
 Restricciones principales: FK a `billing.electronic_document(id)`, unicidad por `(company_id, prefix, document_number)` y por `(company_id, idempotency_key)`.
+
+### Modelo objetivo TASK-068/TASK-069: RBAC modular
+
+El modelo actual de roles fijos se conserva hasta implementar la migracion. El objetivo aprobado es reemplazar `identity.company_membership_role.role` como enum fijo por roles configurables y permisos persistidos.
+
+#### `identity.global_user_role`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `user_id` | uuid | Si | Usuario global. |
+| `role_code` | varchar(40) | Si | Rol global; inicialmente solo `ROOT`. |
+| `created_at` | timestamptz | Si | Fecha de asignacion. |
+
+Restricciones:
+
+- `primary key(user_id, role_code)`.
+- `role_code in ('ROOT')` en la primera version.
+- Un usuario con `ROOT` no requiere membresia empresarial para ingresar al panel global.
+
+#### `identity.permission_catalog`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `code` | varchar(80) | Si | Codigo unico del permiso. |
+| `scope` | varchar(20) | Si | `GLOBAL` o `COMPANY`. |
+| `module` | varchar(60) | Si | Dominio funcional: plataforma, ventas, inventario, contabilidad, reportes, auditoria, usuarios. |
+| `description` | varchar(250) | Si | Descripcion visible para administradores. |
+| `active` | boolean | Si | Permiso disponible para asignacion. |
+
+Restricciones:
+
+- `primary key(code)`.
+- Permisos con prefijo `GLOBAL_` deben tener `scope='GLOBAL'`.
+- Permisos globales solo pueden asociarse a `ROOT`.
+
+#### `identity.company_role`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador del rol empresarial. |
+| `company_id` | uuid | Si | Empresa propietaria del rol. |
+| `name` | varchar(100) | Si | Nombre del rol definido por la empresa. |
+| `description` | varchar(250) | No | Descripcion del rol. |
+| `system_seed` | boolean | Si | Indica si fue creado como plantilla inicial del sistema. |
+| `active` | boolean | Si | Estado del rol. |
+| `created_by` | uuid | No | Usuario que creo el rol. |
+| `created_at` | timestamptz | Si | Fecha de creacion. |
+| `updated_at` | timestamptz | Si | Fecha de ultima actualizacion. |
+
+Restricciones:
+
+- `unique(company_id, lower(name))`.
+- Todo rol empresarial tiene `company_id` obligatorio.
+- No existe rol empresarial global compartido entre empresas.
+
+#### `identity.company_role_permission`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `role_id` | uuid | Si | Rol empresarial. |
+| `permission_code` | varchar(80) | Si | Permiso empresarial asignado. |
+
+Restricciones:
+
+- `primary key(role_id, permission_code)`.
+- `permission_code` debe existir en `identity.permission_catalog` con `scope='COMPANY'`.
+- Prohibido asignar permisos `GLOBAL_*` a roles empresariales.
+
+#### `identity.company_user_role_assignment`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `company_id` | uuid | Si | Empresa donde aplica la asignacion. |
+| `user_id` | uuid | Si | Usuario asignado. |
+| `role_id` | uuid | Si | Rol empresarial asignado. |
+| `assigned_by` | uuid | No | Actor que asigno el rol. |
+| `assigned_at` | timestamptz | Si | Fecha de asignacion. |
+| `revoked_at` | timestamptz | No | Fecha de revocacion. |
+
+Restricciones:
+
+- `unique(company_id, user_id, role_id)` para asignaciones activas.
+- `role_id` debe pertenecer al mismo `company_id`.
+- El actor debe tener permisos efectivos estrictamente superiores al conjunto que delega.

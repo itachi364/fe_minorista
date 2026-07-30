@@ -282,3 +282,63 @@ Flujo principal:
 4. El sistema disminuye el saldo, actualiza estado y registra trazabilidad contable y operativa.
 
 Acceptance criteria: AC-053, AC-014, AC-015.
+
+## UC-022: Crear empresa contratante y administrador inicial
+
+Actor: Usuario `ROOT`.
+
+Precondiciones:
+- El actor tiene rol global `ROOT`.
+- El actor no requiere `company_id` activo para operar el panel global.
+
+Flujo principal:
+1. `ROOT` registra la empresa que compra la licencia del software.
+2. El sistema crea la empresa en `tenant-service` y su licencia inicial segun plan contratado.
+3. `ROOT` crea o selecciona el usuario administrador inicial de esa empresa.
+4. El sistema crea la membresia del administrador en la empresa.
+5. El sistema asigna un rol empresarial inicial con permisos administrativos permitidos para esa empresa.
+6. El sistema registra auditoria de empresa, licencia, usuario y asignacion de rol.
+
+Reglas:
+- `ROOT` no queda como usuario operativo de la empresa por defecto.
+- La empresa no puede acceder a roles ni usuarios de otras empresas.
+- El administrador inicial no recibe permisos `GLOBAL_*`.
+
+Acceptance criteria: AC-059, AC-060, AC-061, AC-063, AC-018, AC-032.
+
+## UC-023: Crear rol empresarial configurable
+
+Actor: Administrador empresarial con `COMPANY_ROLES_MANAGE`.
+
+Precondiciones:
+- El actor pertenece a la empresa activa.
+- La licencia de la empresa permite administracion de usuarios/roles segun politica comercial.
+
+Flujo principal:
+1. El actor define nombre, descripcion y permisos del rol.
+2. El sistema calcula permisos efectivos del actor en esa empresa.
+3. El sistema rechaza permisos `GLOBAL_*`.
+4. El sistema valida que los permisos seleccionados sean subconjunto estricto de los permisos efectivos del actor.
+5. El sistema crea el rol asociado a `company_id`.
+6. El sistema registra auditoria del cambio.
+
+Flujos alternos:
+- Si el rol intenta tener permisos iguales a los del actor, se rechaza.
+- Si el rol intenta tener permisos que el actor no posee, se rechaza.
+- Si otra empresa intenta consultar o asignar el rol, se rechaza por aislamiento multiempresa.
+
+Acceptance criteria: AC-061, AC-062, AC-063, AC-064, AC-018, AC-032.
+
+## UC-024: Asignar roles empresariales a usuarios
+
+Actor: Administrador empresarial con `COMPANY_USERS_MANAGE` y permisos suficientes.
+
+Flujo principal:
+1. El actor selecciona usuario de la empresa o crea uno nuevo.
+2. El actor selecciona uno o varios roles empresariales activos.
+3. El sistema calcula permisos efectivos resultantes de los roles seleccionados.
+4. El sistema valida que el actor pueda delegar esos permisos con la regla estrictamente menor.
+5. El sistema guarda la asignacion y recalcula permisos efectivos del usuario.
+6. El sistema registra auditoria.
+
+Acceptance criteria: AC-061, AC-062, AC-064, AC-018, AC-032.

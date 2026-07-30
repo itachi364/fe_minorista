@@ -23,6 +23,8 @@ import com.msvanegasg.facturaelectronica.identity.application.dto.LoginCommand;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.AccessAuditRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.CompanyMembershipRepositoryPort;
+import com.msvanegasg.facturaelectronica.identity.application.port.out.GlobalUserRoleRepositoryPort;
+import com.msvanegasg.facturaelectronica.identity.application.port.out.LicenseValidationPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.PasswordHasherPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.TokenGeneratorPort;
@@ -31,6 +33,7 @@ import com.msvanegasg.facturaelectronica.identity.application.port.out.UserAccou
 import com.msvanegasg.facturaelectronica.identity.application.port.out.UserSessionRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.domain.model.AccessAuditEvent;
 import com.msvanegasg.facturaelectronica.identity.domain.model.CompanyMembership;
+import com.msvanegasg.facturaelectronica.identity.domain.model.GlobalRoleCode;
 import com.msvanegasg.facturaelectronica.identity.domain.model.PermissionCode;
 import com.msvanegasg.facturaelectronica.identity.domain.model.RoleCode;
 import com.msvanegasg.facturaelectronica.identity.domain.model.UserAccount;
@@ -114,6 +117,36 @@ class IdentityManagementServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
     }
 
+
+    @Test
+    void rootCanAssignInitialCompanyAdministratorWithoutCompanyLicenseOrMembership() {
+        InMemoryGlobalRoles globalRoles = new InMemoryGlobalRoles();
+        LicenseValidationPort failingLicenseValidation = (companyId, action) -> {
+            throw new AssertionError("ROOT bootstrap must not require company license validation");
+        };
+        IdentityManagementService rootAwareService = new IdentityManagementService(users, memberships, sessions, audit,
+                globalRoles, failingLicenseValidation, new FixedPasswordHasher(), () -> "root-token",
+                token -> "hash-" + token, new SequentialIds(USER_ID, SESSION_ID, MEMBERSHIP_ID,
+                        UUID.fromString("55555555-5555-5555-5555-555555555555"),
+                        UUID.fromString("66666666-6666-6666-6666-666666666666"),
+                        UUID.fromString("77777777-7777-7777-7777-777777777777"),
+                        UUID.fromString("88888888-8888-8888-8888-888888888888"),
+                        UUID.fromString("99999999-9999-9999-9999-999999999999"),
+                        UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")),
+                () -> NOW, Duration.ofHours(12));
+
+        var root = rootAwareService.createUser(new CreateUserCommand("root@example.com", "Root User", "secret123"));
+        globalRoles.assignRole(root.id(), GlobalRoleCode.ROOT);
+        var login = rootAwareService.login(new LoginCommand("root@example.com", "secret123"));
+        var admin = rootAwareService.createUser(new CreateUserCommand("admin@example.com", "Admin User", "secret123"));
+
+        var membership = rootAwareService.assignRoles(new AssignRolesCommand(COMPANY_ID, admin.id(),
+                Set.of(RoleCode.OWNER), "Bearer " + login.accessToken()));
+
+        assertThat(membership.companyId()).isEqualTo(COMPANY_ID);
+        assertThat(membership.userId()).isEqualTo(admin.id());
+        assertThat(membership.roles()).containsExactly(RoleCode.OWNER);
+    }
     private static final class InMemoryUsers implements UserAccountRepositoryPort {
         private final Map<UUID, UserAccount> byId = new HashMap<>();
         private final Map<String, UserAccount> byEmail = new HashMap<>();
@@ -164,6 +197,25 @@ class IdentityManagementServiceTest {
         }
     }
 
+
+    private static final class InMemoryGlobalRoles implements GlobalUserRoleRepositoryPort {
+        private final Map<UUID, Set<GlobalRoleCode>> roles = new HashMap<>();
+
+        @Override
+        public Set<GlobalRoleCode> findByUserId(UUID userId) {
+            return roles.getOrDefault(userId, Set.of());
+        }
+
+        @Override
+        public boolean hasRole(UUID userId, GlobalRoleCode roleCode) {
+            return findByUserId(userId).contains(roleCode);
+        }
+
+        @Override
+        public void assignRole(UUID userId, GlobalRoleCode roleCode) {
+            roles.put(userId, Set.of(roleCode));
+        }
+    }
     private static final class InMemorySessions implements UserSessionRepositoryPort {
         private final Map<String, UserSession> byHash = new HashMap<>();
         @Override

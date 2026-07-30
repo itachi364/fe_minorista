@@ -60,6 +60,24 @@ TASK-062 se implementa por lotes: el lote 1 registra contratos canonicos y Outbo
 - Secretos: las Lambdas reciben el ARN del secreto de base de datos y leen el password desde Secrets Manager en runtime.
 - Activacion: si `lambda_artifact_bucket` esta vacio, Terraform no crea la Lambda para evitar applies con artefactos inexistentes.
 
+
+## Gestion de conexiones PostgreSQL
+
+Cada microservicio Spring Boot declara un pool Hikari explicito para evitar depender de defaults y para controlar el numero total de conexiones contra PostgreSQL.
+
+Configuracion local/test inicial:
+
+- `DB_POOL_MAX_SIZE=3`
+- `DB_POOL_MIN_IDLE=0`
+- `DB_CONNECTION_TIMEOUT_MS=10000`
+- `DB_IDLE_TIMEOUT_MS=60000`
+- `DB_MAX_LIFETIME_MS=300000`
+
+Cada servicio puede sobrescribir estos valores con variables propias como `BILLING_DB_POOL_MAX_SIZE`, `INVENTORY_DB_POOL_MAX_SIZE` o `AUDIT_DB_POOL_MAX_SIZE`.
+
+Para AWS productivo, ECS Fargate y Lambdas event-driven deben conectarse a RDS PostgreSQL mediante RDS Proxy o una capa administrada equivalente. Las Lambdas no deben abrir conexiones directas sin control al endpoint primario de RDS porque su escalado concurrente puede agotar conexiones rapidamente.
+
+La capacidad final del pool por servicio debe dimensionarse con metricas reales: concurrencia por servicio, latencia de queries, `DatabaseConnections`, saturacion de Hikari y tiempos de espera de conexion.
 ## Seguridad
 
 - No se versionan secretos reales.
@@ -81,6 +99,10 @@ TASK-062 se implementa por lotes: el lote 1 registra contratos canonicos y Outbo
 
 ## Context7 evidence
 
+- Library/tool: Spring Boot 3.5 (`/websites/spring_io_spring-boot_3_5`).
+- Topic consulted: HikariCP datasource pool properties and environment variable relaxed binding.
+- Relevant finding: Spring Boot permite ajustar propiedades especificas del pool mediante prefijos de datasource/Hikari y mapear variables de entorno a propiedades con relaxed binding.
+- Decision impact: Se parametrizan `spring.datasource.hikari.*` en cada microservicio y se exponen variables por ambiente/servicio en Docker Compose.
 - Library/tool: Terraform AWS Provider (`/hashicorp/terraform-provider-aws`).
 - Topic consulted: ECS Fargate, Lambda, API Gateway, SQS/EventBridge y recursos administrados en Terraform.
 - Relevant finding: El provider soporta recursos para ECS Fargate, API Gateway, Lambda, SQS event source mappings y recursos administrados AWS necesarios para el target.
@@ -107,3 +129,9 @@ TASK-062 se implementa por lotes: el lote 1 registra contratos canonicos y Outbo
 - Topic consulted: SQS event handling with Java Lambda and `aws-lambda-java-events`.
 - Relevant finding: `SQSEvent` is the supported Java event model for SQS-triggered Lambda handlers; `aws-lambda-java-events` 3.16.0 provides the event objects.
 - Decision impact: `audit-event-writer-lambda`, `inventory-sale-effect-lambda`, `accounting-sale-entry-lambda`, `provider-submission-retry-lambda` and `reporting-projection-lambda` implement Java 17 SQS handlers and return `SQSBatchResponse` so failed records can be retried without replaying the full batch.
+
+## TASK-063 entorno local BFF/SPA
+
+Docker Compose agrega `bff-service` en el puerto `BFF_SERVICE_PORT` y `frontend` en `FRONTEND_PORT`. `bff-service` no declara `depends_on` hacia microservicios de negocio; sus dependencias REST son de runtime. El servicio `frontend` usa Node 20 y proxy Vite hacia `bff-service` dentro de la red Compose.
+
+La arquitectura productiva se mantiene alineada con el target AWS: SPA estatica en S3/CloudFront, API Gateway hacia BFF en ECS Fargate y microservicios internos privados.

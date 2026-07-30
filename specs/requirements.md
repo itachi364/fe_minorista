@@ -88,7 +88,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 
 ## Fuera de alcance inicial
 
-- Frontend web o movil.
+- Frontend movil. El frontend web SPA inicial queda incluido desde TASK-063 como capa operativa de prueba sobre BFF.
 - Nomina electronica.
 - RADIAN avanzado, salvo decision posterior.
 - Integracion directa DIAN sin proveedor tecnologico.
@@ -136,6 +136,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RF-026: El sistema debe implementar usuarios, roles y permisos por empresa antes de operar en escenarios reales multiempresa.
 - RF-027: El sistema debe implementar licenciamiento por empresa para habilitar, suspender o limitar el uso de la plataforma segun condiciones comerciales.
 - RF-028: El sistema debe administrar cuentas por cobrar por empresa, cliente, documento origen, vencimiento, saldo, pagos parciales/totales y estado de cartera.
+- RF-029: El sistema debe exponer una SPA web inicial que consuma unicamente el BFF para probar el flujo operativo desde empresa hasta venta POS/factura mock y reportes.
 
 ## Requisitos no funcionales
 
@@ -228,3 +229,14 @@ Los criterios detallados se encuentran en `specs/acceptance-criteria.md`.
 ## Trazabilidad
 
 Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no funcionales y criterios de aceptacion.
+
+## Requisitos RBAC modular aprobado
+
+- RF-030: El sistema debe soportar un usuario `ROOT` global de plataforma que no pertenece a ninguna empresa y no depende de licencia empresarial para iniciar sesion.
+- RF-031: El usuario `ROOT` debe poder crear empresas contratantes, configurar o activar licencias y crear/asignar el administrador inicial de cada empresa.
+- RF-032: Todos los roles distintos de `ROOT` deben pertenecer a una empresa especifica y estar aislados por `company_id`.
+- RF-033: Cada empresa debe poder crear roles personalizados con nombres propios y permisos modulares dentro de su alcance empresarial.
+- RF-034: El sistema debe impedir que un actor cree, edite o asigne roles con permisos iguales, superiores o no poseidos por el actor.
+- RF-035: Los permisos globales `GLOBAL_*` deben ser exclusivos de `ROOT` y no deben asignarse a roles empresariales.
+- RF-036: El frontend debe mostrar panel global para `ROOT` y panel empresarial para usuarios de empresa segun permisos efectivos.
+- RF-037: El backend debe validar permisos efectivos en cada accion protegida; el frontend no es fuente de seguridad.

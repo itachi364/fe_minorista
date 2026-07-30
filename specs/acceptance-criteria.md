@@ -86,3 +86,15 @@
 - AC-056: Los procesos event-driven quedan clasificados con contratos de evento, idempotencia, Outbox/Inbox y DLQ/reintentos antes de implementar infraestructura.
 - AC-057: La IaC productiva propuesta no incluye contenedores, artefactos, rutas ni servicios legacy eliminados.
 - AC-058: La arquitectura productiva no incluye brokers self-hosted; la mensajeria objetivo es AWS administrada con EventBridge/SQS + Lambda.
+
+## RBAC modular y experiencia frontend profesional
+
+- AC-059: Dado un usuario `ROOT`, cuando inicie sesion, entonces el sistema debe permitir acceso global sin requerir `company_id`, membresia empresarial ni licencia empresarial activa.
+- AC-060: Dado un usuario `ROOT`, cuando cree una empresa contratante, entonces debe poder crear o asignar el administrador inicial de esa empresa sin exponer informacion de otras empresas.
+- AC-061: Dado un rol distinto de `ROOT`, cuando se cree o actualice, entonces debe pertenecer obligatoriamente a una sola empresa mediante `company_id` y no debe ser visible ni asignable desde otra empresa.
+- AC-062: Dado un administrador empresarial, cuando cree o asigne un rol, entonces el conjunto de permisos del rol debe ser subconjunto estricto de sus permisos efectivos y nunca igual ni superior.
+- AC-063: Dado cualquier rol empresarial, cuando se configure permisos, entonces el sistema debe rechazar permisos globales `GLOBAL_*` y registrar auditoria segura del intento.
+- AC-064: Dado un usuario con permisos efectivos, cuando acceda a un modulo o ejecute una accion, entonces backend y frontend deben permitirla o rechazarla segun permisos persistidos, no segun nombres de roles hardcodeados.
+- AC-065: Dada la SPA, cuando se use en escritorio o movil, entonces login, shell, navegacion, formularios, modales y paneles de respuesta deben mantener una presentacion profesional, consistente, responsive y sin solapamientos visuales.
+- AC-066: Dado el entorno local Docker, cuando `IDENTITY_ROOT_USER_SEED_ENABLED=true`, entonces `identity-service` debe crear o asegurar un usuario `ROOT` dummy activo, retornar `globalRoles` en login y permitir entrada al panel global sin empresa ni licencia.- AC-067: Dado un usuario `ROOT` autenticado, cuando ingrese a la SPA, entonces debe ver todos los modulos disponibles y operar configuraciones usando una empresa activa creada o seleccionada.
+- AC-068: Dado un usuario `ROOT` autenticado y una empresa contratante creada, cuando registre el administrador inicial con email, nombre y contraseña, entonces el sistema debe crear el usuario y asignarle rol empresarial `OWNER` para esa empresa.

@@ -393,7 +393,7 @@
   - Verificacion: `mvnw.cmd "-Dtest=ProductManagementServiceTest,ProductoControllerTest" test` ejecutado con exito: 17 tests, 0 fallos. `mvnw.cmd "-Dtest=SupplierManagementServiceTest,ProveedorControllerTest,CustomerManagementServiceTest,ClienteControllerTest" test` ejecutado con exito: 28 tests, 0 fallos. `mvnw.cmd "-Dtest=PurchaseManagementServiceTest,CompraControllerTest,ExpenseManagementServiceTest,GastoControllerTest" test` ejecutado con exito: 20 tests, 0 fallos. Suite completa `mvnw.cmd test` con PostgreSQL local: 204 tests, 0 fallos.
 
 - [x] TASK-020: Migrar persistencia y contratos legacy a Clean Architecture completa
-  - Estado: COMPLETED
+  - Estado: DONE
   - Descripcion: Reemplazar gradualmente las entidades JPA, DTOs, repositorios Spring Data y contratos ubicados en paquetes legacy compartidos por implementaciones propias de cada bounded context, de forma que `domain`, `application`, `infrastructure` e `interfaces` queden estandarizados bajo Clean Architecture en todo el proyecto.
   - Alcance:
     - Mover o recrear entidades JPA por bounded context en paquetes de infraestructura, por ejemplo `catalog/infrastructure/persistence/entity`, `thirdparty/infrastructure/persistence/entity`, `inventory/infrastructure/persistence/entity` y `expenses/infrastructure/persistence/entity`.
@@ -1193,8 +1193,8 @@
     - `.\mvnw.cmd test` con `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `DIAN_PROVIDER_MODE=mock`: BUILD SUCCESS.
     - Reportes Surefire: 140 archivos, 708 tests, 0 failures, 0 errors, 0 skipped.
 
-- [ ] TASK-040: Eliminar codigo muerto y tablas legacy reemplazadas
-  - Estado: IN_PROGRESS
+- [x] TASK-040: Eliminar codigo muerto y tablas legacy reemplazadas
+  - Estado: DONE
   - Requisitos: RF-015, RN-015.
   - Acceptance criteria: AC-025, AC-028, AC-036.
   - Descripcion: Ejecutar la depuracion aprobada despues de que la prueba E2E completa confirme que los microservicios reemplazan el comportamiento legacy necesario.
@@ -1534,6 +1534,38 @@
     - IDs de evidencia E2E: CompanyId `e1a7b141-4fe3-45d3-a207-4b55cd398fbb`, ProductId `d82a8168-107c-4339-936a-4d1c9a5fa408`, SaleId `cd26af04-e31e-4640-b646-5f0de2a8c777`, DocumentId `7e373009-ed63-4194-9703-784fc993c20c`, ProviderTrackingId `mock-electronic_pos-7e373009-ed63-4194-9703-784fc993c20c`.
   - Nota:
     - La evidencia historica de TASK-043 sobre `billing-service` dependiendo de `audit-service` queda reemplazada por esta tarea.
+
+- [x] TASK-045: Definir estrategia de mensajeria asincrona cloud
+  - Estado: DONE
+  - Requisitos: RNF-010, RNF-014, RNF-019, RNF-020, RNF-021, RN-030, RN-032, RN-033.
+  - Acceptance criteria: AC-054, AC-055, AC-056, AC-057, AC-058.
+  - Descripcion: Documentar y aprobar la estrategia de mensajeria asincrona para el producto cloud, evitando brokers self-hosted y manteniendo los microservicios desacoplados durante fallas parciales.
+  - Dependencias:
+    - TASK-044.
+  - Alcance:
+    - Comparar la alternativa inicialmente considerada de NATS con un enfoque 100% administrado en AWS.
+    - Definir que la mensajeria productiva objetivo no sera on-premise ni self-hosted.
+    - Aprobar EventBridge/SQS + Lambda como estrategia cloud para procesos event-driven transversales.
+    - Mantener Outbox/Inbox como patron obligatorio para productores y consumidores idempotentes.
+    - Aclarar que la implementacion queda para una tarea posterior una vez cerrado el backend core.
+  - Fuera de alcance:
+    - Implementar productores, consumidores, colas, buses o Lambdas.
+    - Cambiar contratos REST existentes.
+    - Introducir NATS, RabbitMQ, Kafka u otro broker local/productivo.
+  - Decision:
+    - Se descarta NATS como destino productivo porque el target aprobado es 100% cloud AWS y se priorizan servicios administrados.
+    - Se aprueba EventBridge/SQS + Lambda para procesos asincronos: auditoria, efectos posteriores, reintentos de proveedor, proyecciones de reportes, notificaciones y tareas programadas.
+    - Los microservicios Spring Boot de larga vida siguen en ECS Fargate; los procesos event-driven cortos e idempotentes se ejecutan en Lambda.
+  - Trazabilidad posterior:
+    - TASK-060 consolida la arquitectura cloud AWS con BFF, ECS Fargate, Lambda y RDS/Aurora PostgreSQL.
+    - TASK-061 implementa IaC AWS inicial.
+    - TASK-062 implementa Outbox/Inbox, EventBridge/SQS y consumidores Lambda.
+  - Tests requeridos:
+    - Revision documental SDD.
+    - Verificacion de que specs no mantengan NATS como objetivo productivo.
+  - Resultado local:
+    - La decision queda reflejada en requirements, design, api-contract e infrastructure.
+    - `rg "NATS|JetStream|RabbitMQ|Kafka" specs infra docker-compose.yml`: sin objetivo productivo activo; solo menciones historicas o descartadas si aplican.
 
 - [x] TASK-046: Cerrar diseno backend core pendiente antes de depuracion legacy
   - Estado: DONE
@@ -2152,8 +2184,8 @@
     - Suite completa final: `./mvnw.cmd test` exitoso con PostgreSQL local `localhost:15432`: 326 tests, 0 fallos, 0 errores, 0 omitidos.
     - E2E Docker desde cero final: `./scripts/e2e-from-zero.ps1 -StartContainers` exitoso con CompanyId `a96a0ac5-37c3-4418-a5b7-791a13f65626`, ProductId `4816d47c-95b4-4eb5-b780-8810caea8f2f`, SaleId `8675f0d6-6155-4bd8-baef-0070659803ad`, DocumentId `946779b1-bedd-4a9f-96b1-e2f4c168b427` y ProviderTrackingId `mock-electronic_pos-946779b1-bedd-4a9f-96b1-e2f4c168b427`.
 
-- [ ] TASK-063: Disenar e implementar frontend SPA y BFF inicial
-  - Estado: PENDING
+- [x] TASK-063: Disenar e implementar frontend SPA y BFF inicial
+  - Estado: DONE
   - Requisitos: RF-010, RF-013, RF-014, RF-016, RF-019, RF-023, RF-025, RF-026, RF-027, RNF-019, RNF-020.
   - Acceptance criteria: AC-054, AC-055.
   - Descripcion: Crear la primera experiencia funcional del producto consumiendo solo el BFF, con pantallas minimas para probar empresa, configuracion, terceros, inventario, venta POS, factura mock, contabilidad y reportes.
@@ -2173,3 +2205,266 @@
     - Unit/component tests frontend.
     - Contract tests BFF.
     - E2E UI minimo para crear empresa, inventario y venta POS mock.
+
+  - Resultado local TASK-063:
+    - Creado `services/bff-service` como microservicio Spring Boot sin persistencia, integrado al reactor Maven.
+    - El BFF enruta `/api/v1/**` hacia servicios internos segun bounded context y rechaza rutas internas no publicas como `/api/v1/provider/**`.
+    - El BFF propaga `Authorization`, `X-Company-Id`, `X-Correlation-Id`, `Idempotency-Key`, `Content-Type` y `Accept`; filtra cabeceras de respuesta a `Content-Type` y `X-Correlation-Id`.
+    - Creada SPA React/Vite en `apps/facturaelectronica-web` con flujo operativo por empresa, terceros, inventario, configuracion fiscal, venta POS/factura mock y reportes.
+    - Docker Compose agrega `bff-service` y `frontend` sin `depends_on` hacia microservicios de negocio.
+    - Documentacion actualizada en requirements, design, api-contract, infrastructure y README.
+    - Validacion: `./mvnw.cmd -pl services/bff-service test` exitoso: 5 tests, 0 fallos.
+    - Validacion frontend: `npm run test` exitoso: 1 test, 0 fallos.
+    - Validacion frontend: `npm run build` exitoso; artefacto estatico generado en `dist`.
+    - Validacion Compose: `docker compose config --quiet` exitoso.
+    - Suite completa Maven: `./mvnw.cmd test` exitoso con PostgreSQL local `localhost:15432`: 331 tests, 0 fallos, 0 errores, 0 omitidos.
+    - Validacion local runtime: `docker compose up -d bff-service frontend` exitoso; BFF `http://127.0.0.1:8083/actuator/health` responde `UP` y frontend `http://127.0.0.1:5173` responde `200 OK`.
+- [x] TASK-064: Optimizar gestion de conexiones PostgreSQL por microservicio
+  - Estado: DONE
+  - Requisitos: RNF-004, RNF-007, RNF-011, RNF-014, RNF-019.
+  - Acceptance criteria:
+    - AC-054: La infraestructura cloud documenta RDS/RDS Proxy como estrategia productiva de conexion para ECS/Lambda.
+    - AC-057: Docker local parametriza pools por microservicio sin depender de defaults de Hikari.
+    - AC-058: La aplicacion puede ejecutar pruebas con todos los contenedores levantados sin agotar conexiones PostgreSQL.
+  - Descripcion: Configurar limites explicitos de HikariCP por microservicio, documentar variables globales y por servicio, y alinear la arquitectura productiva AWS para evitar agotamiento de conexiones en PostgreSQL multiempresa.
+  - Dependencias:
+    - TASK-060.
+    - TASK-061.
+  - Archivos:
+    - `.env.example`
+    - `docker-compose.yml`
+    - `services/*/src/main/resources/application.properties`
+    - `specs/infrastructure.md`
+    - `specs/tasks.md`
+  - Evidencia Context7:
+    - Spring Boot 3.5 (`/websites/spring_io_spring-boot_3_5`) permite configurar propiedades especificas de Hikari mediante `spring.datasource.hikari.*`.
+    - Spring Boot 3.5 soporta relaxed binding para mapear variables de entorno a propiedades de configuracion.
+  - Completion criteria:
+    - Cada microservicio declara `maximum-pool-size`, `minimum-idle`, `connection-timeout`, `idle-timeout` y `max-lifetime`.
+    - Docker Compose inyecta variables de pool por servicio con defaults locales conservadores.
+    - La suite completa Maven se ejecuta contra PostgreSQL Docker sin error `too many clients`.
+  - Tests requeridos:
+    - `docker compose config --quiet`
+    - ./mvnw.cmd test con PostgreSQL local en localhost:15432.
+  - Resultado local:
+    - Configurados pools Hikari explicitos en 9 microservicios Spring Boot.
+    - Docker Compose inyecta variables de pool por servicio con defaults locales conservadores.
+    - `docker compose config --quiet`: exitoso.
+    - Se recrearon contenedores sin eliminar volumen PostgreSQL; conexiones bajaron de ~90 idle a sin conexiones idle retenidas al momento de la medicion.
+    - `./mvnw.cmd clean test` exitoso con PostgreSQL local `localhost:15432`: BUILD SUCCESS.
+    - Nota local: ejecutar Maven host al mismo tiempo que contenedores hacen `clean spring-boot:run` puede truncar clases en `target`; esperar a que los contenedores terminen de compilar o ejecutar `clean test` despues del arranque.
+
+- [x] TASK-065: Mejorar frontend con login, empresa activa y formularios controlados
+  - Estado: DONE
+  - Requisitos: RF-010, RF-013, RF-026, RF-027, RF-029, RNF-019, RNF-020.
+  - Acceptance criteria: AC-048, AC-049, AC-054, AC-055.
+  - Descripcion: Reemplazar la consola JSON inicial por una experiencia de formularios controlados donde el login obtiene el token, las empresas autorizadas y la licencia activa; los payloads JSON se construyen al enviar cada formulario.
+  - Dependencias:
+    - TASK-063.
+  - Alcance:
+    - Implementar pantalla de login con `POST /api/v1/auth/login`.
+    - Cargar empresas del usuario con `GET /api/v1/me/companies` usando el token recibido.
+    - Seleccionar empresa activa desde el acceso del usuario y validar licencia con `GET /api/v1/companies/{companyId}/license/validation`.
+    - Remover captura manual de token y `companyId` en la UI operativa.
+    - Sustituir textarea JSON por campos editables para empresa, terceros, inventario, fiscal, venta POS y reportes.
+    - Construir el JSON de request solo al hacer submit y enviarlo al BFF.
+    - Ajustar BFF si se detectan rutas de identity/tenant ambiguas bajo `/api/v1/companies/**`.
+  - Fuera de alcance:
+    - Implementar seguridad JWT o proveedor de identidad externo.
+    - Crear onboarding completo de usuarios/empresas/licencias.
+    - Cambiar reglas de negocio de microservicios.
+  - Tests requeridos:
+    - Pruebas frontend para login, estado de sesion y render de formularios.
+    - Pruebas frontend para armado de payloads basicos.
+    - Pruebas BFF para enrutamiento de `/api/v1/companies/{companyId}/license/**` hacia tenant y membresias/permisos hacia identity.
+    - `npm run test`, `npm run build` y pruebas Maven enfocadas del BFF.
+  - Resultado local:
+    - SPA actualizada con login controlado contra `/api/v1/auth/login`, carga de empresas desde `/api/v1/me/companies` y validacion de licencia por empresa activa.
+    - Eliminada la captura manual de Bearer token y `companyId` en la UI operativa; la empresa activa proviene del usuario autenticado.
+    - Formularios controlados implementados para empresa, terceros, inventario, fiscal, venta POS/factura y reportes; el JSON se arma al hacer submit.
+    - BFF ajustado para enrutar rutas ambiguas de `/api/v1/companies/**`: licencias hacia `tenant-service` y membresias/permisos hacia `identity-service`.
+    - Validacion BFF: `./mvnw.cmd -pl services/bff-service test` exitoso: 6 tests, 0 fallos.
+    - Validacion frontend: `npm run test` exitoso: 2 tests, 0 fallos.
+    - Validacion frontend: `npm run build` exitoso; artefacto estatico generado en `dist`.
+    - Validacion formato Git: `git diff --check` sin errores de whitespace; solo advertencias CRLF esperadas en Windows.
+- [x] TASK-066: Restringir UI operativa por sesion y licencia activa
+  - Estado: DONE
+  - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
+  - Acceptance criteria:
+    - AC-048: Las operaciones multiempresa se ejecutan solo con usuario autenticado y empresa activa.
+    - AC-049: La licencia activa se valida internamente antes de habilitar el flujo operativo.
+    - AC-054: El frontend consume solamente el BFF.
+    - AC-055: La experiencia de prueba local no expone microservicios internos al navegador.
+  - Descripcion: Convertir la pantalla de login en puerta de entrada unica: sin sesion no se renderiza menu ni modulos operativos; despues del login se valida licencia automaticamente y, si no esta activa, se informa por modal y se cierra la sesion.
+  - Dependencias:
+    - TASK-065.
+  - Alcance:
+    - Renderizar solo login cuando `session` es nula.
+    - Ocultar login y mostrar menu/modulos solo cuando login, empresa y licencia son validos.
+    - Eliminar accion manual de validacion de licencia.
+    - Agregar boton superior `Cerrar sesion`.
+    - Mostrar modal de licencia inactiva y limpiar sesion automaticamente.
+  - Evidencia Context7:
+    - React oficial (`/reactjs/react.dev`) recomienda renderizado condicional con estado y ejecutar efectos de interaccion desde handlers, manteniendo el render puro.
+  - Tests requeridos:
+    - `npm run test`.
+    - `npm run build`.
+  - Resultado local:
+    - Sin sesion activa, la SPA renderiza solamente la pantalla de login.
+    - Login exitoso con licencia activa oculta el login y muestra menu, empresa activa, formularios y boton `Cerrar sesion`.
+    - La validacion de licencia se ejecuta internamente despues del login y al cambiar empresa; se elimino el boton manual `Validar licencia`.
+    - Licencia inactiva o usuario sin empresa muestran modal informativo, limpian la sesion y conservan solo el login.
+    - Validacion frontend: `npm run test` exitoso: 4 tests, 0 fallos.
+    - Validacion frontend: `npm run build` exitoso; artefacto estatico generado en `dist`.
+
+- [x] TASK-067: Redise�ar experiencia visual profesional de toda la aplicacion
+  - Estado: DONE
+  - Requisitos: RNF-019, RNF-020.
+  - Acceptance criteria: AC-054, AC-055, AC-065.
+  - Descripcion: Mejorar el dise�o visual completo de la SPA para que el producto se perciba como una aplicacion SaaS profesional: login, shell autenticado, sidebar, topbar, formularios, modales, botones, paneles de resultado y estados.
+  - Dependencias:
+    - TASK-066.
+  - Alcance:
+    - Login profesional y centrado, sin layout plano.
+    - Shell autenticado denso, limpio y consistente para operacion diaria.
+    - Navegacion, formularios, tablas/paneles y respuestas con jerarquia visual clara.
+    - Dise�o responsive sin solapamientos.
+    - Mantener el comportamiento funcional y pruebas existentes.
+  - Tests requeridos:
+    - `npm run test`.
+    - `npm run build`.
+    - Validacion visual manual en Docker local.
+  - Resultado local:
+    - Redise�ado `styles.css` con login profesional centrado, shell operativo consistente, sidebar, topbar, formularios, botones, estados, modales y paneles de resultado.
+    - Ajustado texto del login para una presentacion mas profesional y menos prototipo.
+    - Validacion frontend: `npm run test` exitoso: 4 tests, 0 fallos.
+    - Validacion frontend: `npm run build` exitoso; artefacto estatico generado en `dist`.
+
+- [ ] TASK-068: Dise�ar RBAC modular con ROOT global y roles por empresa
+  - Estado: APPROVED
+  - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
+  - Acceptance criteria: AC-059, AC-060, AC-061, AC-062, AC-063, AC-064.
+  - Descripcion: Reemplazar el modelo de roles fijos por RBAC configurable: `ROOT` global sin empresa y roles personalizados aislados por empresa, con permisos modulares y regla de delegacion estrictamente menor.
+  - Dependencias:
+    - TASK-056.
+    - TASK-066.
+  - Alcance:
+    - Definir `ROOT` como usuario global de plataforma, sin `company_id` ni licencia empresarial.
+    - Definir roles empresariales configurables por `company_id`.
+    - Definir catalogo de permisos globales y empresariales.
+    - Definir regla: un actor solo puede crear/asignar roles con permisos estrictamente menores a sus permisos efectivos.
+    - Prohibir permisos `GLOBAL_*` en roles empresariales.
+    - Definir que el `ROOT` entrega el administrador inicial de cada empresa contratante.
+    - Documentar auditoria obligatoria para creacion/edicion/asignacion de roles.
+  - Evidencia Context7:
+    - Spring Security 6.5 (`/websites/spring_io_spring-security_reference_6_5`) documenta autoridades/permisos, jerarquias de roles y `AuthorizationManager` personalizado para autorizacion dinamica.
+  - Tests requeridos:
+    - No aplica en dise�o; la implementacion se prueba en TASK-069 y TASK-071.
+
+- [ ] TASK-069: Implementar RBAC modular en identity-service
+  - Estado: APPROVED
+  - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
+  - Acceptance criteria: AC-059, AC-060, AC-061, AC-062, AC-063, AC-064.
+  - Descripcion: Implementar persistencia, dominio, casos de uso y endpoints para usuario `ROOT`, roles por empresa, permisos configurables, asignacion de roles y validacion de delegacion estrictamente menor.
+  - Dependencias:
+    - TASK-068.
+  - Alcance:
+    - Migraciones nuevas para roles configurables y permisos.
+    - Backfill compatible desde roles fijos actuales hacia roles seed por empresa o roles del sistema.
+    - Endpoints root para crear empresa compradora y administrador inicial.
+    - Endpoints empresariales para crear/editar/desactivar roles y asignarlos a usuarios.
+    - Validacion backend obligatoria de permisos efectivos.
+    - Auditoria de cambios de roles, permisos y usuarios.
+  - Tests requeridos:
+    - Unit tests de dominio RBAC.
+    - Use case tests de delegacion y aislamiento multiempresa.
+    - Web tests de endpoints root/admin.
+    - Pruebas de migracion Flyway.
+
+- [ ] TASK-070: Implementar UI de administracion de usuarios, roles y permisos
+  - Estado: APPROVED
+  - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
+  - Acceptance criteria: AC-059, AC-060, AC-061, AC-062, AC-063, AC-064, AC-065.
+  - Descripcion: Crear pantallas para que `ROOT` administre empresas y administradores iniciales, y para que administradores empresariales creen usuarios, roles y permisos dentro de su empresa.
+  - Dependencias:
+    - TASK-067.
+    - TASK-069.
+  - Alcance:
+    - Panel global `ROOT` independiente de empresa.
+    - Panel empresarial para usuarios y roles por empresa.
+    - Formulario modular de permisos agrupados por dominio funcional.
+    - Validacion visual para impedir permisos iguales/superiores al actor.
+    - Mensajes claros cuando un permiso no puede delegarse.
+  - Tests requeridos:
+    - Component tests de panel root y panel empresa.
+    - Tests de visibilidad segun permisos.
+    - `npm run test` y `npm run build`.
+
+- [ ] TASK-071: Aplicar navegacion y acciones frontend basadas en permisos efectivos
+  - Estado: APPROVED
+  - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
+  - Acceptance criteria: AC-048, AC-059, AC-060, AC-061, AC-062, AC-063, AC-064, AC-065.
+  - Descripcion: Usar los permisos efectivos entregados por identity-service para mostrar/ocultar modulos, bloquear acciones no autorizadas en la UI y mantener el backend como fuente real de autorizacion.
+  - Dependencias:
+    - TASK-069.
+    - TASK-070.
+  - Alcance:
+    - Menu dinamico por permisos.
+    - Botones y acciones deshabilitados u ocultos segun permisos.
+    - Distincion entre shell global `ROOT` y shell empresarial.
+    - Manejo de errores `403` con mensajes seguros.
+  - Tests requeridos:
+    - Component tests de navegacion por permisos.
+    - Tests de acciones deshabilitadas.
+    - Contract tests BFF si cambia algun route mapping.
+
+- [x] TASK-072: Implementar bootstrap ROOT minimo para pruebas locales
+  - Estado: DONE
+  - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
+  - Acceptance criteria: AC-059, AC-066.
+  - Descripcion: Habilitar un usuario `ROOT` global dummy para pruebas locales mientras se implementa el RBAC modular completo de TASK-069.
+  - Dependencias:
+    - TASK-068.
+  - Alcance:
+    - Crear tabla `identity.global_user_role` para roles globales iniciales.
+    - Exponer `globalRoles` en la respuesta de login.
+    - Sembrar usuario ROOT local mediante variables de entorno dummy, sin credenciales reales versionadas.
+    - Permitir que la SPA reconozca `ROOT`, omita validacion de empresa/licencia y muestre panel global inicial.
+  - Resultado local:
+    - Usuario local dummy creado: `root@example.com`.
+    - Password local dummy: `RootDemo#2026!`.
+    - Login por BFF validado en `POST http://127.0.0.1:8083/api/v1/auth/login`; respuesta incluye `globalRoles: ["ROOT"]`.
+    - Persistencia validada en `identity.user_account` e `identity.global_user_role`.
+  - Tests ejecutados:
+    - `./mvnw.cmd -pl services/identity-service test`: 12 tests, 0 fallos.
+    - `npm run test`: 5 tests, 0 fallos.
+    - `npm run build`: exitoso.
+
+- [x] TASK-073: Completar flujo ROOT operativo
+  - Estado: DONE
+  - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
+  - Acceptance criteria: AC-059, AC-060, AC-067, AC-068.
+  - Descripcion: Permitir que el usuario `ROOT` opere el panel global completo, cree empresas contratantes y cree el usuario administrador inicial con password inicial.
+  - Dependencias:
+    - TASK-072.
+  - Alcance:
+    - Mostrar todos los modulos al usuario `ROOT` en la SPA.
+    - Capturar automaticamente el `companyId` retornado al crear empresa y usarlo como empresa activa de configuracion.
+    - Agregar formulario de administrador inicial en el panel de empresa para `ROOT`.
+    - Crear usuario administrador mediante `POST /api/v1/users` y asignar `OWNER` mediante `POST /api/v1/companies/{companyId}/memberships`.
+    - Permitir en backend que `ROOT` asigne roles empresariales iniciales sin membresia empresarial ni licencia empresarial.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/identity-service test`.
+    - `npm run test`.
+    - `npm run build`.
+  - Resultado local:
+    - ROOT ve todos los modulos del menu en la SPA.
+    - Al crear empresa desde ROOT, la SPA toma el `companyId` retornado como empresa activa.
+    - Se agrego formulario de administrador inicial con nombre, email, password inicial y rol `OWNER`.
+    - `identity-service` permite a ROOT asignar `OWNER` inicial sin membresia empresarial ni licencia empresarial.
+    - Validacion Docker: ROOT creo empresa activa y administrador inicial mediante BFF; la membresia quedo con rol `OWNER`.
+  - Tests ejecutados:
+    - `./mvnw.cmd -pl services/identity-service test`: 13 tests, 0 fallos.
+    - `npm run test`: 6 tests, 0 fallos.
+    - `npm run build`: exitoso.
+    - `GET http://127.0.0.1:5173`: 200.

@@ -20,6 +20,7 @@
 
     <modules>
         <module>services/platform-eventing</module>
+        <module>services/bff-service</module>
         <module>services/tenant-service</module>
         <module>services/identity-service</module>
         <module>services/catalog-service</module>

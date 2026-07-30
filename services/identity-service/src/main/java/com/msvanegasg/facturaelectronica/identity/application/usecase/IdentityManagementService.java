@@ -20,6 +20,7 @@ import com.msvanegasg.facturaelectronica.identity.application.port.in.ManageIden
 import com.msvanegasg.facturaelectronica.identity.application.port.out.AccessAuditRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.CompanyMembershipRepositoryPort;
+import com.msvanegasg.facturaelectronica.identity.application.port.out.GlobalUserRoleRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.LicenseValidationPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.PasswordHasherPort;
@@ -30,6 +31,7 @@ import com.msvanegasg.facturaelectronica.identity.application.port.out.UserSessi
 import com.msvanegasg.facturaelectronica.identity.domain.model.AccessAuditEvent;
 import com.msvanegasg.facturaelectronica.identity.domain.model.AccessAuditResult;
 import com.msvanegasg.facturaelectronica.identity.domain.model.CompanyMembership;
+import com.msvanegasg.facturaelectronica.identity.domain.model.GlobalRoleCode;
 import com.msvanegasg.facturaelectronica.identity.domain.model.LicenseAction;
 import com.msvanegasg.facturaelectronica.identity.domain.model.PermissionCode;
 import com.msvanegasg.facturaelectronica.identity.domain.model.RoleCode;
@@ -44,6 +46,7 @@ public class IdentityManagementService implements ManageIdentityUseCase {
     private final CompanyMembershipRepositoryPort membershipRepository;
     private final UserSessionRepositoryPort sessionRepository;
     private final AccessAuditRepositoryPort auditRepository;
+    private final GlobalUserRoleRepositoryPort globalRoleRepository;
     private final LicenseValidationPort licenseValidationPort;
     private final PasswordHasherPort passwordHasher;
     private final TokenGeneratorPort tokenGenerator;
@@ -62,14 +65,16 @@ public class IdentityManagementService implements ManageIdentityUseCase {
             IdGeneratorPort idGenerator,
             ClockPort clock,
             Duration sessionDuration) {
-        this(userRepository, membershipRepository, sessionRepository, auditRepository, (companyId, action) -> {
-        }, passwordHasher, tokenGenerator, tokenHash, idGenerator, clock, sessionDuration);
+        this(userRepository, membershipRepository, sessionRepository, auditRepository,
+                new NoopGlobalUserRoleRepository(), (companyId, action) -> {
+                }, passwordHasher, tokenGenerator, tokenHash, idGenerator, clock, sessionDuration);
     }
 
     public IdentityManagementService(UserAccountRepositoryPort userRepository,
             CompanyMembershipRepositoryPort membershipRepository,
             UserSessionRepositoryPort sessionRepository,
             AccessAuditRepositoryPort auditRepository,
+            GlobalUserRoleRepositoryPort globalRoleRepository,
             LicenseValidationPort licenseValidationPort,
             PasswordHasherPort passwordHasher,
             TokenGeneratorPort tokenGenerator,
@@ -81,6 +86,7 @@ public class IdentityManagementService implements ManageIdentityUseCase {
         this.membershipRepository = Objects.requireNonNull(membershipRepository);
         this.sessionRepository = Objects.requireNonNull(sessionRepository);
         this.auditRepository = Objects.requireNonNull(auditRepository);
+        this.globalRoleRepository = Objects.requireNonNull(globalRoleRepository);
         this.licenseValidationPort = Objects.requireNonNull(licenseValidationPort);
         this.passwordHasher = Objects.requireNonNull(passwordHasher);
         this.tokenGenerator = Objects.requireNonNull(tokenGenerator);
@@ -122,7 +128,8 @@ public class IdentityManagementService implements ManageIdentityUseCase {
         sessionRepository.save(UserSession.create(idGenerator.nextId(), user.id(), tokenHash.hash(rawToken), expiresAt,
                 now));
         audit(null, user.id(), "LOGIN", "USER", user.id().toString(), AccessAuditResult.SUCCESS, null);
-        return new LoginResult(user.id(), user.email(), user.fullName(), rawToken, expiresAt);
+        return new LoginResult(user.id(), user.email(), user.fullName(), rawToken, expiresAt,
+                globalRoleRepository.findByUserId(user.id()));
     }
 
     @Override
@@ -145,8 +152,12 @@ public class IdentityManagementService implements ManageIdentityUseCase {
         validateRoles(command.roles());
         UserAccount target = userRepository.findById(command.userId())
                 .orElseThrow(() -> new UserNotFoundException(command.userId()));
-        licenseValidationPort.ensureAllowed(command.companyId(), LicenseAction.CREATE_USER);
-        ensureCanManageRoles(command.companyId(), command.authorizationHeader(), command.roles());
+        UserAccount actor = authenticateIfPresent(command.authorizationHeader());
+        boolean rootActor = actor != null && globalRoleRepository.hasRole(actor.id(), GlobalRoleCode.ROOT);
+        if (!rootActor) {
+            licenseValidationPort.ensureAllowed(command.companyId(), LicenseAction.CREATE_USER);
+        }
+        ensureCanManageRoles(command.companyId(), command.authorizationHeader(), command.roles(), actor, rootActor);
         CompanyMembership membership = membershipRepository.findByCompanyIdAndUserId(command.companyId(), target.id())
                 .map(existing -> existing.replaceRoles(command.roles(), clock.now()))
                 .orElseGet(() -> CompanyMembership.create(idGenerator.nextId(), command.companyId(), target.id(),
@@ -156,12 +167,13 @@ public class IdentityManagementService implements ManageIdentityUseCase {
                 AccessAuditResult.SUCCESS, saved.roles().toString());
         return MembershipResult.from(saved);
     }
-
     @Override
     public MembershipResult updateMembershipRoles(UpdateMembershipRolesCommand command) {
         Objects.requireNonNull(command, "command is required");
         validateRoles(command.roles());
-        ensureCanManageRoles(command.companyId(), command.authorizationHeader(), command.roles());
+        UserAccount actor = authenticateIfPresent(command.authorizationHeader());
+        boolean rootActor = actor != null && globalRoleRepository.hasRole(actor.id(), GlobalRoleCode.ROOT);
+        ensureCanManageRoles(command.companyId(), command.authorizationHeader(), command.roles(), actor, rootActor);
         CompanyMembership membership = membershipRepository.findByIdAndCompanyId(command.membershipId(),
                 command.companyId()).orElseThrow(() -> new MembershipNotFoundException(command.membershipId()));
         CompanyMembership saved = membershipRepository.save(membership.replaceRoles(command.roles(), clock.now()));
@@ -169,7 +181,6 @@ public class IdentityManagementService implements ManageIdentityUseCase {
                 AccessAuditResult.SUCCESS, saved.roles().toString());
         return MembershipResult.from(saved);
     }
-
     @Override
     public CompanyAccessResult permissions(UUID companyId, UUID userId) {
         CompanyMembership membership = membershipRepository.findByCompanyIdAndUserId(companyId, userId)
@@ -177,12 +188,16 @@ public class IdentityManagementService implements ManageIdentityUseCase {
         return toCompanyAccess(membership);
     }
 
-    private void ensureCanManageRoles(UUID companyId, String authorizationHeader, Set<RoleCode> requestedRoles) {
+    private void ensureCanManageRoles(UUID companyId, String authorizationHeader, Set<RoleCode> requestedRoles,
+            UserAccount authenticatedActor, boolean rootActor) {
+        if (rootActor) {
+            return;
+        }
         boolean hasMemberships = membershipRepository.existsByCompanyId(companyId);
         if (!hasMemberships && requestedRoles.contains(RoleCode.OWNER)) {
             return;
         }
-        UserAccount actor = authenticate(authorizationHeader);
+        UserAccount actor = authenticatedActor == null ? authenticate(authorizationHeader) : authenticatedActor;
         CompanyMembership membership = membershipRepository.findByCompanyIdAndUserId(companyId, actor.id())
                 .orElseThrow(() -> new AccessDeniedException(companyId, PermissionCode.ROLES_MANAGE));
         if (!membership.hasPermission(PermissionCode.ROLES_MANAGE)) {
@@ -190,6 +205,12 @@ public class IdentityManagementService implements ManageIdentityUseCase {
                     AccessAuditResult.FAILURE, "FORBIDDEN");
             throw new AccessDeniedException(companyId, PermissionCode.ROLES_MANAGE);
         }
+    }
+    private UserAccount authenticateIfPresent(String authorizationHeader) {
+        if (authorizationHeader == null || authorizationHeader.isBlank()) {
+            return null;
+        }
+        return authenticate(authorizationHeader);
     }
 
     private UserAccount authenticate(String authorizationHeader) {
@@ -248,6 +269,22 @@ public class IdentityManagementService implements ManageIdentityUseCase {
     private static void validateRoles(Set<RoleCode> roles) {
         if (roles == null || roles.isEmpty()) {
             throw new IllegalArgumentException("roles are required");
+        }
+    }
+
+    private static final class NoopGlobalUserRoleRepository implements GlobalUserRoleRepositoryPort {
+        @Override
+        public Set<GlobalRoleCode> findByUserId(UUID userId) {
+            return Set.of();
+        }
+
+        @Override
+        public boolean hasRole(UUID userId, GlobalRoleCode roleCode) {
+            return false;
+        }
+
+        @Override
+        public void assignRole(UUID userId, GlobalRoleCode roleCode) {
         }
     }
 }

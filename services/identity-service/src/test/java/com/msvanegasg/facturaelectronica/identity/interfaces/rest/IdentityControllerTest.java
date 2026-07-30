@@ -62,7 +62,8 @@ class IdentityControllerTest {
     void createsUserAndLogsIn() throws Exception {
         org.mockito.Mockito.when(manageIdentityUseCase.createUser(any())).thenReturn(user());
         org.mockito.Mockito.when(manageIdentityUseCase.login(any()))
-                .thenReturn(new LoginResult(USER_ID, "owner@example.com", "Owner User", "token", NOW.plusSeconds(3600)));
+                .thenReturn(new LoginResult(USER_ID, "owner@example.com", "Owner User", "token", NOW.plusSeconds(3600),
+                        Set.of()));
 
         mockMvc.perform(post("/api/v1/users")
                 .header(CorrelationId.HEADER_NAME, "corr-id")
@@ -77,7 +78,8 @@ class IdentityControllerTest {
                 .content(loginJson()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
-                .andExpect(jsonPath("$.accessToken").value("token"));
+                .andExpect(jsonPath("$.accessToken").value("token"))
+                .andExpect(jsonPath("$.globalRoles").isArray());
     }
 
     @Test

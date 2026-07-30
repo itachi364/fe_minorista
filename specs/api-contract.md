@@ -74,6 +74,26 @@ Codigos base:
 - `IDEMPOTENCY_CONFLICT`
 - `INTERNAL_ERROR`
 
+## bff-service
+
+Responsabilidad: frontera publica consumida por la SPA y expuesta por API Gateway en produccion.
+
+Estado TASK-063:
+
+- Microservicio fisico inicial implementado en `services/bff-service`.
+- No tiene persistencia ni reglas fiscales propias.
+- Expone `/api/v1/**` solo para rutas aprobadas y enruta hacia el microservicio dueno del contrato.
+- Propaga `Authorization`, `X-Company-Id`, `X-Correlation-Id`, `Idempotency-Key`, `Content-Type` y `Accept`.
+- Filtra cabeceras de respuesta a `Content-Type` y `X-Correlation-Id`.
+- Rechaza rutas internas no publicas, por ejemplo `/api/v1/provider/**`.
+
+Reglas:
+
+- El frontend debe consumir siempre el BFF.
+- Los microservicios internos no deben exponerse al navegador.
+- El BFF no debe implementar reglas de negocio que pertenezcan a billing, inventory, accounting, tenant, identity, catalog, thirdparty o audit.
+- Un fallo de servicio interno debe responder como error publico estructurado sin stack trace ni detalles de infraestructura.
+- Estado TASK-065: `/api/v1/auth/**` y `/api/v1/me/**` se enrutan a `identity-service`; `/api/v1/companies/{companyId}/license/**` se enruta a `tenant-service`; `/api/v1/companies/{companyId}/memberships`, `/api/v1/companies/{companyId}/users/{userId}/roles` y `/api/v1/companies/{companyId}/permissions` se enrutan a `identity-service`.
 ## tenant-service
 
 Responsabilidad: empresas, configuracion multiempresa y estado del tenant.
@@ -118,7 +138,7 @@ Responsabilidad: empresas, configuracion multiempresa y estado del tenant.
 
 ## identity-service
 
-Responsabilidad: usuarios, roles, membresias por empresa, autenticacion, permisos y auditoria de acceso.
+Responsabilidad: usuarios, autenticacion, sesiones, permisos efectivos, roles globales de plataforma, roles por empresa y auditoria de acceso.
 
 Estado TASK-056:
 
@@ -126,11 +146,21 @@ Estado TASK-056:
 - Persistencia propia bajo schema `identity`.
 - Login con token opaco Bearer, token persistido como hash y expiracion configurable.
 - Passwords persistidos con hash PBKDF2, nunca en texto plano.
-- Roles por empresa: `OWNER`, `ADMIN`, `CASHIER`, `ACCOUNTANT`, `AUDITOR`.
-- Permisos derivados por rol y evaluados por `companyId`.
-- Auditoria interna de accesos para login, creacion de usuario y cambios de roles.
+- Modelo actual con roles fijos por empresa: `OWNER`, `ADMIN`, `CASHIER`, `ACCOUNTANT`, `AUDITOR`.
+- Estado TASK-072: `POST /api/v1/auth/login` incluye `globalRoles` en la respuesta. Cuando contiene `ROOT`, el cliente puede iniciar flujo global sin `company_id`, membresia empresarial ni licencia empresarial.
+- Estado TASK-073: `ROOT` puede crear usuario con `POST /api/v1/users` y asignar `OWNER` como administrador inicial mediante `POST /api/v1/companies/{companyId}/memberships`, sin membresia previa ni licencia empresarial.
 
-### Endpoints
+Objetivo TASK-068/TASK-069:
+
+- `ROOT` es global, no tiene `company_id`, no depende de licencia empresarial y administra empresas contratantes, licencias, usuarios root y administradores iniciales.
+- Todo rol distinto de `ROOT` pertenece a una empresa y se aisla por `company_id`.
+- Los nombres de roles empresariales son configurables por cada empresa.
+- Los permisos son modulares y persistidos; el sistema no debe depender de nombres de roles hardcodeados para autorizar acciones.
+- Permisos `GLOBAL_*` son exclusivos de `ROOT`.
+- Un actor solo puede crear, editar o asignar roles con permisos estrictamente menores que sus permisos efectivos.
+- Se registra auditoria interna para login, creacion de usuario, creacion/edicion de rol, asignacion de permisos y asignacion de roles.
+
+### Endpoints actuales
 
 - `POST /api/v1/auth/login`
 - `POST /api/v1/users`
@@ -141,12 +171,48 @@ Estado TASK-056:
 - `PUT /api/v1/companies/{companyId}/memberships/{membershipId}/roles`
 - `GET /api/v1/companies/{companyId}/permissions?userId=`
 
-Regla:
+### Endpoints objetivo RBAC modular
 
-- Un usuario puede pertenecer a varias empresas.
-- Todo token permite determinar usuario autenticado, empresas autorizadas, roles y permisos por empresa.
-- La primera membresia `OWNER` de una empresa puede registrarse como bootstrap si no existen membresias previas para esa empresa.
-- Cambios posteriores de roles requieren token de usuario con permiso `ROLES_MANAGE` en la empresa.
+Root global:
+
+- `POST /api/v1/platform/root-users`
+- `POST /api/v1/platform/companies`
+- `POST /api/v1/platform/companies/{companyId}/admin`
+- `GET /api/v1/platform/permissions`
+- `GET /api/v1/platform/audit-events?from=&to=&userId=`
+
+Roles y usuarios por empresa:
+
+- `GET /api/v1/companies/{companyId}/roles`
+- `POST /api/v1/companies/{companyId}/roles`
+- `GET /api/v1/companies/{companyId}/roles/{roleId}`
+- `PUT /api/v1/companies/{companyId}/roles/{roleId}`
+- `PUT /api/v1/companies/{companyId}/roles/{roleId}/deactivate`
+- `GET /api/v1/companies/{companyId}/permissions/catalog`
+- `POST /api/v1/companies/{companyId}/users`
+- `POST /api/v1/companies/{companyId}/users/{userId}/role-assignments`
+- `DELETE /api/v1/companies/{companyId}/users/{userId}/role-assignments/{roleId}`
+- `GET /api/v1/companies/{companyId}/users/{userId}/effective-permissions`
+
+Ejemplo `POST /api/v1/companies/{companyId}/roles`:
+
+```json
+{
+  "name": "Vendedor POS",
+  "description": "Puede vender y emitir POS electronico",
+  "permissionCodes": ["SALES_CREATE", "FISCAL_DOCUMENTS_ISSUE", "REPORTS_VIEW"]
+}
+```
+
+Reglas:
+
+- Un usuario puede pertenecer a varias empresas, pero sus roles empresariales se calculan por `companyId`.
+- Todo token permite determinar usuario autenticado, alcance global cuando aplique, empresas autorizadas y permisos efectivos por empresa.
+- `ROOT` puede crear la empresa contratante y el administrador inicial.
+- El administrador empresarial puede crear roles y usuarios dentro de su empresa si tiene `COMPANY_ROLES_MANAGE` y/o `COMPANY_USERS_MANAGE`.
+- El backend rechaza cualquier rol empresarial que contenga permisos `GLOBAL_*`.
+- El backend rechaza delegar permisos iguales, superiores o no poseidos por el actor.
+- La licencia empresarial se valida al crear usuarios o roles empresariales cuando la politica comercial lo requiera; `ROOT` no consume licencia para entrar al panel global.
 
 ## catalog-service
 
@@ -1040,7 +1106,27 @@ Permisos iniciales: `USERS_MANAGE`, `ROLES_MANAGE`, `SALES_CREATE`, `FISCAL_DOCU
   "permissions": ["ROLES_MANAGE", "REPORTS_VIEW"]
 }
 ```
-### tenant-service: licenciamiento
+### bff-service
+
+Responsabilidad: frontera publica consumida por la SPA y expuesta por API Gateway en produccion.
+
+Estado TASK-063:
+
+- Microservicio fisico inicial implementado en `services/bff-service`.
+- No tiene persistencia ni reglas fiscales propias.
+- Expone `/api/v1/**` solo para rutas aprobadas y enruta hacia el microservicio dueno del contrato.
+- Propaga `Authorization`, `X-Company-Id`, `X-Correlation-Id`, `Idempotency-Key`, `Content-Type` y `Accept`.
+- Filtra cabeceras de respuesta a `Content-Type` y `X-Correlation-Id`.
+- Rechaza rutas internas no publicas, por ejemplo `/api/v1/provider/**`.
+
+Reglas:
+
+- El frontend debe consumir siempre el BFF.
+- Los microservicios internos no deben exponerse al navegador.
+- El BFF no debe implementar reglas de negocio que pertenezcan a billing, inventory, accounting, tenant, identity, catalog, thirdparty o audit.
+- Un fallo de servicio interno debe responder como error publico estructurado sin stack trace ni detalles de infraestructura.
+- Estado TASK-065: `/api/v1/auth/**` y `/api/v1/me/**` se enrutan a `identity-service`; `/api/v1/companies/{companyId}/license/**` se enruta a `tenant-service`; `/api/v1/companies/{companyId}/memberships`, `/api/v1/companies/{companyId}/users/{userId}/roles` y `/api/v1/companies/{companyId}/permissions` se enrutan a `identity-service`.
+## tenant-service: licenciamiento
 
 - `POST /api/v1/companies/{companyId}/license`
 - `GET /api/v1/companies/{companyId}/license`

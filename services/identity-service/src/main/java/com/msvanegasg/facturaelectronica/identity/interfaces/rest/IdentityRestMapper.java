@@ -48,7 +48,7 @@ public final class IdentityRestMapper {
 
     public static LoginResponse toResponse(LoginResult result) {
         return new LoginResponse(result.userId(), result.email(), result.fullName(), "Bearer", result.accessToken(),
-                result.expiresAt());
+                result.expiresAt(), result.globalRoles());
     }
 
     public static MembershipResponse toResponse(MembershipResult result) {
