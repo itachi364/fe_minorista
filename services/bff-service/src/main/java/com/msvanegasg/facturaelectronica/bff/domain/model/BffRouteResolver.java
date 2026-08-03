@@ -15,7 +15,7 @@ public final class BffRouteResolver {
         if (isTenantCompanyRoute(normalized)) {
             return TargetService.TENANT;
         }
-        if (matchesAny(normalized, "auth", "users", "me")) {
+        if (matchesAny(normalized, "auth", "users", "me", "platform")) {
             return TargetService.IDENTITY;
         }
         if (matchesAny(normalized, "catalogs", "company-catalogs")) {
@@ -46,7 +46,10 @@ public final class BffRouteResolver {
 
     private static boolean isIdentityCompanyRoute(String normalized) {
         return normalized.matches("companies/[^/]+/memberships(/.*)?")
-                || normalized.matches("companies/[^/]+/users/[^/]+/roles(/.*)?")
+                || normalized.matches("companies/[^/]+/users(/.*)?")
+                || normalized.matches("companies/[^/]+/users/[^/]+/role-assignments(/.*)?")
+                || normalized.matches("companies/[^/]+/users/[^/]+/effective-permissions(/.*)?")
+                || normalized.matches("companies/[^/]+/roles(/.*)?")
                 || normalized.matches("companies/[^/]+/permissions(/.*)?");
     }
 

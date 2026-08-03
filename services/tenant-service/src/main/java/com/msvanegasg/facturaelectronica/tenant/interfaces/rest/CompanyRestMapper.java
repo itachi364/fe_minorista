@@ -14,7 +14,7 @@ public final class CompanyRestMapper {
         return new CreateCompanyCommand(
                 request.legalName(),
                 request.tradeName(),
-                request.identificationTypeId(),
+                request.identificationTypeCode(),
                 request.identificationNumber(),
                 request.verificationDigit(),
                 request.email());
@@ -25,7 +25,7 @@ public final class CompanyRestMapper {
                 result.id(),
                 result.legalName(),
                 result.tradeName(),
-                result.identificationTypeId(),
+                result.identificationTypeCode(),
                 result.identificationNumber(),
                 result.verificationDigit(),
                 result.email(),

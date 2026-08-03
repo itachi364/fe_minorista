@@ -25,12 +25,15 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.msvanegasg.facturaelectronica.identity.application.dto.CompanyAccessResult;
+import com.msvanegasg.facturaelectronica.identity.application.dto.CompanyRoleResult;
+import com.msvanegasg.facturaelectronica.identity.application.dto.PermissionCatalogResult;
 import com.msvanegasg.facturaelectronica.identity.application.dto.LoginResult;
 import com.msvanegasg.facturaelectronica.identity.application.dto.MembershipResult;
 import com.msvanegasg.facturaelectronica.identity.application.dto.UserResult;
 import com.msvanegasg.facturaelectronica.identity.application.port.in.ManageIdentityUseCase;
 import com.msvanegasg.facturaelectronica.identity.application.usecase.AuthenticationFailedException;
 import com.msvanegasg.facturaelectronica.identity.domain.model.PermissionCode;
+import com.msvanegasg.facturaelectronica.identity.domain.model.PermissionScope;
 import com.msvanegasg.facturaelectronica.identity.domain.model.RoleCode;
 import com.msvanegasg.facturaelectronica.identity.domain.model.UserStatus;
 import com.msvanegasg.facturaelectronica.identity.exception.IdentityExceptionHandler;
@@ -125,6 +128,47 @@ class IdentityControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(MEMBERSHIP_ID.toString()));
     }
+    @Test
+    void listsCompanyUsersByEmail() throws Exception {
+        org.mockito.Mockito.when(manageIdentityUseCase.listCompanyUsers(eq(COMPANY_ID), eq("owner"), eq("Bearer token")))
+                .thenReturn(List.of(user()));
+
+        mockMvc.perform(get("/api/v1/companies/{companyId}/users", COMPANY_ID)
+                .param("email", "owner")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(USER_ID.toString()))
+                .andExpect(jsonPath("$[0].email").value("owner@example.com"));
+    }
+    @Test
+    void managesModularCompanyRoles() throws Exception {
+        UUID roleId = UUID.fromString("44444444-4444-4444-4444-444444444444");
+        org.mockito.Mockito.when(manageIdentityUseCase.listPermissionCatalog(eq("Bearer token")))
+                .thenReturn(List.of(new PermissionCatalogResult(PermissionCode.SALES_CREATE,
+                        PermissionScope.COMPANY, "sales", "Create sales", true)));
+        org.mockito.Mockito.when(manageIdentityUseCase.createCompanyRole(any())).thenReturn(role(roleId));
+        org.mockito.Mockito.when(manageIdentityUseCase.assignCompanyRoles(any())).thenReturn(access());
+
+        mockMvc.perform(get("/api/v1/companies/{companyId}/permissions/catalog", COMPANY_ID)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].code").value("SALES_CREATE"));
+
+        mockMvc.perform(post("/api/v1/companies/{companyId}/roles", COMPANY_ID)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Vendedor POS\",\"permissionCodes\":[\"SALES_CREATE\"]}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(roleId.toString()))
+                .andExpect(jsonPath("$.permissionCodes[0]").value("SALES_CREATE"));
+
+        mockMvc.perform(post("/api/v1/companies/{companyId}/users/{userId}/role-assignments", COMPANY_ID, USER_ID)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"roleIds\":[\"44444444-4444-4444-4444-444444444444\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.permissions[0]").exists());
+    }
 
     @Test
     void returnsUnauthorizedForInvalidSession() throws Exception {
@@ -143,6 +187,11 @@ class IdentityControllerTest {
         return new MembershipResult(MEMBERSHIP_ID, COMPANY_ID, USER_ID, Set.of(RoleCode.OWNER), true, NOW, NOW);
     }
 
+
+    private static CompanyRoleResult role(UUID roleId) {
+        return new CompanyRoleResult(roleId, COMPANY_ID, "Vendedor POS", "Puede vender",
+                Set.of(PermissionCode.SALES_CREATE), false, true, USER_ID, NOW, NOW);
+    }
     private static CompanyAccessResult access() {
         return new CompanyAccessResult(COMPANY_ID, Set.of(RoleCode.OWNER), Set.of(PermissionCode.ROLES_MANAGE));
     }

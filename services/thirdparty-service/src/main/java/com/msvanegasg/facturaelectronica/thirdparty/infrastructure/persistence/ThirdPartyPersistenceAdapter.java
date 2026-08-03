@@ -34,7 +34,7 @@ public class ThirdPartyPersistenceAdapter implements ThirdPartyRepositoryPort {
     }
 
     @Override
-    public Optional<ThirdParty> findByCompanyIdAndDocument(UUID companyId, String identificationTypeCode,
+    public Optional<ThirdParty> findByCompanyIdAndDocument(UUID companyId, Integer identificationTypeCode,
             String identificationNumber) {
         return repository.findByCompanyIdAndIdentificationTypeCodeAndIdentificationNumber(companyId,
                 identificationTypeCode, identificationNumber).map(ThirdPartyPersistenceAdapter::toDomain);
@@ -48,7 +48,7 @@ public class ThirdPartyPersistenceAdapter implements ThirdPartyRepositoryPort {
     }
 
     @Override
-    public boolean existsByCompanyIdAndDocument(UUID companyId, String identificationTypeCode,
+    public boolean existsByCompanyIdAndDocument(UUID companyId, Integer identificationTypeCode,
             String identificationNumber) {
         return repository.existsByCompanyIdAndIdentificationTypeCodeAndIdentificationNumber(companyId,
                 identificationTypeCode, identificationNumber);

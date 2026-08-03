@@ -14,7 +14,7 @@ class ThirdPartyTest {
 
     @Test
     void createsNitThirdPartyWithAutomaticVerificationDigit() {
-        ThirdParty thirdParty = ThirdParty.create(COMPANY_ID, PersonType.JURIDICA, "NIT", "900123456", null,
+        ThirdParty thirdParty = ThirdParty.create(COMPANY_ID, PersonType.JURIDICA, 31, "900123456", null,
                 "Cliente SAS", "Cliente", "cliente@example.com", "3000000000", "Calle 1", "11001",
                 Set.of(ThirdPartyRole.CUSTOMER, ThirdPartyRole.SUPPLIER));
 
@@ -25,7 +25,7 @@ class ThirdPartyTest {
 
     @Test
     void nonNitThirdPartyDoesNotAllowVerificationDigit() {
-        assertThatThrownBy(() -> ThirdParty.restore(null, COMPANY_ID, PersonType.NATURAL, "CC", "123456789", 1,
+        assertThatThrownBy(() -> ThirdParty.restore(null, COMPANY_ID, PersonType.NATURAL, 13, "123456789", 1,
                 "Persona Natural", null, null, null, null, null, null, Set.of(ThirdPartyRole.CUSTOMER), true))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("only applies to NIT");
@@ -33,7 +33,7 @@ class ThirdPartyTest {
 
     @Test
     void juridicaRequiresBusinessName() {
-        assertThatThrownBy(() -> ThirdParty.create(COMPANY_ID, PersonType.JURIDICA, "NIT", "900123456", null,
+        assertThatThrownBy(() -> ThirdParty.create(COMPANY_ID, PersonType.JURIDICA, 31, "900123456", null,
                 null, null, null, null, null, null, Set.of(ThirdPartyRole.SUPPLIER)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("businessName");

@@ -58,7 +58,7 @@ public class ThirdPartyController {
 
     @GetMapping("/third-parties/by-document")
     public ResponseEntity<ThirdPartyResponse> findByDocument(@RequestHeader(COMPANY_HEADER) UUID companyId,
-            @RequestParam String identificationTypeCode, @RequestParam String identificationNumber) {
+            @RequestParam Integer identificationTypeCode, @RequestParam String identificationNumber) {
         return ResponseEntity.ok(ThirdPartyRestMapper.toResponse(useCase.findByDocument(companyId,
                 identificationTypeCode, identificationNumber)));
     }

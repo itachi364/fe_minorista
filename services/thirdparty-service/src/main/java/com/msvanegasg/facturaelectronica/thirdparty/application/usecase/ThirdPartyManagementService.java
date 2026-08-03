@@ -61,7 +61,7 @@ public class ThirdPartyManagementService implements ManageThirdPartyUseCase {
     }
 
     @Override
-    public ThirdPartyResult findByDocument(UUID companyId, String identificationTypeCode, String identificationNumber) {
+    public ThirdPartyResult findByDocument(UUID companyId, Integer identificationTypeCode, String identificationNumber) {
         Objects.requireNonNull(companyId, "companyId is required");
         return repository.findByCompanyIdAndDocument(companyId, normalizeDocumentType(identificationTypeCode),
                 normalizeDocumentNumber(identificationNumber))
@@ -94,11 +94,11 @@ public class ThirdPartyManagementService implements ManageThirdPartyUseCase {
                 thirdParty.municipalityCode(), thirdParty.roles(), thirdParty.active());
     }
 
-    private static String normalizeDocumentType(String value) {
-        if (value == null || value.isBlank()) {
+    private static Integer normalizeDocumentType(Integer value) {
+        if (value == null) {
             throw new IllegalArgumentException("identificationTypeCode is required");
         }
-        return value.trim().toUpperCase();
+        return value;
     }
 
     private static String normalizeDocumentNumber(String value) {

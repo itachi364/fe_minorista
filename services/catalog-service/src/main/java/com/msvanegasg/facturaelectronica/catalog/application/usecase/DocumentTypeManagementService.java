@@ -33,7 +33,7 @@ public class DocumentTypeManagementService implements ManageDocumentTypeUseCase 
     }
 
     @Override
-    public DocumentType findByCode(Long code) {
+    public DocumentType findByCode(Integer code) {
         return documentTypeRepository.findByCode(code)
                 .orElseThrow(() -> new TipoDocumentoNotFoundException(code));
     }
@@ -45,20 +45,20 @@ public class DocumentTypeManagementService implements ManageDocumentTypeUseCase 
     }
 
     @Override
-    public DocumentType update(Long code, DocumentTypeCommand command) {
+    public DocumentType update(Integer code, DocumentTypeCommand command) {
         Objects.requireNonNull(command, "command is required");
         DocumentType existing = findByCode(code);
         return documentTypeRepository.save(existing.update(command.name(), command.description()));
     }
 
     @Override
-    public void disable(Long code) {
+    public void disable(Integer code) {
         DocumentType existing = findByCode(code);
         documentTypeRepository.save(existing.disable());
     }
 
     @Override
-    public void enable(Long code) {
+    public void enable(Integer code) {
         DocumentType existing = findByCode(code);
         if (!existing.active()) {
             documentTypeRepository.save(existing.enable());

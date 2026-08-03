@@ -13,7 +13,7 @@ public interface DocumentTypeRepositoryPort {
 
     List<DocumentType> findInactive();
 
-    Optional<DocumentType> findByCode(Long code);
+    Optional<DocumentType> findByCode(Integer code);
 
     DocumentType save(DocumentType documentType);
 }

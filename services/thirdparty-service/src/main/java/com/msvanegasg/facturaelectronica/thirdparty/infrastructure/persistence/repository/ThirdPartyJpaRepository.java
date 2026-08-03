@@ -16,10 +16,10 @@ public interface ThirdPartyJpaRepository extends JpaRepository<ThirdPartyJpaEnti
     Optional<ThirdPartyJpaEntity> findByCompanyIdAndId(UUID companyId, UUID id);
 
     Optional<ThirdPartyJpaEntity> findByCompanyIdAndIdentificationTypeCodeAndIdentificationNumber(UUID companyId,
-            String identificationTypeCode, String identificationNumber);
+            Integer identificationTypeCode, String identificationNumber);
 
     boolean existsByCompanyIdAndIdentificationTypeCodeAndIdentificationNumber(UUID companyId,
-            String identificationTypeCode, String identificationNumber);
+            Integer identificationTypeCode, String identificationNumber);
 
     @Query("""
             select distinct thirdParty

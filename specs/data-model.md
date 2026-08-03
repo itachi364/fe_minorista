@@ -75,7 +75,7 @@ Decision de migracion fisica:
 | `id` | uuid | Si | Identificador de empresa/tenant. |
 | `legal_name` | varchar(180) | Si | Razon social. |
 | `trade_name` | varchar(180) | No | Nombre comercial. |
-| `identification_type_id` | uuid | Si | Tipo de identificacion usado por catalogo oficial. |
+| `identification_type_code` | integer | Si | Codigo DIAN de tipo de documento de identificacion. |
 | `identification_number` | varchar(30) | Si | Numero de identificacion. |
 | `verification_digit` | varchar(2) | No | Digito de verificacion cuando aplique. |
 | `email` | varchar(180) | Si | Correo administrativo principal. |
@@ -85,7 +85,8 @@ Decision de migracion fisica:
 
 Restricciones:
 
-- `unique(identification_type_id, identification_number)`.
+- `unique(identification_type_code, identification_number)`.
+- `identification_type_code in (11, 12, 13, 21, 22, 31, 41, 42, 43, 47, 48)`.
 - `status in ('ACTIVE', 'SUSPENDED')`.
 
 #### `tenant.company_license`
@@ -209,14 +210,14 @@ Modelo objetivo:
 
 - `thirdparty.third_party` consolida identidad fiscal de clientes y proveedores.
 - `thirdparty.third_party_role` permite que el mismo tercero sea `CUSTOMER`, `SUPPLIER` o ambos sin duplicar documento.
-- Para NIT se calcula automaticamente `verification_digit`; para otros documentos queda nulo.
+- Para `identification_type_code=31` (NIT) se calcula automaticamente `verification_digit`; para otros documentos queda nulo.
 - Campos clave: `company_id`, `person_type`, `identification_type_code`, `identification_number`, `verification_digit`, `full_name`, `business_name`, `trade_name`, `email`, `phone`, `address`, `municipality_code`, `tax_responsibilities`, `active`.
 - Restriccion objetivo: `unique(company_id, identification_type_code, identification_number)`.
 
 Estado TASK-047:
 
 - `thirdparty.third_party` y `thirdparty.third_party_role` quedan creadas por Flyway en `thirdparty-service`.
-- El DV NIT se calcula en dominio y se persiste como snapshot fiscal.
+- El DV NIT se calcula en dominio cuando `identification_type_code=31` y se persiste como snapshot fiscal.
 - Las tablas legacy `thirdparty.cliente` y `thirdparty.proveedor` se mantienen hasta ejecutar la migracion legacy completa.
 
 ### Inventario

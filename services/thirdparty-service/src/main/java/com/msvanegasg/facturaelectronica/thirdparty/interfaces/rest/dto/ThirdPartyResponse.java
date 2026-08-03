@@ -10,7 +10,7 @@ public record ThirdPartyResponse(
         UUID id,
         UUID companyId,
         PersonType personType,
-        String identificationTypeCode,
+        Integer identificationTypeCode,
         String identificationNumber,
         Integer verificationDigit,
         String fullName,

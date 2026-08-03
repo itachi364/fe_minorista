@@ -7,7 +7,7 @@ public record Company(
         UUID id,
         String legalName,
         String tradeName,
-        UUID identificationTypeId,
+        Integer identificationTypeCode,
         String identificationNumber,
         String verificationDigit,
         String email,
@@ -19,14 +19,14 @@ public record Company(
             UUID id,
             String legalName,
             String tradeName,
-            UUID identificationTypeId,
+            Integer identificationTypeCode,
             String identificationNumber,
             String verificationDigit,
             String email,
             Instant now) {
         validateRequired(id, "id");
         validateText(legalName, "legalName");
-        validateRequired(identificationTypeId, "identificationTypeId");
+        DianIdentificationTypeCode.validate(identificationTypeCode);
         validateText(identificationNumber, "identificationNumber");
         validateText(email, "email");
         validateRequired(now, "now");
@@ -34,7 +34,7 @@ public record Company(
                 id,
                 legalName.trim(),
                 normalizeNullable(tradeName),
-                identificationTypeId,
+                identificationTypeCode,
                 identificationNumber.trim(),
                 normalizeNullable(verificationDigit),
                 email.trim(),
@@ -45,13 +45,13 @@ public record Company(
 
     public Company activate(Instant now) {
         validateRequired(now, "now");
-        return new Company(id, legalName, tradeName, identificationTypeId, identificationNumber, verificationDigit,
+        return new Company(id, legalName, tradeName, identificationTypeCode, identificationNumber, verificationDigit,
                 email, CompanyStatus.ACTIVE, createdAt, now);
     }
 
     public Company suspend(Instant now) {
         validateRequired(now, "now");
-        return new Company(id, legalName, tradeName, identificationTypeId, identificationNumber, verificationDigit,
+        return new Company(id, legalName, tradeName, identificationTypeCode, identificationNumber, verificationDigit,
                 email, CompanyStatus.SUSPENDED, createdAt, now);
     }
 

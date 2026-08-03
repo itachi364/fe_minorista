@@ -55,6 +55,7 @@ class ThirdPartyControllerTest {
                 .content(thirdPartyJson(Set.of("CUSTOMER"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.companyId").value(COMPANY_ID.toString()))
+                .andExpect(jsonPath("$.identificationTypeCode").value(31))
                 .andExpect(jsonPath("$.verificationDigit").value(8))
                 .andExpect(jsonPath("$.roles[0]").value("CUSTOMER"));
     }
@@ -85,7 +86,7 @@ class ThirdPartyControllerTest {
     }
 
     private static ThirdPartyResult result(Set<ThirdPartyRole> roles) {
-        return new ThirdPartyResult(THIRD_PARTY_ID, COMPANY_ID, PersonType.JURIDICA, "NIT", "900123456", 8,
+        return new ThirdPartyResult(THIRD_PARTY_ID, COMPANY_ID, PersonType.JURIDICA, 31, "900123456", 8,
                 null, "Cliente SAS", "Cliente", "cliente@example.com", "3000000000", "Calle 1", "11001",
                 roles, true);
     }
@@ -100,7 +101,7 @@ class ThirdPartyControllerTest {
         String roleJson = roles.stream().map(role -> "\"" + role + "\"").reduce((left, right) -> left + "," + right)
                 .orElse("\"CUSTOMER\"");
         return """
-                {"personType":"JURIDICA","identificationTypeCode":"NIT","identificationNumber":"900123456","businessName":"Cliente SAS","tradeName":"Cliente","email":"cliente@example.com","phone":"3000000000","address":"Calle 1","municipalityCode":"11001","roles":[%s]}
+                {"personType":"JURIDICA","identificationTypeCode":31,"identificationNumber":"900123456","businessName":"Cliente SAS","tradeName":"Cliente","email":"cliente@example.com","phone":"3000000000","address":"Calle 1","municipalityCode":"11001","roles":[%s]}
                 """.formatted(roleJson);
     }
 }

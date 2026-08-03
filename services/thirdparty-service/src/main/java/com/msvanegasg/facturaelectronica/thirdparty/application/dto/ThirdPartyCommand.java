@@ -9,7 +9,7 @@ import com.msvanegasg.facturaelectronica.thirdparty.domain.model.ThirdPartyRole;
 public record ThirdPartyCommand(
         UUID companyId,
         PersonType personType,
-        String identificationTypeCode,
+        Integer identificationTypeCode,
         String identificationNumber,
         Integer verificationDigit,
         String fullName,

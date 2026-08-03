@@ -13,10 +13,10 @@ public interface ThirdPartyRepositoryPort {
 
     Optional<ThirdParty> findByCompanyIdAndId(UUID companyId, UUID id);
 
-    Optional<ThirdParty> findByCompanyIdAndDocument(UUID companyId, String identificationTypeCode,
+    Optional<ThirdParty> findByCompanyIdAndDocument(UUID companyId, Integer identificationTypeCode,
             String identificationNumber);
 
     List<ThirdParty> findByCompanyIdAndRole(UUID companyId, ThirdPartyRole role, Boolean active);
 
-    boolean existsByCompanyIdAndDocument(UUID companyId, String identificationTypeCode, String identificationNumber);
+    boolean existsByCompanyIdAndDocument(UUID companyId, Integer identificationTypeCode, String identificationNumber);
 }

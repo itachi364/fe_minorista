@@ -22,7 +22,7 @@ import com.msvanegasg.facturaelectronica.tenant.infrastructure.persistence.repos
 class CompanyPersistenceAdapterTest {
 
     private static final UUID COMPANY_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
-    private static final UUID IDENTIFICATION_TYPE_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    private static final Integer IDENTIFICATION_TYPE_CODE = 31;
     private static final Instant NOW = Instant.parse("2026-05-19T10:00:00Z");
 
     @Mock
@@ -53,22 +53,22 @@ class CompanyPersistenceAdapterTest {
 
     @Test
     void checksDuplicatedIdentification() {
-        when(repository.existsByIdentificationTypeIdAndIdentificationNumber(IDENTIFICATION_TYPE_ID, "900123456"))
+        when(repository.existsByIdentificationTypeCodeAndIdentificationNumber(IDENTIFICATION_TYPE_CODE, "900123456"))
                 .thenReturn(true);
         CompanyPersistenceAdapter adapter = new CompanyPersistenceAdapter(repository);
 
-        boolean exists = adapter.existsByIdentification(IDENTIFICATION_TYPE_ID, "900123456");
+        boolean exists = adapter.existsByIdentification(IDENTIFICATION_TYPE_CODE, "900123456");
 
         assertThat(exists).isTrue();
     }
 
     private static Company company() {
-        return new Company(COMPANY_ID, "Mi Empresa SAS", "Mi Tienda", IDENTIFICATION_TYPE_ID, "900123456", "7",
+        return new Company(COMPANY_ID, "Mi Empresa SAS", "Mi Tienda", IDENTIFICATION_TYPE_CODE, "900123456", "7",
                 "admin@example.com", CompanyStatus.ACTIVE, NOW, NOW);
     }
 
     private static CompanyJpaEntity entity() {
-        return new CompanyJpaEntity(COMPANY_ID, "Mi Empresa SAS", "Mi Tienda", IDENTIFICATION_TYPE_ID, "900123456",
+        return new CompanyJpaEntity(COMPANY_ID, "Mi Empresa SAS", "Mi Tienda", IDENTIFICATION_TYPE_CODE, "900123456",
                 "7", "admin@example.com", CompanyStatus.ACTIVE, NOW, NOW);
     }
 }

@@ -13,13 +13,13 @@ public interface ManageDocumentTypeUseCase {
 
     List<DocumentType> findInactive();
 
-    DocumentType findByCode(Long code);
+    DocumentType findByCode(Integer code);
 
     DocumentType create(DocumentTypeCommand command);
 
-    DocumentType update(Long code, DocumentTypeCommand command);
+    DocumentType update(Integer code, DocumentTypeCommand command);
 
-    void disable(Long code);
+    void disable(Integer code);
 
-    void enable(Long code);
+    void enable(Integer code);
 }

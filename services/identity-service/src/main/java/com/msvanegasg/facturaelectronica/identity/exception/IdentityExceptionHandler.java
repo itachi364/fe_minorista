@@ -14,6 +14,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import com.msvanegasg.facturaelectronica.identity.application.usecase.AccessDeniedException;
 import com.msvanegasg.facturaelectronica.identity.application.usecase.AuthenticationFailedException;
+import com.msvanegasg.facturaelectronica.identity.application.usecase.CompanyRoleNotFoundException;
 import com.msvanegasg.facturaelectronica.identity.application.usecase.LicenseBlockedException;
 import com.msvanegasg.facturaelectronica.identity.application.usecase.MembershipNotFoundException;
 import com.msvanegasg.facturaelectronica.identity.application.usecase.UserAlreadyExistsException;
@@ -49,7 +50,7 @@ public class IdentityExceptionHandler {
         return build(HttpStatus.CONFLICT, ApiErrorCode.DUPLICATE_RESOURCE, exception.getMessage(), List.of(), request);
     }
 
-    @ExceptionHandler({ UserNotFoundException.class, MembershipNotFoundException.class })
+    @ExceptionHandler({ UserNotFoundException.class, MembershipNotFoundException.class, CompanyRoleNotFoundException.class })
     public ResponseEntity<ApiErrorResponse> handleNotFound(RuntimeException exception, HttpServletRequest request) {
         return build(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, exception.getMessage(), List.of(), request);
     }

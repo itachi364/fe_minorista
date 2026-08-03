@@ -1,6 +1,7 @@
 package com.msvanegasg.facturaelectronica.tenant.application.usecase;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.tenant.application.dto.CompanyResult;
@@ -28,19 +29,26 @@ public class CompanyManagementService implements ManageCompanyUseCase {
 
     @Override
     public CompanyResult create(CreateCompanyCommand command) {
-        if (companyRepository.existsByIdentification(command.identificationTypeId(), command.identificationNumber())) {
+        if (companyRepository.existsByIdentification(command.identificationTypeCode(), command.identificationNumber())) {
             throw new CompanyAlreadyExistsException(command.identificationNumber());
         }
         Company company = Company.create(
                 idGenerator.nextId(),
                 command.legalName(),
                 command.tradeName(),
-                command.identificationTypeId(),
+                command.identificationTypeCode(),
                 command.identificationNumber(),
                 command.verificationDigit(),
                 command.email(),
                 clock.now());
         return CompanyResult.from(companyRepository.save(company));
+    }
+
+    @Override
+    public List<CompanyResult> list() {
+        return companyRepository.findAll().stream()
+                .map(CompanyResult::from)
+                .toList();
     }
 
     @Override

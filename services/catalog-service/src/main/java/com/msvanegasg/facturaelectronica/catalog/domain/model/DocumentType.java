@@ -7,23 +7,23 @@ public final class DocumentType {
     private static final int MAX_NAME_LENGTH = 50;
     private static final int MAX_DESCRIPTION_LENGTH = 100;
 
-    private final Long code;
+    private final Integer code;
     private final String name;
     private final String description;
     private final boolean active;
 
-    private DocumentType(Long code, String name, String description, boolean active) {
+    private DocumentType(Integer code, String name, String description, boolean active) {
         this.code = code;
         this.name = name;
         this.description = description;
         this.active = active;
     }
 
-    public static DocumentType create(Long code, String name, String description) {
+    public static DocumentType create(Integer code, String name, String description) {
         return new DocumentType(normalizeCode(code), normalizeName(name), normalizeDescription(description), true);
     }
 
-    public static DocumentType restore(Long code, String name, String description, boolean active) {
+    public static DocumentType restore(Integer code, String name, String description, boolean active) {
         return new DocumentType(normalizeCode(code), normalizeName(name), normalizeDescription(description), active);
     }
 
@@ -39,7 +39,7 @@ public final class DocumentType {
         return new DocumentType(code, name, description, false);
     }
 
-    public Long code() {
+    public Integer code() {
         return code;
     }
 
@@ -55,8 +55,11 @@ public final class DocumentType {
         return active;
     }
 
-    private static Long normalizeCode(Long value) {
+    private static Integer normalizeCode(Integer value) {
         requireNonNull(value, "code");
+        if (value < 1 || value > 99) {
+            throw new IllegalArgumentException("code must be between 1 and 99");
+        }
         return value;
     }
 

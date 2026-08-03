@@ -8,5 +8,6 @@ import com.msvanegasg.facturaelectronica.tenant.infrastructure.persistence.entit
 
 public interface CompanyJpaRepository extends JpaRepository<CompanyJpaEntity, UUID> {
 
-    boolean existsByIdentificationTypeIdAndIdentificationNumber(UUID identificationTypeId, String identificationNumber);
+    boolean existsByIdentificationTypeCodeAndIdentificationNumber(Integer identificationTypeCode,
+            String identificationNumber);
 }

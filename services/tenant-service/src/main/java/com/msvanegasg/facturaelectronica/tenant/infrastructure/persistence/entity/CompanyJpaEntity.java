@@ -25,8 +25,8 @@ public class CompanyJpaEntity {
     @Column(name = "trade_name", length = 180)
     private String tradeName;
 
-    @Column(name = "identification_type_id", nullable = false)
-    private UUID identificationTypeId;
+    @Column(name = "identification_type_code", nullable = false)
+    private Integer identificationTypeCode;
 
     @Column(name = "identification_number", nullable = false, length = 30)
     private String identificationNumber;
@@ -50,13 +50,13 @@ public class CompanyJpaEntity {
     protected CompanyJpaEntity() {
     }
 
-    public CompanyJpaEntity(UUID id, String legalName, String tradeName, UUID identificationTypeId,
+    public CompanyJpaEntity(UUID id, String legalName, String tradeName, Integer identificationTypeCode,
             String identificationNumber, String verificationDigit, String email, CompanyStatus status,
             Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.legalName = legalName;
         this.tradeName = tradeName;
-        this.identificationTypeId = identificationTypeId;
+        this.identificationTypeCode = identificationTypeCode;
         this.identificationNumber = identificationNumber;
         this.verificationDigit = verificationDigit;
         this.email = email;
@@ -77,8 +77,8 @@ public class CompanyJpaEntity {
         return tradeName;
     }
 
-    public UUID getIdentificationTypeId() {
-        return identificationTypeId;
+    public Integer getIdentificationTypeCode() {
+        return identificationTypeCode;
     }
 
     public String getIdentificationNumber() {

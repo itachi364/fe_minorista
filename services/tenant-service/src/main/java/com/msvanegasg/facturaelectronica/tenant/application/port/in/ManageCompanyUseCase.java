@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.tenant.application.port.in;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.tenant.application.dto.CompanyResult;
@@ -8,6 +9,8 @@ import com.msvanegasg.facturaelectronica.tenant.application.dto.CreateCompanyCom
 public interface ManageCompanyUseCase {
 
     CompanyResult create(CreateCompanyCommand command);
+
+    List<CompanyResult> list();
 
     CompanyResult findById(UUID companyId);
 

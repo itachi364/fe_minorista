@@ -267,7 +267,7 @@ Toda transicion fiscal debe registrar evento de trazabilidad con estado anterior
 - Un tercero puede cumplir rol de cliente, proveedor o ambos sin duplicar su identificacion.
 - Los datos minimos son tipo de persona, tipo de documento, numero de documento, digito de verificacion cuando aplique, nombre completo o razon social, contacto, direccion y estado.
 - El tipo de persona sera `NATURAL` o `JURIDICA`.
-- Para NIT, el digito de verificacion se calcula automaticamente desde el numero base mediante el algoritmo DIAN: pesos de derecha a izquierda `3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71`; se suma cada digito multiplicado por su peso; si el residuo modulo 11 es 0 el DV es 0, si es 1 el DV es 1, en otros casos el DV es `11 - residuo`.
+- Para `identificationTypeCode=31` (NIT), el digito de verificacion se calcula automaticamente desde el numero base mediante el algoritmo DIAN: pesos de derecha a izquierda `3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71`; se suma cada digito multiplicado por su peso; si el residuo modulo 11 es 0 el DV es 0, si es 1 el DV es 1, en otros casos el DV es `11 - residuo`.
 - Para tipos de documento distintos a NIT, el digito de verificacion debe quedar nulo o vacio.
 - El servicio de terceros debe exponer el DV calculado en la respuesta y rechazar inconsistencias cuando una importacion o actualizacion incluya un DV que no corresponde.
 
@@ -691,7 +691,7 @@ Permisos empresariales iniciales:
 - Topic consulted: authorities, permissions, role hierarchy and custom authorization managers.
 - Relevant finding: Spring Security soporta autorizacion por authorities/permisos, jerarquias de roles y gestores de autorizacion personalizados para reglas dinamicas.
 - Decision impact: `identity-service` debe calcular permisos efectivos desde BD y exponerlos al BFF/frontend; los microservicios deben validar permisos por accion mediante contratos internos o middleware aprobado, sin depender solo de nombres de roles fijos.
-## TASK-067 redise�o visual profesional
+## TASK-067 rediseï¿½o visual profesional
 
 La SPA adopta una presentacion de herramienta SaaS operativa: login centrado con panel de marca, shell autenticado con sidebar fijo en escritorio, area de trabajo clara, panel superior compacto, formularios densos y controles consistentes.
 
@@ -718,3 +718,35 @@ El panel `ROOT` deja de ser una vista limitada de creacion de empresa y pasa a s
 Para entregar el administrador inicial, la SPA ejecuta dos comandos trazables: crea el usuario en `identity-service` y luego asigna `OWNER` en la empresa creada. En el modelo actual `OWNER` representa el administrador empresarial con todos los permisos de empresa; cuando se complete RBAC modular, este flujo migrara a roles configurables.
 
 En backend, `identity-service` reconoce el alcance global `ROOT` desde `identity.global_user_role` y permite que asigne roles empresariales sin exigir membresia previa ni licencia empresarial. Los usuarios no ROOT conservan las validaciones de licencia y permiso `ROLES_MANAGE`.
+## TASK-069 RBAC modular implementado
+
+`identity-service` implementa el primer corte funcional de RBAC modular con permisos persistidos, roles empresariales por `company_id` y asignaciones por usuario. Los permisos efectivos se calculan combinando roles modulares y roles legacy durante la transicion, sin permitir permisos `GLOBAL_*` en roles empresariales.
+
+La regla de delegacion queda en backend: un actor empresarial solo puede crear, editar o asignar roles con permisos estrictamente menores a sus permisos efectivos. `ROOT` conserva excepcion global para administrar la plataforma y entregar administradores iniciales.
+
+El BFF enruta los nuevos contratos `/platform/*`, `/companies/{companyId}/roles`, `/role-assignments` y `/effective-permissions` hacia `identity-service`.
+## TASK-074 identificacion DIAN numerica para empresas
+
+- Fuente normativa consultada: DIAN documentacion tecnica y tabla parametrica de tipos de documento de identificacion.
+- Codigos soportados inicialmente para `tenant.company.identification_type_code`: `11`, `12`, `13`, `21`, `22`, `31`, `41`, `42`, `43`, `47`, `48`.
+- Decision: el contrato de empresa usa `identificationTypeCode` entero; no se acepta UUID ni texto libre para el tipo de documento.
+- Impacto: la SPA muestra nombres legibles en lista desplegable, pero envia y persiste el codigo numerico DIAN.
+
+### Context7 evidence
+
+- Library/tool: Spring Boot 3.5 (`/websites/spring_io_spring-boot_3_5`).
+- Topic consulted: validacion de request REST con Jakarta Bean Validation.
+- Relevant finding: Spring Boot integra Bean Validation para validar DTOs de entrada antes de ejecutar el controlador.
+- Decision impact: `CompanyRequest` valida `identificationTypeCode` con `@NotNull`, `@Min(1)` y `@Max(99)`, y el dominio valida pertenencia a codigos DIAN soportados.
+
+- Library/tool: React (`/reactjs/react.dev`).
+- Topic consulted: select controlado con estado.
+- Relevant finding: un `<select>` controlado debe recibir `value` y actualizar estado en `onChange`; cada `<option>` puede tener valor distinto al texto mostrado.
+- Decision impact: la SPA muestra descripcion DIAN y conserva/envia el codigo numerico.
+
+## TASK-075 identificacion DIAN numerica transversal
+
+- Fuente normativa: tabla DIAN de tipos de documento de identificacion ya registrada en TASK-074.
+- Decision: todo campo `identificationTypeCode` o `identification_type_code` representa un codigo DIAN numerico entero de maximo dos digitos; no se aceptan aliases como `NIT`, `CC` o `CE` en contratos nuevos.
+- Alcance aplicado: `tenant-service`, `thirdparty-service`, `catalog-service`, SPA y specs usan codigo numerico. Los tipos de documento fiscal electronico (`ELECTRONIC_POS`, `CREDIT_NOTE`, etc.) siguen siendo otro concepto y no se migran.
+- Impacto: `identificationTypeCode=31` es el unico caso que dispara calculo automatico de digito de verificacion NIT.

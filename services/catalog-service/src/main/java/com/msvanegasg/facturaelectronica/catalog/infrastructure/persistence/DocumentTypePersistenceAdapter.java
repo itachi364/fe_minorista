@@ -41,7 +41,7 @@ public class DocumentTypePersistenceAdapter implements DocumentTypeRepositoryPor
     }
 
     @Override
-    public Optional<DocumentType> findByCode(Long code) {
+    public Optional<DocumentType> findByCode(Integer code) {
         return documentTypeRepository.findById(code)
                 .map(DocumentTypePersistenceAdapter::toDomain);
     }

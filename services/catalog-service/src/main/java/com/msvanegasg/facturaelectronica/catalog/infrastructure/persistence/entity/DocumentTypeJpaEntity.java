@@ -28,7 +28,7 @@ public class DocumentTypeJpaEntity {
 
     @Id
     @Column(name = "codigo", nullable = false, unique = true)
-    private Long codigo;
+    private Integer codigo;
 
     @Column(name = "nombre", nullable = false, unique = true, length = 50)
     @NotBlank

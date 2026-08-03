@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.tenant.application.port.out;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -11,5 +12,7 @@ public interface CompanyRepositoryPort {
 
     Optional<Company> findById(UUID id);
 
-    boolean existsByIdentification(UUID identificationTypeId, String identificationNumber);
+    List<Company> findAll();
+
+    boolean existsByIdentification(Integer identificationTypeCode, String identificationNumber);
 }

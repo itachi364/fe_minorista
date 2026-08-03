@@ -9,7 +9,7 @@ public record CompanyResponse(
         UUID id,
         String legalName,
         String tradeName,
-        UUID identificationTypeId,
+        Integer identificationTypeCode,
         String identificationNumber,
         String verificationDigit,
         String email,

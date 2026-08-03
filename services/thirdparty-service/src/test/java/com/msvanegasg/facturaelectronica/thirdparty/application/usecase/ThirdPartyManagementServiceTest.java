@@ -73,7 +73,7 @@ class ThirdPartyManagementServiceTest {
     }
 
     private static ThirdPartyCommand command(UUID companyId, Set<ThirdPartyRole> roles) {
-        return new ThirdPartyCommand(companyId, PersonType.JURIDICA, "NIT", "900123456", null, null,
+        return new ThirdPartyCommand(companyId, PersonType.JURIDICA, 31, "900123456", null, null,
                 "Cliente SAS", "Cliente", "cliente@example.com", "3000000000", "Calle 1", "11001", roles);
     }
 
@@ -99,7 +99,7 @@ class ThirdPartyManagementServiceTest {
         }
 
         @Override
-        public Optional<ThirdParty> findByCompanyIdAndDocument(UUID companyId, String identificationTypeCode,
+        public Optional<ThirdParty> findByCompanyIdAndDocument(UUID companyId, Integer identificationTypeCode,
                 String identificationNumber) {
             return thirdParties.values().stream()
                     .filter(thirdParty -> thirdParty.companyId().equals(companyId))
@@ -118,7 +118,7 @@ class ThirdPartyManagementServiceTest {
         }
 
         @Override
-        public boolean existsByCompanyIdAndDocument(UUID companyId, String identificationTypeCode,
+        public boolean existsByCompanyIdAndDocument(UUID companyId, Integer identificationTypeCode,
                 String identificationNumber) {
             return findByCompanyIdAndDocument(companyId, identificationTypeCode, identificationNumber).isPresent();
         }

@@ -504,6 +504,84 @@ pre {
   line-height: 1.5;
 }
 
+
+.summary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.identity-admin .tool-panel {
+  min-height: 0;
+}
+
+.identity-split {
+  align-items: start;
+}
+
+.permission-groups,
+.role-list {
+  display: grid;
+  gap: 12px;
+}
+
+.permission-groups {
+  max-height: 360px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.permission-group {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #dce5ec;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfcfd;
+}
+
+.permission-group h2 {
+  color: #314152;
+  text-transform: capitalize;
+}
+
+.permission-list {
+  display: grid;
+  gap: 8px;
+}
+
+.permission-option,
+.role-option {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  border: 1px solid #d8e1e8;
+  border-radius: 7px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.permission-option span,
+.role-option span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.permission-option b,
+.role-option b {
+  color: #233241;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.permission-option small,
+.role-option small {
+  color: #687787;
+  font-size: 12px;
+  line-height: 1.35;
+}
 @media (max-width: 1180px) {
   .app-header-panel,
   .form-grid,

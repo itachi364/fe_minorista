@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,7 +31,7 @@ class CompanyLicenseManagementServiceTest {
 
     private static final UUID COMPANY_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID LICENSE_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
-    private static final UUID IDENTIFICATION_TYPE_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    private static final Integer IDENTIFICATION_TYPE_CODE = 31;
     private static final Instant NOW = Instant.parse("2026-05-19T10:00:00Z");
 
     private final InMemoryCompanyRepository companyRepository = new InMemoryCompanyRepository();
@@ -121,7 +122,7 @@ class CompanyLicenseManagementServiceTest {
     }
 
     private static Company company() {
-        return new Company(COMPANY_ID, "Mi Empresa SAS", "Mi Tienda", IDENTIFICATION_TYPE_ID, "900123456", "7",
+        return new Company(COMPANY_ID, "Mi Empresa SAS", "Mi Tienda", IDENTIFICATION_TYPE_CODE, "900123456", "7",
                 "admin@example.com", CompanyStatus.ACTIVE, NOW, NOW);
     }
 
@@ -147,11 +148,17 @@ class CompanyLicenseManagementServiceTest {
         public Optional<Company> findById(UUID id) {
             return Optional.ofNullable(companies.get(id));
         }
+        @Override
+        public List<Company> findAll() {
+            return List.copyOf(companies.values());
+        }
+
+
 
         @Override
-        public boolean existsByIdentification(UUID identificationTypeId, String identificationNumber) {
+        public boolean existsByIdentification(Integer identificationTypeCode, String identificationNumber) {
             return companies.values().stream()
-                    .anyMatch(company -> company.identificationTypeId().equals(identificationTypeId)
+                    .anyMatch(company -> company.identificationTypeCode().equals(identificationTypeCode)
                             && company.identificationNumber().equals(identificationNumber));
         }
     }

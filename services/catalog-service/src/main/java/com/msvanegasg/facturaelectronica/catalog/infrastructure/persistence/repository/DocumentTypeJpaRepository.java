@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 import com.msvanegasg.facturaelectronica.catalog.infrastructure.persistence.entity.DocumentTypeJpaEntity;
 
 @Repository
-public interface DocumentTypeJpaRepository extends JpaRepository<DocumentTypeJpaEntity, Long> {
+public interface DocumentTypeJpaRepository extends JpaRepository<DocumentTypeJpaEntity, Integer> {
 
     List<DocumentTypeJpaEntity> findByActivoTrue();
 

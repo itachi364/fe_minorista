@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +36,7 @@ import com.msvanegasg.facturaelectronica.tenant.observability.CorrelationIdFilte
 class CompanyControllerTest {
 
     private static final UUID COMPANY_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
-    private static final UUID IDENTIFICATION_TYPE_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    private static final Integer IDENTIFICATION_TYPE_CODE = 31;
     private static final Instant NOW = Instant.parse("2026-05-19T10:00:00Z");
 
     private MockMvc mockMvc;
@@ -63,9 +64,19 @@ class CompanyControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().string(CorrelationId.HEADER_NAME, "corr-tenant"))
                 .andExpect(jsonPath("$.id").value(COMPANY_ID.toString()))
+                .andExpect(jsonPath("$.identificationTypeCode").value(31))
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 
+    @Test
+    void listsCompaniesForRootSelector() throws Exception {
+        when(manageCompanyUseCase.list()).thenReturn(List.of(result(CompanyStatus.ACTIVE)));
+
+        mockMvc.perform(get("/api/v1/companies"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(COMPANY_ID.toString()))
+                .andExpect(jsonPath("$[0].legalName").value("Mi Empresa SAS"));
+    }
     @Test
     void findsCompany() throws Exception {
         when(manageCompanyUseCase.findById(eq(COMPANY_ID))).thenReturn(result(CompanyStatus.ACTIVE));
@@ -114,7 +125,7 @@ class CompanyControllerTest {
     }
 
     private static CompanyResult result(CompanyStatus status) {
-        return new CompanyResult(COMPANY_ID, "Mi Empresa SAS", "Mi Tienda", IDENTIFICATION_TYPE_ID, "900123456", "7",
+        return new CompanyResult(COMPANY_ID, "Mi Empresa SAS", "Mi Tienda", IDENTIFICATION_TYPE_CODE, "900123456", "7",
                 "admin@example.com", status, NOW, NOW);
     }
 
@@ -123,7 +134,7 @@ class CompanyControllerTest {
                 {
                   "legalName": "Mi Empresa SAS",
                   "tradeName": "Mi Tienda",
-                  "identificationTypeId": "22222222-2222-2222-2222-222222222222",
+                  "identificationTypeCode": 31,
                   "identificationNumber": "900123456",
                   "verificationDigit": "7",
                   "email": "admin@example.com"

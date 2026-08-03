@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.tenant.interfaces.rest;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -33,6 +34,13 @@ public class CompanyController {
         CompanyResponse response = CompanyRestMapper.toResponse(
                 manageCompanyUseCase.create(CompanyRestMapper.toCommand(request)));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping
+    public List<CompanyResponse> list() {
+        return manageCompanyUseCase.list().stream()
+                .map(CompanyRestMapper::toResponse)
+                .toList();
     }
 
     @GetMapping("/{companyId}")

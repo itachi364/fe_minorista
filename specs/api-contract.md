@@ -114,7 +114,7 @@ Responsabilidad: empresas, configuracion multiempresa y estado del tenant.
 {
   "legalName": "Mi Empresa SAS",
   "tradeName": "Mi Tienda",
-  "identificationTypeId": "uuid",
+  "identificationTypeCode": 31,
   "identificationNumber": "900123456",
   "verificationDigit": "7",
   "email": "admin@example.com"
@@ -128,7 +128,7 @@ Responsabilidad: empresas, configuracion multiempresa y estado del tenant.
   "id": "uuid",
   "legalName": "Mi Empresa SAS",
   "tradeName": "Mi Tienda",
-  "identificationTypeId": "uuid",
+  "identificationTypeCode": 31,
   "identificationNumber": "900123456",
   "verificationDigit": "7",
   "email": "admin@example.com",
@@ -172,6 +172,8 @@ Objetivo TASK-068/TASK-069:
 - `GET /api/v1/companies/{companyId}/permissions?userId=`
 
 ### Endpoints objetivo RBAC modular
+
+Estado TASK-069: implementados en `identity-service` los endpoints de catalogo de permisos, roles empresariales, asignaciones y permisos efectivos. Los endpoints globales de creacion de empresas siguen delegados al flujo existente `tenant-service` + `identity-service` mientras se completa la UI administrativa.
 
 Root global:
 
@@ -280,7 +282,7 @@ Retirados en TASK-059 lote 2. Los consumidores deben usar `/api/v1/customers`, `
 {
   "role": "CUSTOMER",
   "personType": "JURIDICA",
-  "identificationTypeCode": "NIT",
+  "identificationTypeCode": 31,
   "identificationNumber": "900123456",
   "fullName": null,
   "businessName": "Cliente Prueba SAS",
@@ -296,8 +298,8 @@ Retirados en TASK-059 lote 2. Los consumidores deben usar `/api/v1/customers`, `
 
 Reglas:
 
-- `identificationTypeId + identificationNumber` es unico por empresa.
-- `identificationTypeCode=NIT` calcula `verificationDigit` automaticamente; el request no debe tratar el DV como dato libre.
+- `identificationTypeCode + identificationNumber` es unico por empresa.
+- `identificationTypeCode=31` calcula `verificationDigit` automaticamente; el request no debe tratar el DV como dato libre.
 - Para tipos de documento distintos a NIT, `verificationDigit` debe quedar nulo o vacio.
 - `personType` debe ser `NATURAL` o `JURIDICA`.
 - Un tercero puede tener rol `CUSTOMER`, `SUPPLIER` o `BOTH`.
@@ -640,7 +642,7 @@ Estado TASK-049:
 {
   "saleId": "uuid",
   "buyerName": "Consumidor Final",
-  "buyerDocumentType": "CC",
+  "buyerIdentificationTypeCode": 13,
   "buyerDocumentNumber": "123456789",
   "documentDate": "2026-05-15",
   "environment": "TEST",
@@ -969,7 +971,7 @@ Implementado en TASK-047 para `/api/v1/third-parties`, `/api/v1/customers` y `/a
   "companyId": "uuid",
   "roles": ["CUSTOMER", "SUPPLIER"],
   "personType": "JURIDICA",
-  "identificationTypeCode": "NIT",
+  "identificationTypeCode": 31,
   "identificationNumber": "900123456",
   "verificationDigit": "7",
   "fullName": null,
@@ -1392,3 +1394,80 @@ El dispatcher Outbox publica cada evento canonico a EventBridge con:
 - `detail`: envelope canonico JSON con `payload` como objeto JSON.
 
 Regla de error: si AWS SDK retorna `failedEntryCount > 0`, el evento queda `FAILED` en Outbox con `publishAttempts` incrementado y `lastError` seguro. No se deben registrar secretos ni credenciales en `lastError`.
+## Ajustes TASK-076: UX colombiana y RBAC operativo
+
+### tenant-service
+
+- `GET /api/v1/companies`
+
+Uso: selector global de empresas para `ROOT`.
+
+Respuesta:
+
+```json
+[
+  {
+    "id": "uuid",
+    "legalName": "Mi Empresa SAS",
+    "tradeName": "Mi Tienda",
+    "identificationTypeCode": 31,
+    "identificationNumber": "900123456",
+    "verificationDigit": "7",
+    "email": "admin@example.com",
+    "status": "ACTIVE"
+  }
+]
+```
+
+Regla: en esta fase local el endpoint se consume desde el panel ROOT; la autorizacion fuerte queda en la capa identity/BFF al endurecer seguridad gateway.
+
+### identity-service
+
+- `GET /api/v1/companies/{companyId}/users?email=`
+
+Uso: modal de asignacion de roles. Permite buscar usuarios asociados a la empresa por correo o listar usuarios conocidos de la empresa.
+
+Respuesta:
+
+```json
+[
+  {
+    "id": "uuid",
+    "email": "vendedor@example.com",
+    "fullName": "Usuario Vendedor",
+    "status": "ACTIVE",
+    "createdAt": "2026-07-16T10:00:00Z",
+    "updatedAt": "2026-07-16T10:00:00Z"
+  }
+]
+```
+
+Reglas:
+
+- `ROOT` puede listar usuarios de cualquier empresa.
+- Un usuario empresarial solo puede listar usuarios de su empresa si tiene permisos de administracion de usuarios o roles.
+- La asignacion final conserva `POST /api/v1/companies/{companyId}/users/{userId}/role-assignments` con `roleIds`.
+
+### Equivalencias UI espanol / contrato tecnico
+
+| Pantalla | Etiqueta UI | Valor tecnico enviado |
+|---|---|---|
+| Terceros | Cliente | `CUSTOMER` dentro de `roles` |
+| Terceros | Proveedor | `SUPPLIER` dentro de `roles` |
+| Terceros | Cliente y proveedor | `CUSTOMER`, `SUPPLIER` dentro de `roles` |
+| Persona | Natural | `NATURAL` |
+| Persona | Juridica | `JURIDICA` |
+| Inventario | Bien fisico | `PHYSICAL_GOOD` |
+| Inventario | Servicio/intangible | `SERVICE` |
+| Inventario | Insumo | `SUPPLY` |
+| Resolucion fiscal | POS electronico | `ELECTRONIC_POS` |
+| Resolucion fiscal | Factura electronica | `ELECTRONIC_INVOICE` |
+| Resolucion fiscal | Nota credito | `CREDIT_NOTE` |
+| Resolucion fiscal | Nota debito | `DEBIT_NOTE` |
+| Resolucion fiscal | Nota de ajuste POS | `POS_ADJUSTMENT_NOTE` |
+| Ambiente | Pruebas | `TEST` |
+| Ambiente | Produccion | `PRODUCTION` |
+
+### Municipios
+
+La UI debe mostrar departamento y municipio por nombre usando codigos DANE/DIVIPOLA. El backend recibe `municipalityCode` como string de 5 digitos. Ejemplo: `11001` para Bogota D.C.

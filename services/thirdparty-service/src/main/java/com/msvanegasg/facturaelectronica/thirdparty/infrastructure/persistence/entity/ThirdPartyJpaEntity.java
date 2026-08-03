@@ -45,8 +45,8 @@ public class ThirdPartyJpaEntity {
     @Column(name = "person_type", nullable = false, length = 20)
     private PersonType personType;
 
-    @Column(name = "identification_type_code", nullable = false, length = 20)
-    private String identificationTypeCode;
+    @Column(name = "identification_type_code", nullable = false)
+    private Integer identificationTypeCode;
 
     @Column(name = "identification_number", nullable = false, length = 30)
     private String identificationNumber;

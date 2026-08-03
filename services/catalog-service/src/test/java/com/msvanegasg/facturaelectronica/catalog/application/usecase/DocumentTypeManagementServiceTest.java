@@ -22,9 +22,9 @@ class DocumentTypeManagementServiceTest {
         InMemoryDocumentTypeRepository repository = new InMemoryDocumentTypeRepository();
         DocumentTypeManagementService service = new DocumentTypeManagementService(repository);
 
-        DocumentType documentType = service.create(new DocumentTypeCommand(13L, "Cedula", "Cedula ciudadania"));
+        DocumentType documentType = service.create(new DocumentTypeCommand(13, "Cedula", "Cedula ciudadania"));
 
-        assertThat(documentType.code()).isEqualTo(13L);
+        assertThat(documentType.code()).isEqualTo(13);
         assertThat(documentType.name()).isEqualTo("Cedula");
         assertThat(documentType.description()).isEqualTo("Cedula ciudadania");
         assertThat(documentType.active()).isTrue();
@@ -33,12 +33,12 @@ class DocumentTypeManagementServiceTest {
     @Test
     void updateDocumentTypeKeepsCodeAndActiveState() {
         InMemoryDocumentTypeRepository repository = new InMemoryDocumentTypeRepository();
-        repository.save(DocumentType.restore(13L, "Cedula", "Inicial", true));
+        repository.save(DocumentType.restore(13, "Cedula", "Inicial", true));
         DocumentTypeManagementService service = new DocumentTypeManagementService(repository);
 
-        DocumentType updated = service.update(13L, new DocumentTypeCommand(31L, "NIT", "Tributario"));
+        DocumentType updated = service.update(13, new DocumentTypeCommand(31, "NIT", "Tributario"));
 
-        assertThat(updated.code()).isEqualTo(13L);
+        assertThat(updated.code()).isEqualTo(13);
         assertThat(updated.name()).isEqualTo("NIT");
         assertThat(updated.active()).isTrue();
     }
@@ -46,27 +46,27 @@ class DocumentTypeManagementServiceTest {
     @Test
     void disableAndEnableDocumentType() {
         InMemoryDocumentTypeRepository repository = new InMemoryDocumentTypeRepository();
-        repository.save(DocumentType.restore(13L, "Cedula", null, true));
+        repository.save(DocumentType.restore(13, "Cedula", null, true));
         DocumentTypeManagementService service = new DocumentTypeManagementService(repository);
 
-        service.disable(13L);
-        assertThat(repository.findByCode(13L).orElseThrow().active()).isFalse();
+        service.disable(13);
+        assertThat(repository.findByCode(13).orElseThrow().active()).isFalse();
 
-        service.enable(13L);
-        assertThat(repository.findByCode(13L).orElseThrow().active()).isTrue();
+        service.enable(13);
+        assertThat(repository.findByCode(13).orElseThrow().active()).isTrue();
     }
 
     @Test
     void findByCodeRejectsMissingDocumentType() {
         DocumentTypeManagementService service = new DocumentTypeManagementService(new InMemoryDocumentTypeRepository());
 
-        assertThatThrownBy(() -> service.findByCode(99L))
+        assertThatThrownBy(() -> service.findByCode(99))
                 .isInstanceOf(TipoDocumentoNotFoundException.class);
     }
 
     private static final class InMemoryDocumentTypeRepository implements DocumentTypeRepositoryPort {
 
-        private final Map<Long, DocumentType> documentTypes = new LinkedHashMap<>();
+        private final Map<Integer, DocumentType> documentTypes = new LinkedHashMap<>();
 
         @Override
         public List<DocumentType> findAll() {
@@ -84,7 +84,7 @@ class DocumentTypeManagementServiceTest {
         }
 
         @Override
-        public Optional<DocumentType> findByCode(Long code) {
+        public Optional<DocumentType> findByCode(Integer code) {
             return Optional.ofNullable(documentTypes.get(code));
         }
 

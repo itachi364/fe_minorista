@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.identity.application.port.out;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -12,6 +13,8 @@ public interface UserAccountRepositoryPort {
     Optional<UserAccount> findById(UUID id);
 
     Optional<UserAccount> findByEmail(String email);
+
+    List<UserAccount> findByCompanyIdAndEmailContaining(UUID companyId, String email);
 
     boolean existsByEmail(String email);
 }

@@ -18,7 +18,7 @@
 | id | uuid/bigint | Si | Identificador de empresa. |
 | legal_name | varchar(200) | Si | Razon social. |
 | trade_name | varchar(200) | No | Nombre comercial. |
-| identification_type_id | ref | Si | Tipo de documento. |
+| identification_type_code | integer | Si | Codigo DIAN de tipo de documento. |
 | identification_number | varchar(30) | Si | NIT o identificacion. |
 | verification_digit | varchar(2) | No | Digito de verificacion. |
 | email | varchar(150) | No | Correo principal. |
@@ -71,7 +71,7 @@
 |---|---:|---:|---|
 | id | uuid/bigint | Si | Identificador del cliente. |
 | company_id | ref | Si | Empresa propietaria del dato. |
-| identification_type_id | ref | Si | Tipo de documento. |
+| identification_type_code | integer | Si | Codigo DIAN de tipo de documento. |
 | identification_number | varchar(30) | Si | Numero de documento. |
 | verification_digit | varchar(2) | No | Digito de verificacion. |
 | name | varchar(200) | Si | Nombre o razon social. |
@@ -92,7 +92,7 @@ Campos equivalentes a `thirdparty.customer`, orientados a proveedor.
 | id | uuid/bigint | Si | Identificador del tercero fiscal. |
 | company_id | ref | Si | Empresa propietaria del tercero. |
 | person_type | varchar(20) | Si | NATURAL, JURIDICA. |
-| identification_type_code | varchar(20) | Si | Codigo del tipo de documento, por ejemplo NIT, CC, CE. |
+| identification_type_code | integer | Si | Codigo DIAN de tipo de documento. |
 | identification_number | varchar(30) | Si | Numero base del documento sin digito de verificacion separado. |
 | verification_digit | varchar(2) | No | Digito de verificacion calculado automaticamente solo para NIT. |
 | full_name | varchar(220) | No | Nombre completo para persona natural. |
@@ -340,7 +340,7 @@ Reglas TASK-049:
 | sale_id | ref | No | Venta origen. |
 | document_type | varchar(40) | Si | ELECTRONIC_INVOICE, ELECTRONIC_POS, CREDIT_NOTE, DEBIT_NOTE, POS_ADJUSTMENT_NOTE. |
 | buyer_name | varchar(200) | No | Nombre o razon social del adquirente cuando aplique. |
-| buyer_document_type | varchar(40) | No | Tipo de documento del adquirente cuando aplique. |
+| buyer_identification_type_code | integer | No | Codigo DIAN de tipo de documento del adquirente cuando aplique. |
 | buyer_document_number | varchar(40) | No | Numero de documento del adquirente cuando aplique. |
 | prefix | varchar(20) | No | Prefijo. |
 | number | bigint | Si | Numero fiscal. |

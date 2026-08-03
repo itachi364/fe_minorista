@@ -17,12 +17,15 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.msvanegasg.facturaelectronica.identity.application.dto.AssignCompanyRolesCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.AssignRolesCommand;
+import com.msvanegasg.facturaelectronica.identity.application.dto.CreateCompanyRoleCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CreateUserCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.LoginCommand;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.AccessAuditRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.CompanyMembershipRepositoryPort;
+import com.msvanegasg.facturaelectronica.identity.application.port.out.CompanyRoleRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.GlobalUserRoleRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.LicenseValidationPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.IdGeneratorPort;
@@ -33,8 +36,10 @@ import com.msvanegasg.facturaelectronica.identity.application.port.out.UserAccou
 import com.msvanegasg.facturaelectronica.identity.application.port.out.UserSessionRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.domain.model.AccessAuditEvent;
 import com.msvanegasg.facturaelectronica.identity.domain.model.CompanyMembership;
+import com.msvanegasg.facturaelectronica.identity.domain.model.CompanyRole;
 import com.msvanegasg.facturaelectronica.identity.domain.model.GlobalRoleCode;
 import com.msvanegasg.facturaelectronica.identity.domain.model.PermissionCode;
+import com.msvanegasg.facturaelectronica.identity.domain.model.PermissionDescriptor;
 import com.msvanegasg.facturaelectronica.identity.domain.model.RoleCode;
 import com.msvanegasg.facturaelectronica.identity.domain.model.UserAccount;
 import com.msvanegasg.facturaelectronica.identity.domain.model.UserSession;
@@ -147,6 +152,44 @@ class IdentityManagementServiceTest {
         assertThat(membership.userId()).isEqualTo(admin.id());
         assertThat(membership.roles()).containsExactly(RoleCode.OWNER);
     }
+
+    @Test
+    void ownerCanCreateLowerCompanyRoleAndAssignIt() {
+        InMemoryCompanyRoles companyRoles = new InMemoryCompanyRoles();
+        IdentityManagementService rbacService = serviceWithCompanyRoles(companyRoles);
+        var owner = rbacService.createUser(new CreateUserCommand("owner@example.com", "Owner User", "secret123"));
+        rbacService.assignRoles(new AssignRolesCommand(COMPANY_ID, owner.id(), Set.of(RoleCode.OWNER), null));
+        var login = rbacService.login(new LoginCommand("owner@example.com", "secret123"));
+        var cashier = rbacService.createUser(new CreateUserCommand("cashier@example.com", "Cashier User", "secret123"));
+
+        var role = rbacService.createCompanyRole(new CreateCompanyRoleCommand(COMPANY_ID, "Vendedor POS",
+                "Puede vender", Set.of(PermissionCode.SALES_CREATE), "Bearer " + login.accessToken()));
+        var access = rbacService.assignCompanyRoles(new AssignCompanyRolesCommand(COMPANY_ID, cashier.id(),
+                Set.of(role.id()), "Bearer " + login.accessToken()));
+
+        assertThat(access.permissions()).contains(PermissionCode.SALES_CREATE);
+        assertThat(companyRoles.findActiveAssignedRoles(COMPANY_ID, cashier.id())).hasSize(1);
+    }
+
+    @Test
+    void deniesCompanyRoleCreationWhenPermissionsAreEqualToActor() {
+        InMemoryCompanyRoles companyRoles = new InMemoryCompanyRoles();
+        IdentityManagementService rbacService = serviceWithCompanyRoles(companyRoles);
+        var owner = rbacService.createUser(new CreateUserCommand("owner@example.com", "Owner User", "secret123"));
+        rbacService.assignRoles(new AssignRolesCommand(COMPANY_ID, owner.id(), Set.of(RoleCode.OWNER), null));
+        var login = rbacService.login(new LoginCommand("owner@example.com", "secret123"));
+
+        assertThatThrownBy(() -> rbacService.createCompanyRole(new CreateCompanyRoleCommand(COMPANY_ID,
+                "Otro administrador", "Permisos iguales", RoleCode.OWNER.permissions(),
+                "Bearer " + login.accessToken())))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+    private IdentityManagementService serviceWithCompanyRoles(InMemoryCompanyRoles companyRoles) {
+        return new IdentityManagementService(users, memberships, companyRoles, sessions, audit, new InMemoryGlobalRoles(),
+                (companyId, action) -> { }, new FixedPasswordHasher(), () -> "plain-token", token -> "hash-" + token,
+                UUID::randomUUID, () -> NOW, Duration.ofHours(12));
+    }
+
     private static final class InMemoryUsers implements UserAccountRepositoryPort {
         private final Map<UUID, UserAccount> byId = new HashMap<>();
         private final Map<String, UserAccount> byEmail = new HashMap<>();
@@ -162,6 +205,13 @@ class IdentityManagementServiceTest {
         public Optional<UserAccount> findById(UUID id) { return Optional.ofNullable(byId.get(id)); }
         @Override
         public Optional<UserAccount> findByEmail(String email) { return Optional.ofNullable(byEmail.get(email)); }
+        @Override
+        public List<UserAccount> findByCompanyIdAndEmailContaining(UUID companyId, String email) {
+            String normalizedEmail = email == null ? "" : email.toLowerCase();
+            return byId.values().stream()
+                    .filter(user -> user.email().contains(normalizedEmail))
+                    .toList();
+        }
         @Override
         public boolean existsByEmail(String email) { return byEmail.containsKey(email); }
     }
@@ -198,6 +248,64 @@ class IdentityManagementServiceTest {
     }
 
 
+
+    private static final class InMemoryCompanyRoles implements CompanyRoleRepositoryPort {
+        private final Map<UUID, CompanyRole> roles = new HashMap<>();
+        private final Map<UUID, Map<UUID, Set<UUID>>> assignments = new HashMap<>();
+
+        @Override
+        public List<PermissionDescriptor> listActivePermissions() {
+            return java.util.Arrays.stream(PermissionCode.values()).map(PermissionDescriptor::from).toList();
+        }
+
+        @Override
+        public CompanyRole save(CompanyRole role) {
+            roles.put(role.id(), role);
+            return role;
+        }
+
+        @Override
+        public Optional<CompanyRole> findByIdAndCompanyId(UUID roleId, UUID companyId) {
+            return Optional.ofNullable(roles.get(roleId)).filter(role -> role.companyId().equals(companyId));
+        }
+
+        @Override
+        public List<CompanyRole> findByCompanyId(UUID companyId) {
+            return roles.values().stream().filter(role -> role.companyId().equals(companyId)).toList();
+        }
+
+        @Override
+        public List<CompanyRole> findActiveAssignedRoles(UUID companyId, UUID userId) {
+            return assignments.getOrDefault(companyId, Map.of()).getOrDefault(userId, Set.of()).stream()
+                    .map(roles::get)
+                    .filter(java.util.Objects::nonNull)
+                    .filter(CompanyRole::active)
+                    .toList();
+        }
+
+        @Override
+        public List<UUID> findAssignedCompanyIds(UUID userId) {
+            return assignments.entrySet().stream()
+                    .filter(entry -> entry.getValue().containsKey(userId))
+                    .map(Map.Entry::getKey)
+                    .toList();
+        }
+
+        @Override
+        public void replaceUserRoleAssignments(UUID companyId, UUID userId, Set<UUID> roleIds, UUID assignedBy,
+                Instant assignedAt) {
+            assignments.computeIfAbsent(companyId, ignored -> new HashMap<>()).put(userId, Set.copyOf(roleIds));
+        }
+
+        @Override
+        public void revokeUserRoleAssignment(UUID companyId, UUID userId, UUID roleId, UUID revokedBy,
+                Instant revokedAt) {
+            Set<UUID> roleIds = new java.util.HashSet<>(assignments.getOrDefault(companyId, Map.of())
+                    .getOrDefault(userId, Set.of()));
+            roleIds.remove(roleId);
+            assignments.computeIfAbsent(companyId, ignored -> new HashMap<>()).put(userId, roleIds);
+        }
+    }
     private static final class InMemoryGlobalRoles implements GlobalUserRoleRepositoryPort {
         private final Map<UUID, Set<GlobalRoleCode>> roles = new HashMap<>();
 

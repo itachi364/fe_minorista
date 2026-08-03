@@ -47,7 +47,7 @@ public class TipoDocumentoController {
     }
 
     @GetMapping("/codigo/{codigo}")
-    public ResponseEntity<DocumentTypeResponse> findById(@PathVariable("codigo") Long codigo) {
+    public ResponseEntity<DocumentTypeResponse> findById(@PathVariable("codigo") Integer codigo) {
         return ResponseEntity.ok(DocumentTypeRestMapper.toResponse(manageDocumentTypeUseCase.findByCode(codigo)));
     }
 
@@ -58,19 +58,19 @@ public class TipoDocumentoController {
     }
 
     @PutMapping("/{codigo}")
-    public ResponseEntity<DocumentTypeRequest> update(@PathVariable("codigo") Long codigo, @Valid @RequestBody DocumentTypeRequest dto) {
+    public ResponseEntity<DocumentTypeRequest> update(@PathVariable("codigo") Integer codigo, @Valid @RequestBody DocumentTypeRequest dto) {
         return ResponseEntity.ok(DocumentTypeRestMapper.toRequest(
                 manageDocumentTypeUseCase.update(codigo, DocumentTypeRestMapper.toCommand(dto))));
     }
 
     @DeleteMapping("/{codigo}")
-    public ResponseEntity<Void> disable(@PathVariable("codigo") Long codigo) {
+    public ResponseEntity<Void> disable(@PathVariable("codigo") Integer codigo) {
         manageDocumentTypeUseCase.disable(codigo);
         return ResponseEntity.noContent().build();
     }
     
     @PutMapping("/{codigo}/activar")
-    public ResponseEntity<Void> activarTipoDocumento(@PathVariable("codigo") Long codigo) {
+    public ResponseEntity<Void> activarTipoDocumento(@PathVariable("codigo") Integer codigo) {
     	manageDocumentTypeUseCase.enable(codigo);
         return ResponseEntity.noContent().build();
     }

@@ -45,7 +45,7 @@ class TipoDocumentoControllerTest {
     @Test
     void findAllReturnsLegacyDocumentTypeShape() throws Exception {
         when(manageDocumentTypeUseCase.findAll())
-                .thenReturn(List.of(DocumentType.restore(13L, "Cedula", "Cedula ciudadania", true)));
+                .thenReturn(List.of(DocumentType.restore(13, "Cedula", "Cedula ciudadania", true)));
 
         mockMvc.perform(get("/api/tipos-documento"))
                 .andExpect(status().isOk())
@@ -58,8 +58,8 @@ class TipoDocumentoControllerTest {
 
     @Test
     void getByCodeReturnsLegacyDocumentTypeShape() throws Exception {
-        when(manageDocumentTypeUseCase.findByCode(13L))
-                .thenReturn(DocumentType.restore(13L, "Cedula", "Cedula ciudadania", true));
+        when(manageDocumentTypeUseCase.findByCode(13))
+                .thenReturn(DocumentType.restore(13, "Cedula", "Cedula ciudadania", true));
 
         mockMvc.perform(get("/api/tipos-documento/codigo/13"))
                 .andExpect(status().isOk())
@@ -70,7 +70,7 @@ class TipoDocumentoControllerTest {
     @Test
     void createDocumentTypeKeepsLegacyEndpointAndDtoResponse() throws Exception {
         when(manageDocumentTypeUseCase.create(any(DocumentTypeCommand.class)))
-                .thenReturn(DocumentType.restore(13L, "Cedula", "Cedula ciudadania", true));
+                .thenReturn(DocumentType.restore(13, "Cedula", "Cedula ciudadania", true));
 
         mockMvc.perform(post("/api/tipos-documento")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -82,8 +82,8 @@ class TipoDocumentoControllerTest {
 
     @Test
     void updateDocumentTypeKeepsLegacyEndpointAndDtoResponse() throws Exception {
-        when(manageDocumentTypeUseCase.update(eq(13L), any(DocumentTypeCommand.class)))
-                .thenReturn(DocumentType.restore(13L, "Cedula", "Actualizada", true));
+        when(manageDocumentTypeUseCase.update(eq(13), any(DocumentTypeCommand.class)))
+                .thenReturn(DocumentType.restore(13, "Cedula", "Actualizada", true));
 
         mockMvc.perform(put("/api/tipos-documento/13")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -98,7 +98,7 @@ class TipoDocumentoControllerTest {
         mockMvc.perform(delete("/api/tipos-documento/13"))
                 .andExpect(status().isNoContent());
 
-        verify(manageDocumentTypeUseCase).disable(13L);
+        verify(manageDocumentTypeUseCase).disable(13);
     }
 
     @Test
@@ -106,6 +106,6 @@ class TipoDocumentoControllerTest {
         mockMvc.perform(put("/api/tipos-documento/13/activar"))
                 .andExpect(status().isNoContent());
 
-        verify(manageDocumentTypeUseCase).enable(13L);
+        verify(manageDocumentTypeUseCase).enable(13);
     }
 }

@@ -1,7 +1,7 @@
 package com.msvanegasg.facturaelectronica.catalog.application.dto;
 
 public record DocumentTypeCommand(
-        Long code,
+        Integer code,
         String name,
         String description) {
 }

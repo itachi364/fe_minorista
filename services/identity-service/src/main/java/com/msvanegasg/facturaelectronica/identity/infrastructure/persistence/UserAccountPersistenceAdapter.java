@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.identity.infrastructure.persistence;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,6 +38,14 @@ public class UserAccountPersistenceAdapter implements UserAccountRepositoryPort 
     @Override
     public boolean existsByEmail(String email) {
         return repository.existsByEmail(email);
+    }
+
+    @Override
+    public List<UserAccount> findByCompanyIdAndEmailContaining(UUID companyId, String email) {
+        String normalized = email == null || email.isBlank() ? null : email.trim().toLowerCase(java.util.Locale.ROOT);
+        return repository.findByCompanyIdAndEmailContaining(companyId, normalized).stream()
+                .map(UserAccountPersistenceAdapter::toDomain)
+                .toList();
     }
 
     private static UserAccountJpaEntity toEntity(UserAccount user) {

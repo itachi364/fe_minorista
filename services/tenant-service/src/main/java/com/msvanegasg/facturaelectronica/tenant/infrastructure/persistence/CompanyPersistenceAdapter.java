@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.tenant.infrastructure.persistence;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,8 +31,15 @@ public class CompanyPersistenceAdapter implements CompanyRepositoryPort {
     }
 
     @Override
-    public boolean existsByIdentification(UUID identificationTypeId, String identificationNumber) {
-        return repository.existsByIdentificationTypeIdAndIdentificationNumber(identificationTypeId,
+    public List<Company> findAll() {
+        return repository.findAll().stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public boolean existsByIdentification(Integer identificationTypeCode, String identificationNumber) {
+        return repository.existsByIdentificationTypeCodeAndIdentificationNumber(identificationTypeCode,
                 identificationNumber);
     }
 
@@ -40,7 +48,7 @@ public class CompanyPersistenceAdapter implements CompanyRepositoryPort {
                 company.id(),
                 company.legalName(),
                 company.tradeName(),
-                company.identificationTypeId(),
+                company.identificationTypeCode(),
                 company.identificationNumber(),
                 company.verificationDigit(),
                 company.email(),
@@ -54,7 +62,7 @@ public class CompanyPersistenceAdapter implements CompanyRepositoryPort {
                 entity.getId(),
                 entity.getLegalName(),
                 entity.getTradeName(),
-                entity.getIdentificationTypeId(),
+                entity.getIdentificationTypeCode(),
                 entity.getIdentificationNumber(),
                 entity.getVerificationDigit(),
                 entity.getEmail(),

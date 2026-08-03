@@ -17,7 +17,7 @@ public interface ManageThirdPartyUseCase {
 
     List<ThirdPartyResult> findByRole(UUID companyId, ThirdPartyRole role, Boolean active);
 
-    ThirdPartyResult findByDocument(UUID companyId, String identificationTypeCode, String identificationNumber);
+    ThirdPartyResult findByDocument(UUID companyId, Integer identificationTypeCode, String identificationNumber);
 
     void activate(UUID companyId, UUID id);
 

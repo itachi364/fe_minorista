@@ -2317,31 +2317,31 @@
     - Validacion frontend: `npm run test` exitoso: 4 tests, 0 fallos.
     - Validacion frontend: `npm run build` exitoso; artefacto estatico generado en `dist`.
 
-- [x] TASK-067: Redise�ar experiencia visual profesional de toda la aplicacion
+- [x] TASK-067: Rediseï¿½ar experiencia visual profesional de toda la aplicacion
   - Estado: DONE
   - Requisitos: RNF-019, RNF-020.
   - Acceptance criteria: AC-054, AC-055, AC-065.
-  - Descripcion: Mejorar el dise�o visual completo de la SPA para que el producto se perciba como una aplicacion SaaS profesional: login, shell autenticado, sidebar, topbar, formularios, modales, botones, paneles de resultado y estados.
+  - Descripcion: Mejorar el diseï¿½o visual completo de la SPA para que el producto se perciba como una aplicacion SaaS profesional: login, shell autenticado, sidebar, topbar, formularios, modales, botones, paneles de resultado y estados.
   - Dependencias:
     - TASK-066.
   - Alcance:
     - Login profesional y centrado, sin layout plano.
     - Shell autenticado denso, limpio y consistente para operacion diaria.
     - Navegacion, formularios, tablas/paneles y respuestas con jerarquia visual clara.
-    - Dise�o responsive sin solapamientos.
+    - Diseï¿½o responsive sin solapamientos.
     - Mantener el comportamiento funcional y pruebas existentes.
   - Tests requeridos:
     - `npm run test`.
     - `npm run build`.
     - Validacion visual manual en Docker local.
   - Resultado local:
-    - Redise�ado `styles.css` con login profesional centrado, shell operativo consistente, sidebar, topbar, formularios, botones, estados, modales y paneles de resultado.
+    - Rediseï¿½ado `styles.css` con login profesional centrado, shell operativo consistente, sidebar, topbar, formularios, botones, estados, modales y paneles de resultado.
     - Ajustado texto del login para una presentacion mas profesional y menos prototipo.
     - Validacion frontend: `npm run test` exitoso: 4 tests, 0 fallos.
     - Validacion frontend: `npm run build` exitoso; artefacto estatico generado en `dist`.
 
-- [ ] TASK-068: Dise�ar RBAC modular con ROOT global y roles por empresa
-  - Estado: APPROVED
+- [x] TASK-068: Disenar RBAC modular con ROOT global y roles por empresa
+  - Estado: DONE
   - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
   - Acceptance criteria: AC-059, AC-060, AC-061, AC-062, AC-063, AC-064.
   - Descripcion: Reemplazar el modelo de roles fijos por RBAC configurable: `ROOT` global sin empresa y roles personalizados aislados por empresa, con permisos modulares y regla de delegacion estrictamente menor.
@@ -2357,12 +2357,17 @@
     - Definir que el `ROOT` entrega el administrador inicial de cada empresa contratante.
     - Documentar auditoria obligatoria para creacion/edicion/asignacion de roles.
   - Evidencia Context7:
-    - Spring Security 6.5 (`/websites/spring_io_spring-security_reference_6_5`) documenta autoridades/permisos, jerarquias de roles y `AuthorizationManager` personalizado para autorizacion dinamica.
+    - Spring Security 6.5 (`/websites/spring_io_spring-security_reference_6_5`) documenta authorities/permisos, jerarquias de roles y `AuthorizationManager` personalizado para autorizacion dinamica.
   - Tests requeridos:
-    - No aplica en dise�o; la implementacion se prueba en TASK-069 y TASK-071.
-
-- [ ] TASK-069: Implementar RBAC modular en identity-service
-  - Estado: APPROVED
+    - No aplica en diseno; la implementacion se prueba en TASK-069 y TASK-071.
+  - Resultado local:
+    - Modelo RBAC modular definido en `specs/design.md` con ROOT global, roles empresariales por `company_id`, permisos persistidos y regla de delegacion estrictamente menor.
+    - Modelo de datos objetivo definido en `specs/data-model.md`: `global_user_role`, `permission_catalog`, `company_role`, `company_role_permission` y `company_user_role_assignment`.
+    - Contratos objetivo documentados en `specs/api-contract.md` para endpoints globales ROOT y endpoints empresariales de roles/usuarios/permisos.
+    - Casos de uso documentados en `specs/use-cases.md` para onboarding de empresa, roles empresariales, asignacion de usuarios y permisos efectivos.
+    - Evidencia Context7 vigente: Spring Security 6.5 soporta authorities/permisos, jerarquias de rol y `AuthorizationManager` custom para autorizacion dinamica.
+- [x] TASK-069: Implementar RBAC modular en identity-service
+  - Estado: DONE
   - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
   - Acceptance criteria: AC-059, AC-060, AC-061, AC-062, AC-063, AC-064.
   - Descripcion: Implementar persistencia, dominio, casos de uso y endpoints para usuario `ROOT`, roles por empresa, permisos configurables, asignacion de roles y validacion de delegacion estrictamente menor.
@@ -2380,9 +2385,16 @@
     - Use case tests de delegacion y aislamiento multiempresa.
     - Web tests de endpoints root/admin.
     - Pruebas de migracion Flyway.
-
-- [ ] TASK-070: Implementar UI de administracion de usuarios, roles y permisos
-  - Estado: APPROVED
+  - Resultado local:
+    - Agregada migracion `services/identity-service/src/main/resources/db/migration/V003__create_modular_rbac.sql` con catalogo de permisos, roles empresariales y asignaciones.
+    - Implementados dominio, puertos, adaptadores JPA, casos de uso y endpoints REST para RBAC modular.
+    - Se mantiene compatibilidad temporal con `company_membership_role` y roles legacy mientras se completa la migracion total.
+    - BFF enruta `/platform`, roles, asignaciones y permisos efectivos hacia `identity-service`.
+    - Validacion: `mvnw.cmd -pl services/identity-service "-Dtest=IdentityManagementServiceTest,IdentityControllerTest,IdentityPersistenceAdapterTest" test` exitoso: 15 tests, 0 fallos.
+    - Validacion: `mvnw.cmd -pl services/bff-service "-Dtest=BffRouteResolverTest" test` exitoso: 4 tests, 0 fallos.
+    - Pendiente entorno: la suite completa de `identity-service` no pudo ejecutar `IdentityServiceApplicationTests` porque PostgreSQL local `localhost:15432` rechazo conexion.
+- [x] TASK-070: Implementar UI de administracion de usuarios, roles y permisos
+  - Estado: DONE
   - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
   - Acceptance criteria: AC-059, AC-060, AC-061, AC-062, AC-063, AC-064, AC-065.
   - Descripcion: Crear pantallas para que `ROOT` administre empresas y administradores iniciales, y para que administradores empresariales creen usuarios, roles y permisos dentro de su empresa.
@@ -2395,13 +2407,21 @@
     - Formulario modular de permisos agrupados por dominio funcional.
     - Validacion visual para impedir permisos iguales/superiores al actor.
     - Mensajes claros cuando un permiso no puede delegarse.
+  - Evidencia Context7:
+    - React oficial (`/reactjs/react.dev`) recomienda formularios controlados con `value`/`onChange`, selects controlados y estados de envio/error para formularios interactivos.
+  - Resultado local:
+    - Agregada seccion `Usuarios y roles` en la SPA, visible para `ROOT` o usuarios con permisos `COMPANY_USERS_MANAGE`, `COMPANY_ROLES_MANAGE`, `USERS_MANAGE` o `ROLES_MANAGE`.
+    - El panel carga permisos y roles desde BFF/identity-service, filtra permisos globales fuera de roles empresariales, permite crear roles, crear usuarios y asignar roles empresariales.
+    - Se agregaron estilos operativos para resumen, grupos de permisos y lista de roles.
   - Tests requeridos:
     - Component tests de panel root y panel empresa.
     - Tests de visibilidad segun permisos.
     - `npm run test` y `npm run build`.
-
-- [ ] TASK-071: Aplicar navegacion y acciones frontend basadas en permisos efectivos
-  - Estado: APPROVED
+  - Tests ejecutados:
+    - `npm run test`: 8 tests, 0 fallos.
+    - `npm run build`: exitoso.
+- [x] TASK-071: Aplicar navegacion y acciones frontend basadas en permisos efectivos
+  - Estado: DONE
   - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
   - Acceptance criteria: AC-048, AC-059, AC-060, AC-061, AC-062, AC-063, AC-064, AC-065.
   - Descripcion: Usar los permisos efectivos entregados por identity-service para mostrar/ocultar modulos, bloquear acciones no autorizadas en la UI y mantener el backend como fuente real de autorizacion.
@@ -2413,11 +2433,18 @@
     - Botones y acciones deshabilitados u ocultos segun permisos.
     - Distincion entre shell global `ROOT` y shell empresarial.
     - Manejo de errores `403` con mensajes seguros.
+  - Resultado local:
+    - El menu operativo se filtra por permisos efectivos de la empresa activa, manteniendo acceso total para `ROOT` y roles administrativos `OWNER`/`ADMIN`.
+    - Las acciones principales quedan deshabilitadas cuando la empresa no esta activa o el usuario no tiene permisos suficientes.
+    - Los errores `403` muestran un mensaje seguro sin exponer detalles internos.
+    - Se agrego prueba para usuario limitado con solo `REPORTS_VIEW`, validando que solo vea Reportes.
   - Tests requeridos:
     - Component tests de navegacion por permisos.
     - Tests de acciones deshabilitadas.
     - Contract tests BFF si cambia algun route mapping.
-
+  - Tests ejecutados:
+    - `npm run test`: 9 tests, 0 fallos.
+    - `npm run build`: exitoso.
 - [x] TASK-072: Implementar bootstrap ROOT minimo para pruebas locales
   - Estado: DONE
   - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
@@ -2468,3 +2495,83 @@
     - `npm run test`: 6 tests, 0 fallos.
     - `npm run build`: exitoso.
     - `GET http://127.0.0.1:5173`: 200.
+- [x] TASK-074: Corregir tipo de documento de empresa a codigo DIAN numerico
+  - Estado: DONE
+  - Requisitos: RF-001, RF-002, RF-010, RNF-001, RNF-003.
+  - Acceptance criteria: AC-069, AC-070, AC-071, AC-072.
+  - Descripcion: Reemplazar el UUID de tipo de documento en empresas por el codigo numerico DIAN de maximo dos digitos.
+  - Dependencias:
+    - TASK-073.
+  - Alcance:
+    - Cambiar contrato `CompanyRequest`/`CompanyResponse` de `identificationTypeId` a `identificationTypeCode` entero.
+    - Validar codigos DIAN soportados: `11`, `12`, `13`, `21`, `22`, `31`, `41`, `42`, `43`, `47`, `48`.
+    - Migrar PostgreSQL de `tenant.company.identification_type_id` a `tenant.company.identification_type_code`.
+    - Reemplazar el input libre del front por lista desplegable con etiquetas legibles y envio numerico.
+    - Actualizar specs y pruebas afectadas.
+  - Criterios de aceptacion:
+    - AC-069: Al crear empresa, el request contiene `identificationTypeCode` numerico y no contiene `identificationTypeId`.
+    - AC-070: El backend rechaza codigos fuera de la tabla DIAN soportada.
+    - AC-071: La tabla `tenant.company` persiste `identification_type_code` entero con restriccion de codigos permitidos.
+    - AC-072: El frontend muestra nombres de tipos de documento DIAN y envia el codigo seleccionado.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/tenant-service test`.
+    - `npm run test` en `apps/facturaelectronica-web`.
+    - `npm run build` en `apps/facturaelectronica-web`.
+  - Tests ejecutados:
+    - `./mvnw.cmd -pl services/tenant-service test`: 28 tests, 0 fallos.
+    - `npm run test`: 6 tests, 0 fallos.
+    - `npm run build`: exitoso.
+    - `./mvnw.cmd test`: reactor completo 17 modulos, 0 fallos.
+
+- [x] TASK-075: Unificar tipos de documento de identificacion como codigo DIAN numerico
+  - Estado: DONE
+  - Requisitos: RF-016, RF-017, RN-016, RN-017, RNF-015.
+  - Acceptance criteria: AC-037, AC-038, AC-069, AC-070, AC-071, AC-072, AC-073, AC-074.
+  - Descripcion: Alinear front, backend y base de datos para que los tipos de documento de identificacion se manejen siempre como codigos DIAN enteros de maximo dos digitos.
+  - Dependencias:
+    - TASK-074.
+  - Alcance:
+    - Migrar `thirdparty-service` de `String identificationTypeCode`/`VARCHAR(20)` a `Integer identificationTypeCode`/`INTEGER`.
+    - Migrar `catalog-service` para que `tipodocumento.codigo` use `Integer`/`INTEGER` con rango `1..99`.
+    - Reutilizar el selector DIAN numerico en Empresa y Terceros dentro de la SPA.
+    - Actualizar contratos y diccionario para que compradores/adquirentes usen codigo numerico cuando se implemente su persistencia fiscal.
+    - Mantener separado el concepto de tipo de documento fiscal electronico (`ELECTRONIC_POS`, `CREDIT_NOTE`, etc.).
+  - Criterios de aceptacion:
+    - AC-073: `thirdparty-service` recibe, devuelve y persiste `identificationTypeCode` como entero DIAN.
+    - AC-074: El frontend no permite escribir aliases textuales para tipos de documento; muestra etiquetas y envia numeros.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/thirdparty-service test`.
+    - `./mvnw.cmd -pl services/catalog-service test`.
+    - `npm run test` en `apps/facturaelectronica-web`.
+    - `npm run build` en `apps/facturaelectronica-web`.
+    - `./mvnw.cmd test`.
+  - Tests ejecutados:
+    - `./mvnw.cmd -pl services/catalog-service test`: 99 tests, 0 fallos.
+    - `./mvnw.cmd -pl services/thirdparty-service test`: 13 tests, 0 fallos.
+    - `npm run test`: 7 tests, 0 fallos.
+    - `npm run build`: exitoso.
+    - `./mvnw.cmd test`: reactor completo 17 modulos, 0 fallos.
+- [ ] TASK-076: Ajustar experiencia funcional colombiana y RBAC operativo
+  - Estado: APPROVED
+  - Requisitos: RF-001, RF-016, RF-026, RF-030, RF-031, RF-032, RF-033, RF-034, RF-036, RF-037, RN-018, RN-019, RN-026.
+  - Acceptance criteria: AC-075, AC-076, AC-077, AC-078, AC-079, AC-080.
+  - Descripcion: Ajustar la SPA y los contratos minimos para que la operacion refleje conceptos colombianos de facturacion: terceros como cliente/proveedor, municipios por nombre agrupados por departamento, emisor fiscal derivado de la empresa activa, ROOT con selector de empresas creadas y RBAC con asignacion de roles mediante modal usando busqueda por correo.
+  - Alcance:
+    - Cambiar en UI el concepto `Rol` de terceros por `Tipo de tercero`; el backend conserva `roles` con valores `CUSTOMER`, `SUPPLIER` y ambos.
+    - Mantener la UI visible en espanol y documentar equivalencias entre etiquetas espanolas y valores tecnicos en ingles.
+    - Mostrar departamentos y municipios por nombre en el frontend, ordenados alfabeticamente, enviando al backend solo `municipalityCode` DANE/DIVIPOLA.
+    - Precargar el emisor fiscal desde la empresa activa para evitar duplicar datos de la empresa usuaria del software.
+    - Agregar listado de empresas para ROOT y usarlo como selector de empresa activa.
+    - Mover la creacion del administrador inicial a un modal; el rol inicial `OWNER` se asigna automaticamente como administrador empresarial sin permisos globales.
+    - Mover la asignacion de roles empresariales a un modal con buscador por correo y desplegable de roles creados por la empresa; el backend recibe `userId` y `roleIds`.
+  - Evidencia Context7:
+    - React oficial (`/reactjs/react.dev`) recomienda formularios controlados, renderizado condicional y estado explicito para flujos de envio/error; se aplica a modales y selectores.
+    - Spring Boot oficial (`/spring-projects/spring-boot`) soporta DTOs validados con `@Valid @RequestBody` y controladores REST delgados inyectando servicios de aplicacion.
+  - Fuentes normativas/datos:
+    - DIAN exige datos del vendedor/emisor y adquirente en documentos electronicos.
+    - DANE DIVIPOLA publica codigos de departamento/municipio (`COD_DPTO`, `COD_MPIO`, `NOMBRE_GEO`) para ubicar municipios por nombre y persistir codigo.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/tenant-service test`.
+    - `./mvnw.cmd -pl services/identity-service test`.
+    - `npm run test` en `apps/facturaelectronica-web`.
+    - `npm run build` en `apps/facturaelectronica-web`.

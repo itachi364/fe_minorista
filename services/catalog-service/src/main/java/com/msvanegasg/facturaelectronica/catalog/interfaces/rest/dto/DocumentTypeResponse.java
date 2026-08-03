@@ -13,7 +13,7 @@ import lombok.Setter;
 @Builder
 public class DocumentTypeResponse {
 
-    private Long codigo;
+    private Integer codigo;
 
     private String nombre;
 

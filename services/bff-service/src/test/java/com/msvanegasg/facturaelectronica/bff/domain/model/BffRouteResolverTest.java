@@ -31,6 +31,14 @@ class BffRouteResolverTest {
                 .isEqualTo(TargetService.IDENTITY);
         assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/permissions"))
                 .isEqualTo(TargetService.IDENTITY);
+        assertThat(resolver.resolve("/api/v1/platform/permissions"))
+                .isEqualTo(TargetService.IDENTITY);
+        assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/roles"))
+                .isEqualTo(TargetService.IDENTITY);
+        assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/users/22222222-2222-2222-2222-222222222222/role-assignments"))
+                .isEqualTo(TargetService.IDENTITY);
+        assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/users/22222222-2222-2222-2222-222222222222/effective-permissions"))
+                .isEqualTo(TargetService.IDENTITY);
     }
 
     @Test

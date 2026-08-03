@@ -1,5 +1,7 @@
 package com.msvanegasg.facturaelectronica.catalog.interfaces.rest.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -16,7 +18,9 @@ import lombok.Setter;
 public class DocumentTypeRequest {
 
     @NotNull
-    private Long codigo;
+    @Min(1)
+    @Max(99)
+    private Integer codigo;
 
     @NotBlank
     private String nombre;

@@ -8,7 +8,6 @@ import java.util.UUID;
 
 public final class ThirdParty {
 
-    private static final int MAX_DOCUMENT_TYPE_LENGTH = 20;
     private static final int MAX_DOCUMENT_NUMBER_LENGTH = 30;
     private static final int MAX_NAME_LENGTH = 220;
     private static final int MAX_TRADE_NAME_LENGTH = 220;
@@ -20,7 +19,7 @@ public final class ThirdParty {
     private final UUID id;
     private final UUID companyId;
     private final PersonType personType;
-    private final String identificationTypeCode;
+    private final Integer identificationTypeCode;
     private final String identificationNumber;
     private final Integer verificationDigit;
     private final String fullName;
@@ -33,7 +32,7 @@ public final class ThirdParty {
     private final Set<ThirdPartyRole> roles;
     private final boolean active;
 
-    private ThirdParty(UUID id, UUID companyId, PersonType personType, String identificationTypeCode,
+    private ThirdParty(UUID id, UUID companyId, PersonType personType, Integer identificationTypeCode,
             String identificationNumber, Integer verificationDigit, String fullName, String businessName,
             String tradeName, String email, String phone, String address, String municipalityCode,
             Set<ThirdPartyRole> roles, boolean active) {
@@ -54,32 +53,31 @@ public final class ThirdParty {
         this.active = active;
     }
 
-    public static ThirdParty create(UUID companyId, PersonType personType, String identificationTypeCode,
+    public static ThirdParty create(UUID companyId, PersonType personType, Integer identificationTypeCode,
             String identificationNumber, String fullName, String businessName, String tradeName, String email,
             String phone, String address, String municipalityCode, Set<ThirdPartyRole> roles) {
         return restore(null, companyId, personType, identificationTypeCode, identificationNumber, null, fullName,
                 businessName, tradeName, email, phone, address, municipalityCode, roles, true);
     }
 
-    public static ThirdParty restore(UUID id, UUID companyId, PersonType personType, String identificationTypeCode,
+    public static ThirdParty restore(UUID id, UUID companyId, PersonType personType, Integer identificationTypeCode,
             String identificationNumber, Integer verificationDigit, String fullName, String businessName,
             String tradeName, String email, String phone, String address, String municipalityCode,
             Set<ThirdPartyRole> roles, boolean active) {
         UUID requiredCompanyId = Objects.requireNonNull(companyId, "companyId is required");
         PersonType requiredPersonType = Objects.requireNonNull(personType, "personType is required");
-        String documentType = normalizeRequired(identificationTypeCode, MAX_DOCUMENT_TYPE_LENGTH,
-                "identificationTypeCode").toUpperCase();
+        DianIdentificationTypeCode.validate(identificationTypeCode);
         String documentNumber = normalizeRequired(identificationNumber, MAX_DOCUMENT_NUMBER_LENGTH,
                 "identificationNumber");
-        Integer calculatedDigit = isNit(documentType) ? NitVerificationDigit.calculate(documentNumber) : null;
-        validateProvidedDigit(documentType, calculatedDigit, verificationDigit);
+        Integer calculatedDigit = isNit(identificationTypeCode) ? NitVerificationDigit.calculate(documentNumber) : null;
+        validateProvidedDigit(identificationTypeCode, calculatedDigit, verificationDigit);
         String normalizedFullName = normalizeOptional(fullName, MAX_NAME_LENGTH, "fullName");
         String normalizedBusinessName = normalizeOptional(businessName, MAX_NAME_LENGTH, "businessName");
         validateName(requiredPersonType, normalizedFullName, normalizedBusinessName);
         Set<ThirdPartyRole> requiredRoles = normalizeRoles(roles);
-        return new ThirdParty(id, requiredCompanyId, requiredPersonType, documentType, documentNumber, calculatedDigit,
-                normalizedFullName, normalizedBusinessName, normalizeOptional(tradeName, MAX_TRADE_NAME_LENGTH,
-                        "tradeName"),
+        return new ThirdParty(id, requiredCompanyId, requiredPersonType, identificationTypeCode, documentNumber,
+                calculatedDigit, normalizedFullName, normalizedBusinessName, normalizeOptional(tradeName,
+                        MAX_TRADE_NAME_LENGTH, "tradeName"),
                 normalizeOptional(email, MAX_EMAIL_LENGTH, "email"), normalizeOptional(phone, MAX_PHONE_LENGTH,
                         "phone"),
                 normalizeOptional(address, MAX_ADDRESS_LENGTH, "address"), normalizeOptional(municipalityCode,
@@ -115,7 +113,7 @@ public final class ThirdParty {
         return personType;
     }
 
-    public String identificationTypeCode() {
+    public Integer identificationTypeCode() {
         return identificationTypeCode;
     }
 
@@ -167,11 +165,11 @@ public final class ThirdParty {
         return roles.contains(role);
     }
 
-    private static boolean isNit(String documentType) {
-        return "NIT".equals(documentType) || "31".equals(documentType) || "50".equals(documentType);
+    private static boolean isNit(Integer documentType) {
+        return Integer.valueOf(31).equals(documentType);
     }
 
-    private static void validateProvidedDigit(String documentType, Integer calculatedDigit, Integer providedDigit) {
+    private static void validateProvidedDigit(Integer documentType, Integer calculatedDigit, Integer providedDigit) {
         if (!isNit(documentType) && providedDigit != null) {
             throw new IllegalArgumentException("verificationDigit only applies to NIT");
         }

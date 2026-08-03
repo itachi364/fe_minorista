@@ -2,21 +2,31 @@ package com.msvanegasg.facturaelectronica.identity.interfaces.rest;
 
 import java.util.UUID;
 
+import com.msvanegasg.facturaelectronica.identity.application.dto.AssignCompanyRolesCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.AssignRolesCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CompanyAccessResult;
+import com.msvanegasg.facturaelectronica.identity.application.dto.CompanyRoleResult;
+import com.msvanegasg.facturaelectronica.identity.application.dto.CreateCompanyRoleCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CreateUserCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.LoginCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.LoginResult;
 import com.msvanegasg.facturaelectronica.identity.application.dto.MembershipResult;
+import com.msvanegasg.facturaelectronica.identity.application.dto.PermissionCatalogResult;
+import com.msvanegasg.facturaelectronica.identity.application.dto.RevokeCompanyRoleCommand;
+import com.msvanegasg.facturaelectronica.identity.application.dto.UpdateCompanyRoleCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.UpdateMembershipRolesCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.UserResult;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CompanyAccessResponse;
+import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CompanyRoleAssignmentsRequest;
+import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CompanyRoleRequest;
+import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CompanyRoleResponse;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CreateUserRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.LoginRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.LoginResponse;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.MembershipRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.MembershipResponse;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.MembershipRolesRequest;
+import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.PermissionCatalogResponse;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.UserResponse;
 
 public final class IdentityRestMapper {
@@ -41,6 +51,28 @@ public final class IdentityRestMapper {
         return new UpdateMembershipRolesCommand(companyId, membershipId, request.roles(), authorizationHeader);
     }
 
+    public static CreateCompanyRoleCommand toCommand(UUID companyId, CompanyRoleRequest request,
+            String authorizationHeader) {
+        return new CreateCompanyRoleCommand(companyId, request.name(), request.description(), request.permissionCodes(),
+                authorizationHeader);
+    }
+
+    public static UpdateCompanyRoleCommand toCommand(UUID companyId, UUID roleId, CompanyRoleRequest request,
+            String authorizationHeader) {
+        return new UpdateCompanyRoleCommand(companyId, roleId, request.name(), request.description(),
+                request.permissionCodes(), authorizationHeader);
+    }
+
+    public static AssignCompanyRolesCommand toCommand(UUID companyId, UUID userId,
+            CompanyRoleAssignmentsRequest request, String authorizationHeader) {
+        return new AssignCompanyRolesCommand(companyId, userId, request.roleIds(), authorizationHeader);
+    }
+
+    public static RevokeCompanyRoleCommand toRevokeCommand(UUID companyId, UUID userId, UUID roleId,
+            String authorizationHeader) {
+        return new RevokeCompanyRoleCommand(companyId, userId, roleId, authorizationHeader);
+    }
+
     public static UserResponse toResponse(UserResult result) {
         return new UserResponse(result.id(), result.email(), result.fullName(), result.status(), result.createdAt(),
                 result.updatedAt());
@@ -58,5 +90,16 @@ public final class IdentityRestMapper {
 
     public static CompanyAccessResponse toResponse(CompanyAccessResult result) {
         return new CompanyAccessResponse(result.companyId(), result.roles(), result.permissions());
+    }
+
+    public static CompanyRoleResponse toResponse(CompanyRoleResult result) {
+        return new CompanyRoleResponse(result.id(), result.companyId(), result.name(), result.description(),
+                result.permissionCodes(), result.systemSeed(), result.active(), result.createdBy(), result.createdAt(),
+                result.updatedAt());
+    }
+
+    public static PermissionCatalogResponse toResponse(PermissionCatalogResult result) {
+        return new PermissionCatalogResponse(result.code(), result.scope(), result.module(), result.description(),
+                result.active());
     }
 }
