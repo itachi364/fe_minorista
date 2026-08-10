@@ -11,10 +11,10 @@ export function FormPanel({ title, submitLabel, onSubmit, busy, children }) {
   </form>;
 }
 
-export function Field({ label, value, onChange, type = 'text', readOnly = false, disabled = false, placeholder = '', autoComplete }) {
+export function Field({ label, value, onChange, type = 'text', readOnly = false, disabled = false, placeholder = '', autoComplete, inputRef, onKeyDown }) {
   return <label>
     {label}
-    <input value={value} onChange={(event) => onChange(event.target.value)} type={type} readOnly={readOnly} disabled={disabled} placeholder={placeholder} autoComplete={autoComplete} />
+    <input ref={inputRef} value={value} onChange={(event) => onChange(event.target.value)} onKeyDown={onKeyDown} type={type} readOnly={readOnly} disabled={disabled} placeholder={placeholder} autoComplete={autoComplete} />
   </label>;
 }
 

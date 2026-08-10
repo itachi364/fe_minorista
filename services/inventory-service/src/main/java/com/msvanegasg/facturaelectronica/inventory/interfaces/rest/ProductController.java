@@ -54,6 +54,11 @@ public class ProductController {
         return InventoryRestMapper.toResponse(productUseCase.findById(companyId, productId));
     }
 
+    @GetMapping("/by-barcode/{barcode}")
+    public ProductResponse findByBarcode(@RequestHeader("X-Company-Id") UUID companyId, @PathVariable String barcode) {
+        return InventoryRestMapper.toResponse(productUseCase.findByBarcode(companyId, barcode));
+    }
+
     @GetMapping("/{productId}/availability")
     public StockAvailabilityResponse checkAvailability(@RequestHeader("X-Company-Id") UUID companyId,
             @PathVariable UUID productId, @RequestParam BigDecimal quantity) {

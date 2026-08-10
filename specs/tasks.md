@@ -2922,3 +2922,50 @@
     - `docker compose ps`: PostgreSQL y microservicios Spring Boot en estado `healthy`; frontend arriba en `5173`.
     - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: E2E completo exitoso.
     - Evidencia E2E: CompanyId `1b805b5c-3fce-4e85-a5f5-8207183247b4`, ProductId `58a9b864-e83b-4063-9487-b5cadf33b261`, SaleId `310bfdca-4aed-456a-83ab-359666b89d4b`, DocumentId `b685ae0e-ed2a-4afa-9927-e9b40c6cab33`, ProviderTrackingId `mock-electronic_pos-b685ae0e-ed2a-4afa-9927-e9b40c6cab33`.
+
+- [x] TASK-089: Configurar impuestos por producto, scanner POS y consumidor final parametrizable
+  - Estado: DONE
+  - Requisitos: RF-041, RF-042, RF-043, RF-044, RN-040, RN-041, RN-042, RN-043, RN-044, RN-045.
+  - Acceptance criteria: AC-116, AC-117, AC-118, AC-119, AC-120, AC-121, AC-122, AC-123.
+  - Descripcion: Ajustar el flujo POS para que el vendedor no capture impuestos ni canal; los impuestos deben venir del producto en inventario, el scanner USB HID debe operar sobre campos dedicados y el consumidor final debe resolverse desde configuracion persistida.
+  - Alcance backend:
+    - Agregar catalogo `SALES_TAX` en `catalog-service` con semillas iniciales y metadatos regulatorios/versionados.
+    - Agregar columnas fiscales a `inventory.product` y exponerlas en `ProductRequest/ProductResponse`.
+    - Agregar busqueda `GET /api/v1/products/by-barcode/{barcode}` filtrada por empresa y producto activo.
+    - Ampliar el snapshot de producto consumido por `billing-service` con precio e impuesto.
+    - Cambiar calculo de lineas POS para usar precio/impuesto de inventario, ignorando campos fiscales del frontend.
+    - Agregar `buyerIdentificationMode` y configuracion `FINAL_CONSUMER` persistida en `billing-service`.
+  - Alcance frontend:
+    - Agregar selector de impuesto en inventario consumido desde catalogo `SALES_TAX`.
+    - Agregar campo dedicado de codigo de barras para inventario.
+    - En Venta POS, eliminar canal, impuesto y tasa editables.
+    - Agregar selector de comprador identificado/consumidor final.
+    - Agregar campo dedicado para scanner POS con busqueda automatica por codigo de barras; escaneos repetidos incrementan cantidad.
+    - Mantener foco listo para el siguiente escaneo despues de agregar una linea.
+  - Fuentes normativas:
+    - DIAN documentacion tecnica del sistema de facturacion electronica y anexos tecnicos vigentes publicados.
+    - Resolucion DIAN 165 de 2023: adopcion de Anexo Tecnico de Factura Electronica de Venta 1.9 y Documento Equivalente Electronico 1.0.
+    - DIAN guia de factura electronica: si el comprador no entrega datos debe aparecer `Consumidor final`.
+  - Evidencia Context7:
+    - React oficial (`/reactjs/react.dev`): formularios controlados, listeners con cleanup y foco por refs.
+    - Spring Boot 3.5 (`/websites/spring_io_spring-boot_3_5`): controladores REST, validacion Jakarta y repositorios JPA.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/catalog-service test`.
+    - `./mvnw.cmd -pl services/inventory-service test`.
+    - `./mvnw.cmd -pl services/billing-service -am test`.
+    - `npm run test` en `apps/facturaelectronica-web`.
+    - `npm run build` en `apps/facturaelectronica-web`.
+    - E2E local desde empresa hasta venta/factura mock con producto escaneable.
+  - Implementacion:
+    - Catalogo `SALES_TAX` sembrado en DB para impuestos de venta configurables.
+    - Producto/inventario persiste snapshot fiscal y expone busqueda activa por codigo de barras.
+    - Billing calcula precio/impuesto desde inventario y resuelve `FINAL_CONSUMER` desde configuracion persistida.
+    - Front POS elimina canal/impuesto/tasa editables, agrega scanner dedicado y comprador identificado/consumidor final.
+  - Validacion:
+    - `./mvnw.cmd -pl services/inventory-service -am test`: OK, 43 tests.
+    - `./mvnw.cmd -pl services/billing-service -am test`: OK, 39 tests.
+    - `./mvnw.cmd test`: OK, suite Maven completa.
+    - `npm run test` en `apps/facturaelectronica-web`: OK, 15 tests.
+    - `npm run build` en `apps/facturaelectronica-web`: OK.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: OK.
+    - Evidencia E2E: CompanyId `b832cd9f-6c84-4091-a813-3cc1581db95b`, ProductId `a1cb9d34-4c45-4f37-8830-ec9b09c2b833`, SaleId `c2c19408-8197-4ab3-bc20-0553864fc16a`, DocumentId `fa532e8d-cb66-4393-93d5-0177f75f64ca`, ProviderTrackingId `mock-electronic_pos-fa532e8d-cb66-4393-93d5-0177f75f64ca`.

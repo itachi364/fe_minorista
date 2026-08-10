@@ -70,6 +70,7 @@ export function buildProductPayload(form) {
     salePrice: toNumber(form.salePrice),
     cost: toNumber(form.cost),
     initialStock: toNumber(form.initialStock),
+    taxRate: toNumber(form.taxRate),
   });
 }
 
@@ -90,17 +91,14 @@ export function buildResolutionPayload(form) {
 
 export function buildSalePayload(form) {
   return compactObject({
+    buyerIdentificationMode: form.buyerIdentificationMode,
     customerId: form.customerId || null,
-    saleChannel: form.saleChannel,
     paymentMethodCode: form.paymentMethodCode,
     virtualWalletCode: form.paymentMethodCode === 'VIRTUAL_WALLET' ? form.virtualWalletCode || null : null,
     items: form.items.map((item) => compactObject({
       productId: item.productId,
       quantity: toNumber(item.quantity),
-      unitPrice: toNumber(item.unitPrice),
       discountAmount: toNumber(item.discountAmount) ?? 0,
-      taxCode: item.taxCode,
-      taxRate: toNumber(item.taxRate),
     })),
   });
 }

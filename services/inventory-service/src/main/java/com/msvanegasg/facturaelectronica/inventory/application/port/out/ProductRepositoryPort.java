@@ -10,6 +10,8 @@ public interface ProductRepositoryPort {
 
     Optional<Product> findByCompanyIdAndId(UUID companyId, UUID id);
 
+    Optional<Product> findActiveByCompanyIdAndBarcode(UUID companyId, String barcode);
+
     List<Product> findByCompanyId(UUID companyId, Boolean active);
 
     boolean existsByCompanyIdAndSku(UUID companyId, String sku);

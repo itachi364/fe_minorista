@@ -3,6 +3,7 @@ package com.msvanegasg.facturaelectronica.inventory.infrastructure.persistence;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.math.BigDecimal;
 
 import org.springframework.stereotype.Component;
 
@@ -14,6 +15,11 @@ import com.msvanegasg.facturaelectronica.inventory.infrastructure.persistence.re
 @Component
 public class ProductPersistenceAdapter implements ProductRepositoryPort {
 
+    private static final String DEFAULT_TAX_CATEGORY_CODE = "IVA";
+    private static final String DEFAULT_TAX_CODE = "IVA_19";
+    private static final String DEFAULT_TAX_LABEL = "IVA 19%";
+    private static final BigDecimal DEFAULT_TAX_RATE = new BigDecimal("19");
+
     private final ProductJpaRepository repository;
 
     public ProductPersistenceAdapter(ProductJpaRepository repository) {
@@ -23,6 +29,12 @@ public class ProductPersistenceAdapter implements ProductRepositoryPort {
     @Override
     public Optional<Product> findByCompanyIdAndId(UUID companyId, UUID id) {
         return repository.findByCompanyIdAndId(companyId, id).map(ProductPersistenceAdapter::toDomain);
+    }
+
+    @Override
+    public Optional<Product> findActiveByCompanyIdAndBarcode(UUID companyId, String barcode) {
+        return repository.findByCompanyIdAndBarcodeAndActiveTrue(companyId, barcode)
+                .map(ProductPersistenceAdapter::toDomain);
     }
 
     @Override
@@ -51,6 +63,10 @@ public class ProductPersistenceAdapter implements ProductRepositoryPort {
         return new Product(entity.getId(), entity.getCompanyId(), entity.getSku(), entity.getBarcode(),
                 entity.getName(), entity.getDescription(), entity.getItemType(), entity.isSaleEnabled(),
                 entity.isPurchaseEnabled(), entity.isStockTracked(), entity.getSalePrice(), entity.getCost(),
+                defaultText(entity.getTaxCategoryCode(), DEFAULT_TAX_CATEGORY_CODE),
+                defaultText(entity.getTaxCode(), DEFAULT_TAX_CODE),
+                defaultText(entity.getTaxLabel(), DEFAULT_TAX_LABEL),
+                entity.getTaxRate() == null ? DEFAULT_TAX_RATE : entity.getTaxRate(),
                 entity.isActive(), entity.getCreatedAt(), entity.getUpdatedAt());
     }
 
@@ -68,9 +84,17 @@ public class ProductPersistenceAdapter implements ProductRepositoryPort {
         entity.setStockTracked(product.stockTracked());
         entity.setSalePrice(product.salePrice());
         entity.setCost(product.cost());
+        entity.setTaxCategoryCode(product.taxCategoryCode());
+        entity.setTaxCode(product.taxCode());
+        entity.setTaxLabel(product.taxLabel());
+        entity.setTaxRate(product.taxRate());
         entity.setActive(product.active());
         entity.setCreatedAt(product.createdAt());
         entity.setUpdatedAt(product.updatedAt());
         return entity;
+    }
+
+    private static String defaultText(String value, String defaultValue) {
+        return value == null || value.isBlank() ? defaultValue : value;
     }
 }

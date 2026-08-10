@@ -76,6 +76,10 @@ export const initialProduct = {
   salePrice: '15000',
   cost: '9000',
   initialStock: '10',
+  taxCategoryCode: 'IVA',
+  taxCode: 'IVA_19',
+  taxLabel: 'IVA 19%',
+  taxRate: '19',
 };
 
 export const initialIssuer = {
@@ -99,11 +103,11 @@ export const initialResolution = {
 };
 
 export const initialSale = {
+  buyerIdentificationMode: 'FINAL_CONSUMER',
   customerId: '',
-  saleChannel: 'POS',
   paymentMethodCode: 'CASH',
   virtualWalletCode: '',
-  items: [{ productId: '', quantity: '1', unitPrice: '15000', discountAmount: '0', taxCode: 'IVA_19', taxRate: '19' }],
+  items: [{ productId: '', productName: '', quantity: '1', unitPrice: '0', discountAmount: '0' }],
 };
 
 export const initialReports = {

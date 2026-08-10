@@ -19,5 +19,9 @@ public record ProductRequest(
         Boolean stockTracked,
         @NotNull @DecimalMin(value = "0.0") BigDecimal salePrice,
         @NotNull @DecimalMin(value = "0.0") BigDecimal cost,
-        @DecimalMin(value = "0.0") BigDecimal initialStock) {
+        @DecimalMin(value = "0.0") BigDecimal initialStock,
+        String taxCategoryCode,
+        String taxCode,
+        String taxLabel,
+        @DecimalMin(value = "0.0") BigDecimal taxRate) {
 }

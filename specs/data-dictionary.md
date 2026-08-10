@@ -714,3 +714,29 @@ Regla: `event_id + consumer` debe ser unico para impedir reprocesamiento no idem
 | source | varchar(80) | Si | Fuente de datos. |
 | source_version | varchar(40) | Si | Version/corte de la fuente. |
 | sort_order | integer | Si | Orden de presentacion dentro del departamento. |
+
+## Extensiones TASK-089
+
+### `inventory.product` columnas fiscales
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| tax_category_code | varchar(40) | Si | Categoria fiscal del impuesto de venta del producto. |
+| tax_code | varchar(80) | Si | Codigo tecnico del item en catalogo `SALES_TAX`. |
+| tax_label | varchar(180) | Si | Etiqueta visible en espanol usada como snapshot. |
+| tax_rate | numeric(7,4) | Si | Tarifa porcentual usada para calcular la linea fiscal. |
+
+### `billing.final_consumer_profile`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del perfil. |
+| company_id | uuid | No | Empresa propietaria del override; nulo para perfil global. |
+| profile_code | varchar(40) | Si | Codigo funcional; inicialmente `FINAL_CONSUMER`. |
+| identification_type_code | integer | Si | Codigo DIAN de tipo de documento parametrizado para consumidor final. |
+| identification_number | varchar(30) | Si | Numero parametrizado; seed local `222222222222`. |
+| display_name | varchar(180) | Si | Nombre a usar en documento, por defecto `Consumidor final`. |
+| active | boolean | Si | Perfil habilitado. |
+| source | varchar(80) | Si | Fuente normativa/operativa. |
+| source_version | varchar(40) | Si | Version/corte de fuente. |
+| updated_at | timestamptz | Si | Fecha de ultima modificacion. |

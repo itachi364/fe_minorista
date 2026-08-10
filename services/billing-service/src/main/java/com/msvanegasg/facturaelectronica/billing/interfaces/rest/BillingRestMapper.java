@@ -33,13 +33,14 @@ final class BillingRestMapper {
     }
 
     static CreateSaleCommand toCommand(UUID companyId, SaleRequest request, UUID createdBy, String idempotencyKey) {
-        return new CreateSaleCommand(companyId, request.customerId(), request.paymentMethodCode(),
+        return new CreateSaleCommand(companyId, request.buyerIdentificationMode(), request.customerId(), request.paymentMethodCode(),
                 request.virtualWalletCode(), request.saleChannel(), idempotencyKey, createdBy,
                 request.items().stream().map(BillingRestMapper::toLineCommand).toList());
     }
 
     static SaleResponse toResponse(SaleResult result) {
-        return new SaleResponse(result.id(), result.companyId(), result.customerId(), result.paymentMethodCode(),
+        return new SaleResponse(result.id(), result.companyId(), result.buyerIdentificationMode(),
+                result.customerId(), result.paymentMethodCode(),
                 result.virtualWalletCode(), result.saleChannel(), result.status(), result.subtotal(),
                 result.discountTotal(), result.taxTotal(), result.total(), result.idempotencyKey(),
                 result.createdBy(), result.createdAt(), result.confirmedAt(), result.lines().stream()

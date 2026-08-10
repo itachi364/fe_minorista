@@ -263,6 +263,10 @@ $product = Invoke-Api -Method Post -Uri "$InventoryUrl/api/v1/products" -Headers
     salePrice = 15000.00
     cost = 9000.00
     initialStock = 10.00
+    taxCategoryCode = "IVA"
+    taxCode = "IVA_19"
+    taxLabel = "IVA 19%"
+    taxRate = 19.00
 }
 
 Assert-DecimalEqual $product.currentStock 10.00 "Initial stock must be 10"
@@ -270,15 +274,12 @@ $productId = $product.id
 
 Write-Host "Creating and confirming POS sale..."
 $sale = Invoke-Api -Method Post -Uri "$BillingUrl/api/v1/sales" -Headers ($companyHeaders + @{ "Idempotency-Key" = "sale-$suffix" }) -Body @{
-    saleChannel = "POS"
+    buyerIdentificationMode = "FINAL_CONSUMER"
     items = @(
         @{
             productId = $productId
             quantity = 2.00
-            unitPrice = 15000.00
             discountAmount = 0.00
-            taxCode = "IVA_19"
-            taxRate = 19.00
         }
     )
 }

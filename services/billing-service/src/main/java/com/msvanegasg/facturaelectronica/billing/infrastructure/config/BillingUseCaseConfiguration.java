@@ -13,6 +13,7 @@ import com.msvanegasg.facturaelectronica.billing.application.port.out.Accounting
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AuditEventPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ElectronicDocumentProviderPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.FinalConsumerProfileRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalNoteProviderPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalNoteRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGeneratorPort;
@@ -38,12 +39,13 @@ public class BillingUseCaseConfiguration {
     ManageSaleUseCase manageSaleUseCase(SaleRepositoryPort saleRepository,
             InventoryAvailabilityPort inventoryAvailability, ElectronicDocumentProviderPort providerPort,
             InventoryMovementPort inventoryMovementPort, AccountingEntryPort accountingEntryPort,
-            AuditEventPort auditEventPort, LicenseValidationPort licenseValidationPort,
+            AuditEventPort auditEventPort, FinalConsumerProfileRepositoryPort finalConsumerProfileRepository,
+            LicenseValidationPort licenseValidationPort,
             AssignFiscalNumberUseCase assignFiscalNumberUseCase, DomainEventPublisherPort eventPublisher,
             IdGeneratorPort idGenerator, ClockPort clock) {
         return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
-                accountingEntryPort, auditEventPort, licenseValidationPort, assignFiscalNumberUseCase, eventPublisher,
-                idGenerator, clock);
+                accountingEntryPort, auditEventPort, finalConsumerProfileRepository, licenseValidationPort,
+                assignFiscalNumberUseCase, eventPublisher, idGenerator, clock);
     }
 
     @Bean

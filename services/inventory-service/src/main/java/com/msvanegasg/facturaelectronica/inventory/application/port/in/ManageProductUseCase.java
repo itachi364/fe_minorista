@@ -14,6 +14,8 @@ public interface ManageProductUseCase {
 
     ProductResult findById(UUID companyId, UUID productId);
 
+    ProductResult findByBarcode(UUID companyId, String barcode);
+
     List<ProductResult> findStock(UUID companyId, Boolean active);
 
     StockAvailabilityResult checkAvailability(UUID companyId, UUID productId, BigDecimal quantity);

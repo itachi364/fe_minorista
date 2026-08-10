@@ -12,6 +12,8 @@ public interface ProductJpaRepository extends JpaRepository<ProductJpaEntity, UU
 
     Optional<ProductJpaEntity> findByCompanyIdAndId(UUID companyId, UUID id);
 
+    Optional<ProductJpaEntity> findByCompanyIdAndBarcodeAndActiveTrue(UUID companyId, String barcode);
+
     List<ProductJpaEntity> findByCompanyIdOrderByNameAsc(UUID companyId);
 
     List<ProductJpaEntity> findByCompanyIdAndActiveOrderByNameAsc(UUID companyId, boolean active);

@@ -342,3 +342,30 @@ Flujo principal:
 6. El sistema registra auditoria.
 
 Acceptance criteria: AC-061, AC-062, AC-064, AC-018, AC-032.
+
+## UC-025: Registrar producto con impuesto fiscal
+
+Actor: Administrador o responsable de inventario.
+
+Flujo principal:
+1. El actor escanea o digita el codigo de barras en el campo dedicado.
+2. El actor selecciona el impuesto de venta desde el catalogo fiscal visible en espanol.
+3. El sistema guarda producto, precio, costo, stock inicial y snapshot fiscal del impuesto.
+4. El sistema deja el producto disponible para venta POS si `saleEnabled=true`.
+
+Acceptance criteria: AC-116, AC-120, AC-123.
+
+## UC-026: Vender por POS con scanner y consumidor final
+
+Actor: Cajero o vendedor.
+
+Flujo principal:
+1. El actor decide si el comprador desea factura electronica nominada.
+2. Si el comprador desea identificarse, el actor busca y selecciona cliente por documento.
+3. Si el comprador no desea identificarse, el sistema usa perfil fiscal de consumidor final configurado.
+4. El actor escanea codigos de barras en el campo dedicado.
+5. El sistema busca cada producto automaticamente, agrega linea o incrementa cantidad, y calcula precio/impuesto desde inventario.
+6. El actor selecciona medio de pago y crea/confirmar venta POS.
+7. El sistema emite documento equivalente electronico POS mock, descuenta inventario y contabiliza efectos aprobados.
+
+Acceptance criteria: AC-117, AC-118, AC-119, AC-121, AC-122, AC-033.

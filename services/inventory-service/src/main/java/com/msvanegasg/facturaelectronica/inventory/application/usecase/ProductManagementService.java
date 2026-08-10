@@ -55,7 +55,8 @@ public class ProductManagementService implements ManageProductUseCase {
         boolean stockTracked = resolve(command.stockTracked(), itemType.defaultStockTracked());
         Product product = Product.create(idGenerator.newId(), command.companyId(), command.sku(), command.barcode(),
                 command.name(), command.description(), itemType, saleEnabled, purchaseEnabled, stockTracked,
-                command.salePrice(), command.cost(), now);
+                command.salePrice(), command.cost(), command.taxCategoryCode(), command.taxCode(), command.taxLabel(),
+                command.taxRate(), now);
         if (!product.stockTracked() && command.initialStock() != null && command.initialStock().signum() > 0) {
             throw new IllegalStateException("initial stock is only allowed for stock tracked items");
         }
@@ -74,6 +75,16 @@ public class ProductManagementService implements ManageProductUseCase {
         Product product = productRepository.findByCompanyIdAndId(companyId, productId)
                 .orElseThrow(() -> new ProductNotFoundException(productId));
         StockBalance balance = stockBalanceRepository.findByCompanyIdAndProductId(companyId, productId).orElse(null);
+        return InventoryResultMapper.toProductResult(product, balance);
+    }
+
+    @Override
+    public ProductResult findByBarcode(UUID companyId, String barcode) {
+        Objects.requireNonNull(companyId, "companyId is required");
+        Objects.requireNonNull(barcode, "barcode is required");
+        Product product = productRepository.findActiveByCompanyIdAndBarcode(companyId, barcode.trim())
+                .orElseThrow(() -> new ProductNotFoundException(UUID.nameUUIDFromBytes(barcode.trim().getBytes())));
+        StockBalance balance = stockBalanceRepository.findByCompanyIdAndProductId(companyId, product.id()).orElse(null);
         return InventoryResultMapper.toProductResult(product, balance);
     }
 
@@ -109,5 +120,9 @@ public class ProductManagementService implements ManageProductUseCase {
         Objects.requireNonNull(command.name(), "name is required");
         Objects.requireNonNull(command.salePrice(), "salePrice is required");
         Objects.requireNonNull(command.cost(), "cost is required");
+        Objects.requireNonNull(command.taxCategoryCode(), "taxCategoryCode is required");
+        Objects.requireNonNull(command.taxCode(), "taxCode is required");
+        Objects.requireNonNull(command.taxLabel(), "taxLabel is required");
+        Objects.requireNonNull(command.taxRate(), "taxRate is required");
     }
 }

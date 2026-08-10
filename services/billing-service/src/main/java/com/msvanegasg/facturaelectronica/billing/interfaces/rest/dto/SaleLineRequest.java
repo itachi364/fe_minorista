@@ -9,7 +9,7 @@ import jakarta.validation.constraints.NotNull;
 public record SaleLineRequest(
         @NotNull UUID productId,
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal quantity,
-        @NotNull @DecimalMin(value = "0.0") BigDecimal unitPrice,
+        @DecimalMin(value = "0.0") BigDecimal unitPrice,
         @DecimalMin(value = "0.0") BigDecimal discountAmount,
         String taxCode,
         @DecimalMin(value = "0.0") BigDecimal taxRate) {

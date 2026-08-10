@@ -13,6 +13,7 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.ElectronicDocum
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.SaleRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
+import com.msvanegasg.facturaelectronica.billing.domain.model.BuyerIdentificationMode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleLine;
@@ -77,7 +78,10 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
     }
 
     private static Sale toDomain(SaleJpaEntity entity) {
-        return new Sale(entity.getId(), entity.getCompanyId(), entity.getCustomerId(),
+        BuyerIdentificationMode buyerMode = entity.getBuyerIdentificationMode() == null
+                ? (entity.getCustomerId() == null ? BuyerIdentificationMode.FINAL_CONSUMER : BuyerIdentificationMode.IDENTIFIED_CUSTOMER)
+                : entity.getBuyerIdentificationMode();
+        return new Sale(entity.getId(), entity.getCompanyId(), buyerMode, entity.getCustomerId(),
                 entity.getPaymentMethodCode() == null ? PaymentMethodCode.CASH : entity.getPaymentMethodCode(),
                 entity.getVirtualWalletCode(), entity.getSaleChannel(), entity.getStatus(), entity.getSubtotal(),
                 entity.getDiscountTotal(), entity.getTaxTotal(), entity.getTotal(), entity.getIdempotencyKey(), entity.getCreatedBy(),
@@ -106,6 +110,7 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
         SaleJpaEntity entity = new SaleJpaEntity();
         entity.setId(sale.id());
         entity.setCompanyId(sale.companyId());
+        entity.setBuyerIdentificationMode(sale.buyerIdentificationMode());
         entity.setCustomerId(sale.customerId());
         entity.setPaymentMethodId(null);
         entity.setPaymentMethodCode(sale.paymentMethodCode());

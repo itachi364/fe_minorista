@@ -42,6 +42,14 @@ public class ProductJpaEntity {
     private BigDecimal salePrice;
     @Column(nullable = false)
     private BigDecimal cost;
+    @Column(name = "tax_category_code", nullable = false, length = 40)
+    private String taxCategoryCode;
+    @Column(name = "tax_code", nullable = false, length = 80)
+    private String taxCode;
+    @Column(name = "tax_label", nullable = false, length = 180)
+    private String taxLabel;
+    @Column(name = "tax_rate", nullable = false)
+    private BigDecimal taxRate;
     @Column(nullable = false)
     private boolean active;
     @Column(name = "created_at", nullable = false)
@@ -73,6 +81,14 @@ public class ProductJpaEntity {
     public void setSalePrice(BigDecimal salePrice) { this.salePrice = salePrice; }
     public BigDecimal getCost() { return cost; }
     public void setCost(BigDecimal cost) { this.cost = cost; }
+    public String getTaxCategoryCode() { return taxCategoryCode; }
+    public void setTaxCategoryCode(String taxCategoryCode) { this.taxCategoryCode = taxCategoryCode; }
+    public String getTaxCode() { return taxCode; }
+    public void setTaxCode(String taxCode) { this.taxCode = taxCode; }
+    public String getTaxLabel() { return taxLabel; }
+    public void setTaxLabel(String taxLabel) { this.taxLabel = taxLabel; }
+    public BigDecimal getTaxRate() { return taxRate; }
+    public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
     public Instant getCreatedAt() { return createdAt; }

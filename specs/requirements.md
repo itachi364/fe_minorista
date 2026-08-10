@@ -142,6 +142,10 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RF-038: El sistema debe exponer un modulo administrativo de catalogos que permita seleccionar un catalogo por nombre en espanol, listar sus registros, crear nuevos items permitidos, actualizar etiquetas/descripciones y activar o inactivar registros segun permisos.
 - RF-039: El sistema debe retirar catalogos operativos/regulatorios hardcodeados del frontend; la SPA solo puede consumir catalogos desde base de datos mediante BFF y `catalog-service`.
 - RF-040: El sistema debe auditar tablas, migraciones Flyway, entidades JPA, repositorios, endpoints y datos legacy para eliminar solamente lo que no participa en el flujo actual ni conserva datos utiles pendientes de migracion.
+- RF-041: El sistema debe administrar impuestos de venta como catalogo fiscal versionado y configurable, con codigos tecnicos, etiqueta en espanol, tarifa y fuente normativa.
+- RF-042: El sistema debe asociar a cada producto/servicio/insumo vendible el impuesto de venta aplicable desde inventario, para que el vendedor POS no capture impuesto ni tarifa al vender.
+- RF-043: El sistema debe permitir escaneo de codigo de barras USB HID en inventario y venta POS usando campos dedicados; al escanear en venta debe buscar automaticamente el producto y agregar o incrementar la linea sin clic manual.
+- RF-044: El sistema debe permitir que el comprador decida si desea identificarse para factura electronica; si no, la venta debe usar un perfil fiscal de consumidor final parametrizado en base de datos, sin crear tercero ni quemar datos en frontend.
 
 ## Requisitos no funcionales
 
@@ -208,6 +212,12 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RN-037: Los codigos tecnicos de catalogo se almacenan en ingles en base de datos, pero toda etiqueta visible de la SPA debe presentarse en espanol profesional.
 - RN-038: Los catalogos regulatorios globales solo pueden ser creados, actualizados o inactivados por `ROOT`; los administradores empresariales solo pueden gestionar activacion/inactivacion empresarial o catalogos operativos permitidos dentro de su empresa.
 - RN-039: La eliminacion de tablas o migraciones legacy requiere matriz de uso, verificacion de referencias, respaldo/migracion de datos cuando aplique, migracion Flyway nueva y validacion sobre base limpia y base local actual.
+- RN-040: El impuesto de una linea POS se calcula desde el snapshot del producto en inventario; `billing-service` no debe confiar en `taxCode` o `taxRate` enviados por la SPA para ventas POS.
+- RN-041: Los impuestos fiscales deben cargarse desde `catalog-service`/base de datos y conservar `source`, `sourceVersion`, vigencia y estado; no deben existir listas fiscales productivas hardcodeadas en frontend.
+- RN-042: El canal de venta POS operativo es interno y siempre se procesa como `POS`/`ELECTRONIC_POS` en esta fase; la SPA no debe pedir al vendedor seleccionar canal.
+- RN-043: El escaneo USB HID se interpreta como entrada de teclado solo en campos de codigo de barras; la SPA debe mantener foco controlado para inventario/POS y procesar el codigo por debounce automatico o terminador del scanner sin requerir clic.
+- RN-044: Si el comprador no desea factura electronica nominada, `billing-service` debe resolver el consumidor final desde configuracion fiscal persistida y usarlo como snapshot del adquirente, sin persistirlo como tercero empresarial.
+- RN-045: El perfil de consumidor final debe ser parametrizable por empresa o global, auditable y modificable por `ROOT` si DIAN/proveedor tecnologico cambia el contrato tecnico; la SPA solo envia la decision `buyerIdentificationMode`.
 
 ## Supuestos
 

@@ -243,6 +243,7 @@ Catalogos iniciales:
 - `DIAN_DOCUMENT_TYPE`
 - `TAX_RESPONSIBILITY`
 - `TAX_REGIME`
+- `SALES_TAX`
 - `PAYMENT_METHOD`
 - `VIRTUAL_WALLET`
 - `FISCAL_DOCUMENT_TYPE`
@@ -277,6 +278,8 @@ Catalogos iniciales:
   "sourceVersion": "2026-08"
 }
 ```
+
+Para `SALES_TAX`, el codigo tecnico viaja en `code` y la UI muestra `label` en espanol. Los items iniciales deben conservar fuente DIAN/Gobierno, version/corte y tarifa fiscal en el contrato de producto que los consume.
 
 `CatalogItemRequest`:
 
@@ -440,6 +443,7 @@ Estado TASK-048:
 
 - `POST /api/v1/products`
 - `GET /api/v1/products/{productId}`
+- `GET /api/v1/products/by-barcode/{barcode}`
 - `GET /api/v1/products/{productId}/availability?quantity=`
 - `GET /api/v1/products/{productId}/kardex`
 - `GET /api/v1/products/{serviceProductId}/supply-references`
@@ -473,7 +477,11 @@ Estado TASK-048:
   "stockTracked": true,
   "salePrice": 15000,
   "cost": 9000,
-  "initialStock": 10
+  "initialStock": 10,
+  "taxCategoryCode": "IVA",
+  "taxCode": "IVA_19",
+  "taxLabel": "IVA 19%",
+  "taxRate": 19
 }
 ```
 
@@ -493,6 +501,10 @@ Estado TASK-048:
   "stockTracked": true,
   "salePrice": 15000,
   "cost": 9000,
+  "taxCategoryCode": "IVA",
+  "taxCode": "IVA_19",
+  "taxLabel": "IVA 19%",
+  "taxRate": 19,
   "active": true,
   "currentStock": 10,
   "createdAt": "2026-05-20T10:00:00Z",
@@ -660,6 +672,48 @@ Estado TASK-049:
 
 ### SaleRequest
 
+```json
+{
+  "buyerIdentificationMode": "IDENTIFIED_CUSTOMER",
+  "customerId": "uuid",
+  "paymentMethodCode": "VIRTUAL_WALLET",
+  "virtualWalletCode": "NEQUI",
+  "items": [
+    {
+      "productId": "uuid",
+      "quantity": 2,
+      "discountAmount": 0
+    }
+  ]
+}
+```
+
+Para consumidor final:
+
+```json
+{
+  "buyerIdentificationMode": "FINAL_CONSUMER",
+  "customerId": null,
+  "paymentMethodCode": "CASH",
+  "virtualWalletCode": null,
+  "items": [
+    {
+      "productId": "uuid",
+      "quantity": 1,
+      "discountAmount": 0
+    }
+  ]
+}
+```
+
+Reglas:
+
+- `buyerIdentificationMode` acepta `IDENTIFIED_CUSTOMER` o `FINAL_CONSUMER`.
+- Si `buyerIdentificationMode=IDENTIFIED_CUSTOMER`, `customerId` es obligatorio y debe pertenecer a la empresa.
+- Si `buyerIdentificationMode=FINAL_CONSUMER`, `customerId` debe ser nulo; billing resuelve el perfil fiscal desde configuracion persistida.
+- La SPA no envia `saleChannel`; el flujo `Venta POS` usa canal interno `POS` y documento `ELECTRONIC_POS`.
+- La SPA no envia `unitPrice`, `taxCode` ni `taxRate` como fuente fiscal; billing toma precio e impuesto desde `inventory-service`.
+
 ### IssuerProfileRequest
 
 ```json
@@ -706,25 +760,6 @@ Estado TASK-049:
   "validFrom": "2026-01-01",
   "validTo": "2026-12-31",
   "environment": "TEST"
-}
-```
-
-```json
-{
-  "customerId": "uuid",
-  "saleChannel": "POS",
-  "paymentMethodCode": "VIRTUAL_WALLET",
-  "virtualWalletCode": "NEQUI",
-  "items": [
-    {
-      "productId": "uuid",
-      "quantity": 2,
-      "unitPrice": 15000,
-      "discountAmount": 0,
-      "taxCode": "IVA_19",
-      "taxRate": 19
-    }
-  ]
 }
 ```
 
@@ -1476,6 +1511,12 @@ Los eventos productivos se publicaran hacia EventBridge/SQS usando un envelope c
   "payload": {}
 }
 ```
+
+Reglas:
+
+- `taxCode` y `taxRate` son obligatorios para items vendibles (`saleEnabled=true`) y se toman del catalogo `SALES_TAX`.
+- `GET /api/v1/products/by-barcode/{barcode}` filtra por `X-Company-Id`, retorna productos activos y permite al POS agregar productos escaneados automaticamente.
+- La respuesta de producto es la fuente para el snapshot fiscal de linea que usa `billing-service`.
 
 Reglas de pago:
 

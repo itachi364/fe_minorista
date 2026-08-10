@@ -22,8 +22,9 @@ final class InventoryResultMapper {
         BigDecimal stock = balance == null ? BigDecimal.ZERO : balance.currentStock();
         return new ProductResult(product.id(), product.companyId(), product.sku(), product.barcode(), product.name(),
                 product.description(), product.itemType(), product.saleEnabled(), product.purchaseEnabled(),
-                product.stockTracked(), product.salePrice(), product.cost(), product.active(), stock,
-                product.createdAt(), product.updatedAt());
+                product.stockTracked(), product.salePrice(), product.cost(), product.taxCategoryCode(),
+                product.taxCode(), product.taxLabel(), product.taxRate(), product.active(), stock, product.createdAt(),
+                product.updatedAt());
     }
 
     static InventoryMovementResult toMovementResult(InventoryMovement movement) {

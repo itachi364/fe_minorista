@@ -1,7 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Field, SelectField } from '../../components/forms.jsx';
 
-export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSearch, customerOptions, selectedCustomer, onSearchCustomers, onSelectCustomer, updateItem, addItem, removeItem, onCreate, onConfirm, busy, paymentOptions = [], walletOptions = [] }) {
+export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSearch, customerOptions, selectedCustomer, onSearchCustomers, onSelectCustomer, updateItem, addItem, removeItem, onCreate, onConfirm, onScanBarcode, busy, paymentOptions = [], walletOptions = [] }) {
+  const [barcodeScan, setBarcodeScan] = useState('');
+  const barcodeRef = useRef(null);
+
   useEffect(() => {
     let ignore = false;
     const searchText = String(customerSearch || '').trim();
@@ -21,6 +24,29 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
     };
   }, [customerSearch, selectedCustomer, onSearchCustomers, onSelectCustomer]);
 
+  useEffect(() => {
+    barcodeRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const scanText = String(barcodeScan || '').trim();
+    if (scanText.length < 4) {
+      return undefined;
+    }
+    const timeoutId = window.setTimeout(() => submitScan(scanText), 180);
+    return () => window.clearTimeout(timeoutId);
+  }, [barcodeScan]);
+
+  async function submitScan(scanText = barcodeScan) {
+    const normalized = String(scanText || '').trim();
+    if (!normalized) {
+      return;
+    }
+    await onScanBarcode(normalized);
+    setBarcodeScan('');
+    window.setTimeout(() => barcodeRef.current?.focus(), 0);
+  }
+
   function updatePaymentMethod(paymentMethodCode) {
     setForm({
       ...form,
@@ -37,6 +63,19 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
     }
   }
 
+  function updateBuyerMode(buyerIdentificationMode) {
+    const finalConsumer = buyerIdentificationMode === 'FINAL_CONSUMER';
+    setForm({
+      ...form,
+      buyerIdentificationMode,
+      customerId: finalConsumer ? '' : form.customerId,
+    });
+    if (finalConsumer) {
+      setCustomerSearch('');
+      onSelectCustomer(null);
+    }
+  }
+
   return <section className="tool-panel">
     <header className="panel-header">
       <h1>Venta POS</h1>
@@ -46,8 +85,12 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
       </div>
     </header>
     <div className="form-grid compact">
+      <SelectField label="Comprador" value={form.buyerIdentificationMode} onChange={updateBuyerMode} options={[
+        { value: 'IDENTIFIED_CUSTOMER', label: 'Cliente identificado' },
+        { value: 'FINAL_CONSUMER', label: 'Consumidor final' },
+      ]} />
       <div className="customer-search-field">
-        <Field label="Cliente por numero de documento" value={customerSearch} onChange={updateCustomerSearch} placeholder="Escribe el documento del cliente" />
+        <Field label="Cliente por numero de documento" value={customerSearch} onChange={updateCustomerSearch} placeholder="Escribe el documento del cliente" disabled={form.buyerIdentificationMode === 'FINAL_CONSUMER'} />
         {customerOptions.length > 0 && (
           <div className="customer-options" role="listbox" aria-label="Coincidencias de clientes">
             {customerOptions.map((customer) => (
@@ -62,11 +105,16 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
           <p className="selected-customer">Cliente seleccionado: {selectedCustomer.businessName || selectedCustomer.fullName || selectedCustomer.tradeName} ({selectedCustomer.identificationNumber})</p>
         )}
       </div>
-      <SelectField label="Canal" value={form.saleChannel} onChange={(value) => setForm({ ...form, saleChannel: value })} options={['POS', 'ELECTRONIC_INVOICE']} />
       <SelectField label="Metodo de pago" value={form.paymentMethodCode} onChange={updatePaymentMethod} options={paymentOptions} />
       {form.paymentMethodCode === 'VIRTUAL_WALLET' && (
         <SelectField label="Billetera virtual" value={form.virtualWalletCode || 'NEQUI'} onChange={(value) => setForm({ ...form, virtualWalletCode: value })} options={walletOptions} />
       )}
+      <Field label="Scanner codigo de barras" value={barcodeScan} onChange={setBarcodeScan} inputRef={barcodeRef} placeholder="Escanea aqui" autoComplete="off" onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          submitScan();
+        }
+      }} />
       <div className={saleId ? 'sale-state ready' : 'sale-state'}>
         <span>{saleId ? 'Venta pendiente de confirmacion' : 'Crea la venta para habilitar la confirmacion POS'}</span>
         {saleId && <code>{saleId}</code>}
@@ -76,11 +124,10 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
       {form.items.map((item, index) => (
         <div className="line-row" key={`${index}-${item.productId}`}>
           <Field label="Producto" value={item.productId} onChange={(value) => updateItem(index, 'productId', value)} />
+          <Field label="Nombre" value={item.productName || ''} onChange={() => {}} readOnly />
           <Field label="Cantidad" value={item.quantity} onChange={(value) => updateItem(index, 'quantity', value)} type="number" />
-          <Field label="Precio" value={item.unitPrice} onChange={(value) => updateItem(index, 'unitPrice', value)} type="number" />
+          <Field label="Precio" value={item.unitPrice} onChange={() => {}} type="number" readOnly />
           <Field label="Descuento" value={item.discountAmount} onChange={(value) => updateItem(index, 'discountAmount', value)} type="number" />
-          <Field label="Impuesto" value={item.taxCode} onChange={(value) => updateItem(index, 'taxCode', value)} />
-          <Field label="Tasa" value={item.taxRate} onChange={(value) => updateItem(index, 'taxRate', value)} type="number" />
           <button className="icon-button" onClick={() => removeItem(index)} type="button" aria-label="Eliminar linea">X</button>
         </div>
       ))}

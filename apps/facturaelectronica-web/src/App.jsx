@@ -428,9 +428,43 @@ export default function App() {
     });
     if (result?.id) {
       updateSaleItem(0, 'productId', result.id);
+      updateSaleItem(0, 'productName', result.name || '');
       updateSaleItem(0, 'unitPrice', String(result.salePrice || productForm.salePrice));
     }
     return result;
+  }
+
+  async function scanSaleBarcode(barcode) {
+    requireCompany();
+    const product = await requestJson(`/api/v1/products/by-barcode/${encodeURIComponent(barcode)}`, context);
+    if (!product?.id) {
+      throw new Error('No se encontro un producto activo con ese codigo de barras.');
+    }
+    setSaleForm((current) => {
+      const existingIndex = current.items.findIndex((item) => item.productId === product.id);
+      if (existingIndex >= 0) {
+        return {
+          ...current,
+          items: current.items.map((item, index) => index === existingIndex
+            ? { ...item, quantity: String(Number(item.quantity || 0) + 1) }
+            : item),
+        };
+      }
+      const nextLine = {
+        productId: product.id,
+        productName: product.name || product.sku || barcode,
+        quantity: '1',
+        unitPrice: String(product.salePrice ?? '0'),
+        discountAmount: '0',
+        barcode: product.barcode || barcode,
+      };
+      const hasEmptyFirstLine = current.items.length === 1 && !current.items[0].productId;
+      return {
+        ...current,
+        items: hasEmptyFirstLine ? [nextLine] : [...current.items, nextLine],
+      };
+    });
+    return product;
   }
 
   async function configureIssuer() {
@@ -484,7 +518,11 @@ export default function App() {
     if (customer) {
       setCustomerSearch(customer.identificationNumber || '');
     }
-    setSaleForm((current) => ({ ...current, customerId: customer?.id || '' }));
+    setSaleForm((current) => ({
+      ...current,
+      buyerIdentificationMode: customer ? 'IDENTIFIED_CUSTOMER' : current.buyerIdentificationMode,
+      customerId: customer?.id || '',
+    }));
     setCustomerOptions([]);
   }, []);
 
@@ -608,7 +646,7 @@ export default function App() {
   function addSaleItem() {
     setSaleForm((current) => ({
       ...current,
-      items: [...current.items, { productId: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxCode: 'IVA_19', taxRate: '19' }],
+      items: [...current.items, { productId: '', productName: '', quantity: '1', unitPrice: '0', discountAmount: '0' }],
     }));
   }
 
@@ -677,7 +715,7 @@ export default function App() {
             <ThirdPartyForm form={thirdPartyForm} setForm={setThirdPartyForm} companyMunicipalityCode={companyMunicipalityCode} onSubmit={() => execute(createThirdParty)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Terceros)} documentTypeOptionsSource={runtimeCatalogs.dianDocumentTypes} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} taxRegimeOptionsSource={runtimeCatalogs.taxRegimeOptions} locations={runtimeCatalogs.locations} />
           )}
           {currentStep === 'Inventario' && (
-            <ProductForm form={productForm} setForm={setProductForm} onSubmit={() => execute(createProduct)} busy={busy || !activeCompanyId || !canUse(['INVENTORY_MANAGE'])} />
+            <ProductForm form={productForm} setForm={setProductForm} onSubmit={() => execute(createProduct)} busy={busy || !activeCompanyId || !canUse(['INVENTORY_MANAGE'])} taxOptions={runtimeCatalogs.salesTaxOptions} />
           )}
           {currentStep === 'Fiscal' && (
             <div className="split">
@@ -686,7 +724,7 @@ export default function App() {
             </div>
           )}
           {currentStep === 'Venta POS' && (
-            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onCreate={() => execute(createSale)} onConfirm={() => execute(confirmSale)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Venta POS'])} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
+            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onCreate={() => execute(createSale)} onConfirm={() => execute(confirmSale)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Venta POS'])} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
           )}
           {currentStep === 'Reportes' && (
             <ReportsForm form={reportsForm} setForm={setReportsForm} onSubmit={() => execute(loadReports)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Reportes)} />

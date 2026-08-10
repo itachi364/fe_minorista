@@ -887,3 +887,49 @@ Fase B - Eliminacion aprobada y aplicada:
 - `catalog.tipodocumento` se migra primero hacia `catalog.catalog_item` como `DIAN_DOCUMENT_TYPE` y luego se elimina junto a las tablas legacy vacias de catalogo.
 - `thirdparty.cliente` y `thirdparty.proveedor` se eliminan solo si no contienen filas con `company_id` no nulo; si hay datos de empresa real, Flyway aborta para exigir migracion/respaldo previo.
 - El runtime Java legacy de catalogo se retira para no mantener entidades, repositorios, endpoints ni pruebas sin uso.
+
+## TASK-089 POS con impuestos por producto, scanner y consumidor final parametrizable
+
+La venta POS se mueve a un flujo operativo de caja: el vendedor identifica cliente cuando aplica, escanea productos, selecciona medio de pago y confirma. La clasificacion tributaria de cada linea no se captura en caja; viene configurada desde inventario y queda congelada como snapshot fiscal en billing.
+
+### Decisiones
+
+- `catalog-service` agrega el catalogo `SALES_TAX` con impuestos de venta vigentes/configurables, etiqueta en espanol, categoria tributaria, tarifa, fuente, version y vigencia.
+- `inventory-service` persiste por producto `taxCategoryCode`, `taxCode`, `taxLabel` y `taxRate`. La respuesta de producto entrega esos campos a billing y a la SPA.
+- `billing-service` calcula las lineas con `salePrice`, `taxCode` y `taxRate` obtenidos del snapshot de inventario; los campos de impuesto enviados desde frontend quedan fuera del contrato POS estable.
+- La SPA de inventario muestra selector de impuesto desde catalogo y campo dedicado de codigo de barras.
+- La SPA de venta POS no muestra canal, impuesto ni tasa editables. El canal interno queda `POS` y el documento fiscal asociado `ELECTRONIC_POS`.
+- El scanner USB HID se trata como entrada de teclado en campos dedicados. En venta, el campo de scanner ejecuta busqueda automatica por debounce y tambien tolera terminador `Enter` del lector.
+- Si el mismo codigo se escanea varias veces, se incrementa la cantidad de la linea existente.
+- El comprador puede elegir si desea factura electronica nominada. Si no desea, la SPA envia `buyerIdentificationMode=FINAL_CONSUMER`.
+- `billing-service` resuelve el consumidor final desde configuracion persistida, no desde frontend ni como tercero guardado. El valor normativo inicial se documenta como perfil fiscal parametrizable y se ajusta por proveedor/DIAN sin despliegue de frontend.
+
+### Configuracion de consumidor final
+
+El perfil fiscal de consumidor final vive en base de datos de `billing-service`, con posibilidad de override por empresa. Campos iniciales:
+
+- `company_id`: nulo para perfil global o UUID para override empresarial.
+- `profile_code`: `FINAL_CONSUMER`.
+- `identification_type_code`: codigo DIAN parametrizable.
+- `identification_number`: numero parametrizable; seed local inicial `222222222222`.
+- `display_name`: etiqueta visible, por defecto `Consumidor final`.
+- `active`, `source`, `source_version`, `updated_at`.
+
+La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni envia numero, tipo de documento ni razon social del consumidor final.
+
+### Context7 evidence
+
+- Library/tool: React oficial (`/reactjs/react.dev`).
+- Topic consulted: controlled inputs, keyboard event listeners, refs and focus management.
+- Relevant finding: React recomienda inputs controlados con `value`/`onChange`, listeners con cleanup en `useEffect` y foco programatico mediante refs.
+- Decision impact: El scanner HID se implementa con input controlado dedicado, debounce/terminador, cleanup y foco posterior al escaneo para aceptar el siguiente producto.
+- Library/tool: Spring Boot 3.5 (`/websites/spring_io_spring-boot_3_5`).
+- Topic consulted: REST controllers, request validation and Spring Data repositories.
+- Relevant finding: Spring Boot soporta controladores REST con anotaciones MVC, `@Valid @RequestBody` y repositorios Spring Data JPA detras de adaptadores.
+- Decision impact: Los cambios de contrato se exponen en controladores delgados, DTOs validados y persistencia detras de puertos de Clean Architecture.
+
+### Fuentes DIAN consultadas
+
+- DIAN documentacion tecnica del sistema de facturacion electronica: los anexos tecnicos publicados por DIAN son la fuente de reglas de validacion vigentes.
+- Resolucion DIAN 165 de 2023: adopta el Anexo Tecnico de Factura Electronica de Venta 1.9 y el Anexo Tecnico de Documento Equivalente Electronico 1.0.
+- DIAN prensa/guia de factura electronica: si el comprador no entrega datos debe aparecer la frase `Consumidor final`.

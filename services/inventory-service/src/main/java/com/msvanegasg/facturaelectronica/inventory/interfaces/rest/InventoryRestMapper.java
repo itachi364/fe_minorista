@@ -2,6 +2,7 @@ package com.msvanegasg.facturaelectronica.inventory.interfaces.rest;
 
 import java.util.List;
 import java.util.UUID;
+import java.math.BigDecimal;
 
 import com.msvanegasg.facturaelectronica.inventory.application.dto.CreateProductCommand;
 import com.msvanegasg.facturaelectronica.inventory.application.dto.CreateServiceSupplyReferenceCommand;
@@ -28,6 +29,11 @@ import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.StockAvai
 
 final class InventoryRestMapper {
 
+    private static final String DEFAULT_TAX_CATEGORY_CODE = "IVA";
+    private static final String DEFAULT_TAX_CODE = "IVA_19";
+    private static final String DEFAULT_TAX_LABEL = "IVA 19%";
+    private static final BigDecimal DEFAULT_TAX_RATE = new BigDecimal("19");
+
     private InventoryRestMapper() {
     }
 
@@ -35,7 +41,11 @@ final class InventoryRestMapper {
             String idempotencyKey) {
         return new CreateProductCommand(companyId, request.sku(), request.barcode(), request.name(),
                 request.description(), request.itemType(), request.saleEnabled(), request.purchaseEnabled(),
-                request.stockTracked(), request.salePrice(), request.cost(), request.initialStock(), createdBy,
+                request.stockTracked(), request.salePrice(), request.cost(), request.initialStock(),
+                defaultText(request.taxCategoryCode(), DEFAULT_TAX_CATEGORY_CODE),
+                defaultText(request.taxCode(), DEFAULT_TAX_CODE),
+                defaultText(request.taxLabel(), DEFAULT_TAX_LABEL),
+                request.taxRate() == null ? DEFAULT_TAX_RATE : request.taxRate(), createdBy,
                 idempotencyKey);
     }
 
@@ -62,8 +72,9 @@ final class InventoryRestMapper {
     static ProductResponse toResponse(ProductResult result) {
         return new ProductResponse(result.id(), result.companyId(), result.sku(), result.barcode(), result.name(),
                 result.description(), result.itemType(), result.saleEnabled(), result.purchaseEnabled(),
-                result.stockTracked(), result.salePrice(), result.cost(), result.active(), result.currentStock(),
-                result.createdAt(), result.updatedAt());
+                result.stockTracked(), result.salePrice(), result.cost(), result.taxCategoryCode(), result.taxCode(),
+                result.taxLabel(), result.taxRate(), result.active(), result.currentStock(), result.createdAt(),
+                result.updatedAt());
     }
 
     static InventoryMovementResponse toResponse(InventoryMovementResult result) {
@@ -107,5 +118,9 @@ final class InventoryRestMapper {
     private static PurchaseLineResponse toLineResponse(PurchaseLineResult result) {
         return new PurchaseLineResponse(result.id(), result.productId(), result.quantity(), result.unitCost(),
                 result.subtotal(), result.tax(), result.total());
+    }
+
+    private static String defaultText(String value, String defaultValue) {
+        return value == null || value.isBlank() ? defaultValue : value;
     }
 }

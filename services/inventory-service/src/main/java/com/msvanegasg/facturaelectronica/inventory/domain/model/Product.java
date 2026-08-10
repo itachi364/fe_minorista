@@ -18,6 +18,10 @@ public record Product(
         boolean stockTracked,
         BigDecimal salePrice,
         BigDecimal cost,
+        String taxCategoryCode,
+        String taxCode,
+        String taxLabel,
+        BigDecimal taxRate,
         boolean active,
         Instant createdAt,
         Instant updatedAt) {
@@ -35,15 +39,27 @@ public record Product(
         }
         requireMoney(salePrice, "salePrice");
         requireMoney(cost, "cost");
+        taxCategoryCode = normalizeRequired(taxCategoryCode, 40, "taxCategoryCode");
+        taxCode = normalizeRequired(taxCode, 80, "taxCode");
+        taxLabel = normalizeRequired(taxLabel, 180, "taxLabel");
+        requireMoney(taxRate, "taxRate");
         require(createdAt, "createdAt");
         require(updatedAt, "updatedAt");
     }
 
     public static Product create(UUID id, UUID companyId, String sku, String barcode, String name, String description,
             InventoryItemType itemType, boolean saleEnabled, boolean purchaseEnabled, boolean stockTracked,
-            BigDecimal salePrice, BigDecimal cost, Instant now) {
+            BigDecimal salePrice, BigDecimal cost, String taxCategoryCode, String taxCode, String taxLabel,
+            BigDecimal taxRate, Instant now) {
         return new Product(id, companyId, sku, barcode, name, description, itemType, saleEnabled, purchaseEnabled,
-                stockTracked, salePrice, cost, true, now, now);
+                stockTracked, salePrice, cost, taxCategoryCode, taxCode, taxLabel, taxRate, true, now, now);
+    }
+
+    public static Product create(UUID id, UUID companyId, String sku, String barcode, String name, String description,
+            InventoryItemType itemType, boolean saleEnabled, boolean purchaseEnabled, boolean stockTracked,
+            BigDecimal salePrice, BigDecimal cost, Instant now) {
+        return create(id, companyId, sku, barcode, name, description, itemType, saleEnabled, purchaseEnabled,
+                stockTracked, salePrice, cost, "IVA", "IVA_19", "IVA 19%", new BigDecimal("19"), now);
     }
 
     private static String normalizeRequired(String value, int maxLength, String field) {

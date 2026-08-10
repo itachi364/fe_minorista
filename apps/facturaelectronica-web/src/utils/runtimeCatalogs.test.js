@@ -35,8 +35,12 @@ test('loads catalog options and relational divipola locations from backend', asy
 
   const catalogs = await loadRuntimeCatalogs({ token: 'token', companyId: 'company-id' });
 
-  expect(catalogs.dianDocumentTypes).toEqual([{ value: 13, label: '13 - Cedula de ciudadania' }]);
-  expect(catalogs.paymentMethodOptions).toEqual([{ value: 'CASH', label: 'Efectivo' }]);
+  expect(catalogs.dianDocumentTypes).toEqual([
+    { value: 13, label: '13 - Cedula de ciudadania', description: '' },
+  ]);
+  expect(catalogs.paymentMethodOptions).toEqual([
+    { value: 'CASH', label: 'Efectivo', description: '' },
+  ]);
   expect(catalogs.locations).toEqual([{
     departmentCode: '11',
     departmentName: 'Bogota, D.C.',

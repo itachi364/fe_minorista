@@ -771,3 +771,30 @@ Columnas minimas:
 | e2e_used | Indica si participa en el flujo E2E actual. |
 | decision | `EN_USO`, `LEGACY_CON_DATOS`, `LEGACY_SIN_USO`, `PENDIENTE_MIGRACION` o `CANDIDATA_A_ELIMINAR`. |
 | action | Mantener, migrar, respaldar, eliminar o revisar. |
+
+## Extensiones TASK-089
+
+### `inventory.product`
+
+Se agregan columnas fiscales para que el producto sea la fuente tributaria de la linea POS:
+
+- `tax_category_code`: categoria fiscal, por ejemplo `IVA`, `INC`, `EXEMPT` o `EXCLUDED`.
+- `tax_code`: codigo tecnico del impuesto dentro del catalogo `SALES_TAX`.
+- `tax_label`: etiqueta visible congelada para snapshot operativo.
+- `tax_rate`: tarifa porcentual aplicada al producto al momento de crear la venta.
+
+### `billing.final_consumer_profile`
+
+Configuracion fiscal para comprador no identificado:
+
+- `id`: uuid.
+- `company_id`: uuid nullable; nulo representa perfil global.
+- `profile_code`: `FINAL_CONSUMER`.
+- `identification_type_code`: codigo DIAN parametrizable.
+- `identification_number`: numero parametrizable; seed local inicial `222222222222`.
+- `display_name`: etiqueta visible para documento, por defecto `Consumidor final`.
+- `active`: estado.
+- `source`, `source_version`: fuente normativa/operativa.
+- `updated_at`: ultima modificacion.
+
+Regla: este perfil no representa un tercero de negocio y no se inserta en `thirdparty.third_party`.

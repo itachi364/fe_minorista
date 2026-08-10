@@ -141,3 +141,14 @@
 - AC-113: Dada la SPA, cuando cargue formularios que dependen de catalogos, entonces no debe importar datos de catalogo regulatorios u operativos desde `src/data`; debe consumirlos desde base de datos por BFF y mostrar error controlado si no estan disponibles.
 - AC-114: Dado el reporte de auditoria de tablas legacy, cuando se clasifique una tabla como candidata a eliminar, entonces debe demostrar que no tiene referencias JPA/repositorio/SQL/runtime, que el flujo E2E no la usa, y que sus datos estan vacios o migrados/respaldados.
 - AC-115: Dada una eliminacion aprobada de tablas legacy, cuando se ejecute Flyway sobre una base limpia y la base local actual, entonces ambas deben quedar alineadas con el modelo vigente y la suite completa debe pasar sin referencias a tablas eliminadas.
+
+## POS con impuestos por producto, scanner y consumidor final
+
+- AC-116: Dado un producto vendible, cuando se cree en inventario, entonces debe guardar `taxCategoryCode`, `taxCode`, `taxLabel` y `taxRate` provenientes de catalogo fiscal activo.
+- AC-117: Dada una venta POS, cuando se agregue una linea, entonces `billing-service` debe calcular impuesto y tarifa desde el snapshot de inventario y no desde campos enviados por frontend.
+- AC-118: Dada la SPA de Venta POS, entonces no debe mostrar campos editables de canal, impuesto ni tasa; solo debe mostrar informacion calculada o derivada del producto cuando exista.
+- AC-119: Dado un codigo de barras escaneado en POS, cuando el campo dedicado reciba el codigo, entonces la SPA debe consultar producto por barcode automaticamente, agregarlo como linea o incrementar cantidad si ya existe, limpiar el campo y dejarlo listo para el siguiente escaneo.
+- AC-120: Dado el formulario de inventario, cuando se escanee un codigo de barras en su campo dedicado, entonces debe quedar capturado en `barcode` sin requerir drivers, clic adicional ni escritura en otros campos de negocio.
+- AC-121: Dada una venta POS donde el comprador no desea identificarse para factura electronica nominada, cuando se cree la venta, entonces la SPA debe enviar `buyerIdentificationMode=FINAL_CONSUMER` y `billing-service` debe resolver el adquirente desde configuracion persistida, sin crear tercero `thirdparty`.
+- AC-122: Dada una venta POS donde el comprador si desea factura electronica nominada, cuando se cree la venta, entonces debe exigir `customerId` seleccionado por buscador y conservar snapshot fiscal del tercero.
+- AC-123: Dado el catalogo fiscal de impuestos, cuando cambie una tarifa o impuesto permitido, entonces `ROOT` puede parametrizarlo en base de datos y los productos nuevos deben usar el catalogo actualizado sin despliegue frontend.

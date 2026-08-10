@@ -7,7 +7,8 @@ import java.util.Objects;
 
 import java.util.UUID;
 
-public record Sale(UUID id, UUID companyId, UUID customerId, PaymentMethodCode paymentMethodCode,
+public record Sale(UUID id, UUID companyId, BuyerIdentificationMode buyerIdentificationMode, UUID customerId,
+        PaymentMethodCode paymentMethodCode,
         VirtualWalletCode virtualWalletCode, SaleChannel saleChannel, SaleStatus status, BigDecimal subtotal,
         BigDecimal discountTotal, BigDecimal taxTotal, BigDecimal total, String idempotencyKey, UUID createdBy,
         Instant createdAt, Instant confirmedAt, List<SaleLine> lines, ElectronicDocument electronicDocument) {
@@ -15,6 +16,7 @@ public record Sale(UUID id, UUID companyId, UUID customerId, PaymentMethodCode p
     public Sale {
         require(id, "id");
         require(companyId, "companyId");
+        buyerIdentificationMode = buyerIdentificationMode == null ? BuyerIdentificationMode.IDENTIFIED_CUSTOMER : buyerIdentificationMode;
         require(paymentMethodCode, "paymentMethodCode");
         require(saleChannel, "saleChannel");
         require(status, "status");
@@ -36,15 +38,26 @@ public record Sale(UUID id, UUID companyId, UUID customerId, PaymentMethodCode p
         }
     }
 
-    public static Sale draft(UUID id, UUID companyId, UUID customerId, PaymentMethodCode paymentMethodCode,
+    public static Sale draft(UUID id, UUID companyId, BuyerIdentificationMode buyerIdentificationMode, UUID customerId,
+            PaymentMethodCode paymentMethodCode,
             VirtualWalletCode virtualWalletCode, SaleChannel saleChannel, String idempotencyKey, UUID createdBy,
             Instant createdAt, List<SaleLine> lines) {
         BigDecimal subtotal = lines.stream().map(SaleLine::subtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal discount = lines.stream().map(SaleLine::discountAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal tax = lines.stream().map(SaleLine::taxAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal total = lines.stream().map(SaleLine::total).reduce(BigDecimal.ZERO, BigDecimal::add);
-        return new Sale(id, companyId, customerId, paymentMethodCode, virtualWalletCode, saleChannel, SaleStatus.DRAFT,
-                subtotal, discount, tax, total, idempotencyKey, createdBy, createdAt, null, lines, null);
+        return new Sale(id, companyId, buyerIdentificationMode, customerId, paymentMethodCode, virtualWalletCode,
+                saleChannel, SaleStatus.DRAFT, subtotal, discount, tax, total, idempotencyKey, createdBy, createdAt,
+                null, lines, null);
+    }
+
+    public static Sale draft(UUID id, UUID companyId, UUID customerId, PaymentMethodCode paymentMethodCode,
+            VirtualWalletCode virtualWalletCode, SaleChannel saleChannel, String idempotencyKey, UUID createdBy,
+            Instant createdAt, List<SaleLine> lines) {
+        BuyerIdentificationMode buyerMode = customerId == null ? BuyerIdentificationMode.FINAL_CONSUMER
+                : BuyerIdentificationMode.IDENTIFIED_CUSTOMER;
+        return draft(id, companyId, buyerMode, customerId, paymentMethodCode, virtualWalletCode, saleChannel,
+                idempotencyKey, createdBy, createdAt, lines);
     }
 
     public Sale confirm(ElectronicDocument document, Instant confirmedAt) {
@@ -52,15 +65,16 @@ public record Sale(UUID id, UUID companyId, UUID customerId, PaymentMethodCode p
         SaleStatus nextStatus = document.status() == ElectronicDocumentStatus.VALIDATED
                 ? SaleStatus.CONFIRMED
                 : SaleStatus.REJECTED;
-        return new Sale(id, companyId, customerId, paymentMethodCode, virtualWalletCode, saleChannel, nextStatus,
-                subtotal, discountTotal, taxTotal, total, idempotencyKey, createdBy, createdAt, confirmedAt, lines,
-                document);
+        return new Sale(id, companyId, buyerIdentificationMode, customerId, paymentMethodCode, virtualWalletCode,
+                saleChannel, nextStatus, subtotal, discountTotal, taxTotal, total, idempotencyKey, createdBy,
+                createdAt, confirmedAt, lines, document);
     }
 
     public Sale withElectronicDocument(ElectronicDocument document) {
         require(document, "document");
-        return new Sale(id, companyId, customerId, paymentMethodCode, virtualWalletCode, saleChannel, status, subtotal,
-                discountTotal, taxTotal, total, idempotencyKey, createdBy, createdAt, confirmedAt, lines, document);
+        return new Sale(id, companyId, buyerIdentificationMode, customerId, paymentMethodCode, virtualWalletCode,
+                saleChannel, status, subtotal, discountTotal, taxTotal, total, idempotencyKey, createdBy, createdAt,
+                confirmedAt, lines, document);
     }
 
     private static void require(Object value, String field) {

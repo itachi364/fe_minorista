@@ -30,12 +30,14 @@ import com.msvanegasg.facturaelectronica.billing.application.port.out.Accounting
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AuditEventPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ElectronicDocumentProviderPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.FinalConsumerProfileRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryAvailabilityPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryMovementPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.LicenseValidationPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.SaleRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.domain.model.CudeGenerator;
+import com.msvanegasg.facturaelectronica.billing.domain.model.BuyerIdentificationMode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
@@ -59,6 +61,7 @@ public class SaleManagementService implements ManageSaleUseCase {
     private final InventoryMovementPort inventoryMovementPort;
     private final AccountingEntryPort accountingEntryPort;
     private final AuditEventPort auditEventPort;
+    private final FinalConsumerProfileRepositoryPort finalConsumerProfileRepository;
     private final LicenseValidationPort licenseValidationPort;
     private final AssignFiscalNumberUseCase assignFiscalNumberUseCase;
     private final DomainEventPublisherPort eventPublisher;
@@ -71,13 +74,40 @@ public class SaleManagementService implements ManageSaleUseCase {
             LicenseValidationPort licenseValidationPort, AssignFiscalNumberUseCase assignFiscalNumberUseCase,
             IdGeneratorPort idGenerator, ClockPort clock) {
         this(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort, accountingEntryPort,
-                auditEventPort, licenseValidationPort, assignFiscalNumberUseCase, DomainEventPublisherPort.noop(),
-                idGenerator, clock);
+                auditEventPort, companyId -> java.util.Optional.of(new com.msvanegasg.facturaelectronica.billing.domain.model.FinalConsumerProfile(
+                        new UUID(0L, 222L), null, "FINAL_CONSUMER", 31, "222222222222", "Consumidor final",
+                        true, "TEST", "TEST", Instant.EPOCH)),
+                licenseValidationPort, assignFiscalNumberUseCase, DomainEventPublisherPort.noop(), idGenerator,
+                clock);
     }
 
     public SaleManagementService(SaleRepositoryPort saleRepository, InventoryAvailabilityPort inventoryAvailability,
             ElectronicDocumentProviderPort providerPort, InventoryMovementPort inventoryMovementPort,
             AccountingEntryPort accountingEntryPort, AuditEventPort auditEventPort,
+            FinalConsumerProfileRepositoryPort finalConsumerProfileRepository,
+            LicenseValidationPort licenseValidationPort, AssignFiscalNumberUseCase assignFiscalNumberUseCase,
+            IdGeneratorPort idGenerator, ClockPort clock) {
+        this(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort, accountingEntryPort,
+                auditEventPort, finalConsumerProfileRepository, licenseValidationPort, assignFiscalNumberUseCase,
+                DomainEventPublisherPort.noop(), idGenerator, clock);
+    }
+
+    public SaleManagementService(SaleRepositoryPort saleRepository, InventoryAvailabilityPort inventoryAvailability,
+            ElectronicDocumentProviderPort providerPort, InventoryMovementPort inventoryMovementPort,
+            AccountingEntryPort accountingEntryPort, AuditEventPort auditEventPort,
+            LicenseValidationPort licenseValidationPort, AssignFiscalNumberUseCase assignFiscalNumberUseCase,
+            DomainEventPublisherPort eventPublisher, IdGeneratorPort idGenerator, ClockPort clock) {
+        this(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort, accountingEntryPort,
+                auditEventPort, companyId -> java.util.Optional.of(new com.msvanegasg.facturaelectronica.billing.domain.model.FinalConsumerProfile(
+                        new UUID(0L, 222L), null, "FINAL_CONSUMER", 31, "222222222222", "Consumidor final",
+                        true, "TEST", "TEST", Instant.EPOCH)),
+                licenseValidationPort, assignFiscalNumberUseCase, eventPublisher, idGenerator, clock);
+    }
+
+    public SaleManagementService(SaleRepositoryPort saleRepository, InventoryAvailabilityPort inventoryAvailability,
+            ElectronicDocumentProviderPort providerPort, InventoryMovementPort inventoryMovementPort,
+            AccountingEntryPort accountingEntryPort, AuditEventPort auditEventPort,
+            FinalConsumerProfileRepositoryPort finalConsumerProfileRepository,
             LicenseValidationPort licenseValidationPort, AssignFiscalNumberUseCase assignFiscalNumberUseCase,
             DomainEventPublisherPort eventPublisher, IdGeneratorPort idGenerator, ClockPort clock) {
         this.saleRepository = Objects.requireNonNull(saleRepository);
@@ -86,6 +116,7 @@ public class SaleManagementService implements ManageSaleUseCase {
         this.inventoryMovementPort = Objects.requireNonNull(inventoryMovementPort);
         this.accountingEntryPort = Objects.requireNonNull(accountingEntryPort);
         this.auditEventPort = Objects.requireNonNull(auditEventPort);
+        this.finalConsumerProfileRepository = Objects.requireNonNull(finalConsumerProfileRepository);
         this.licenseValidationPort = Objects.requireNonNull(licenseValidationPort);
         this.assignFiscalNumberUseCase = Objects.requireNonNull(assignFiscalNumberUseCase);
         this.eventPublisher = Objects.requireNonNull(eventPublisher);
@@ -186,9 +217,10 @@ public class SaleManagementService implements ManageSaleUseCase {
 
     private SaleResult createNew(CreateSaleCommand command) {
         licenseValidationPort.ensureAllowed(command.companyId(), LicenseAction.CREATE_TRANSACTION);
+        BuyerIdentificationMode buyerMode = resolveBuyerMode(command);
         var lines = command.lines().stream().map(line -> toLine(command.companyId(), line)).toList();
         lines.forEach(line -> ensureAvailable(command.companyId(), line));
-        Sale sale = Sale.draft(idGenerator.newId(), command.companyId(), command.customerId(),
+        Sale sale = Sale.draft(idGenerator.newId(), command.companyId(), buyerMode, command.customerId(),
                 command.paymentMethodCode() == null ? PaymentMethodCode.CASH : command.paymentMethodCode(),
                 command.virtualWalletCode(),
                 command.saleChannel() == null ? SaleChannel.POS : command.saleChannel(), command.idempotencyKey(),
@@ -201,9 +233,29 @@ public class SaleManagementService implements ManageSaleUseCase {
         if (!product.saleEnabled()) {
             throw new IllegalStateException("product is not enabled for sale");
         }
+        BigDecimal unitPrice = product.salePrice() == null || product.salePrice().signum() == 0
+                ? command.unitPrice()
+                : product.salePrice();
         return SaleLine.calculate(idGenerator.newId(), command.productId(), product.sku(), product.name(),
-                product.itemType(), product.stockTracked(), command.quantity(), command.unitPrice(), product.cost(),
-                command.discountAmount(), command.taxCode(), command.taxRate());
+                product.itemType(), product.stockTracked(), command.quantity(), unitPrice, product.cost(),
+                command.discountAmount(), product.taxCode(), product.taxRate());
+    }
+
+    private BuyerIdentificationMode resolveBuyerMode(CreateSaleCommand command) {
+        BuyerIdentificationMode buyerMode = command.buyerIdentificationMode() == null
+                ? (command.customerId() == null ? BuyerIdentificationMode.FINAL_CONSUMER : BuyerIdentificationMode.IDENTIFIED_CUSTOMER)
+                : command.buyerIdentificationMode();
+        if (buyerMode == BuyerIdentificationMode.IDENTIFIED_CUSTOMER && command.customerId() == null) {
+            throw new IllegalArgumentException("customerId is required for identified customer sales");
+        }
+        if (buyerMode == BuyerIdentificationMode.FINAL_CONSUMER) {
+            if (command.customerId() != null) {
+                throw new IllegalArgumentException("customerId must be empty for final consumer sales");
+            }
+            finalConsumerProfileRepository.findActiveForCompanyOrGlobal(command.companyId())
+                    .orElseThrow(() -> new IllegalStateException("active final consumer profile is required"));
+        }
+        return buyerMode;
     }
 
     private void ensureAvailable(UUID companyId, SaleLine line) {

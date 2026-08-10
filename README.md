@@ -547,13 +547,14 @@ Las rutas legacy `/api/clientes` y `/api/proveedores` fueron retiradas en TASK-0
 
 - `POST /api/v1/products`
 - `GET /api/v1/products/{productId}`
+- `GET /api/v1/products/by-barcode/{barcode}`
 - `GET /api/v1/products/{productId}/availability?quantity=`
 - `GET /api/v1/products/{productId}/kardex`
 - `POST /api/v1/inventory-movements`
 - `POST /api/v1/purchases`
 - `POST /api/v1/purchases/{purchaseId}/confirm`
 
-Las operaciones de negocio requieren `X-Company-Id`; los movimientos y compras requieren `Idempotency-Key`.
+Las operaciones de negocio requieren `X-Company-Id`; los movimientos y compras requieren `Idempotency-Key`. Cada producto vendible guarda su impuesto de venta como snapshot configurable desde catalogos (`SALES_TAX`), junto con precio, costo, SKU y codigo de barras para operacion POS con lector USB HID.
 
 ### Billing
 
@@ -563,7 +564,7 @@ Las operaciones de negocio requieren `X-Company-Id`; los movimientos y compras r
 - `POST /api/v1/sales/{saleId}/confirm`
 - `GET /api/v1/sales/{saleId}`
 
-La creacion de venta valida disponibilidad contra `inventory-service`. La confirmacion envia el POS a `dian-provider-service`, que responde con CUDE/QR mock y estado configurable con `DIAN_MOCK_DEFAULT_STATUS`.
+La creacion de venta valida disponibilidad contra `inventory-service`. El POS usa siempre canal POS/equivalente electronico; precio e impuesto de cada linea se toman del producto en inventario, no del vendedor. Si el comprador no solicita factura nominada, `billing-service` resuelve el perfil `FINAL_CONSUMER` desde configuracion persistida. La confirmacion envia el POS a `dian-provider-service`, que responde con CUDE/QR mock y estado configurable con `DIAN_MOCK_DEFAULT_STATUS`.
 
 Cuando el proveedor responde `ACCEPTED`, `billing-service`:
 

@@ -32,7 +32,9 @@ public class InventoryAvailabilityHttpAdapter implements InventoryAvailabilityPo
         }
         SaleItemType itemType = response.itemType() == null ? SaleItemType.PHYSICAL_GOOD : response.itemType();
         return new InventoryProductSnapshot(response.id(), response.sku(), response.name(), itemType,
-                response.saleEnabled(), response.stockTracked(), response.cost(), response.currentStock());
+                response.saleEnabled(), response.stockTracked(), response.salePrice(), response.cost(),
+                response.taxCategoryCode(), response.taxCode(), response.taxLabel(), response.taxRate(),
+                response.currentStock());
     }
 
     @Override
@@ -53,6 +55,7 @@ public class InventoryAvailabilityHttpAdapter implements InventoryAvailabilityPo
 
     record ProductResponse(UUID id, UUID companyId, String sku, String barcode, String name, String description,
             SaleItemType itemType, boolean saleEnabled, boolean purchaseEnabled, boolean stockTracked,
-            BigDecimal salePrice, BigDecimal cost, boolean active, BigDecimal currentStock) {
+            BigDecimal salePrice, BigDecimal cost, String taxCategoryCode, String taxCode, String taxLabel,
+            BigDecimal taxRate, boolean active, BigDecimal currentStock) {
     }
 }

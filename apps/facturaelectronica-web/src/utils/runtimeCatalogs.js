@@ -4,6 +4,7 @@ export const emptyRuntimeCatalogs = {
   dianDocumentTypes: [],
   taxResponsibilityOptions: [],
   taxRegimeOptions: [],
+  salesTaxOptions: [],
   paymentMethodOptions: [],
   virtualWalletOptions: [],
   fiscalDocumentTypeOptions: [],
@@ -15,6 +16,7 @@ const catalogMap = {
   DIAN_DOCUMENT_TYPE: 'dianDocumentTypes',
   TAX_RESPONSIBILITY: 'taxResponsibilityOptions',
   TAX_REGIME: 'taxRegimeOptions',
+  SALES_TAX: 'salesTaxOptions',
   PAYMENT_METHOD: 'paymentMethodOptions',
   VIRTUAL_WALLET: 'virtualWalletOptions',
   FISCAL_DOCUMENT_TYPE: 'fiscalDocumentTypeOptions',
@@ -53,9 +55,26 @@ function toOption(item) {
   return {
     value,
     label,
+    description: item.description || '',
+    ...taxMetadata(item),
   };
 }
 
 function normalizeValue(item) {
   return item.catalogCode === 'DIAN_DOCUMENT_TYPE' ? Number(item.code) : item.code;
+}
+
+function taxMetadata(item) {
+  if (item.catalogCode !== 'SALES_TAX') {
+    return {};
+  }
+  const description = item.description || '';
+  const categoryMatch = description.match(/category=([^;]+)/);
+  const rateMatch = description.match(/rate=([0-9]+(?:\.[0-9]+)?)/);
+  return {
+    taxCategoryCode: categoryMatch ? categoryMatch[1] : item.code,
+    taxCode: item.code,
+    taxLabel: item.label,
+    taxRate: rateMatch ? Number(rateMatch[1]) : 0,
+  };
 }

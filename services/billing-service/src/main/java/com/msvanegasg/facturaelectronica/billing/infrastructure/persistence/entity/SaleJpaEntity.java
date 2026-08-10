@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.msvanegasg.facturaelectronica.billing.domain.model.BuyerIdentificationMode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
@@ -31,6 +32,9 @@ public class SaleJpaEntity {
     private UUID companyId;
     @Column(name = "customer_id")
     private UUID customerId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "buyer_identification_mode", nullable = false, length = 30)
+    private BuyerIdentificationMode buyerIdentificationMode;
     @Column(name = "payment_method_id")
     private UUID paymentMethodId;
     @Enumerated(EnumType.STRING)
@@ -80,6 +84,8 @@ public class SaleJpaEntity {
     public void setCompanyId(UUID companyId) { this.companyId = companyId; }
     public UUID getCustomerId() { return customerId; }
     public void setCustomerId(UUID customerId) { this.customerId = customerId; }
+    public BuyerIdentificationMode getBuyerIdentificationMode() { return buyerIdentificationMode; }
+    public void setBuyerIdentificationMode(BuyerIdentificationMode buyerIdentificationMode) { this.buyerIdentificationMode = buyerIdentificationMode; }
     public UUID getPaymentMethodId() { return paymentMethodId; }
     public void setPaymentMethodId(UUID paymentMethodId) { this.paymentMethodId = paymentMethodId; }
     public PaymentMethodCode getPaymentMethodCode() { return paymentMethodCode; }
