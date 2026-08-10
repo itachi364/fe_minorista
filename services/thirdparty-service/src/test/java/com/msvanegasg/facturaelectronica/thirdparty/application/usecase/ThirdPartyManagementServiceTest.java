@@ -16,6 +16,7 @@ import com.msvanegasg.facturaelectronica.thirdparty.application.dto.ThirdPartyCo
 import com.msvanegasg.facturaelectronica.thirdparty.application.dto.ThirdPartyResult;
 import com.msvanegasg.facturaelectronica.thirdparty.application.port.out.ThirdPartyRepositoryPort;
 import com.msvanegasg.facturaelectronica.thirdparty.domain.model.PersonType;
+import com.msvanegasg.facturaelectronica.thirdparty.domain.model.TaxRegime;
 import com.msvanegasg.facturaelectronica.thirdparty.domain.model.ThirdParty;
 import com.msvanegasg.facturaelectronica.thirdparty.domain.model.ThirdPartyRole;
 
@@ -33,6 +34,8 @@ class ThirdPartyManagementServiceTest {
 
         assertThat(result.id()).isNotNull();
         assertThat(result.verificationDigit()).isEqualTo(8);
+        assertThat(result.taxResponsibilities()).containsExactly("O-13");
+        assertThat(result.taxRegime()).isEqualTo(TaxRegime.RESPONSABLE_IVA);
         assertThat(result.roles()).containsExactly(ThirdPartyRole.CUSTOMER);
         assertThat(result.active()).isTrue();
     }
@@ -72,9 +75,57 @@ class ThirdPartyManagementServiceTest {
         assertThat(customers.get(0).companyId()).isEqualTo(COMPANY_ID);
     }
 
+    @Test
+    void searchesCustomersByIdentificationNumberPrefix() {
+        InMemoryThirdPartyRepository repository = new InMemoryThirdPartyRepository();
+        ThirdPartyManagementService service = new ThirdPartyManagementService(repository);
+        service.create(command(COMPANY_ID, Set.of(ThirdPartyRole.CUSTOMER)));
+        service.create(new ThirdPartyCommand(COMPANY_ID, PersonType.JURIDICA, 31, "901987654", null, null,
+                "Otro Cliente SAS", "Otro", "otro@example.com", null, null, "11001", Set.of("O-13"),
+                TaxRegime.RESPONSABLE_IVA, Set.of(ThirdPartyRole.CUSTOMER)));
+
+        List<ThirdPartyResult> customers = service.findByRoleAndIdentificationNumberPrefix(COMPANY_ID,
+                ThirdPartyRole.CUSTOMER, true, "900");
+
+        assertThat(customers).hasSize(1);
+        assertThat(customers.get(0).identificationNumber()).isEqualTo("900123456");
+    }
+
+    @Test
+    void createsSimpleNaturalCustomerWithAutomaticFiscalProfile() {
+        InMemoryThirdPartyRepository repository = new InMemoryThirdPartyRepository();
+        ThirdPartyManagementService service = new ThirdPartyManagementService(repository);
+
+        ThirdPartyResult result = service.create(new ThirdPartyCommand(COMPANY_ID, PersonType.NATURAL, 13,
+                "1234567890", null, "Cliente Natural", null, null, "cliente@example.com", null, null, "11001",
+                null, null, Set.of(ThirdPartyRole.CUSTOMER)));
+
+        assertThat(result.verificationDigit()).isNull();
+        assertThat(result.businessName()).isNull();
+        assertThat(result.tradeName()).isNull();
+        assertThat(result.taxResponsibilities()).containsExactly("R-99-PN");
+        assertThat(result.taxRegime()).isEqualTo(TaxRegime.NO_RESPONSABLE_IVA);
+        assertThat(result.roles()).containsExactly(ThirdPartyRole.CUSTOMER);
+    }
+
+    @Test
+    void rejectsWrongManualNitVerificationDigit() {
+        InMemoryThirdPartyRepository repository = new InMemoryThirdPartyRepository();
+        ThirdPartyManagementService service = new ThirdPartyManagementService(repository);
+
+        ThirdPartyCommand command = new ThirdPartyCommand(COMPANY_ID, PersonType.JURIDICA, 31, "900123456", 1, null,
+                "Cliente SAS", "Cliente", "cliente@example.com", "3000000000", "Calle 1", "11001",
+                Set.of("O-13"), TaxRegime.RESPONSABLE_IVA, Set.of(ThirdPartyRole.CUSTOMER));
+
+        assertThatThrownBy(() -> service.create(command))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("verificationDigit");
+    }
+
     private static ThirdPartyCommand command(UUID companyId, Set<ThirdPartyRole> roles) {
         return new ThirdPartyCommand(companyId, PersonType.JURIDICA, 31, "900123456", null, null,
-                "Cliente SAS", "Cliente", "cliente@example.com", "3000000000", "Calle 1", "11001", roles);
+                "Cliente SAS", "Cliente", "cliente@example.com", "3000000000", "Calle 1", "11001",
+                Set.of("O-13"), TaxRegime.RESPONSABLE_IVA, roles);
     }
 
     private static final class InMemoryThirdPartyRepository implements ThirdPartyRepositoryPort {
@@ -88,7 +139,8 @@ class ThirdPartyManagementServiceTest {
                     thirdParty.identificationTypeCode(), thirdParty.identificationNumber(),
                     thirdParty.verificationDigit(), thirdParty.fullName(), thirdParty.businessName(),
                     thirdParty.tradeName(), thirdParty.email(), thirdParty.phone(), thirdParty.address(),
-                    thirdParty.municipalityCode(), thirdParty.roles(), thirdParty.active());
+                    thirdParty.municipalityCode(), thirdParty.taxResponsibilities(), thirdParty.taxRegime(),
+                    thirdParty.roles(), thirdParty.active());
             thirdParties.put(id, toSave);
             return toSave;
         }
@@ -114,6 +166,14 @@ class ThirdPartyManagementServiceTest {
                     .filter(thirdParty -> thirdParty.companyId().equals(companyId))
                     .filter(thirdParty -> thirdParty.hasRole(role))
                     .filter(thirdParty -> active == null || thirdParty.active() == active)
+                    .toList();
+        }
+
+        @Override
+        public List<ThirdParty> findByCompanyIdAndRoleAndIdentificationNumberPrefix(UUID companyId,
+                ThirdPartyRole role, Boolean active, String identificationNumberPrefix) {
+            return findByCompanyIdAndRole(companyId, role, active).stream()
+                    .filter(thirdParty -> thirdParty.identificationNumber().startsWith(identificationNumberPrefix))
                     .toList();
         }
 

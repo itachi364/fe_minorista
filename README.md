@@ -11,12 +11,12 @@ El proyecto migro desde una estructura legacy CRUD hacia Clean Architecture por 
 - Docker Compose local para PostgreSQL, `bff-service`, frontend SPA, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service`.
 - POS electronico con emisor/resolucion fiscal persistidos en `billing-service`, proveedor DIAN mock configurable como microservicio HTTP y efectos posteriores idempotentes sobre inventario/contabilidad.
 - Persistencia JPA y endpoints REST para billing/POS, accounting y audit.
-- Limpieza legacy en curso: monolito removido, datos historicos `public.*` preservados hasta migracion aprobada.
+- Limpieza legacy en curso: monolito removido, catalogos/terceros legacy de microservicios retirados mediante migraciones nuevas y datos historicos `public.*` preservados hasta migracion aprobada.
 - Suite multi-modulo activa validada con `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service`.
 
 ## Alcance Funcional
 
-- Catalogos: categorias, productos, impuestos, paises, parametros, metodos de pago, tipos de documento y tipos de gasto.
+- Catalogos versionados: tipos de documento DIAN, responsabilidades fiscales, regimenes tributarios, metodos de pago, billeteras virtuales y DIVIPOLA por departamentos/municipios.
 - Terceros: clientes y proveedores.
 - Inventario: productos multiempresa, costos, compras, stock simple, movimientos y kardex.
 - Billing/POS: emisor, resoluciones, emision POS electronico, consulta y envio a proveedor DIAN mock.
@@ -438,8 +438,10 @@ Tablas relevantes:
 - Billing/POS activo: `billing.issuer_profile`, `billing.numbering_resolution`, `billing.sale`, `billing.sale_line`, `billing.electronic_document`.
 - Accounting: `accounting_account`, `accounting_rule`, `accounting_rule_line`, `accounting_entry`, `accounting_entry_line`.
 - Tenant: `tenant.company`.
-- Catalog: `catalog.tipodocumento`, `catalog.pais`, `catalog.impuesto`, `catalog.metodo_pago`, `catalog.tipo_gasto`, `catalog.parametros`, `catalog.categoria`, `catalog.producto`.
-- Thirdparty: `thirdparty.cliente`, `thirdparty.proveedor`.
+- Catalog activo: `catalog.catalog_definition`, `catalog.catalog_item`, `catalog.company_catalog_item_setting`, `catalog.department`, `catalog.municipality`.
+- Catalog legacy retirado por TASK-088: `catalog.tipodocumento`, `catalog.pais`, `catalog.impuesto`, `catalog.metodo_pago`, `catalog.tipo_gasto`, `catalog.parametros`, `catalog.categoria`, `catalog.producto`.
+- Thirdparty activo: `thirdparty.third_party`, `thirdparty.third_party_role`, `thirdparty.third_party_tax_responsibility`.
+- Thirdparty legacy retirado por TASK-088: `thirdparty.cliente`, `thirdparty.proveedor`.
 - DIAN provider: `dian_provider.provider_submission`.
 - Audit: `audit.audit_event`.
 
@@ -507,16 +509,20 @@ Idempotency-Key: <valor-unico>
 
 ### Catalog
 
-`catalog-service` expone en `http://localhost:8085` los endpoints legacy compatibles:
+`catalog-service` expone en `http://localhost:8085` los endpoints canonicos:
 
-- `/api/categorias`
-- `/api/paises`
-- `/api/tipos-documento`
-- `/api/metodos-pago`
-- `/api/parametros`
-- `/api/tipos-gasto`
-- `/api/impuestos`
-- `/api/productos`
+- `GET /api/v1/catalog-definitions`
+- `GET /api/v1/catalogs/{catalogCode}/items?includeInactive=`
+- `POST /api/v1/catalogs/{catalogCode}/items`
+- `PUT /api/v1/catalogs/{catalogCode}/items/{itemCode}`
+- `PUT /api/v1/catalogs/{catalogCode}/items/{itemCode}/activation`
+- `GET /api/v1/company-catalogs/{catalogCode}/items`
+- `POST /api/v1/company-catalogs/{catalogCode}/items`
+- `PUT /api/v1/company-catalogs/{catalogCode}/items/{itemCode}/activation`
+- `GET /api/v1/departments`
+- `GET /api/v1/departments/{departmentCode}/municipalities`
+
+Las rutas legacy de catalogo fueron retiradas en TASK-088. Los consumidores deben usar catalogos versionados o los endpoints duenos del bounded context correspondiente.
 
 ### Thirdparty
 

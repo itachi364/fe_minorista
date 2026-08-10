@@ -18,5 +18,8 @@ public interface ThirdPartyRepositoryPort {
 
     List<ThirdParty> findByCompanyIdAndRole(UUID companyId, ThirdPartyRole role, Boolean active);
 
+    List<ThirdParty> findByCompanyIdAndRoleAndIdentificationNumberPrefix(UUID companyId, ThirdPartyRole role,
+            Boolean active, String identificationNumberPrefix);
+
     boolean existsByCompanyIdAndDocument(UUID companyId, Integer identificationTypeCode, String identificationNumber);
 }

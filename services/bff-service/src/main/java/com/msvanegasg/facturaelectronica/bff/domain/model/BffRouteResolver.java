@@ -18,7 +18,7 @@ public final class BffRouteResolver {
         if (matchesAny(normalized, "auth", "users", "me", "platform")) {
             return TargetService.IDENTITY;
         }
-        if (matchesAny(normalized, "catalogs", "company-catalogs")) {
+        if (matchesAny(normalized, "catalog-definitions", "catalogs", "company-catalogs")) {
             return TargetService.CATALOG;
         }
         if (matchesAny(normalized, "third-parties", "customers", "suppliers")) {

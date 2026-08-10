@@ -25,6 +25,7 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageSaleUseCase;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
+import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleItemType;
@@ -79,7 +80,7 @@ class BillingReportControllerTest {
     }
 
     private static SaleResult sale() {
-        return new SaleResult(SALE_ID, COMPANY_ID, null, null, SaleChannel.POS, SaleStatus.CONFIRMED,
+        return new SaleResult(SALE_ID, COMPANY_ID, null, PaymentMethodCode.CASH, null, SaleChannel.POS, SaleStatus.CONFIRMED,
                 new BigDecimal("30000.00"), BigDecimal.ZERO, new BigDecimal("5700.00"),
                 new BigDecimal("35700.00"), "sale-1", null, NOW, NOW,
                 List.of(new SaleLineResult(UUID.fromString("44444444-4444-4444-4444-444444444444"), PRODUCT_ID,

@@ -486,11 +486,11 @@ El lote 1 de TASK-059 elimina el codigo del monolito legacy porque no participa 
 - Library/tool: Flyway (`/flyway/flyway`).
 - Topic consulted: validation behavior when applied migration files are deleted or changed.
 - Relevant finding: Flyway validation reports applied migrations that are no longer resolved locally and checksum mismatches for changed migrations; repair is required only when such changes are intentional.
-- Decision impact: TASK-059 lote 2 does not delete or modify applied thirdparty migration files and preserves `thirdparty.cliente`/`thirdparty.proveedor` tables for a later migration/respaldo plan.
+- Decision impact: TASK-059 lote 2 did not delete or modify applied thirdparty migration files. TASK-088 later removes `thirdparty.cliente`/`thirdparty.proveedor` with a Flyway safeguard that aborts if company-scoped legacy data exists.
 
 ## TASK-059 lote 2 legacy thirdparty cleanup decision
 
-El lote 2 de TASK-059 retira el codigo runtime legacy de terceros (`/api/clientes`, `/api/proveedores`, modelo `Customer`/`Supplier`, adaptadores, repositorios, mappers y cliente REST a catalogo). El contrato canonico queda en `/api/v1/third-parties`, `/api/v1/customers` y `/api/v1/suppliers`. Las migraciones Flyway y tablas `thirdparty.cliente`/`thirdparty.proveedor` se conservan temporalmente para migracion o respaldo aprobado.
+El lote 2 de TASK-059 retira el codigo runtime legacy de terceros (`/api/clientes`, `/api/proveedores`, modelo `Customer`/`Supplier`, adaptadores, repositorios, mappers y cliente REST a catalogo). El contrato canonico queda en `/api/v1/third-parties`, `/api/v1/customers` y `/api/v1/suppliers`. En TASK-088 las tablas `thirdparty.cliente`/`thirdparty.proveedor` se eliminan con salvaguarda Flyway para no borrar datos reales de empresa.
 
 ## Arquitectura cloud AWS objetivo
 
@@ -623,6 +623,17 @@ Context7 evidence:
 - Library/tool: React (`/reactjs/react.dev`).
 - Topic consulted: controlled form inputs, object state updates and form submission.
 - Relevant finding: React documents controlled inputs with state, immutable object updates using spread syntax and `onSubmit` with `preventDefault` for form submission.
+
+### TASK-079 - Catalogos fiscales y medios de pago
+
+- Library/tool: React oficial (`/reactjs/react.dev`).
+- Topic consulted: controlled select inputs and conditional form fields.
+- Relevant finding: los componentes de formulario (`input`, `select`, `textarea`) deben controlarse con `value`/`onChange`, y React recomienda renderizado condicional para campos dependientes de estado.
+- Decision impact: responsabilidades fiscales, regimen tributario, metodo de pago y billetera virtual se implementan como selects controlados; el selector de billetera solo se muestra cuando el metodo es `VIRTUAL_WALLET`.
+- Library/tool: Spring Boot oficial (`/spring-projects/spring-boot`).
+- Topic consulted: DTO validation with `@Valid @RequestBody`.
+- Relevant finding: Spring Boot integra Jakarta Bean Validation para validar cuerpos REST anotados.
+- Decision impact: los DTOs REST mantienen `@Valid` y el dominio valida catalogos fiscales/pagos antes de persistir.
 - Decision impact: La SPA usa formularios controlados y construye payloads en submit, sin mutar estado ni depender de textarea JSON.
 ## TASK-066 control de sesion y licencia en frontend
 
@@ -750,3 +761,129 @@ El BFF enruta los nuevos contratos `/platform/*`, `/companies/{companyId}/roles`
 - Decision: todo campo `identificationTypeCode` o `identification_type_code` representa un codigo DIAN numerico entero de maximo dos digitos; no se aceptan aliases como `NIT`, `CC` o `CE` en contratos nuevos.
 - Alcance aplicado: `tenant-service`, `thirdparty-service`, `catalog-service`, SPA y specs usan codigo numerico. Los tipos de documento fiscal electronico (`ELECTRONIC_POS`, `CREDIT_NOTE`, etc.) siguen siendo otro concepto y no se migran.
 - Impacto: `identificationTypeCode=31` es el unico caso que dispara calculo automatico de digito de verificacion NIT.
+
+## TASK-080 a TASK-082 experiencia fiscal y sesion frontend
+
+La SPA usa una doble lista para responsabilidades fiscales en terceros y emisor fiscal. La lista izquierda muestra responsabilidades disponibles con codigo y significado; la lista derecha contiene las seleccionadas. Los botones `Agregar` y `Quitar` evitan escritura manual. La responsabilidad `R-99-PN` conserva la regla excluyente: si se agrega, reemplaza cualquier otra responsabilidad, y si se agrega una responsabilidad ordinaria mientras `R-99-PN` esta seleccionada, esta se remueve.
+
+La sesion autenticada se persiste en `sessionStorage` para tolerar recarga de pagina antes del timeout de inactividad. El snapshot contiene datos de sesion, empresa activa, accesos, licencia y empresas disponibles para `ROOT`. La sesion se restaura solo si la ultima actividad registrada ocurrio hace menos de 5 minutos. La actividad se reinicia con eventos del usuario (`click`, `keydown`, `mousemove`, `scroll`, `touchstart`). Al superar 5 minutos sin actividad se limpia la sesion y se muestra login con modal informativo.
+
+El login no contiene credenciales dummy precargadas; usa placeholders y campos controlados. En venta POS, el identificador retornado al crear venta se muestra como estado no editable para habilitar la confirmacion; la fecha de venta se mantiene como responsabilidad del backend mediante `createdAt` y `confirmedAt`.
+
+### Context7 evidence
+
+- Library/tool: React oficial (`/reactjs/react.dev`).
+- Topic consulted: controlled inputs/selects and focus events.
+- Relevant finding: React documenta formularios controlados usando `value` y `onChange`, select controlado y eventos como `onFocus`/`onBlur` cuando se necesita reaccionar al foco.
+- Decision impact: Login, doble lista fiscal, regimenes y medios de pago se mantienen como componentes controlados sin JSON editable.
+- Library/tool: React oficial (`/reactjs/react.dev`).
+- Topic consulted: `useEffect` with browser event listeners and cleanup.
+- Relevant finding: React recomienda registrar listeners globales e intervalos dentro de `useEffect` y devolver una funcion de limpieza para remover listeners o cancelar intervalos.
+- Decision impact: El cierre por inactividad usa listeners de actividad y un intervalo con cleanup, evitando sesiones perdidas por recarga y evitando listeners huerfanos.
+
+## TASK-083 a TASK-084 busqueda de clientes y NIT/DV
+
+La venta POS no captura `customerId` como texto libre. La SPA permite escribir el numero de documento del cliente y consulta `GET /api/v1/customers?active=true&identificationNumberPrefix=<texto>` por medio del BFF. El resultado se limita por `X-Company-Id` y rol `CUSTOMER`; al seleccionar una coincidencia, el estado de venta conserva el `customerId` tecnico para crear la venta.
+
+Para NIT se aplica el concepto DIAN: el numero base se captura sin digito de verificacion, el DV se calcula y se presenta separado. No se aplica regla especial por prefijo `900` porque no queda soportada como concepto DIAN en las fuentes revisadas. El backend sigue siendo la fuente de verdad: calcula DV para `identificationTypeCode=31`, rechaza DV manual incorrecto y no acepta DV para documentos distintos a NIT. El frontend solo ayuda al usuario limpiando caracteres no numericos cuando el tipo es NIT y mostrando el DV como campo informativo de solo lectura.
+
+### Context7 evidence
+
+- Library/tool: React oficial (`/reactjs/react.dev`).
+- Topic consulted: controlled input search and fetch cleanup.
+- Relevant finding: React recomienda inputs controlados con `value`/`onChange` y `useEffect` con cleanup para ignorar respuestas obsoletas de fetch.
+- Decision impact: El buscador de cliente POS usa input controlado, debounce y cleanup para evitar aplicar resultados viejos.
+- Library/tool: Spring Boot 3.5 (`/websites/spring_io_spring-boot_3_5`).
+- Topic consulted: REST controllers with request parameters and validation.
+- Relevant finding: Spring Boot soporta controladores REST con `@GetMapping` y `@RequestParam`, manteniendo la logica de negocio fuera del controlador.
+- Decision impact: `thirdparty-service` extiende `/customers` con filtro opcional sin cambiar el contrato base.
+
+### Fuentes DIAN
+
+- Resolucion 4 de 2019 DIAN: NIT diligenciado sin DV y DV separado.
+- Concepto DIAN 13904 de 1988: el DV no se considera ultimo digito del NIT.
+- Decreto 678 de 2022: NIT asignado por DIAN y adicionado con DV.
+
+## TASK-085 clientes naturales simplificados
+
+El registro de clientes naturales simples se optimiza para facturacion electronica de consumidor final o persona natural comun. La regla aplica solo cuando el tercero tiene `roles=["CUSTOMER"]` y `personType=NATURAL`.
+
+Politica:
+
+- La SPA no permite seleccionar NIT para cliente natural simple.
+- El digito de verificacion no se captura ni se envia para cliente natural simple.
+- `taxResponsibilities` queda fijo en `["R-99-PN"]`.
+- `taxRegime` queda fijo en `NO_RESPONSABLE_IVA`.
+- `businessName` y `tradeName` quedan vacios/no editables porque corresponden a persona juridica o establecimiento comercial.
+- La direccion es opcional. Si esta vacia, `municipalityCode` se deriva del municipio activo de empresa/emisor fiscal; si se diligencia direccion, se habilita selector de departamento y municipio.
+- `thirdparty-service` rechaza requests directos que intenten modificar cualquiera de los valores automaticos.
+
+### Context7 evidence
+
+- Library/tool: React oficial (`/reactjs/react.dev`).
+- Topic consulted: controlled inputs, derived values and redundant state.
+- Relevant finding: React recomienda mantener los campos controlados y derivar valores calculables desde el estado base en lugar de duplicarlos como estado editable.
+- Decision impact: La SPA calcula el modo de cliente natural simple desde `thirdPartyType` y `personType`, y renderiza campos automaticos como read-only o no editables.
+
+## TASK-086 catalogos oficiales y operativos administrables
+
+El catalogo local estatico es suficiente para pruebas, pero el modelo SaaS requiere persistencia y administracion controlada de catalogos.
+
+Politica propuesta:
+
+- Catalogos regulatorios oficiales: tipos de documento DIAN, responsabilidades fiscales, regimenes, tipos de documento fiscal y codigos tributarios. Deben persistirse como catalogos globales versionados, con `code`, `label`, `source`, `version`, `valid_from`, `valid_to`, `active` y auditoria. No se editan codigos oficiales desde empresas.
+- DIVIPOLA/DANE no se modela como catalogo generico; usa tablas relacionales `catalog.department` y `catalog.municipality`, con FK por `department_code`, porque el flujo de UI selecciona departamento y luego municipios asociados.
+- Catalogos operativos por empresa: metodos de pago habilitados, billeteras virtuales habilitadas, categorias internas, centros de costo y etiquetas operativas. Pueden activarse/inactivarse por empresa y extenderse si mantienen un mapeo fiscal valido.
+- La UI de configuracion debe consumir estos catalogos desde `catalog-service` via BFF. Mientras se implementan endpoints, los catalogos estaticos del frontend quedan como fallback transitorio.
+- La depuracion futura no debe eliminar catalogos legacy hasta que existan seeds/migraciones y endpoints equivalentes en `catalog-service`.
+
+Endpoints iniciales:
+
+- `GET /api/v1/catalogs/{catalogCode}/items`
+- `GET /api/v1/company-catalogs/{catalogCode}/items`
+- `PUT /api/v1/company-catalogs/{catalogCode}/items/{itemCode}/activation`
+- `GET /api/v1/catalogs/departments`
+- `GET /api/v1/catalogs/departments/{departmentCode}/municipalities`
+- `GET /api/v1/catalogs/municipalities/{municipalityCode}`
+
+## TASK-087 modulo administrativo de catalogos
+
+El modulo `Catalogos` sera una pantalla administrativa protegida por RBAC. El usuario selecciona primero el catalogo por nombre visible en espanol; la SPA envia el `catalogCode` tecnico en ingles y consulta los items desde BFF/catalog-service. No se conservaran catalogos regulatorios u operativos hardcodeados en el frontend como fallback; si el backend de catalogos no responde, la pantalla debe mostrar error controlado y no inventar opciones.
+
+Politica:
+
+- `catalog.catalog_definition` define catalogos administrables, etiqueta visible en espanol, descripcion, si es regulatorio, si es configurable por empresa y si ROOT puede editar items globales.
+- `catalog.catalog_item` conserva `catalog_code` e `item_code` en ingles/codigo tecnico, con `label` y `description` en espanol para UI.
+- ROOT puede crear, actualizar e inactivar items globales permitidos.
+- Administradores empresariales solo pueden administrar `company-catalogs` para su empresa, o crear extensiones operativas si el catalogo lo permite.
+- Los catalogos regulatorios DIAN/DANE no se editan libremente por empresa; solo se actualizan mediante migraciones/versiones controladas o accion ROOT aprobada.
+- La SPA debe agregar el paso `Catalogos` al menu solo para ROOT, `COMPANY_CATALOGS_MANAGE` o permisos superiores aprobados.
+- Los labels visibles de permisos y catalogos deben estar en espanol; codigos tecnicos en ingles quedan documentados en specs y contratos.
+
+Context7 evidence:
+
+- Library/tool: React oficial (`/reactjs/react.dev`).
+- Topic consulted: controlled forms, conditional rendering and fetch cleanup.
+- Relevant finding: React recomienda formularios controlados con `value`/`onChange`, renderizado condicional por estado y `useEffect` con cleanup para ignorar respuestas obsoletas de fetch.
+- Decision impact: El modulo de catalogos usara selects/formularios controlados, renderizado por permisos efectivos y carga de datos desde BFF sin fallback local.
+
+## TASK-088 auditoria y limpieza de tablas legacy
+
+La limpieza de tablas y migraciones legacy se ejecutara como tarea separada y en dos fases obligatorias.
+
+Fase A - Auditoria:
+
+- Construir matriz por tabla con: esquema, tabla, microservicio dueno, entidad JPA/repositorio, migracion Flyway origen, endpoints/casos de uso que la usan, conteo de filas, decision y evidencia.
+- Clasificar cada tabla como `EN_USO`, `LEGACY_CON_DATOS`, `LEGACY_SIN_USO`, `PENDIENTE_MIGRACION` o `CANDIDATA_A_ELIMINAR`.
+- Validar referencias con busqueda de codigo, entidades JPA, SQL nativo, pruebas, migraciones y scripts Docker/IaC.
+- Ejecutar o documentar prueba E2E del flujo actual para demostrar que las tablas candidatas no participan.
+
+Fase B - Eliminacion aprobada y aplicada:
+
+- Crear migracion Flyway nueva para eliminar solo tablas aprobadas.
+- No editar migraciones ya aplicadas salvo que se decida reconstruir base local desde cero y se documente el procedimiento.
+- Ejecutar la migracion contra la base local actual y validar que una base limpia se crea correctamente desde cero.
+- Actualizar `data-model.md`, `data-dictionary.md`, `api-contract.md`, Docker/IaC y README para retirar referencias a tablas eliminadas.
+- `catalog.tipodocumento` se migra primero hacia `catalog.catalog_item` como `DIAN_DOCUMENT_TYPE` y luego se elimina junto a las tablas legacy vacias de catalogo.
+- `thirdparty.cliente` y `thirdparty.proveedor` se eliminan solo si no contienen filas con `company_id` no nulo; si hay datos de empresa real, Flyway aborta para exigir migracion/respaldo previo.
+- El runtime Java legacy de catalogo se retira para no mantener entidades, repositorios, endpoints ni pruebas sin uso.

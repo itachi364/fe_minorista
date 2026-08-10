@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.thirdparty.domain.model.PersonType;
+import com.msvanegasg.facturaelectronica.thirdparty.domain.model.TaxRegime;
 import com.msvanegasg.facturaelectronica.thirdparty.domain.model.ThirdPartyRole;
 
 import jakarta.persistence.CollectionTable;
@@ -74,6 +75,16 @@ public class ThirdPartyJpaEntity {
 
     @Column(name = "municipality_code", length = 20)
     private String municipalityCode;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "third_party_tax_responsibility", joinColumns = @JoinColumn(name = "third_party_id"))
+    @Column(name = "tax_responsibility_code", nullable = false, length = 20)
+    @Builder.Default
+    private Set<String> taxResponsibilities = new LinkedHashSet<>();
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tax_regime", length = 30)
+    private TaxRegime taxRegime;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "third_party_role", joinColumns = @JoinColumn(name = "third_party_id"))

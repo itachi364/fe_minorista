@@ -54,16 +54,63 @@
 | role_id | ref | Si | Rol dentro de la empresa. |
 | status | varchar(30) | Si | ACTIVE, INACTIVE. |
 
-## catalog.identification_type
+## catalog.catalog_definition
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---:|---:|---|
-| id | uuid/bigint | Si | Identificador. |
-| dian_code | varchar(20) | Si | Codigo DIAN si aplica. |
-| name | varchar(100) | Si | Nombre del tipo de identificacion. |
-| applies_to_person | boolean | Si | Aplica a persona natural. |
-| applies_to_company | boolean | Si | Aplica a persona juridica. |
+| catalog_code | varchar(80) | Si | Codigo tecnico del catalogo en ingles, por ejemplo `DIAN_DOCUMENT_TYPE`. |
+| name | varchar(160) | Si | Nombre visible del catalogo. |
+| description | varchar(500) | No | Descripcion funcional. |
+| regulatory | boolean | Si | Indica si el catalogo depende de normativa. |
+| company_configurable | boolean | Si | Indica si la empresa puede activar/inactivar valores. |
+| global_editable_by_root | boolean | Si | Indica si ROOT puede crear o editar valores globales. |
 | active | boolean | Si | Estado del catalogo. |
+
+## catalog.catalog_item
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---:|---:|---|
+| catalog_code | varchar(80) | Si | Codigo tecnico del catalogo. |
+| item_code | varchar(80) | Si | Codigo tecnico o normativo del item. |
+| label | varchar(220) | Si | Texto visible para el usuario. |
+| description | varchar(500) | No | Significado funcional o normativo. |
+| active | boolean | Si | Estado global del item. |
+| regulatory | boolean | Si | Indica si el item depende de normativa. |
+| source | varchar(120) | No | Fuente del catalogo, por ejemplo DIAN/DANE/migracion. |
+| source_version | varchar(80) | No | Version o fecha de la fuente. |
+| sort_order | integer | Si | Orden estable de presentacion. |
+
+## catalog.company_catalog_item_setting
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---:|---:|---|
+| company_id | uuid | Si | Empresa que parametriza el item. |
+| catalog_code | varchar(80) | Si | Codigo tecnico del catalogo. |
+| item_code | varchar(80) | Si | Codigo tecnico o normativo del item. |
+| active | boolean | Si | Estado del item para esa empresa. |
+
+## catalog.department
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---:|---:|---|
+| department_code | varchar(10) | Si | Codigo DANE/DIVIPOLA del departamento. |
+| department_name | varchar(160) | Si | Nombre del departamento visible en UI. |
+| active | boolean | Si | Estado. |
+| source | varchar(120) | No | Fuente del dato. |
+| source_version | varchar(80) | No | Version o fecha de la fuente. |
+| sort_order | integer | Si | Orden de presentacion. |
+
+## catalog.municipality
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---:|---:|---|
+| municipality_code | varchar(10) | Si | Codigo DANE/DIVIPOLA del municipio o ciudad. |
+| department_code | varchar(10) | Si | Departamento asociado. |
+| municipality_name | varchar(160) | Si | Nombre visible en UI. |
+| active | boolean | Si | Estado. |
+| source | varchar(120) | No | Fuente del dato. |
+| source_version | varchar(80) | No | Version o fecha de la fuente. |
+| sort_order | integer | Si | Orden de presentacion. |
 
 ## thirdparty.customer
 
@@ -102,8 +149,15 @@ Campos equivalentes a `thirdparty.customer`, orientados a proveedor.
 | phone | varchar(50) | No | Telefono. |
 | address | varchar(250) | No | Direccion. |
 | municipality_code | varchar(20) | No | Codigo municipio DIAN/DANE cuando aplique. |
-| tax_responsibilities | jsonb | No | Responsabilidades fiscales. |
+| tax_regime | varchar(30) | No | ORDINARIO, SIMPLE, RESPONSABLE_IVA, NO_RESPONSABLE_IVA. |
 | active | boolean | Si | Estado. |
+
+## thirdparty.third_party_tax_responsibility
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---:|---:|---|
+| third_party_id | ref | Si | Tercero fiscal. |
+| tax_responsibility_code | varchar(20) | Si | O-13, O-15, O-23, O-47 o R-99-PN. |
 
 ## thirdparty.third_party_role
 
@@ -299,6 +353,9 @@ Reglas TASK-048:
 | id | uuid/bigint | Si | Identificador de venta. |
 | company_id | ref | Si | Empresa. |
 | customer_id | ref | No | Cliente/adquirente. Puede ser consumidor final si normativa lo permite. |
+| payment_method_code | varchar(30) | Si | CASH, DEBIT_CARD, CREDIT_CARD, BREB_KEY, BANK_TRANSFER, VIRTUAL_WALLET. |
+| virtual_wallet_code | varchar(50) | No | Billetera colombiana; obligatorio solo con VIRTUAL_WALLET. |
+| payment_method_id | uuid | No | Columna legacy transitoria sin uso funcional nuevo. |
 | sale_channel | varchar(40) | Si | POS, ELECTRONIC_INVOICE, OTHER. |
 | sale_at | timestamp | Si | Fecha de venta. |
 | subtotal | numeric(19,2) | Si | Subtotal. |
@@ -594,3 +651,66 @@ Regla: `event_id + consumer` debe ser unico para impedir reprocesamiento no idem
 | correlation_id | varchar(120) | No | Correlacion tecnica propagada. |
 | payload_json | jsonb | Si | Payload canonico completo para reconstruccion/diagnostico de reportes. |
 | created_at | timestamptz | Si | Fecha/hora de materializacion. |
+## Catalogos versionados
+
+### `catalog.catalog_definition`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| catalog_code | varchar(80) | Si | Codigo tecnico del catalogo en ingles, por ejemplo `PAYMENT_METHOD`. |
+| label | varchar(180) | Si | Nombre visible en espanol para la UI. |
+| description | varchar(300) | No | Descripcion funcional del catalogo. |
+| regulatory | boolean | Si | Indica si el catalogo es regulatorio/oficial. |
+| company_configurable | boolean | Si | Indica si una empresa puede configurar activacion o extensiones permitidas. |
+| global_editable_by_root | boolean | Si | Indica si ROOT puede crear, editar o inactivar items globales desde UI. |
+| active | boolean | Si | Catalogo disponible para consumo y administracion. |
+| sort_order | integer | Si | Orden de presentacion en el selector de catalogos. |
+
+### `catalog.catalog_item`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| catalog_code | varchar(80) | Si | Codigo del catalogo, por ejemplo `PAYMENT_METHOD`. |
+| item_code | varchar(80) | Si | Codigo del item dentro del catalogo. |
+| label | varchar(180) | Si | Texto visible para usuario. |
+| description | varchar(300) | No | Descripcion funcional o normativa. |
+| active | boolean | Si | Disponibilidad global del item. |
+| regulatory | boolean | Si | Indica si proviene de catalogo oficial/regulatorio. |
+| source | varchar(80) | Si | Fuente del catalogo. |
+| source_version | varchar(40) | Si | Version/corte de la fuente. |
+| valid_from | date | No | Inicio de vigencia normativa. |
+| valid_to | date | No | Fin de vigencia normativa. |
+| sort_order | integer | Si | Orden de presentacion. |
+
+### `catalog.company_catalog_item_setting`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| company_id | uuid | Si | Empresa que configura el item. |
+| catalog_code | varchar(80) | Si | Catalogo global. |
+| item_code | varchar(80) | Si | Item global. |
+| enabled | boolean | Si | Item habilitado o inhabilitado para la empresa. |
+| updated_at | timestamptz | Si | Fecha de ultima modificacion. |
+
+### `catalog.department`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| department_code | varchar(2) | Si | Codigo DANE/DIVIPOLA del departamento. |
+| department_name | varchar(120) | Si | Nombre del departamento. |
+| active | boolean | Si | Departamento disponible para seleccion. |
+| source | varchar(80) | Si | Fuente de datos. |
+| source_version | varchar(40) | Si | Version/corte de la fuente. |
+| sort_order | integer | Si | Orden de presentacion. |
+
+### `catalog.municipality`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| municipality_code | varchar(5) | Si | Codigo DANE/DIVIPOLA del municipio o ciudad. |
+| department_code | varchar(2) | Si | Departamento asociado. |
+| municipality_name | varchar(160) | Si | Nombre del municipio o ciudad. |
+| active | boolean | Si | Municipio disponible para seleccion. |
+| source | varchar(80) | Si | Fuente de datos. |
+| source_version | varchar(40) | Si | Version/corte de la fuente. |
+| sort_order | integer | Si | Orden de presentacion dentro del departamento. |

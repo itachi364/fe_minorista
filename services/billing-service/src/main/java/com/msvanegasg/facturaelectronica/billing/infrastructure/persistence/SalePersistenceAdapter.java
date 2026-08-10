@@ -13,6 +13,7 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.ElectronicDocum
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.SaleRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
+import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleLine;
 import com.msvanegasg.facturaelectronica.billing.infrastructure.persistence.entity.ElectronicDocumentJpaEntity;
@@ -76,9 +77,10 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
     }
 
     private static Sale toDomain(SaleJpaEntity entity) {
-        return new Sale(entity.getId(), entity.getCompanyId(), entity.getCustomerId(), entity.getPaymentMethodId(),
-                entity.getSaleChannel(), entity.getStatus(), entity.getSubtotal(), entity.getDiscountTotal(),
-                entity.getTaxTotal(), entity.getTotal(), entity.getIdempotencyKey(), entity.getCreatedBy(),
+        return new Sale(entity.getId(), entity.getCompanyId(), entity.getCustomerId(),
+                entity.getPaymentMethodCode() == null ? PaymentMethodCode.CASH : entity.getPaymentMethodCode(),
+                entity.getVirtualWalletCode(), entity.getSaleChannel(), entity.getStatus(), entity.getSubtotal(),
+                entity.getDiscountTotal(), entity.getTaxTotal(), entity.getTotal(), entity.getIdempotencyKey(), entity.getCreatedBy(),
                 entity.getCreatedAt(), entity.getConfirmedAt(),
                 entity.getLines().stream().map(SalePersistenceAdapter::toLineDomain).toList(),
                 entity.getElectronicDocument() == null ? null : toDocumentDomain(entity.getId(), entity.getElectronicDocument()));
@@ -105,7 +107,9 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
         entity.setId(sale.id());
         entity.setCompanyId(sale.companyId());
         entity.setCustomerId(sale.customerId());
-        entity.setPaymentMethodId(sale.paymentMethodId());
+        entity.setPaymentMethodId(null);
+        entity.setPaymentMethodCode(sale.paymentMethodCode());
+        entity.setVirtualWalletCode(sale.virtualWalletCode());
         entity.setSaleChannel(sale.saleChannel());
         entity.setStatus(sale.status());
         entity.setSubtotal(sale.subtotal());

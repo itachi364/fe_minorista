@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.msvanegasg.facturaelectronica.thirdparty.application.dto.ThirdPartyResult;
 import com.msvanegasg.facturaelectronica.thirdparty.application.port.in.ManageThirdPartyUseCase;
 import com.msvanegasg.facturaelectronica.thirdparty.domain.model.ThirdPartyRole;
 import com.msvanegasg.facturaelectronica.thirdparty.interfaces.rest.ThirdPartyRestMapper;
@@ -65,8 +66,13 @@ public class ThirdPartyController {
 
     @GetMapping("/customers")
     public ResponseEntity<List<ThirdPartyResponse>> findCustomers(@RequestHeader(COMPANY_HEADER) UUID companyId,
-            @RequestParam(required = false) Boolean active) {
-        return ResponseEntity.ok(useCase.findByRole(companyId, ThirdPartyRole.CUSTOMER, active).stream()
+            @RequestParam(required = false) Boolean active,
+            @RequestParam(required = false) String identificationNumberPrefix) {
+        List<ThirdPartyResult> results = (identificationNumberPrefix == null || identificationNumberPrefix.isBlank())
+                ? useCase.findByRole(companyId, ThirdPartyRole.CUSTOMER, active)
+                : useCase.findByRoleAndIdentificationNumberPrefix(companyId, ThirdPartyRole.CUSTOMER, active,
+                        identificationNumberPrefix);
+        return ResponseEntity.ok(results.stream()
                 .map(ThirdPartyRestMapper::toResponse)
                 .toList());
     }
@@ -111,6 +117,6 @@ public class ThirdPartyController {
         return new ThirdPartyRequest(request.personType(), request.identificationTypeCode(),
                 request.identificationNumber(), request.verificationDigit(), request.fullName(),
                 request.businessName(), request.tradeName(), request.email(), request.phone(), request.address(),
-                request.municipalityCode(), roles);
+                request.municipalityCode(), request.taxResponsibilities(), request.taxRegime(), roles);
     }
 }

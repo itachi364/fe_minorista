@@ -41,6 +41,7 @@ import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalEnvironment;
 import com.msvanegasg.facturaelectronica.billing.domain.model.LicenseAction;
+import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
@@ -187,7 +188,9 @@ public class SaleManagementService implements ManageSaleUseCase {
         licenseValidationPort.ensureAllowed(command.companyId(), LicenseAction.CREATE_TRANSACTION);
         var lines = command.lines().stream().map(line -> toLine(command.companyId(), line)).toList();
         lines.forEach(line -> ensureAvailable(command.companyId(), line));
-        Sale sale = Sale.draft(idGenerator.newId(), command.companyId(), command.customerId(), command.paymentMethodId(),
+        Sale sale = Sale.draft(idGenerator.newId(), command.companyId(), command.customerId(),
+                command.paymentMethodCode() == null ? PaymentMethodCode.CASH : command.paymentMethodCode(),
+                command.virtualWalletCode(),
                 command.saleChannel() == null ? SaleChannel.POS : command.saleChannel(), command.idempotencyKey(),
                 command.createdBy(), clock.now(), lines);
         return BillingResultMapper.toSaleResult(saleRepository.save(sale));

@@ -174,36 +174,31 @@ Restricciones: `unique(token_hash)`.
 | `detail` | varchar(500) | No | Detalle seguro sin secretos. |
 | `occurred_at` | timestamptz | Si | Fecha del evento. |
 
-### Catalogos globales
+### Catalogos globales y configurables
 
-- `catalog.pais`
-- `catalog.tipodocumento`
-- `catalog.impuesto`
+- `catalog.catalog_definition`
+- `catalog.catalog_item`
+- `catalog.company_catalog_item_setting`
+- `catalog.department`
+- `catalog.municipality`
 - `accounting.puc_account_template`
 
-### Catalogos configurables
+Estado TASK-088:
 
-- `catalog.metodo_pago`
-- `catalog.tipo_gasto`
-- `catalog.parametros`
-- `catalog.categoria`
-- `catalog.producto` como compatibilidad temporal mientras se depura el codigo legacy reemplazado por `inventory-service`.
-
-Regla de migracion TASK-033:
-
-- `pais`, `tipodocumento` e `impuesto` se tratan como catalogos globales iniciales.
-- `metodo_pago`, `tipo_gasto`, `parametros`, `categoria` y `producto` incluyen `company_id` nullable para preparar aislamiento por empresa sin romper endpoints legacy durante la extraccion.
-- `producto` se mantiene temporalmente en `catalog-service` solo por compatibilidad; el ownership funcional nuevo queda en `inventory-service` desde TASK-034.
+- Los catalogos legacy `catalog.pais`, `catalog.tipodocumento`, `catalog.impuesto`, `catalog.metodo_pago`, `catalog.tipo_gasto`, `catalog.parametros`, `catalog.categoria` y `catalog.producto` fueron retirados.
+- `catalog.tipodocumento` se uso como fuente para poblar `catalog.catalog_item` con `catalog_code='DIAN_DOCUMENT_TYPE'` antes de eliminar la tabla.
+- Los metodos de pago, responsabilidades fiscales, regimenes tributarios, tipos de documento DIAN, billeteras virtuales y otros catalogos parametrizables viven en `catalog.catalog_item`.
+- DIVIPOLA se consulta desde `catalog.department` y `catalog.municipality`.
+- Los productos de negocio viven en `inventory.product`; `catalog-service` ya no conserva ownership temporal de productos.
 
 ### Terceros
 
-- `thirdparty.cliente` y `thirdparty.proveedor` como tablas historicas preservadas temporalmente.
-- `thirdparty.third_party` como modelo objetivo consolidado.
+- `thirdparty.third_party` como modelo consolidado activo.
 - `thirdparty.third_party_role` como roles cliente/proveedor por empresa.
+- `thirdparty.third_party_tax_responsibility` como responsabilidades fiscales multiples por tercero.
 
 Regla de migracion TASK-033:
 
-- `thirdparty.cliente` y `thirdparty.proveedor` incluyen `company_id` nullable y constraint unico por `(company_id, id_tipo_documento, numero_documento)`.
 - TASK-059 lote 2 retira endpoints legacy de terceros; el acceso runtime queda en `/api/v1` con `X-Company-Id` obligatorio.
 
 Modelo objetivo:
@@ -211,14 +206,15 @@ Modelo objetivo:
 - `thirdparty.third_party` consolida identidad fiscal de clientes y proveedores.
 - `thirdparty.third_party_role` permite que el mismo tercero sea `CUSTOMER`, `SUPPLIER` o ambos sin duplicar documento.
 - Para `identification_type_code=31` (NIT) se calcula automaticamente `verification_digit`; para otros documentos queda nulo.
-- Campos clave: `company_id`, `person_type`, `identification_type_code`, `identification_number`, `verification_digit`, `full_name`, `business_name`, `trade_name`, `email`, `phone`, `address`, `municipality_code`, `tax_responsibilities`, `active`.
+- Campos clave: `company_id`, `person_type`, `identification_type_code`, `identification_number`, `verification_digit`, `full_name`, `business_name`, `trade_name`, `email`, `phone`, `address`, `municipality_code`, `tax_regime`, `active`.
+- `thirdparty.third_party_tax_responsibility` conserva responsabilidades fiscales DIAN por tercero con codigos `O-13`, `O-15`, `O-23`, `O-47` o `R-99-PN`.
 - Restriccion objetivo: `unique(company_id, identification_type_code, identification_number)`.
 
 Estado TASK-047:
 
 - `thirdparty.third_party` y `thirdparty.third_party_role` quedan creadas por Flyway en `thirdparty-service`.
 - El DV NIT se calcula en dominio cuando `identification_type_code=31` y se persiste como snapshot fiscal.
-- Las tablas legacy `thirdparty.cliente` y `thirdparty.proveedor` se mantienen hasta ejecutar la migracion legacy completa.
+- Las tablas legacy `thirdparty.cliente` y `thirdparty.proveedor` fueron retiradas en TASK-088; la migracion de limpieza aborta si detecta datos legacy con `company_id` no nulo.
 
 ### Inventario
 
@@ -232,7 +228,7 @@ Estado TASK-047:
 Estado TASK-034:
 
 - `inventory-service` queda implementado fisicamente en `services/inventory-service`.
-- `inventory.product` reemplaza el ownership funcional de productos inventariables; `catalog.producto` queda solo como compatibilidad legacy temporal.
+- `inventory.product` reemplaza el ownership funcional de productos inventariables.
 - `inventory.purchase` e `inventory.purchase_line` reemplazan el modelo legacy de compras para el flujo nuevo.
 - `inventory.stock_balance` mantiene stock simple por empresa/producto.
 - `inventory.inventory_movement` mantiene kardex inmutable por empresa/producto y documento origen.
@@ -474,7 +470,9 @@ Estado TASK-049:
 Campos minimos adicionales para orquestacion:
 
 - `billing.sale.status`.
-- `billing.sale.payment_method_id`.
+- `billing.sale.payment_method_code`.
+- `billing.sale.virtual_wallet_code`.
+- `billing.sale.payment_method_id` queda como columna legacy transitoria sin uso funcional nuevo.
 - `billing.sale.customer_id`.
 - `billing.electronic_document.inventory_applied_at`.
 - `billing.electronic_document.accounting_applied_at`.
@@ -513,10 +511,10 @@ Antes de eliminar tablas publicas legacy se debe construir una matriz de reempla
 |---|---|---|---|
 | `roles`, `usuarios` | `identity-service` futuro | pendiente | mantener; autenticacion/autorizacion no esta migrada |
 | `auditoria`, `registro_accesos` | `audit-service` e `identity-service` | `audit.audit_event`, tablas identity futuras | `audit.audit_event` migrado en TASK-042; mantener legacy hasta migrar/respaldar datos |
-| `tipodocumento`, `pais`, `impuesto`, `metodo_pago`, `parametros`, `categoria`, `tipo_gasto` | `catalog-service` | `catalog.*` | migrado fisicamente; eliminar solo despues de migracion/respaldo de datos |
-| `producto` | `inventory-service` y compatibilidad `catalog-service` | `inventory.product`, `inventory.stock_balance`, `catalog.producto` temporal | migrado funcionalmente para inventario; resolver ownership final antes de limpiar |
-| `cliente` | `thirdparty-service` | `thirdparty.third_party` y `thirdparty.third_party_role` | codigo/endpoints legacy retirados en TASK-059 lote 2; tabla `thirdparty.cliente` preservada solo para migracion/respaldo |
-| `proveedor` | `thirdparty-service` | `thirdparty.third_party` y `thirdparty.third_party_role` | codigo/endpoints legacy retirados en TASK-059 lote 2; tabla `thirdparty.proveedor` preservada solo para migracion/respaldo |
+| `tipodocumento`, `pais`, `impuesto`, `metodo_pago`, `parametros`, `categoria`, `tipo_gasto` | `catalog-service` | `catalog.catalog_definition`, `catalog.catalog_item`, `catalog.department`, `catalog.municipality` | runtime legacy retirado y tablas eliminadas en TASK-088; `tipodocumento` migrado a `DIAN_DOCUMENT_TYPE` |
+| `producto` | `inventory-service` | `inventory.product`, `inventory.stock_balance` | runtime legacy retirado y tabla `catalog.producto` eliminada en TASK-088 |
+| `cliente` | `thirdparty-service` | `thirdparty.third_party` y `thirdparty.third_party_role` | codigo/endpoints legacy retirados en TASK-059 lote 2; tabla `thirdparty.cliente` eliminada en TASK-088 con salvaguarda `company_id` |
+| `proveedor` | `thirdparty-service` | `thirdparty.third_party` y `thirdparty.third_party_role` | codigo/endpoints legacy retirados en TASK-059 lote 2; tabla `thirdparty.proveedor` eliminada en TASK-088 con salvaguarda `company_id` |
 | `compra`, `detalle_compra` | `inventory-service` | `inventory.purchase`, `inventory.purchase_line`, `inventory.inventory_movement` | migrado funcionalmente; limpiar historicos solo con plan aprobado |
 | `gastos`, `detalle_gasto` | `accounting-service` inicialmente; `expenses/procurement-service` solo si se aprueba despues | `accounting.expense`, `accounting.accounts_payable` objetivo | mantener hasta implementar gastos/cuentas por pagar y migrar datos |
 | `factura`, `detalle_factura` | `billing-service` | `billing.sale`, `billing.sale_line`, `billing.electronic_document` | parcial; POS nuevo cubierto, factura electronica completa e historicos pendientes |
@@ -712,3 +710,64 @@ Restricciones:
 - `unique(company_id, user_id, role_id)` para asignaciones activas.
 - `role_id` debe pertenecer al mismo `company_id`.
 - El actor debe tener permisos efectivos estrictamente superiores al conjunto que delega.
+
+## Modelo de catalogos versionados
+
+#### `catalog.catalog_definition`
+
+Define los catalogos disponibles para administracion y consumo de UI.
+
+Campos clave: `catalog_code`, `label`, `description`, `regulatory`, `company_configurable`, `global_editable_by_root`, `active`, `sort_order`.
+
+#### `catalog.catalog_item`
+
+Catalogos oficiales y operativos globales por `catalog_code` e `item_code`.
+
+Campos clave: `catalog_code`, `item_code`, `label`, `description`, `active`, `regulatory`, `source`, `source_version`, `valid_from`, `valid_to`, `sort_order`.
+
+#### `catalog.company_catalog_item_setting`
+
+Overlay empresarial para activar o inactivar items sin editar codigos oficiales ni duplicar catalogos globales.
+
+Campos clave: `company_id`, `catalog_code`, `item_code`, `enabled`, `updated_at`.
+
+Restricciones:
+
+- `primary key(company_id, catalog_code, item_code)`.
+- FK compuesta hacia `catalog.catalog_item(catalog_code, item_code)`.
+
+#### `catalog.department`
+
+Departamentos DIVIPOLA/DANE.
+
+Campos clave: `department_code`, `department_name`, `active`, `source`, `source_version`, `sort_order`.
+
+#### `catalog.municipality`
+
+Municipios/ciudades DIVIPOLA/DANE relacionados con departamento.
+
+Campos clave: `municipality_code`, `department_code`, `municipality_name`, `active`, `source`, `source_version`, `sort_order`.
+
+Restricciones:
+
+- `municipality.department_code` referencia `department.department_code`.
+- La UI debe consultar municipios por departamento para evitar cargar todo DIVIPOLA como lista plana.
+
+## Matriz de auditoria para limpieza de tablas
+
+TASK-088 debe producir una matriz verificable antes de cualquier eliminacion.
+
+Columnas minimas:
+
+| Campo | Descripcion |
+|---|---|
+| schema_name | Esquema PostgreSQL donde vive la tabla. |
+| table_name | Nombre de la tabla auditada. |
+| owner_service | Microservicio o bounded context dueno actual. |
+| flyway_origin | Migracion o script que creo la tabla. |
+| jpa_references | Entidades, repositorios o queries que la referencian. |
+| endpoint_references | Endpoints o casos de uso que dependen de la tabla. |
+| row_count | Conteo de filas en la base local antes de decidir. |
+| e2e_used | Indica si participa en el flujo E2E actual. |
+| decision | `EN_USO`, `LEGACY_CON_DATOS`, `LEGACY_SIN_USO`, `PENDIENTE_MIGRACION` o `CANDIDATA_A_ELIMINAR`. |
+| action | Mantener, migrar, respaldar, eliminar o revisar. |

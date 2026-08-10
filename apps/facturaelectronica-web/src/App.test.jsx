@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import App from './App.jsx';
+import { loadStoredSession, saveStoredSession, SESSION_TIMEOUT_MS } from './utils/sessionStorage.js';
 
 const COMPANY_ID = '11111111-1111-1111-1111-111111111111';
 const LOGIN_RESPONSE = {
@@ -36,14 +37,59 @@ const ACTIVE_LICENSE = {
   reasonCode: null,
   message: 'Licencia activa.',
 };
+const TEST_RUNTIME_CATALOGS = {
+  dianDocumentTypes: [
+    { value: 13, label: '13 - Cedula de ciudadania' },
+    { value: 22, label: '22 - Cedula de extranjeria' },
+    { value: 31, label: '31 - NIT' },
+  ],
+  taxResponsibilityOptions: [
+    { value: 'O-13', label: 'O-13 - Gran contribuyente' },
+    { value: 'R-99-PN', label: 'R-99-PN - No responsable / No aplica' },
+  ],
+  taxRegimeOptions: [
+    { value: 'RESPONSABLE_IVA', label: 'Responsable de IVA' },
+    { value: 'NO_RESPONSABLE_IVA', label: 'No responsable de IVA' },
+  ],
+  paymentMethodOptions: [
+    { value: 'CASH', label: 'Efectivo' },
+    { value: 'VIRTUAL_WALLET', label: 'Billetera virtual' },
+  ],
+  virtualWalletOptions: [
+    { value: 'NEQUI', label: 'Nequi' },
+    { value: 'DAVIPLATA', label: 'Daviplata' },
+  ],
+  fiscalDocumentTypeOptions: [
+    { value: 'ELECTRONIC_POS', label: 'POS electronico' },
+  ],
+  fiscalEnvironmentOptions: [
+    { value: 'TEST', label: 'Pruebas' },
+  ],
+  locations: [
+    {
+      departmentCode: '11',
+      departmentName: 'Bogota, D.C.',
+      municipalities: [{ code: '11001', name: 'Bogota, D.C.' }],
+    },
+    {
+      departmentCode: '91',
+      departmentName: 'Amazonas',
+      municipalities: [{ code: '91001', name: 'Leticia' }],
+    },
+  ],
+};
 
 beforeEach(() => {
   vi.stubGlobal('crypto', { randomUUID: () => '00000000-0000-4000-8000-000000000000' });
+  vi.stubGlobal('__FACTURA_RUNTIME_CATALOGS__', TEST_RUNTIME_CATALOGS);
+  window.sessionStorage.clear();
 });
 
 afterEach(() => {
   cleanup();
+  window.sessionStorage.clear();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 test('renders only login when there is no active session', () => {
@@ -78,6 +124,28 @@ test('login with active license hides login and shows operational shell', async 
     `/api/v1/companies/${COMPANY_ID}/license/validation?action=CREATE_TRANSACTION`,
     expect.objectContaining({ headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }) }),
   );
+});
+
+test('restores active session after page reload simulation', async () => {
+  const fetchMock = mockLoginFlow(ACTIVE_LICENSE);
+
+  const firstRender = render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
+  firstRender.unmount();
+
+  render(<App />);
+
+  expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Iniciar sesion' })).not.toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledTimes(3);
+});
+
+test('stored session expires after five minutes of inactivity', () => {
+  saveStoredSession({ session: LOGIN_RESPONSE, companyAccesses: COMPANY_ACCESS, activeCompanyId: COMPANY_ID, lastActivityAt: 1000 });
+
+  expect(loadStoredSession(1000 + SESSION_TIMEOUT_MS - 1)).not.toBeNull();
+  expect(loadStoredSession(1000 + SESSION_TIMEOUT_MS)).toBeNull();
 });
 
 test('company user sees only modules allowed by effective permissions', async () => {
@@ -282,27 +350,110 @@ test('root manages company roles users and assignments', async () => {
   }));
 });
 
-test('creates third party with numeric DIAN identification type code', async () => {
+test('creates simple natural customer with automatic fiscal profile', async () => {
   const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
-    .mockResolvedValueOnce(jsonResponse({ id: '55555555-5555-5555-5555-555555555555', identificationTypeCode: 31 }));
+    .mockResolvedValueOnce(jsonResponse({ id: '55555555-5555-5555-5555-555555555555', identificationTypeCode: 13 }));
 
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: 'Terceros' }));
+  expect(screen.getByLabelText('Tipo de documento')).not.toHaveTextContent('31 - NIT');
+  expect(screen.queryByLabelText('Razon social')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Nombre comercial')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Responsabilidades fiscales')).toHaveValue('R-99-PN - No responsable / No aplica');
+  expect(screen.getByLabelText('Regimen tributario')).toHaveValue('No responsable de IVA');
   fireEvent.click(screen.getByRole('button', { name: 'Guardar tercero' }));
 
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
   const thirdPartyPayload = JSON.parse(fetchMock.mock.calls[3][1].body);
-  expect(thirdPartyPayload.identificationTypeCode).toBe(31);
+  expect(thirdPartyPayload.personType).toBe('NATURAL');
+  expect(thirdPartyPayload.identificationTypeCode).toBe(13);
+  expect(thirdPartyPayload.identificationNumber).toBe('1234567890');
+  expect(thirdPartyPayload.verificationDigit).toBeNull();
+  expect(thirdPartyPayload.businessName).toBeNull();
+  expect(thirdPartyPayload.tradeName).toBeNull();
+  expect(thirdPartyPayload.taxResponsibilities).toEqual(['R-99-PN']);
+  expect(thirdPartyPayload.taxRegime).toBe('NO_RESPONSABLE_IVA');
   expect(thirdPartyPayload.roles).toEqual(['CUSTOMER']);
   expect(thirdPartyPayload.role).toBeUndefined();
   expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/v1/third-parties', expect.objectContaining({
     method: 'POST',
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
-});test('logout clears session and returns to login screen', async () => {
+});test('creates third party with imported DIVIPOLA municipality code', async () => {
+  const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
+    .mockResolvedValueOnce(jsonResponse({ id: '88888888-8888-8888-8888-888888888888', municipalityCode: '91001' }));
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Terceros' }));
+  fireEvent.change(screen.getByLabelText('Direccion'), { target: { value: 'Calle 10 # 1-2' } });
+  fireEvent.change(screen.getByLabelText('Departamento'), { target: { value: '91' } });
+  await waitFor(() => expect(screen.getByText('Leticia')).toBeInTheDocument());
+  fireEvent.change(screen.getByLabelText('Municipio / ciudad'), { target: { value: '91001' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar tercero' }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+  const thirdPartyPayload = JSON.parse(fetchMock.mock.calls[3][1].body);
+  expect(thirdPartyPayload.municipalityCode).toBe('91001');
+});
+
+test('creates POS sale with controlled virtual wallet payment method', async () => {
+  const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
+    .mockResolvedValueOnce(jsonResponse({ id: '99999999-9999-9999-9999-999999999999', paymentMethodCode: 'VIRTUAL_WALLET' }));
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Venta POS' }));
+  fireEvent.change(screen.getByLabelText('Metodo de pago'), { target: { value: 'VIRTUAL_WALLET' } });
+  expect(screen.getByLabelText('Billetera virtual')).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Billetera virtual'), { target: { value: 'NEQUI' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Crear venta' }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+  expect(screen.queryByLabelText('Venta creada')).not.toBeInTheDocument();
+  expect(screen.getByText('Venta pendiente de confirmacion')).toBeInTheDocument();
+  expect(screen.getByText('99999999-9999-9999-9999-999999999999')).toBeInTheDocument();
+  const salePayload = JSON.parse(fetchMock.mock.calls[3][1].body);
+  expect(salePayload.paymentMethodCode).toBe('VIRTUAL_WALLET');
+  expect(salePayload.virtualWalletCode).toBe('NEQUI');
+  expect(salePayload.paymentMethodId).toBeUndefined();
+});
+
+test('searches customer by document and sends selected customer id in POS sale', async () => {
+  const customer = {
+    id: '12121212-1212-1212-1212-121212121212',
+    identificationNumber: '900123456',
+    verificationDigit: 8,
+    businessName: 'Cliente Demo SAS',
+  };
+  const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
+    .mockResolvedValueOnce(jsonResponse([customer]))
+    .mockResolvedValueOnce(jsonResponse({ id: '99999999-9999-9999-9999-999999999999', customerId: customer.id }));
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Venta POS' }));
+  fireEvent.change(screen.getByLabelText('Cliente por numero de documento'), { target: { value: '900123456' } });
+  await waitFor(() => expect(screen.getByText('Cliente seleccionado: Cliente Demo SAS (900123456)')).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: 'Crear venta' }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
+  expect(fetchMock).toHaveBeenNthCalledWith(4, `/api/v1/customers?active=true&identificationNumberPrefix=900123456`, expect.objectContaining({
+    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
+  }));
+  const salePayload = JSON.parse(fetchMock.mock.calls[4][1].body);
+  expect(salePayload.customerId).toBe(customer.id);
+});
+test('logout clears session and returns to login screen', async () => {
   mockLoginFlow(ACTIVE_LICENSE);
 
   render(<App />);

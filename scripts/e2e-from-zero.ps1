@@ -120,7 +120,6 @@ Wait-Health "audit-service" $AuditUrl
 Wait-Health "billing-service" $BillingUrl
 
 $suffix = (Get-Date -Format "yyyyMMddHHmmss")
-$identificationTypeId = [guid]::NewGuid().ToString()
 $ownerEmail = "owner-$suffix@example.com"
 $ownerPassword = "secret123"
 
@@ -128,7 +127,7 @@ Write-Host "Creating company..."
 $company = Invoke-Api -Method Post -Uri "$TenantUrl/api/v1/companies" -Body @{
     legalName = "E2E Empresa SAS $suffix"
     tradeName = "E2E Tienda $suffix"
-    identificationTypeId = $identificationTypeId
+    identificationTypeCode = 31
     identificationNumber = "90$suffix"
     verificationDigit = "1"
     email = "e2e-$suffix@example.com"
@@ -179,7 +178,7 @@ Write-Host "Creating second company for isolation checks..."
 $otherCompany = Invoke-Api -Method Post -Uri "$TenantUrl/api/v1/companies" -Body @{
     legalName = "E2E Otra Empresa SAS $suffix"
     tradeName = "E2E Otra Tienda $suffix"
-    identificationTypeId = ([guid]::NewGuid().ToString())
+    identificationTypeCode = 31
     identificationNumber = "91$suffix"
     verificationDigit = "2"
     email = "e2e-other-$suffix@example.com"
@@ -194,7 +193,7 @@ $companyHeaders = @{
 
 $customer = Invoke-Api -Method Post -Uri "$ThirdpartyUrl/api/v1/customers" -Headers $companyHeaders -Body @{
     personType = "NATURAL"
-    identificationTypeCode = "CC"
+    identificationTypeCode = 13
     identificationNumber = "10$suffix"
     fullName = "Cliente E2E $suffix"
     businessName = $null
@@ -209,7 +208,7 @@ Assert-Equal $customer.companyId $companyId "Customer must belong to company"
 
 $supplier = Invoke-Api -Method Post -Uri "$ThirdpartyUrl/api/v1/suppliers" -Headers $companyHeaders -Body @{
     personType = "JURIDICA"
-    identificationTypeCode = "NIT"
+    identificationTypeCode = 31
     identificationNumber = "900123456"
     verificationDigit = 8
     fullName = $null

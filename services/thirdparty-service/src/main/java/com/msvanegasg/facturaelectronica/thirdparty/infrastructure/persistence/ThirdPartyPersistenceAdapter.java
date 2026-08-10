@@ -48,6 +48,15 @@ public class ThirdPartyPersistenceAdapter implements ThirdPartyRepositoryPort {
     }
 
     @Override
+    public List<ThirdParty> findByCompanyIdAndRoleAndIdentificationNumberPrefix(UUID companyId, ThirdPartyRole role,
+            Boolean active, String identificationNumberPrefix) {
+        return repository.findByCompanyIdAndRoleAndIdentificationNumberPrefix(companyId, role, active,
+                identificationNumberPrefix).stream()
+                .map(ThirdPartyPersistenceAdapter::toDomain)
+                .toList();
+    }
+
+    @Override
     public boolean existsByCompanyIdAndDocument(UUID companyId, Integer identificationTypeCode,
             String identificationNumber) {
         return repository.existsByCompanyIdAndIdentificationTypeCodeAndIdentificationNumber(companyId,
@@ -58,8 +67,8 @@ public class ThirdPartyPersistenceAdapter implements ThirdPartyRepositoryPort {
         return ThirdParty.restore(entity.getId(), entity.getCompanyId(), entity.getPersonType(),
                 entity.getIdentificationTypeCode(), entity.getIdentificationNumber(), entity.getVerificationDigit(),
                 entity.getFullName(), entity.getBusinessName(), entity.getTradeName(), entity.getEmail(),
-                entity.getPhone(), entity.getAddress(), entity.getMunicipalityCode(), entity.getRoles(),
-                Boolean.TRUE.equals(entity.getActive()));
+                entity.getPhone(), entity.getAddress(), entity.getMunicipalityCode(), entity.getTaxResponsibilities(),
+                entity.getTaxRegime(), entity.getRoles(), Boolean.TRUE.equals(entity.getActive()));
     }
 
     private static ThirdPartyJpaEntity toEntity(ThirdParty thirdParty) {
@@ -78,6 +87,8 @@ public class ThirdPartyPersistenceAdapter implements ThirdPartyRepositoryPort {
                 .phone(thirdParty.phone())
                 .address(thirdParty.address())
                 .municipalityCode(thirdParty.municipalityCode())
+                .taxResponsibilities(new LinkedHashSet<>(thirdParty.taxResponsibilities()))
+                .taxRegime(thirdParty.taxRegime())
                 .roles(new LinkedHashSet<>(thirdParty.roles()))
                 .active(thirdParty.active())
                 .build();

@@ -42,6 +42,7 @@ import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.LicenseAction;
+import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
@@ -164,8 +165,8 @@ class SaleManagementServiceTest {
         when(clock.now()).thenReturn(NOW);
         when(saleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var result = service().create(new CreateSaleCommand(COMPANY_ID, null, null, SaleChannel.POS, "mixed-sale",
-                null, List.of(new SaleLineCommand(PRODUCT_ID, new BigDecimal("2.00"), new BigDecimal("15000.00"),
+        var result = service().create(new CreateSaleCommand(COMPANY_ID, null, PaymentMethodCode.CASH, null,
+                SaleChannel.POS, "mixed-sale", null, List.of(new SaleLineCommand(PRODUCT_ID, new BigDecimal("2.00"), new BigDecimal("15000.00"),
                         BigDecimal.ZERO, "IVA_19", new BigDecimal("19.00")),
                         new SaleLineCommand(serviceProductId, BigDecimal.ONE, new BigDecimal("35000.00"),
                                 BigDecimal.ZERO, "IVA_19", new BigDecimal("19.00")))));
@@ -326,13 +327,13 @@ class SaleManagementServiceTest {
     }
 
     private static CreateSaleCommand command(String idempotencyKey) {
-        return new CreateSaleCommand(COMPANY_ID, null, null, SaleChannel.POS, idempotencyKey, null,
+        return new CreateSaleCommand(COMPANY_ID, null, PaymentMethodCode.CASH, null, SaleChannel.POS, idempotencyKey, null,
                 List.of(new SaleLineCommand(PRODUCT_ID, new BigDecimal("2.00"), new BigDecimal("15000.00"),
                         BigDecimal.ZERO, "IVA_19", new BigDecimal("19.00"))));
     }
 
     private static Sale draftSale() {
-        return Sale.draft(SALE_ID, COMPANY_ID, null, null, SaleChannel.POS, "sale-1", null, NOW,
+        return Sale.draft(SALE_ID, COMPANY_ID, null, PaymentMethodCode.CASH, null, SaleChannel.POS, "sale-1", null, NOW,
                 List.of(com.msvanegasg.facturaelectronica.billing.domain.model.SaleLine.calculate(LINE_ID, PRODUCT_ID,
                         new BigDecimal("2.00"), new BigDecimal("15000.00"), BigDecimal.ZERO, "IVA_19",
                         new BigDecimal("19.00"))));

@@ -137,6 +137,11 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RF-027: El sistema debe implementar licenciamiento por empresa para habilitar, suspender o limitar el uso de la plataforma segun condiciones comerciales.
 - RF-028: El sistema debe administrar cuentas por cobrar por empresa, cliente, documento origen, vencimiento, saldo, pagos parciales/totales y estado de cartera.
 - RF-029: El sistema debe exponer una SPA web inicial que consuma unicamente el BFF para probar el flujo operativo desde empresa hasta venta POS/factura mock y reportes.
+- RF-030: El sistema debe simplificar el registro de clientes naturales para factura electronica, fijando automaticamente perfil fiscal no responsable/no aplica, bloqueando NIT/DV y evitando datos de persona juridica.
+- RF-031: El sistema debe administrar catalogos oficiales y operativos como datos versionados/configurables, permitiendo inactivar o extender catalogos empresariales sin alterar codigos regulatorios oficiales.
+- RF-038: El sistema debe exponer un modulo administrativo de catalogos que permita seleccionar un catalogo por nombre en espanol, listar sus registros, crear nuevos items permitidos, actualizar etiquetas/descripciones y activar o inactivar registros segun permisos.
+- RF-039: El sistema debe retirar catalogos operativos/regulatorios hardcodeados del frontend; la SPA solo puede consumir catalogos desde base de datos mediante BFF y `catalog-service`.
+- RF-040: El sistema debe auditar tablas, migraciones Flyway, entidades JPA, repositorios, endpoints y datos legacy para eliminar solamente lo que no participa en el flujo actual ni conserva datos utiles pendientes de migracion.
 
 ## Requisitos no funcionales
 
@@ -197,6 +202,12 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RN-031: Una cuenta por cobrar solo debe crearse desde una venta/documento fiscal valido para credito o por registro aprobado de cartera inicial; los pagos deben disminuir saldo sin permitir saldos negativos.
 - RN-032: Los procesos event-driven transversales como auditoria, proyecciones de reportes, reintentos de proveedor, notificaciones y efectos posteriores no criticos deben implementarse como Lambdas idempotentes disparadas por eventos, sin convertirlos en dependencias de arranque de los microservicios.
 - RN-033: La plataforma no usara brokers self-hosted en produccion; la mensajeria asincrona aprobada para cloud es EventBridge/SQS + Lambda.
+- RN-034: Cuando un tercero sea solo cliente y persona natural, el sistema debe fijar `taxResponsibilities=["R-99-PN"]`, `taxRegime=NO_RESPONSABLE_IVA`, impedir `identificationTypeCode=31`, dejar `verificationDigit` nulo y no aceptar razon social ni nombre comercial.
+- RN-035: Para un cliente natural simple sin direccion, el municipio debe derivarse de la empresa/emisor fiscal activo; solo al registrar direccion de residencia se permite seleccionar otro municipio.
+- RN-036: Los catalogos regulatorios DIAN/DANE deben conservar codigo, etiqueta, fuente, version y vigencia; las empresas solo podran inactivar/activar opciones permitidas o crear opciones operativas si existe mapeo fiscal valido.
+- RN-037: Los codigos tecnicos de catalogo se almacenan en ingles en base de datos, pero toda etiqueta visible de la SPA debe presentarse en espanol profesional.
+- RN-038: Los catalogos regulatorios globales solo pueden ser creados, actualizados o inactivados por `ROOT`; los administradores empresariales solo pueden gestionar activacion/inactivacion empresarial o catalogos operativos permitidos dentro de su empresa.
+- RN-039: La eliminacion de tablas o migraciones legacy requiere matriz de uso, verificacion de referencias, respaldo/migracion de datos cuando aplique, migracion Flyway nueva y validacion sobre base limpia y base local actual.
 
 ## Supuestos
 

@@ -223,23 +223,129 @@ Responsabilidad: catalogos globales y catalogos configurables por empresa.
 Estado TASK-033:
 
 - Microservicio fisico implementado en `services/catalog-service`.
-- Contratos legacy compatibles mantenidos durante extraccion: `/api/categorias`, `/api/paises`, `/api/tipos-documento`, `/api/metodos-pago`, `/api/parametros`, `/api/tipos-gasto`, `/api/impuestos` y `/api/productos`.
-- Los contratos `/api/v1/catalogs/*` siguen siendo objetivo del contrato estable posterior.
+- Contratos legacy de catalogo retirados en TASK-088: `/api/categorias`, `/api/paises`, `/api/tipos-documento`, `/api/metodos-pago`, `/api/parametros`, `/api/tipos-gasto`, `/api/impuestos` y `/api/productos`.
+- Los contratos `/api/v1/catalogs/*` y `/api/v1/company-catalogs/*` son el contrato estable activo.
 
-### Endpoints
+### Catalogos versionados v1
 
-- `GET /api/v1/catalogs/identification-types`
-- `GET /api/v1/catalogs/countries`
-- `GET /api/v1/catalogs/tax-types`
-- `GET /api/v1/catalogs/payment-methods`
-- `GET /api/v1/catalogs/puc-accounts`
-- `GET /api/v1/company-catalogs/taxes`
-- `POST /api/v1/company-catalogs/taxes`
+- `GET /api/v1/catalog-definitions`
+- `GET /api/v1/catalogs/{catalogCode}/items`
+- `GET /api/v1/catalogs/{catalogCode}/items?includeInactive=true`
+- `POST /api/v1/catalogs/{catalogCode}/items`
+- `PUT /api/v1/catalogs/{catalogCode}/items/{itemCode}`
+- `PUT /api/v1/catalogs/{catalogCode}/items/{itemCode}/activation`
+- `GET /api/v1/company-catalogs/{catalogCode}/items`
+- `POST /api/v1/company-catalogs/{catalogCode}/items`
+- `PUT /api/v1/company-catalogs/{catalogCode}/items/{itemCode}/activation`
+
+Catalogos iniciales:
+
+- `DIAN_DOCUMENT_TYPE`
+- `TAX_RESPONSIBILITY`
+- `TAX_REGIME`
+- `PAYMENT_METHOD`
+- `VIRTUAL_WALLET`
+- `FISCAL_DOCUMENT_TYPE`
+- `FISCAL_ENVIRONMENT`
+
+`CatalogDefinitionResponse`:
+
+```json
+{
+  "code": "PAYMENT_METHOD",
+  "label": "Metodos de pago",
+  "description": "Opciones de pago disponibles para ventas",
+  "regulatory": false,
+  "companyConfigurable": true,
+  "globalEditableByRoot": true,
+  "active": true
+}
+```
+
+`CatalogItemResponse`:
+
+```json
+{
+  "catalogCode": "PAYMENT_METHOD",
+  "code": "CASH",
+  "label": "Efectivo",
+  "description": "Pago en efectivo",
+  "active": true,
+  "enabledForCompany": true,
+  "regulatory": false,
+  "source": "APP",
+  "sourceVersion": "2026-08"
+}
+```
+
+`CatalogItemRequest`:
+
+```json
+{
+  "code": "CASH",
+  "label": "Efectivo",
+  "description": "Pago en efectivo",
+  "regulatory": false,
+  "source": "APP",
+  "sourceVersion": "2026-08",
+  "validFrom": "2026-08-01",
+  "validTo": null,
+  "sortOrder": 10
+}
+```
+
+`CatalogItemActivationRequest`:
+
+```json
+{
+  "active": true
+}
+```
+
+### DIVIPOLA v1
+
+- `GET /api/v1/catalogs/departments`
+- `GET /api/v1/catalogs/departments/{departmentCode}/municipalities`
+- `GET /api/v1/catalogs/municipalities/{municipalityCode}`
+
+`DepartmentResponse`:
+
+```json
+{
+  "code": "11",
+  "name": "Bogota, D.C.",
+  "active": true,
+  "source": "DANE DIVIPOLA",
+  "sourceVersion": "2025"
+}
+```
+
+`MunicipalityResponse`:
+
+```json
+{
+  "code": "11001",
+  "departmentCode": "11",
+  "name": "Bogota, D.C.",
+  "active": true,
+  "source": "DANE DIVIPOLA",
+  "sourceVersion": "2025"
+}
+```
 
 Regla:
 
 - Los catalogos oficiales pueden omitirse de `X-Company-Id`.
 - Los catalogos configurables por empresa requieren `X-Company-Id`.
+- Los codigos regulatorios no son editables por empresa.
+- `ROOT` puede crear, actualizar o inactivar catalogos globales permitidos.
+- Un administrador empresarial solo puede operar `company-catalogs` y extensiones empresariales permitidas para su `company_id`.
+- La UI debe mostrar `CatalogDefinitionResponse.label` y `CatalogItemResponse.label` en espanol, aunque `code`, `catalogCode` e `itemCode` se conserven en ingles en contratos y base de datos.
+- Los catalogos regulatorios oficiales deben preservar `source`, `sourceVersion`, `validFrom` y `validTo`.
+- `company-catalogs` solo permite activar/inactivar opciones para una empresa mediante `X-Company-Id`.
+- La activacion empresarial no puede habilitar un item global inactivo.
+- `department.code` y `municipality.code` corresponden a codigos DANE/DIVIPOLA; un municipio siempre referencia un departamento existente.
+- La UI debe consultar municipios por departamento, no cargar todo DIVIPOLA como catalogo generico.
 
 ## thirdparty-service
 
@@ -265,7 +371,7 @@ Estado TASK-033:
 ### Clientes v1
 
 - `POST /api/v1/customers`
-- `GET /api/v1/customers?active=`
+- `GET /api/v1/customers?active=&identificationNumberPrefix=`
 
 ### Proveedores v1
 
@@ -280,7 +386,6 @@ Retirados en TASK-059 lote 2. Los consumidores deben usar `/api/v1/customers`, `
 
 ```json
 {
-  "role": "CUSTOMER",
   "personType": "JURIDICA",
   "identificationTypeCode": 31,
   "identificationNumber": "900123456",
@@ -292,7 +397,8 @@ Retirados en TASK-059 lote 2. Los consumidores deben usar `/api/v1/customers`, `
   "address": "Calle 1 # 2-3",
   "municipalityCode": "11001",
   "taxResponsibilities": ["O-13"],
-  "taxRegime": "RESPONSABLE_IVA"
+  "taxRegime": "RESPONSABLE_IVA",
+  "roles": ["CUSTOMER"]
 }
 ```
 
@@ -301,8 +407,13 @@ Reglas:
 - `identificationTypeCode + identificationNumber` es unico por empresa.
 - `identificationTypeCode=31` calcula `verificationDigit` automaticamente; el request no debe tratar el DV como dato libre.
 - Para tipos de documento distintos a NIT, `verificationDigit` debe quedar nulo o vacio.
+- `identificationNumberPrefix` permite buscar clientes activos por prefijo de numero de documento para Venta POS; siempre se filtra por `X-Company-Id` y rol `CUSTOMER`.
+- Para NIT, el numero de documento corresponde al NIT base sin DV, solo con digitos; el DV viaja separado y es calculado por backend.
 - `personType` debe ser `NATURAL` o `JURIDICA`.
 - Un tercero puede tener rol `CUSTOMER`, `SUPPLIER` o `BOTH`.
+- `taxResponsibilities` acepta `O-13`, `O-15`, `O-23`, `O-47` o `R-99-PN`; `R-99-PN` es excluyente.
+- `taxRegime` acepta `ORDINARIO`, `SIMPLE`, `RESPONSABLE_IVA` o `NO_RESPONSABLE_IVA`.
+- Si el tercero es solo `CUSTOMER` y `personType=NATURAL`, el backend exige perfil automatico: `identificationTypeCode` distinto de `31`, `verificationDigit=null`, `businessName=null`, `tradeName=null`, `taxResponsibilities=["R-99-PN"]` y `taxRegime=NO_RESPONSABLE_IVA`.
 - Ninguna consulta puede retornar terceros de otra empresa.
 
 ## inventory-service
@@ -602,7 +713,8 @@ Estado TASK-049:
 {
   "customerId": "uuid",
   "saleChannel": "POS",
-  "paymentMethodId": "uuid",
+  "paymentMethodCode": "VIRTUAL_WALLET",
+  "virtualWalletCode": "NEQUI",
   "items": [
     {
       "productId": "uuid",
@@ -1364,6 +1476,12 @@ Los eventos productivos se publicaran hacia EventBridge/SQS usando un envelope c
   "payload": {}
 }
 ```
+
+Reglas de pago:
+
+- `paymentMethodCode` acepta `CASH`, `DEBIT_CARD`, `CREDIT_CARD`, `BREB_KEY`, `BANK_TRANSFER` o `VIRTUAL_WALLET`.
+- `virtualWalletCode` solo aplica cuando `paymentMethodCode = VIRTUAL_WALLET`.
+- `virtualWalletCode` acepta `NEQUI`, `DAVIPLATA`, `MOVII`, `DALE`, `RAPPIPAY`, `POWWI`, `CFA_EXPRESS`, `AV_VILLAS_DIGITAL_DEPOSIT`, `MOSI` o `BBVA_DINERO_MOVIL`.
 
 Eventos canonicos iniciales:
 

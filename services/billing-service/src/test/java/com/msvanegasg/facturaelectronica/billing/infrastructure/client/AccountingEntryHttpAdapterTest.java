@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
+import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
@@ -57,7 +58,7 @@ class AccountingEntryHttpAdapterTest {
     private static Sale confirmedSale() {
         UUID companyId = UUID.fromString("11111111-1111-1111-1111-111111111111");
         UUID saleId = UUID.fromString("22222222-2222-2222-2222-222222222222");
-        Sale draft = Sale.draft(saleId, companyId, null, null, SaleChannel.POS, "sale-1", null,
+        Sale draft = Sale.draft(saleId, companyId, null, PaymentMethodCode.CASH, null, SaleChannel.POS, "sale-1", null,
                 Instant.parse("2026-05-19T10:00:00Z"),
                 List.of(SaleLine.calculate(UUID.fromString("44444444-4444-4444-4444-444444444444"),
                         UUID.fromString("33333333-3333-3333-3333-333333333333"), new BigDecimal("2.00"),

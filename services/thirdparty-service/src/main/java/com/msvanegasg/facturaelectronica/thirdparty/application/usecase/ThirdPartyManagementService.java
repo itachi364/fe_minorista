@@ -26,10 +26,11 @@ public class ThirdPartyManagementService implements ManageThirdPartyUseCase {
                 command.identificationNumber())) {
             throw new IllegalStateException("third party already exists for company and document");
         }
-        ThirdParty thirdParty = ThirdParty.create(command.companyId(), command.personType(),
-                command.identificationTypeCode(), command.identificationNumber(), command.fullName(),
-                command.businessName(), command.tradeName(), command.email(), command.phone(), command.address(),
-                command.municipalityCode(), command.roles());
+        ThirdParty thirdParty = ThirdParty.restore(null, command.companyId(), command.personType(),
+                command.identificationTypeCode(), command.identificationNumber(), command.verificationDigit(),
+                command.fullName(), command.businessName(), command.tradeName(), command.email(), command.phone(),
+                command.address(), command.municipalityCode(), command.taxResponsibilities(), command.taxRegime(),
+                command.roles(), true);
         return toResult(repository.save(thirdParty));
     }
 
@@ -43,7 +44,7 @@ public class ThirdPartyManagementService implements ManageThirdPartyUseCase {
         }
         ThirdParty updated = existing.update(command.personType(), command.fullName(), command.businessName(),
                 command.tradeName(), command.email(), command.phone(), command.address(), command.municipalityCode(),
-                command.roles());
+                command.taxResponsibilities(), command.taxRegime(), command.roles());
         return toResult(repository.save(updated));
     }
 
@@ -56,6 +57,17 @@ public class ThirdPartyManagementService implements ManageThirdPartyUseCase {
     public List<ThirdPartyResult> findByRole(UUID companyId, ThirdPartyRole role, Boolean active) {
         Objects.requireNonNull(companyId, "companyId is required");
         return repository.findByCompanyIdAndRole(companyId, role, active).stream()
+                .map(ThirdPartyManagementService::toResult)
+                .toList();
+    }
+
+    @Override
+    public List<ThirdPartyResult> findByRoleAndIdentificationNumberPrefix(UUID companyId, ThirdPartyRole role,
+            Boolean active, String identificationNumberPrefix) {
+        Objects.requireNonNull(companyId, "companyId is required");
+        String normalizedPrefix = normalizeDocumentNumber(identificationNumberPrefix);
+        return repository.findByCompanyIdAndRoleAndIdentificationNumberPrefix(companyId, role, active,
+                normalizedPrefix).stream()
                 .map(ThirdPartyManagementService::toResult)
                 .toList();
     }
@@ -91,7 +103,8 @@ public class ThirdPartyManagementService implements ManageThirdPartyUseCase {
                 thirdParty.identificationTypeCode(), thirdParty.identificationNumber(),
                 thirdParty.verificationDigit(), thirdParty.fullName(), thirdParty.businessName(),
                 thirdParty.tradeName(), thirdParty.email(), thirdParty.phone(), thirdParty.address(),
-                thirdParty.municipalityCode(), thirdParty.roles(), thirdParty.active());
+                thirdParty.municipalityCode(), thirdParty.taxResponsibilities(), thirdParty.taxRegime(),
+                thirdParty.roles(), thirdParty.active());
     }
 
     private static Integer normalizeDocumentType(Integer value) {

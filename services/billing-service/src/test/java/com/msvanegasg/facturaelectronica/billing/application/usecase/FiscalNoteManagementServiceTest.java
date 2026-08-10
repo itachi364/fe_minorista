@@ -30,6 +30,7 @@ import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalNote;
 import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalNoteType;
+import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
@@ -92,7 +93,8 @@ class FiscalNoteManagementServiceTest {
 
     private static Sale sale(ElectronicDocumentType documentType) {
         UUID productId = UUID.fromString("55555555-5555-5555-5555-555555555555");
-        Sale sale = Sale.draft(SALE_ID, COMPANY_ID, null, null, SaleChannel.ELECTRONIC_INVOICE, "sale-1", null, NOW,
+        Sale sale = Sale.draft(SALE_ID, COMPANY_ID, null, PaymentMethodCode.CASH, null,
+                SaleChannel.ELECTRONIC_INVOICE, "sale-1", null, NOW,
                 List.of(SaleLine.calculate(UUID.randomUUID(), productId, new BigDecimal("1.00"),
                         new BigDecimal("10000.00"), BigDecimal.ZERO, "IVA_19", new BigDecimal("19.00"))));
         return sale.confirm(new ElectronicDocument(DOCUMENT_ID, COMPANY_ID, SALE_ID, documentType,

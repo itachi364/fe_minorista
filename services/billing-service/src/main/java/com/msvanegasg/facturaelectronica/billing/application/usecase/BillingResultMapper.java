@@ -19,9 +19,9 @@ final class BillingResultMapper {
     }
 
     static SaleResult toSaleResult(Sale sale) {
-        return new SaleResult(sale.id(), sale.companyId(), sale.customerId(), sale.paymentMethodId(),
-                sale.saleChannel(), sale.status(), sale.subtotal(), sale.discountTotal(), sale.taxTotal(),
-                sale.total(), sale.idempotencyKey(), sale.createdBy(), sale.createdAt(), sale.confirmedAt(),
+        return new SaleResult(sale.id(), sale.companyId(), sale.customerId(), sale.paymentMethodCode(),
+                sale.virtualWalletCode(), sale.saleChannel(), sale.status(), sale.subtotal(), sale.discountTotal(),
+                sale.taxTotal(), sale.total(), sale.idempotencyKey(), sale.createdBy(), sale.createdAt(), sale.confirmedAt(),
                 sale.lines().stream().map(BillingResultMapper::toLineResult).toList(),
                 sale.electronicDocument() == null ? null : toDocumentResult(sale.electronicDocument()));
     }

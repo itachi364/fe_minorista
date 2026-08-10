@@ -20,6 +20,7 @@ import com.msvanegasg.facturaelectronica.billingservice.BillingServiceApplicatio
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
+import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
@@ -46,6 +47,7 @@ class SalePersistenceAdapterTest {
         assertThat(found.lines()).hasSize(1);
         assertThat(found.lines().get(0).productId()).isEqualTo(saved.lines().get(0).productId());
         assertThat(found.lines().get(0).productSku()).isEqualTo("SKU-1");
+        assertThat(found.paymentMethodCode()).isEqualTo(PaymentMethodCode.CASH);
         assertThat(found.lines().get(0).itemType()).isEqualTo(SaleItemType.PHYSICAL_GOOD);
         assertThat(found.lines().get(0).stockTracked()).isTrue();
     }
@@ -67,7 +69,7 @@ class SalePersistenceAdapterTest {
         UUID saleId = UUID.randomUUID();
         UUID companyId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        return Sale.draft(saleId, companyId, null, null, SaleChannel.POS, "sale-" + saleId, null,
+        return Sale.draft(saleId, companyId, null, PaymentMethodCode.CASH, null, SaleChannel.POS, "sale-" + saleId, null,
                 Instant.parse("2026-05-19T10:00:00Z"),
                 List.of(SaleLine.calculate(UUID.randomUUID(), productId, "SKU-1", "Producto",
                         SaleItemType.PHYSICAL_GOOD, true, new BigDecimal("2.00"), new BigDecimal("15000.00"),

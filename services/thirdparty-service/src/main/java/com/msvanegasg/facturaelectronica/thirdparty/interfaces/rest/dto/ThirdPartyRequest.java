@@ -3,6 +3,7 @@ package com.msvanegasg.facturaelectronica.thirdparty.interfaces.rest.dto;
 import java.util.Set;
 
 import com.msvanegasg.facturaelectronica.thirdparty.domain.model.PersonType;
+import com.msvanegasg.facturaelectronica.thirdparty.domain.model.TaxRegime;
 import com.msvanegasg.facturaelectronica.thirdparty.domain.model.ThirdPartyRole;
 
 import jakarta.validation.constraints.Email;
@@ -25,5 +26,7 @@ public record ThirdPartyRequest(
         @Size(max = 50) String phone,
         @Size(max = 250) String address,
         @Size(max = 20) String municipalityCode,
+        Set<@Size(max = 20) String> taxResponsibilities,
+        TaxRegime taxRegime,
         @NotEmpty Set<ThirdPartyRole> roles) {
 }

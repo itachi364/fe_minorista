@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
+import com.msvanegasg.facturaelectronica.billing.domain.model.VirtualWalletCode;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -31,6 +33,12 @@ public class SaleJpaEntity {
     private UUID customerId;
     @Column(name = "payment_method_id")
     private UUID paymentMethodId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method_code", nullable = false, length = 30)
+    private PaymentMethodCode paymentMethodCode;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "virtual_wallet_code", length = 50)
+    private VirtualWalletCode virtualWalletCode;
     @Enumerated(EnumType.STRING)
     @Column(name = "sale_channel", nullable = false)
     private SaleChannel saleChannel;
@@ -74,6 +82,10 @@ public class SaleJpaEntity {
     public void setCustomerId(UUID customerId) { this.customerId = customerId; }
     public UUID getPaymentMethodId() { return paymentMethodId; }
     public void setPaymentMethodId(UUID paymentMethodId) { this.paymentMethodId = paymentMethodId; }
+    public PaymentMethodCode getPaymentMethodCode() { return paymentMethodCode; }
+    public void setPaymentMethodCode(PaymentMethodCode paymentMethodCode) { this.paymentMethodCode = paymentMethodCode; }
+    public VirtualWalletCode getVirtualWalletCode() { return virtualWalletCode; }
+    public void setVirtualWalletCode(VirtualWalletCode virtualWalletCode) { this.virtualWalletCode = virtualWalletCode; }
     public SaleChannel getSaleChannel() { return saleChannel; }
     public void setSaleChannel(SaleChannel saleChannel) { this.saleChannel = saleChannel; }
     public SaleStatus getStatus() { return status; }

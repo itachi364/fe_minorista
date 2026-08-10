@@ -4,6 +4,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.thirdparty.domain.model.PersonType;
+import com.msvanegasg.facturaelectronica.thirdparty.domain.model.TaxRegime;
 import com.msvanegasg.facturaelectronica.thirdparty.domain.model.ThirdPartyRole;
 
 public record ThirdPartyResponse(
@@ -20,6 +21,8 @@ public record ThirdPartyResponse(
         String phone,
         String address,
         String municipalityCode,
+        Set<String> taxResponsibilities,
+        TaxRegime taxRegime,
         Set<ThirdPartyRole> roles,
         boolean active) {
 }

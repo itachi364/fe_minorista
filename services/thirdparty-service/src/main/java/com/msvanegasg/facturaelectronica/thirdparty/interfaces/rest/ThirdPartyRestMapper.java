@@ -16,13 +16,14 @@ public final class ThirdPartyRestMapper {
         return new ThirdPartyCommand(companyId, request.personType(), request.identificationTypeCode(),
                 request.identificationNumber(), request.verificationDigit(), request.fullName(),
                 request.businessName(), request.tradeName(), request.email(), request.phone(), request.address(),
-                request.municipalityCode(), request.roles());
+                request.municipalityCode(), request.taxResponsibilities(), request.taxRegime(), request.roles());
     }
 
     public static ThirdPartyResponse toResponse(ThirdPartyResult result) {
         return new ThirdPartyResponse(result.id(), result.companyId(), result.personType(),
                 result.identificationTypeCode(), result.identificationNumber(), result.verificationDigit(),
                 result.fullName(), result.businessName(), result.tradeName(), result.email(), result.phone(),
-                result.address(), result.municipalityCode(), result.roles(), result.active());
+                result.address(), result.municipalityCode(), result.taxResponsibilities(), result.taxRegime(),
+                result.roles(), result.active());
     }
 }

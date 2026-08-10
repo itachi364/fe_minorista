@@ -2009,7 +2009,7 @@
     - En TASK-059 lote 1 Context7 no estuvo disponible; no se introdujo decision nueva de framework o libreria en ese lote.
     - TASK-059 lote 2 usa Context7 para validar riesgos de Spring Boot component/entity/repository scanning y Flyway validation antes de limpiar terceros legacy.
     - TASK-059 lote 2 elimina codigo runtime legacy de terceros: `/api/clientes`, `/api/proveedores`, modelo `Customer`/`Supplier`, puertos, casos de uso, adaptadores, repositorios, mappers, cliente REST de tipo documento y WebFlux del modulo.
-    - TASK-059 lote 2 conserva migraciones Flyway y tablas `thirdparty.cliente`/`thirdparty.proveedor` para migracion/respaldo aprobado; el runtime canonico queda en `/api/v1/third-parties`, `/api/v1/customers` y `/api/v1/suppliers`.
+    - TASK-059 lote 2 conserva migraciones Flyway y tablas `thirdparty.cliente`/`thirdparty.proveedor` para migracion/respaldo aprobado; el runtime canonico queda en `/api/v1/third-parties`, `/api/v1/customers` y `/api/v1/suppliers`. Esta preservacion fue reemplazada por la limpieza controlada de TASK-088.
   - Tests requeridos:
     - `.\mvnw.cmd test`.
     - E2E completo desde cero.
@@ -2027,7 +2027,7 @@
     - `docker compose config --quiet`: exitoso.
     - `scripts/e2e-from-zero.ps1 -StartContainers`: exitoso; valida empresa, licencia, usuario, terceros v1, configuracion fiscal, contabilidad PUC basica, inventario, venta POS, factura electronica mock DIAN, auditoria y aislamiento multiempresa.
     - `docker compose ps`: todos los contenedores requeridos quedaron `Up` y `healthy`.
-    - Se conservan migraciones Flyway y tablas `thirdparty.cliente`/`thirdparty.proveedor`; no hubo eliminacion de datos ni cambios destructivos de DB en este lote.
+    - En este lote se conservaron migraciones Flyway y tablas `thirdparty.cliente`/`thirdparty.proveedor`; no hubo eliminacion de datos ni cambios destructivos de DB. TASK-088 elimina esas tablas despues con salvaguarda sobre `company_id`.
 - [x] TASK-060: Definir arquitectura cloud AWS, BFF y clasificacion ECS Fargate/Lambda
   - Estado: DONE
   - Requisitos: RNF-010, RNF-011, RNF-014, RNF-019, RNF-020, RNF-021, RN-030, RN-032, RN-033.
@@ -2551,8 +2551,8 @@
     - `npm run test`: 7 tests, 0 fallos.
     - `npm run build`: exitoso.
     - `./mvnw.cmd test`: reactor completo 17 modulos, 0 fallos.
-- [ ] TASK-076: Ajustar experiencia funcional colombiana y RBAC operativo
-  - Estado: APPROVED
+- [x] TASK-076: Ajustar experiencia funcional colombiana y RBAC operativo
+  - Estado: DONE
   - Requisitos: RF-001, RF-016, RF-026, RF-030, RF-031, RF-032, RF-033, RF-034, RF-036, RF-037, RN-018, RN-019, RN-026.
   - Acceptance criteria: AC-075, AC-076, AC-077, AC-078, AC-079, AC-080.
   - Descripcion: Ajustar la SPA y los contratos minimos para que la operacion refleje conceptos colombianos de facturacion: terceros como cliente/proveedor, municipios por nombre agrupados por departamento, emisor fiscal derivado de la empresa activa, ROOT con selector de empresas creadas y RBAC con asignacion de roles mediante modal usando busqueda por correo.
@@ -2575,3 +2575,350 @@
     - `./mvnw.cmd -pl services/identity-service test`.
     - `npm run test` en `apps/facturaelectronica-web`.
     - `npm run build` en `apps/facturaelectronica-web`.
+  - Resultado local:
+    - La UI usa etiquetas en espanol para terceros, datos fiscales, RBAC y administracion inicial.
+    - El selector de municipios muestra departamentos y municipios por nombre, enviando al backend el codigo DIVIPOLA/DANE.
+    - El emisor fiscal se precarga desde la empresa activa.
+    - ROOT puede seleccionar empresa activa desde empresas creadas, abrir modal de administrador inicial y asignar rol `OWNER`.
+    - La asignacion de roles se realiza desde modal, buscando usuario por correo y enviando `userId`/`roleIds` al backend.
+  - Tests ejecutados:
+    - `npm run test`: 10 tests, 0 fallos.
+    - `npm run build`: exitoso.
+
+- [x] TASK-077: Modularizar SPA frontend por Clean Code y SOLID
+  - Estado: DONE
+  - Requisitos: RNF-001, RNF-019, RNF-020.
+  - Acceptance criteria: AC-081, AC-082, AC-083.
+  - Descripcion: Dividir `App.jsx` en modulos de datos, utilidades, componentes compartidos y features para reducir acoplamiento, mejorar mantenibilidad y preparar la importacion completa de DIVIPOLA.
+  - Alcance:
+    - Extraer catalogos y estados iniciales a `src/data`.
+    - Extraer builders, queries, reglas de permisos y helpers a `src/utils`.
+    - Extraer campos, paneles, modales y selector de municipios a `src/components`.
+    - Extraer formularios y paneles por dominio a `src/features/*`.
+    - Mantener `App.jsx` como orquestador de estado, handlers y composicion.
+    - No cambiar contratos API ni comportamiento funcional.
+  - Evidencia Context7:
+    - React oficial (`/reactjs/react.dev`) recomienda descomponer la UI en jerarquias de componentes, mantener componentes puros, levantar estado al padre comun y pasar datos/handlers mediante props.
+  - Tests requeridos:
+    - `npm run test` en `apps/facturaelectronica-web`.
+    - `npm run build` en `apps/facturaelectronica-web`.
+  - Tests ejecutados:
+    - `npm run test`: 13 tests, 0 fallos.
+    - `npm run build`: exitoso.
+  - Resultado local:
+    - `App.jsx` quedo como orquestador de estado, handlers y composicion.
+    - Los catalogos y estados iniciales quedaron en `src/data`.
+    - Los builders, queries, reglas de permisos y helpers quedaron en `src/utils`.
+    - Los formularios, modales y paneles quedaron separados en `src/components` y `src/features`.
+  - Tests ejecutados:
+    - `npm run test`: 10 tests, 0 fallos.
+    - `npm run build`: exitoso.
+
+- [x] TASK-078: Importar catalogo completo DIVIPOLA para municipios colombianos
+  - Estado: DONE
+  - Requisitos: RF-016, RF-030, RN-018, RN-019.
+  - Acceptance criteria: AC-084, AC-085, AC-086.
+  - Descripcion: Reemplazar el catalogo parcial de municipios por el dataset completo DIVIPOLA oficial, agrupado por departamento y ordenado alfabeticamente para uso en selectores del frontend.
+  - Dependencias:
+    - TASK-077.
+  - Fuentes:
+    - Datos Abiertos Colombia `gdxc-w37w`, dataset `DIVIPOLA - Codigos municipios`, propietario DANE.
+    - Geoportal DANE `Serv_DIVIPOLA_MGN_2025` como fuente alternativa georreferenciada.
+  - Tests requeridos:
+    - Pruebas frontend que validen municipios fuera del catalogo parcial previo.
+    - `npm run test`.
+    - `npm run build`.
+  - Resultado local:
+    - Se importo el dataset completo `DIVIPOLA - Codigos municipios` de Datos Abiertos Colombia/DANE.
+    - El catalogo local contiene 1122 municipios agrupados en 33 departamentos.
+    - Los departamentos y municipios quedan ordenados alfabeticamente para el selector del frontend.
+    - Se agrego prueba con Amazonas/Leticia para validar un municipio que no estaba en el catalogo parcial anterior.
+  - Tests ejecutados:
+    - `npm run test`: 10 tests, 0 fallos.
+    - `npm run build`: exitoso.
+
+- [x] TASK-079: Parametrizar responsabilidades fiscales, regimenes y medios de pago
+  - Estado: DONE
+  - Requisitos: RF-004, RF-006, RF-016, RF-030, RN-001, RN-002, RN-019.
+  - Acceptance criteria: AC-087, AC-088, AC-089, AC-090, AC-091, AC-092.
+  - Descripcion: Reemplazar campos libres de responsabilidades fiscales, regimen tributario y metodo de pago por catalogos controlados con etiquetas en espanol y codigos persistidos/enviados al backend.
+  - Alcance:
+    - Mostrar responsabilidades fiscales DIAN como selector multiple con codigo y significado.
+    - Hacer `R-99-PN` excluyente frente a otras responsabilidades.
+    - Mostrar regimen tributario como selector controlado.
+    - Persistir `taxResponsibilities` y `taxRegime` en terceros.
+    - Validar responsabilidades fiscales soportadas en terceros y emisor fiscal.
+    - Cambiar ventas POS de `paymentMethodId` libre a `paymentMethodCode` controlado.
+    - Habilitar `virtualWalletCode` solo cuando `paymentMethodCode = VIRTUAL_WALLET`.
+  - Evidencia Context7:
+    - React oficial (`/reactjs/react.dev`) documenta inputs/selects controlados mediante `value` y `onChange`, y renderizado condicional para campos que dependen del estado seleccionado.
+    - Spring Boot oficial (`/spring-projects/spring-boot`) permite validar DTOs REST con `@Valid @RequestBody` usando Jakarta Bean Validation auto-configurado.
+  - Fuentes normativas/datos:
+    - DIAN: responsabilidades fiscales aceptadas en facturacion electronica `O-13`, `O-15`, `O-23`, `O-47` y `R-99-PN`.
+    - Superintendencia Financiera/CENIT: referencia para entidades y billeteras digitales usadas en Colombia.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/thirdparty-service test`.
+    - `./mvnw.cmd -pl services/billing-service test`.
+    - `npm run test` en `apps/facturaelectronica-web`.
+    - `npm run build` en `apps/facturaelectronica-web`.
+  - Resultado local:
+    - La SPA muestra responsabilidades fiscales con codigo y significado, regimen tributario como selector y metodos de pago controlados.
+    - `R-99-PN` queda excluyente en frontend y dominio backend.
+    - `thirdparty-service` persiste `tax_regime` y responsabilidades fiscales normalizadas en `third_party_tax_responsibility`.
+    - `billing-service` usa `paymentMethodCode` y `virtualWalletCode` para ventas POS, dejando `payment_method_id` como columna legacy transitoria.
+    - `virtualWalletCode` solo se acepta cuando el metodo es `VIRTUAL_WALLET`.
+  - Tests ejecutados:
+    - `npm run test`: 11 tests, 0 fallos.
+    - `npm run build`: exitoso.
+    - `./mvnw.cmd -pl services/thirdparty-service test`: 14 tests, 0 fallos.
+    - `./mvnw.cmd -pl services/billing-service -am test`: 42 tests del reactor parcial, 0 fallos.
+
+- [x] TASK-080: Mejorar seleccion de responsabilidades fiscales
+  - Estado: DONE
+  - Requisitos: RF-004, RF-016, RF-030, RN-001, RN-002.
+  - Acceptance criteria: AC-087, AC-088, AC-093, AC-094.
+  - Descripcion: Reemplazar el selector multiple nativo por una doble lista `Disponibles`/`Seleccionadas` para responsabilidades fiscales, manteniendo codigo DIAN y significado visible.
+  - Alcance:
+    - Aplicar el componente al formulario de terceros y al emisor fiscal.
+    - Permitir mover codigos con botones `Agregar` y `Quitar`.
+    - Mantener `R-99-PN` como responsabilidad excluyente.
+  - Evidencia Context7:
+    - React oficial (`/reactjs/react.dev`) documenta formularios y selects controlados con `value`/`onChange`; se aplica el mismo patron a la doble lista.
+  - Tests requeridos:
+    - `npm run test` en `apps/facturaelectronica-web`.
+    - `npm run build` en `apps/facturaelectronica-web`.
+  - Tests ejecutados:
+    - `npm run test`: 13 tests, 0 fallos.
+    - `npm run build`: exitoso.
+
+- [x] TASK-081: Persistir sesion y cerrar por inactividad
+  - Estado: DONE
+  - Requisitos: RF-010, RF-026, RNF-019, RNF-020.
+  - Acceptance criteria: AC-095, AC-096.
+  - Descripcion: Evitar que `F5` cierre sesion antes del vencimiento por inactividad y cerrar automaticamente despues de 5 minutos sin actividad.
+  - Alcance:
+    - Guardar `session`, empresa activa, accesos, licencia y empresas root en `sessionStorage`.
+    - Restaurar sesion al cargar la SPA si el ultimo evento de actividad no supera 5 minutos.
+    - Registrar eventos de actividad (`click`, `keydown`, `mousemove`, `scroll`, `touchstart`) y reiniciar temporizador.
+    - Cerrar sesion, limpiar storage y mostrar modal al superar 5 minutos sin actividad.
+  - Evidencia Context7:
+    - React oficial (`/reactjs/react.dev`) recomienda `useEffect` con cleanup para listeners globales e intervalos.
+  - Tests requeridos:
+    - `npm run test` en `apps/facturaelectronica-web`.
+    - `npm run build` en `apps/facturaelectronica-web`.
+  - Tests ejecutados:
+    - `npm run test`: 13 tests, 0 fallos.
+    - `npm run build`: exitoso.
+
+- [x] TASK-082: Pulir UX de login y venta POS
+  - Estado: DONE
+  - Requisitos: RF-010, RF-030, RNF-019.
+  - Acceptance criteria: AC-097, AC-098.
+  - Descripcion: Quitar credenciales precargadas del login y reemplazar `Venta creada` editable por un estado visual no editable.
+  - Alcance:
+    - Login con campos vacios, placeholders y autocomplete adecuado.
+    - La fecha de venta no se solicita en frontend; el backend conserva `createdAt` y `confirmedAt`.
+    - El ID tecnico de venta se muestra solo como referencia no editable para confirmar POS.
+  - Evidencia Context7:
+    - React oficial (`/reactjs/react.dev`) recomienda inputs controlados con estado y eventos de formulario.
+  - Tests requeridos:
+    - `npm run test` en `apps/facturaelectronica-web`.
+    - `npm run build` en `apps/facturaelectronica-web`.
+  - Tests ejecutados:
+    - `npm run test`: 13 tests, 0 fallos.
+    - `npm run build`: exitoso.
+
+- [x] TASK-083: Buscador de cliente en Venta POS
+  - Estado: DONE
+  - Requisitos: RF-016, RF-030, RNF-003, RNF-019.
+  - Acceptance criteria: AC-099, AC-100.
+  - Descripcion: Reemplazar el campo libre de cliente en Venta POS por un buscador de clientes por numero de documento, mostrando coincidencias y enviando al backend el `customerId` seleccionado.
+  - Alcance:
+    - Extender `GET /api/v1/customers` con `identificationNumberPrefix` opcional, manteniendo compatibilidad con `active`.
+    - Filtrar siempre por `X-Company-Id` y rol `CUSTOMER`.
+    - Buscar desde la SPA al escribir al menos dos caracteres del documento.
+    - Autoseleccionar si existe una unica coincidencia exacta por numero de documento.
+  - Evidencia Context7:
+    - React oficial (`/reactjs/react.dev`) recomienda inputs controlados y `useEffect` con cleanup para ignorar respuestas obsoletas en fetches.
+    - Spring Boot 3.5 (`/websites/spring_io_spring-boot_3_5`) documenta controladores REST con `@GetMapping`, `@RequestParam` y validacion auto-configurada.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/thirdparty-service test`.
+    - `npm run test` en `apps/facturaelectronica-web`.
+    - `npm run build` en `apps/facturaelectronica-web`.
+  - Tests ejecutados:
+    - `./mvnw.cmd -pl services/thirdparty-service test`: 16 tests, 0 fallos.
+    - `npm run test`: 14 tests, 0 fallos.
+    - `npm run build`: exitoso.
+
+- [x] TASK-084: NIT y digito de verificacion segun concepto DIAN
+  - Estado: DONE
+  - Requisitos: RF-016, RN-016, RN-017.
+  - Acceptance criteria: AC-101, AC-102, AC-103.
+  - Descripcion: Aplicar el concepto DIAN de NIT sin digito de verificacion en el numero base, con DV separado y calculado automaticamente.
+  - Alcance:
+    - No aplicar regla especial por prefijo `900`; solo reglas soportadas por concepto DIAN.
+    - Mantener backend como fuente de verdad para calcular DV NIT y rechazar DV manual incorrecto.
+    - En frontend, limpiar caracteres no numericos para NIT y mostrar DV calculado como read-only/informativo en empresa y terceros.
+    - No enviar DV editable para documentos distintos a NIT.
+  - Fuentes DIAN:
+    - Resolucion 4 de 2019: NIT se diligencia sin DV y DV separado.
+    - Concepto DIAN 13904 de 1988: el DV no se considera ultimo digito del NIT.
+    - Decreto 678 de 2022: NIT asignado por DIAN y adicionado con DV.
+  - Evidencia Context7:
+    - React oficial (`/reactjs/react.dev`) documenta inputs controlados con `value`/`onChange`.
+    - Spring Boot 3.5 (`/websites/spring_io_spring-boot_3_5`) soporta validacion REST y controladores delgados.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/thirdparty-service test`.
+    - `npm run test` en `apps/facturaelectronica-web`.
+    - `npm run build` en `apps/facturaelectronica-web`.
+  - Tests ejecutados:
+    - `./mvnw.cmd -pl services/thirdparty-service test`: 16 tests, 0 fallos.
+    - `npm run test`: 14 tests, 0 fallos.
+    - `npm run build`: exitoso.
+
+- [x] TASK-085: Simplificar registro de clientes naturales
+  - Estado: DONE
+  - Requisitos: RF-016, RF-030, RN-018, RN-034, RN-035, RNF-004, RNF-019.
+  - Acceptance criteria: AC-104, AC-105, AC-106, AC-107.
+  - Descripcion: Aplicar la regla colombiana de captura simplificada para terceros que son solo cliente y persona natural, bloqueando datos automaticos o no aplicables.
+  - Alcance:
+    - En la SPA, cuando `Tipo de tercero=Cliente` y `Tipo de persona=Natural`, impedir NIT, ocultar/bloquear DV, razon social y nombre comercial.
+    - Fijar responsabilidades fiscales en `R-99-PN` y regimen tributario en `NO_RESPONSABLE_IVA` sin permitir edicion.
+    - Hacer direccion opcional; si esta vacia, usar municipio de la empresa/emisor fiscal activo y bloquear municipio; si hay direccion, habilitar selector de departamento/municipio.
+    - Construir el payload con valores automaticos aunque se manipule estado local.
+    - En `thirdparty-service`, rechazar requests directos que intenten modificar esos campos automaticos.
+  - Evidencia Context7:
+    - React oficial (`/reactjs/react.dev`) recomienda inputs controlados y valores derivados en lugar de estado redundante editable.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/thirdparty-service test`.
+    - `npm run test` en `apps/facturaelectronica-web`.
+    - `npm run build` en `apps/facturaelectronica-web`.
+  - Resultado local:
+    - La SPA fija automaticamente `R-99-PN`, `NO_RESPONSABLE_IVA`, documento distinto de NIT y DV nulo para terceros que son solo cliente y persona natural.
+    - Razon social y nombre comercial no se muestran para cliente natural simple.
+    - El municipio queda bloqueado al municipio de empresa/emisor fiscal cuando no hay direccion; al diligenciar direccion se habilita seleccion por DIVIPOLA.
+    - `thirdparty-service` rechaza NIT, razon social, nombre comercial, responsabilidad o regimen incorrectos para cliente natural simple.
+  - Tests ejecutados:
+    - `./mvnw.cmd -pl services/thirdparty-service test`: 20 tests, 0 fallos.
+    - `npm run test`: 14 tests, 0 fallos.
+    - `npm run build`: exitoso.
+
+- [x] TASK-086: Persistir y administrar catalogos oficiales y operativos
+  - Estado: DONE
+  - Requisitos: RF-031, RN-036, RNF-003, RNF-009, RNF-019.
+  - Acceptance criteria: AC-108.
+  - Descripcion: Migrar catalogos estaticos del frontend a catalogos versionados en `catalog-service`, diferenciando catalogos regulatorios DIAN/DANE de catalogos operativos configurables por empresa.
+  - Alcance:
+    - Crear modelo y migraciones para catalogos globales versionados.
+    - Crear tablas especializadas `catalog.department` y `catalog.municipality` para DIVIPOLA, con relacion por `department_code`.
+    - Crear configuracion por empresa para activar/inactivar medios de pago, billeteras y opciones operativas.
+    - Exponer endpoints via BFF para que la SPA consuma catalogos desde backend.
+    - Mantener fallback estatico solo durante migracion.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/catalog-service test`.
+    - `npm run test` en `apps/facturaelectronica-web`.
+    - `npm run build` en `apps/facturaelectronica-web`.
+  - Resultado local:
+    - `catalog-service` expone catalogos versionados en `/api/v1/catalogs/{catalogCode}/items`.
+    - `company-catalogs` permite overlay empresarial para activar/inactivar items por empresa.
+    - DIVIPOLA queda persistido en `catalog.department` y `catalog.municipality`, con relacion por `department_code`.
+    - La SPA carga catalogos desde BFF de forma best-effort y conserva fallback estatico si el servicio no responde.
+  - Tests ejecutados:
+    - `./mvnw.cmd -pl services/catalog-service test`: 102 tests, 0 fallos.
+    - `npm run test`: 15 tests, 0 fallos.
+    - `npm run build`: exitoso.
+
+- [x] TASK-087: Crear modulo administrativo de catalogos parametrizables
+  - Estado: DONE
+  - Requisitos: RF-031, RF-038, RF-039, RF-026, RN-036, RN-037, RN-038, RNF-003, RNF-009, RNF-019.
+  - Acceptance criteria: AC-109, AC-110, AC-111, AC-112, AC-113.
+  - Descripcion: Implementar un modulo `Catalogos` para administrar catalogos desde base de datos, sin catalogos operativos/regulatorios hardcodeados en el frontend.
+  - Alcance backend:
+    - Crear `catalog.catalog_definition` y semillas para catalogos actuales.
+    - Exponer `GET /api/v1/catalog-definitions`.
+    - Exponer CRUD global para items de catalogo permitido: listar con inactivos, crear, actualizar e inactivar/activar.
+    - Mantener `company-catalogs` para configuracion empresarial por `X-Company-Id`.
+    - Agregar validaciones de catalogos regulatorios: empresas no pueden editar codigos regulatorios; ROOT conserva administracion global controlada.
+    - Agregar permiso empresarial `COMPANY_CATALOGS_MANAGE` al catalogo de permisos.
+    - Enrutar nuevos endpoints desde `bff-service`.
+  - Alcance frontend:
+    - Agregar menu `Catalogos` visible para ROOT o usuarios con permiso delegado.
+    - Crear feature `apps/facturaelectronica-web/src/features/catalogs/CatalogAdminPanel.jsx`.
+    - Mostrar selector de catalogo con etiquetas en espanol.
+    - Listar items con codigo tecnico, etiqueta en espanol, descripcion, origen, version, regulatorio y estado.
+    - Crear modal/formulario para nuevo item y actualizacion.
+    - Agregar acciones de activar/inactivar.
+    - Eliminar fallback de catalogos regulatorios/operativos en `runtimeCatalogs.js`; los formularios deben consumir BFF/base de datos.
+    - Mantener en frontend solo etiquetas de navegacion o presentacion, no catalogos de negocio.
+  - Evidencia Context7:
+    - React oficial (`/reactjs/react.dev`) recomienda formularios controlados, renderizado condicional y `useEffect` con cleanup para fetches.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/catalog-service test`.
+    - `./mvnw.cmd -pl services/identity-service test`.
+    - `./mvnw.cmd -pl services/bff-service test`.
+    - `npm run test` en `apps/facturaelectronica-web`.
+    - `npm run build` en `apps/facturaelectronica-web`.
+  - Resultado local:
+    - `catalog-service` expone definiciones de catalogo y CRUD global controlado para items editables por ROOT.
+    - `company-catalogs` se conserva para activacion/inactivacion empresarial de items configurables.
+    - `identity-service` agrega el permiso `COMPANY_CATALOGS_MANAGE`.
+    - `bff-service` enruta `catalog-definitions` y endpoints de catalogos al servicio correcto.
+    - La SPA agrega el modulo `Catalogos`, consume catalogos desde BFF/base de datos y elimina fallback productivo de catalogos regulatorios/operativos.
+    - Las pruebas frontend usan catalogos simulados inyectados solo para test, sin catalogos de negocio hardcodeados para produccion.
+  - Tests ejecutados:
+    - `./mvnw.cmd -pl services/catalog-service test`: 105 tests, 0 fallos.
+    - `./mvnw.cmd -pl services/identity-service test`: 17 tests, 0 fallos.
+    - `./mvnw.cmd -pl services/bff-service test`: 6 tests, 0 fallos.
+    - `npm run test` en `apps/facturaelectronica-web`: 15 tests, 0 fallos.
+    - `npm run build` en `apps/facturaelectronica-web`: exitoso.
+
+- [x] TASK-088: Auditar y eliminar tablas legacy no usadas
+  - Estado: DONE
+  - Requisitos: RF-015, RF-040, RN-015, RN-028, RN-029, RN-039, RNF-018, RNF-021.
+  - Acceptance criteria: AC-036, AC-051, AC-114, AC-115.
+  - Descripcion: Analizar tablas, migraciones Flyway, entidades, repositorios, endpoints y datos legacy para eliminar solo componentes que no se usan actualmente y que no conservan datos utiles pendientes de migracion.
+  - Dependencias:
+    - TASK-087.
+    - Prueba E2E funcional actualizada despues de retirar catalogos locales.
+  - Fase A - Auditoria:
+    - Generar matriz por tabla con esquema, tabla, owner funcional, migracion Flyway, referencias JPA/SQL/endpoints, conteo de filas, uso E2E y decision.
+    - Clasificar tablas como `EN_USO`, `LEGACY_CON_DATOS`, `LEGACY_SIN_USO`, `PENDIENTE_MIGRACION` o `CANDIDATA_A_ELIMINAR`.
+    - Revisar Docker Compose, Terraform/IaC, README y specs para referencias legacy.
+    - Presentar reporte y pedir aprobacion explicita antes de eliminar.
+  - Fase B - Eliminacion aprobada:
+    - Crear migracion Flyway nueva para eliminar tablas aprobadas.
+    - Ajustar entidades, repositorios, pruebas, scripts y documentacion.
+    - Ejecutar limpieza sobre la base local actual.
+    - Validar que una base limpia se cree desde cero con Flyway.
+    - Ejecutar suite completa y prueba E2E.
+  - Restricciones:
+    - No eliminar tablas con datos historicos sin migracion o respaldo aprobado.
+    - No modificar migraciones Flyway ya aplicadas si eso rompe bases existentes; preferir migracion nueva de limpieza.
+    - No eliminar tablas que todavia tengan referencias de compilacion, runtime, pruebas o reportes.
+  - Tests requeridos:
+    - `./mvnw.cmd test`.
+    - `npm run test` en `apps/facturaelectronica-web`.
+    - `npm run build` en `apps/facturaelectronica-web`.
+    - `docker compose up -d --build`.
+    - Prueba E2E desde empresa hasta venta/factura mock.
+  - Avance local:
+    - Se creo `specs/legacy-cleanup-audit.md` con matriz preliminar de tablas, conteos, referencias y decision.
+    - Se retiro el runtime legacy de catalogo: controladores, DTOs, puertos, casos de uso, entidades JPA, repositorios, mappers REST y pruebas asociadas.
+    - Se creo `services/catalog-service/src/main/resources/db/migration/V005__drop_legacy_catalog_tables.sql`.
+    - `catalog.tipodocumento` se migra primero a `catalog.catalog_item` con `catalog_code='DIAN_DOCUMENT_TYPE'`; despues se elimina junto a `catalog.pais`, `catalog.impuesto`, `catalog.metodo_pago`, `catalog.tipo_gasto`, `catalog.parametros`, `catalog.categoria` y `catalog.producto`.
+    - Se creo `services/thirdparty-service/src/main/resources/db/migration/V005__drop_legacy_thirdparty_tables.sql`.
+    - `thirdparty.cliente` y `thirdparty.proveedor` se eliminan solo si no hay filas con `company_id` no nulo; si existen datos reales de empresa, la migracion aborta para exigir migracion/respaldo.
+    - README, `api-contract.md`, `data-model.md`, `design.md` y auditoria se actualizaron para retirar referencias a endpoints/tablas legacy activos.
+    - `scripts/e2e-from-zero.ps1` se actualizo al contrato actual de identificacion DIAN numerica (`identificationTypeCode=31` para NIT y `13` para cedula de ciudadania).
+    - Validacion directa en PostgreSQL: solo quedan tablas activas `catalog.catalog_definition`, `catalog.catalog_item`, `catalog.company_catalog_item_setting`, `catalog.department`, `catalog.municipality`, `thirdparty.third_party`, `thirdparty.third_party_role` y `thirdparty.third_party_tax_responsibility`.
+    - Validacion directa en PostgreSQL: `catalog.catalog_item` conserva `DIAN_DOCUMENT_TYPE` con 11 items migrados.
+  - Tests ejecutados:
+    - `./mvnw.cmd test`: reactor completo exitoso.
+    - `npm run test` en `apps/facturaelectronica-web`: 15 tests, 0 fallos.
+    - `npm run build` en `apps/facturaelectronica-web`: exitoso.
+    - `./mvnw.cmd -pl services/catalog-service test`: 7 tests, 0 fallos.
+    - `./mvnw.cmd -pl services/thirdparty-service test`: 20 tests, 0 fallos.
+    - `docker compose up -d --build`: contenedores principales arriba.
+    - `docker compose ps`: PostgreSQL y microservicios Spring Boot en estado `healthy`; frontend arriba en `5173`.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: E2E completo exitoso.
+    - Evidencia E2E: CompanyId `1b805b5c-3fce-4e85-a5f5-8207183247b4`, ProductId `58a9b864-e83b-4063-9487-b5cadf33b261`, SaleId `310bfdca-4aed-456a-83ab-359666b89d4b`, DocumentId `b685ae0e-ed2a-4afa-9927-e9b40c6cab33`, ProviderTrackingId `mock-electronic_pos-b685ae0e-ed2a-4afa-9927-e9b40c6cab33`.

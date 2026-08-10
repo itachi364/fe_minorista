@@ -104,3 +104,40 @@
 - AC-078: Dado un usuario `ROOT` con empresa activa, cuando cree administrador inicial, entonces debe abrir un modal, capturar nombre/email/password y asignar automaticamente `OWNER` sin permisos globales.
 - AC-079: Dado un administrador empresarial o ROOT, cuando asigne roles, entonces debe abrir un modal, buscar o seleccionar usuario por correo, seleccionar un rol empresarial por nombre y enviar al backend `userId` y `roleIds`.
 - AC-080: Dada cualquier etiqueta visible de la SPA, entonces debe presentarse en espanol profesional, aunque los contratos y base de datos conserven valores tecnicos en ingles documentados.
+
+- AC-081: `App.jsx` no contiene catalogos estaticos, formularios de feature ni componentes visuales reutilizables; estos viven en `src/data`, `src/components` y `src/features`.
+- AC-082: La modularizacion no cambia payloads enviados al backend ni endpoints consumidos por la SPA.
+- AC-083: Las pruebas frontend y build productivo pasan despues del refactor.
+- AC-084: El selector de municipio usa el catalogo completo DIVIPOLA agrupado por departamento.
+- AC-085: Los municipios se muestran por nombre y se envia al backend el codigo DIVIPOLA/DANE de 5 digitos.
+- AC-086: La fuente y fecha/corte del dataset DIVIPOLA quedan documentadas en `src/data/divipola.js` o specs.
+
+- AC-087: La SPA debe mostrar responsabilidades fiscales como lista seleccionable con codigo DIAN y significado, sin requerir que el usuario memorice codigos.
+- AC-088: La responsabilidad `R-99-PN` debe ser excluyente frente a cualquier otra responsabilidad fiscal en frontend y backend.
+- AC-089: La SPA debe mostrar regimen tributario como lista desplegable controlada y enviar el codigo tecnico al backend.
+- AC-090: `thirdparty-service` debe persistir y devolver `taxResponsibilities` y `taxRegime` para clientes/proveedores.
+- AC-091: Las ventas POS deben recibir y persistir `paymentMethodCode` con valores controlados: `CASH`, `DEBIT_CARD`, `CREDIT_CARD`, `BREB_KEY`, `BANK_TRANSFER`, `VIRTUAL_WALLET`.
+- AC-092: `virtualWalletCode` debe ser obligatorio solo cuando `paymentMethodCode = VIRTUAL_WALLET`; para otros medios debe estar ausente o nulo.
+- AC-093: La SPA debe mostrar responsabilidades fiscales en doble lista `Disponibles`/`Seleccionadas`, permitiendo mover codigos sin escritura manual.
+- AC-094: La responsabilidad `R-99-PN` debe mantenerse excluyente en la doble lista: al seleccionarla limpia las demas y al seleccionar otra responsabilidad reemplaza `R-99-PN`.
+- AC-095: Dada una sesion autenticada, cuando el usuario refresque la pagina antes de 5 minutos de inactividad, entonces la SPA debe restaurar la sesion desde `sessionStorage` sin volver a login.
+- AC-096: Dada una sesion autenticada, cuando pasen 5 minutos sin actividad de usuario, entonces la SPA debe cerrar la sesion, limpiar el almacenamiento local de sesion y mostrar solo login con modal informativo.
+- AC-097: Dado el formulario de login, entonces email y contrasena deben iniciar vacios, con placeholders, sin credenciales dummy precargadas.
+- AC-098: Dada una venta POS creada, entonces el identificador tecnico de venta debe mostrarse como estado no editable y solo debe habilitar la confirmacion POS; la fecha de venta la asigna el backend.
+- AC-099: Dado el formulario de venta POS, cuando el usuario escriba al menos dos caracteres del numero de documento del cliente, entonces la SPA debe consultar clientes activos de la empresa y mostrar coincidencias por prefijo de documento.
+- AC-100: Dado un cliente seleccionado desde el buscador POS, cuando se cree la venta, entonces el request debe enviar `customerId` y no un numero de documento libre.
+- AC-101: Dado un tercero con `identificationTypeCode=31`, cuando se registre NIT, entonces el numero debe capturarse sin DV, solo con digitos, y el backend debe calcular el DV separado segun algoritmo DIAN.
+- AC-102: Dado un tipo de documento distinto a NIT, cuando se registre un tercero, entonces el DV no debe enviarse como valor manual editable y debe quedar nulo o vacio.
+- AC-103: Dado el frontend de empresa o tercero, cuando el tipo de documento sea NIT, entonces el DV debe mostrarse como campo informativo de solo lectura calculado desde el numero; cuando no sea NIT debe mostrarse vacio.
+- AC-104: Dado un tercero `CUSTOMER` con `personType=NATURAL`, cuando se registre desde la SPA, entonces la responsabilidad fiscal debe fijarse automaticamente en `R-99-PN`, el regimen en `NO_RESPONSABLE_IVA`, el tipo de documento no puede ser NIT y el DV no debe existir.
+- AC-105: Dado un cliente natural simple, cuando se diligencie el formulario, entonces razon social, nombre comercial, responsabilidades fiscales y regimen tributario no deben ser editables.
+- AC-106: Dado un cliente natural simple sin direccion, cuando se guarde, entonces debe usar automaticamente el municipio de la empresa/emisor fiscal activo; si el usuario diligencia direccion, debe poder seleccionar departamento y municipio.
+- AC-107: Dado un request directo al backend para cliente natural simple, cuando incluya NIT, DV, razon social, nombre comercial, responsabilidades distintas a `R-99-PN` o regimen distinto a `NO_RESPONSABLE_IVA`, entonces `thirdparty-service` debe rechazarlo.
+- AC-108: Dado un catalogo oficial o parametrizable, cuando se disene su administracion, entonces debe diferenciar catalogos regulatorios de solo lectura/versionados y catalogos operativos configurables por empresa.
+- AC-109: Dado un usuario con permisos de administracion de catalogos, cuando abra el modulo `Catalogos`, entonces debe seleccionar un catalogo por nombre en espanol y la SPA debe consultar sus registros desde BFF/catalog-service, sin usar catalogos locales como fallback.
+- AC-110: Dado un catalogo seleccionado, cuando se listen sus registros, entonces la UI debe mostrar codigo tecnico, etiqueta en espanol, descripcion, origen, version, estado y si es regulatorio.
+- AC-111: Dado un usuario `ROOT`, cuando administre catalogos globales, entonces puede crear, actualizar o inactivar items permitidos; los codigos regulatorios oficiales no se editan por administradores empresariales.
+- AC-112: Dado un administrador empresarial con permiso delegado, cuando administre catalogos de su empresa, entonces solo puede activar/inactivar opciones permitidas o crear extensiones operativas aprobadas dentro de su `company_id`.
+- AC-113: Dada la SPA, cuando cargue formularios que dependen de catalogos, entonces no debe importar datos de catalogo regulatorios u operativos desde `src/data`; debe consumirlos desde base de datos por BFF y mostrar error controlado si no estan disponibles.
+- AC-114: Dado el reporte de auditoria de tablas legacy, cuando se clasifique una tabla como candidata a eliminar, entonces debe demostrar que no tiene referencias JPA/repositorio/SQL/runtime, que el flujo E2E no la usa, y que sus datos estan vacios o migrados/respaldados.
+- AC-115: Dada una eliminacion aprobada de tablas legacy, cuando se ejecute Flyway sobre una base limpia y la base local actual, entonces ambas deben quedar alineadas con el modelo vigente y la suite completa debe pasar sin referencias a tablas eliminadas.

@@ -37,7 +37,7 @@ public final class IssuerProfile {
         requireNonBlank(nit, "nit");
         requireNonBlank(verificationDigit, "verificationDigit");
         return new IssuerProfile(id, companyId, legalName.trim(), nit.trim(), verificationDigit.trim(),
-                taxResponsibilities == null ? List.of() : List.copyOf(taxResponsibilities), blankToNull(municipalityCode),
+                TaxResponsibilityCatalog.normalize(taxResponsibilities), blankToNull(municipalityCode),
                 blankToNull(address), true);
     }
 
@@ -50,7 +50,7 @@ public final class IssuerProfile {
         requireNonBlank(nit, "nit");
         requireNonBlank(verificationDigit, "verificationDigit");
         return new IssuerProfile(id, companyId, legalName.trim(), nit.trim(), verificationDigit.trim(),
-                taxResponsibilities == null ? List.of() : List.copyOf(taxResponsibilities), blankToNull(municipalityCode),
+                TaxResponsibilityCatalog.normalize(taxResponsibilities), blankToNull(municipalityCode),
                 blankToNull(address), active);
     }
 

@@ -4,16 +4,18 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+
 import java.util.UUID;
 
-public record Sale(UUID id, UUID companyId, UUID customerId, UUID paymentMethodId, SaleChannel saleChannel,
-        SaleStatus status, BigDecimal subtotal, BigDecimal discountTotal, BigDecimal taxTotal, BigDecimal total,
-        String idempotencyKey, UUID createdBy, Instant createdAt, Instant confirmedAt, List<SaleLine> lines,
-        ElectronicDocument electronicDocument) {
+public record Sale(UUID id, UUID companyId, UUID customerId, PaymentMethodCode paymentMethodCode,
+        VirtualWalletCode virtualWalletCode, SaleChannel saleChannel, SaleStatus status, BigDecimal subtotal,
+        BigDecimal discountTotal, BigDecimal taxTotal, BigDecimal total, String idempotencyKey, UUID createdBy,
+        Instant createdAt, Instant confirmedAt, List<SaleLine> lines, ElectronicDocument electronicDocument) {
 
     public Sale {
         require(id, "id");
         require(companyId, "companyId");
+        require(paymentMethodCode, "paymentMethodCode");
         require(saleChannel, "saleChannel");
         require(status, "status");
         require(subtotal, "subtotal");
@@ -26,16 +28,23 @@ public record Sale(UUID id, UUID companyId, UUID customerId, UUID paymentMethodI
         if (lines.isEmpty()) {
             throw new IllegalArgumentException("lines are required");
         }
+        if (paymentMethodCode == PaymentMethodCode.VIRTUAL_WALLET && virtualWalletCode == null) {
+            throw new IllegalArgumentException("virtualWalletCode is required for VIRTUAL_WALLET payment method");
+        }
+        if (paymentMethodCode != PaymentMethodCode.VIRTUAL_WALLET && virtualWalletCode != null) {
+            throw new IllegalArgumentException("virtualWalletCode only applies to VIRTUAL_WALLET payment method");
+        }
     }
 
-    public static Sale draft(UUID id, UUID companyId, UUID customerId, UUID paymentMethodId, SaleChannel saleChannel,
-            String idempotencyKey, UUID createdBy, Instant createdAt, List<SaleLine> lines) {
+    public static Sale draft(UUID id, UUID companyId, UUID customerId, PaymentMethodCode paymentMethodCode,
+            VirtualWalletCode virtualWalletCode, SaleChannel saleChannel, String idempotencyKey, UUID createdBy,
+            Instant createdAt, List<SaleLine> lines) {
         BigDecimal subtotal = lines.stream().map(SaleLine::subtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal discount = lines.stream().map(SaleLine::discountAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal tax = lines.stream().map(SaleLine::taxAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal total = lines.stream().map(SaleLine::total).reduce(BigDecimal.ZERO, BigDecimal::add);
-        return new Sale(id, companyId, customerId, paymentMethodId, saleChannel, SaleStatus.DRAFT, subtotal, discount,
-                tax, total, idempotencyKey, createdBy, createdAt, null, lines, null);
+        return new Sale(id, companyId, customerId, paymentMethodCode, virtualWalletCode, saleChannel, SaleStatus.DRAFT,
+                subtotal, discount, tax, total, idempotencyKey, createdBy, createdAt, null, lines, null);
     }
 
     public Sale confirm(ElectronicDocument document, Instant confirmedAt) {
@@ -43,14 +52,15 @@ public record Sale(UUID id, UUID companyId, UUID customerId, UUID paymentMethodI
         SaleStatus nextStatus = document.status() == ElectronicDocumentStatus.VALIDATED
                 ? SaleStatus.CONFIRMED
                 : SaleStatus.REJECTED;
-        return new Sale(id, companyId, customerId, paymentMethodId, saleChannel, nextStatus, subtotal, discountTotal,
-                taxTotal, total, idempotencyKey, createdBy, createdAt, confirmedAt, lines, document);
+        return new Sale(id, companyId, customerId, paymentMethodCode, virtualWalletCode, saleChannel, nextStatus,
+                subtotal, discountTotal, taxTotal, total, idempotencyKey, createdBy, createdAt, confirmedAt, lines,
+                document);
     }
 
     public Sale withElectronicDocument(ElectronicDocument document) {
         require(document, "document");
-        return new Sale(id, companyId, customerId, paymentMethodId, saleChannel, status, subtotal, discountTotal,
-                taxTotal, total, idempotencyKey, createdBy, createdAt, confirmedAt, lines, document);
+        return new Sale(id, companyId, customerId, paymentMethodCode, virtualWalletCode, saleChannel, status, subtotal,
+                discountTotal, taxTotal, total, idempotencyKey, createdBy, createdAt, confirmedAt, lines, document);
     }
 
     private static void require(Object value, String field) {

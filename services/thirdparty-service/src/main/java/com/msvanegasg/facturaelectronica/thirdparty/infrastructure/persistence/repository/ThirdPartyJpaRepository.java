@@ -32,4 +32,18 @@ public interface ThirdPartyJpaRepository extends JpaRepository<ThirdPartyJpaEnti
             """)
     List<ThirdPartyJpaEntity> findByCompanyIdAndRole(@Param("companyId") UUID companyId,
             @Param("role") ThirdPartyRole role, @Param("active") Boolean active);
+
+    @Query("""
+            select distinct thirdParty
+            from ThirdPartyJpaEntity thirdParty
+            join thirdParty.roles role
+            where thirdParty.companyId = :companyId
+              and role = :role
+              and (:active is null or thirdParty.active = :active)
+              and thirdParty.identificationNumber like concat(:identificationNumberPrefix, '%')
+            order by thirdParty.identificationNumber asc, thirdParty.businessName asc, thirdParty.fullName asc
+            """)
+    List<ThirdPartyJpaEntity> findByCompanyIdAndRoleAndIdentificationNumberPrefix(
+            @Param("companyId") UUID companyId, @Param("role") ThirdPartyRole role,
+            @Param("active") Boolean active, @Param("identificationNumberPrefix") String identificationNumberPrefix);
 }

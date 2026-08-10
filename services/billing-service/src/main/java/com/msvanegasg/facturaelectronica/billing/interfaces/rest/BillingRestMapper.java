@@ -33,15 +33,17 @@ final class BillingRestMapper {
     }
 
     static CreateSaleCommand toCommand(UUID companyId, SaleRequest request, UUID createdBy, String idempotencyKey) {
-        return new CreateSaleCommand(companyId, request.customerId(), request.paymentMethodId(), request.saleChannel(),
-                idempotencyKey, createdBy, request.items().stream().map(BillingRestMapper::toLineCommand).toList());
+        return new CreateSaleCommand(companyId, request.customerId(), request.paymentMethodCode(),
+                request.virtualWalletCode(), request.saleChannel(), idempotencyKey, createdBy,
+                request.items().stream().map(BillingRestMapper::toLineCommand).toList());
     }
 
     static SaleResponse toResponse(SaleResult result) {
-        return new SaleResponse(result.id(), result.companyId(), result.customerId(), result.paymentMethodId(),
-                result.saleChannel(), result.status(), result.subtotal(), result.discountTotal(), result.taxTotal(),
-                result.total(), result.idempotencyKey(), result.createdBy(), result.createdAt(), result.confirmedAt(),
-                result.lines().stream().map(BillingRestMapper::toLineResponse).toList(),
+        return new SaleResponse(result.id(), result.companyId(), result.customerId(), result.paymentMethodCode(),
+                result.virtualWalletCode(), result.saleChannel(), result.status(), result.subtotal(),
+                result.discountTotal(), result.taxTotal(), result.total(), result.idempotencyKey(),
+                result.createdBy(), result.createdAt(), result.confirmedAt(), result.lines().stream()
+                .map(BillingRestMapper::toLineResponse).toList(),
                 result.electronicDocument() == null ? null : toDocumentResponse(result.electronicDocument()));
     }
 

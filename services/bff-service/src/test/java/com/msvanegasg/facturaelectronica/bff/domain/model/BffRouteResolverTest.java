@@ -13,6 +13,7 @@ class BffRouteResolverTest {
     void resolvesCoreBusinessRoutes() {
         assertThat(resolver.resolve("/api/v1/companies")).isEqualTo(TargetService.TENANT);
         assertThat(resolver.resolve("/api/v1/auth/login")).isEqualTo(TargetService.IDENTITY);
+        assertThat(resolver.resolve("/api/v1/catalog-definitions")).isEqualTo(TargetService.CATALOG);
         assertThat(resolver.resolve("/api/v1/catalogs/countries")).isEqualTo(TargetService.CATALOG);
         assertThat(resolver.resolve("/api/v1/third-parties")).isEqualTo(TargetService.THIRDPARTY);
         assertThat(resolver.resolve("/api/v1/products/123/kardex")).isEqualTo(TargetService.INVENTORY);

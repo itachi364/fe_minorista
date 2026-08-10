@@ -15,6 +15,7 @@ public final class ThirdParty {
     private static final int MAX_PHONE_LENGTH = 50;
     private static final int MAX_ADDRESS_LENGTH = 250;
     private static final int MAX_MUNICIPALITY_CODE_LENGTH = 20;
+    private static final String SIMPLE_NATURAL_CUSTOMER_RESPONSIBILITY = "R-99-PN";
 
     private final UUID id;
     private final UUID companyId;
@@ -29,13 +30,15 @@ public final class ThirdParty {
     private final String phone;
     private final String address;
     private final String municipalityCode;
+    private final Set<String> taxResponsibilities;
+    private final TaxRegime taxRegime;
     private final Set<ThirdPartyRole> roles;
     private final boolean active;
 
     private ThirdParty(UUID id, UUID companyId, PersonType personType, Integer identificationTypeCode,
             String identificationNumber, Integer verificationDigit, String fullName, String businessName,
             String tradeName, String email, String phone, String address, String municipalityCode,
-            Set<ThirdPartyRole> roles, boolean active) {
+            Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles, boolean active) {
         this.id = id;
         this.companyId = companyId;
         this.personType = personType;
@@ -49,21 +52,25 @@ public final class ThirdParty {
         this.phone = phone;
         this.address = address;
         this.municipalityCode = municipalityCode;
+        this.taxResponsibilities = taxResponsibilities;
+        this.taxRegime = taxRegime;
         this.roles = roles;
         this.active = active;
     }
 
     public static ThirdParty create(UUID companyId, PersonType personType, Integer identificationTypeCode,
             String identificationNumber, String fullName, String businessName, String tradeName, String email,
-            String phone, String address, String municipalityCode, Set<ThirdPartyRole> roles) {
+            String phone, String address, String municipalityCode, Set<String> taxResponsibilities,
+            TaxRegime taxRegime, Set<ThirdPartyRole> roles) {
         return restore(null, companyId, personType, identificationTypeCode, identificationNumber, null, fullName,
-                businessName, tradeName, email, phone, address, municipalityCode, roles, true);
+                businessName, tradeName, email, phone, address, municipalityCode, taxResponsibilities, taxRegime,
+                roles, true);
     }
 
     public static ThirdParty restore(UUID id, UUID companyId, PersonType personType, Integer identificationTypeCode,
             String identificationNumber, Integer verificationDigit, String fullName, String businessName,
             String tradeName, String email, String phone, String address, String municipalityCode,
-            Set<ThirdPartyRole> roles, boolean active) {
+            Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles, boolean active) {
         UUID requiredCompanyId = Objects.requireNonNull(companyId, "companyId is required");
         PersonType requiredPersonType = Objects.requireNonNull(personType, "personType is required");
         DianIdentificationTypeCode.validate(identificationTypeCode);
@@ -73,32 +80,45 @@ public final class ThirdParty {
         validateProvidedDigit(identificationTypeCode, calculatedDigit, verificationDigit);
         String normalizedFullName = normalizeOptional(fullName, MAX_NAME_LENGTH, "fullName");
         String normalizedBusinessName = normalizeOptional(businessName, MAX_NAME_LENGTH, "businessName");
+        String normalizedTradeName = normalizeOptional(tradeName, MAX_TRADE_NAME_LENGTH, "tradeName");
         validateName(requiredPersonType, normalizedFullName, normalizedBusinessName);
         Set<ThirdPartyRole> requiredRoles = normalizeRoles(roles);
+        boolean simpleNaturalCustomer = isSimpleNaturalCustomer(requiredPersonType, requiredRoles);
+        if (simpleNaturalCustomer) {
+            validateSimpleNaturalCustomer(identificationTypeCode, normalizedBusinessName, normalizedTradeName);
+        }
+        Set<String> normalizedTaxResponsibilities = simpleNaturalCustomer
+                ? normalizeSimpleNaturalCustomerResponsibilities(taxResponsibilities)
+                : TaxResponsibilityCatalog.normalize(taxResponsibilities);
+        TaxRegime normalizedTaxRegime = simpleNaturalCustomer ? normalizeSimpleNaturalCustomerRegime(taxRegime)
+                : taxRegime;
         return new ThirdParty(id, requiredCompanyId, requiredPersonType, identificationTypeCode, documentNumber,
-                calculatedDigit, normalizedFullName, normalizedBusinessName, normalizeOptional(tradeName,
-                        MAX_TRADE_NAME_LENGTH, "tradeName"),
+                calculatedDigit, normalizedFullName, normalizedBusinessName, normalizedTradeName,
                 normalizeOptional(email, MAX_EMAIL_LENGTH, "email"), normalizeOptional(phone, MAX_PHONE_LENGTH,
                         "phone"),
                 normalizeOptional(address, MAX_ADDRESS_LENGTH, "address"), normalizeOptional(municipalityCode,
                         MAX_MUNICIPALITY_CODE_LENGTH, "municipalityCode"),
-                requiredRoles, active);
+                normalizedTaxResponsibilities, normalizedTaxRegime, requiredRoles, active);
     }
 
     public ThirdParty update(PersonType personType, String fullName, String businessName, String tradeName,
-            String email, String phone, String address, String municipalityCode, Set<ThirdPartyRole> roles) {
+            String email, String phone, String address, String municipalityCode, Set<String> taxResponsibilities,
+            TaxRegime taxRegime, Set<ThirdPartyRole> roles) {
         return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
-                fullName, businessName, tradeName, email, phone, address, municipalityCode, roles, active);
+                fullName, businessName, tradeName, email, phone, address, municipalityCode, taxResponsibilities,
+                taxRegime, roles, active);
     }
 
     public ThirdParty activate() {
         return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
-                fullName, businessName, tradeName, email, phone, address, municipalityCode, roles, true);
+                fullName, businessName, tradeName, email, phone, address, municipalityCode, taxResponsibilities,
+                taxRegime, roles, true);
     }
 
     public ThirdParty deactivate() {
         return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
-                fullName, businessName, tradeName, email, phone, address, municipalityCode, roles, false);
+                fullName, businessName, tradeName, email, phone, address, municipalityCode, taxResponsibilities,
+                taxRegime, roles, false);
     }
 
     public UUID id() {
@@ -153,6 +173,14 @@ public final class ThirdParty {
         return municipalityCode;
     }
 
+    public Set<String> taxResponsibilities() {
+        return taxResponsibilities;
+    }
+
+    public TaxRegime taxRegime() {
+        return taxRegime;
+    }
+
     public Set<ThirdPartyRole> roles() {
         return roles;
     }
@@ -185,6 +213,43 @@ public final class ThirdParty {
         if (personType == PersonType.JURIDICA && businessName == null) {
             throw new IllegalArgumentException("businessName is required for JURIDICA personType");
         }
+    }
+
+    private static boolean isSimpleNaturalCustomer(PersonType personType, Set<ThirdPartyRole> roles) {
+        return personType == PersonType.NATURAL && roles.size() == 1 && roles.contains(ThirdPartyRole.CUSTOMER);
+    }
+
+    private static void validateSimpleNaturalCustomer(Integer identificationTypeCode, String businessName,
+            String tradeName) {
+        if (isNit(identificationTypeCode)) {
+            throw new IllegalArgumentException("NIT is not allowed for simple NATURAL customer");
+        }
+        if (businessName != null) {
+            throw new IllegalArgumentException("businessName is not allowed for simple NATURAL customer");
+        }
+        if (tradeName != null) {
+            throw new IllegalArgumentException("tradeName is not allowed for simple NATURAL customer");
+        }
+    }
+
+    private static Set<String> normalizeSimpleNaturalCustomerResponsibilities(Set<String> taxResponsibilities) {
+        Set<String> normalized = taxResponsibilities == null || taxResponsibilities.isEmpty()
+                ? Set.of(SIMPLE_NATURAL_CUSTOMER_RESPONSIBILITY)
+                : TaxResponsibilityCatalog.normalize(taxResponsibilities);
+        if (!normalized.equals(Set.of(SIMPLE_NATURAL_CUSTOMER_RESPONSIBILITY))) {
+            throw new IllegalArgumentException("simple NATURAL customer must use R-99-PN tax responsibility");
+        }
+        return normalized;
+    }
+
+    private static TaxRegime normalizeSimpleNaturalCustomerRegime(TaxRegime taxRegime) {
+        if (taxRegime == null) {
+            return TaxRegime.NO_RESPONSABLE_IVA;
+        }
+        if (taxRegime != TaxRegime.NO_RESPONSABLE_IVA) {
+            throw new IllegalArgumentException("simple NATURAL customer must use NO_RESPONSABLE_IVA tax regime");
+        }
+        return taxRegime;
     }
 
     private static Set<ThirdPartyRole> normalizeRoles(Set<ThirdPartyRole> roles) {

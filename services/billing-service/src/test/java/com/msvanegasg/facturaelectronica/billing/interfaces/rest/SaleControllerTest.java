@@ -26,9 +26,11 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageSaleUseCase;
+import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleItemType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
+import com.msvanegasg.facturaelectronica.billing.domain.model.VirtualWalletCode;
 import com.msvanegasg.facturaelectronica.billing.exception.BillingExceptionHandler;
 import com.msvanegasg.facturaelectronica.billing.observability.CorrelationId;
 import com.msvanegasg.facturaelectronica.billing.observability.CorrelationIdFilter;
@@ -68,6 +70,8 @@ class SaleControllerTest {
                 .andExpect(header().string(CorrelationId.HEADER_NAME, "corr-billing"))
                 .andExpect(jsonPath("$.id").value(SALE_ID.toString()))
                 .andExpect(jsonPath("$.status").value("DRAFT"))
+                .andExpect(jsonPath("$.paymentMethodCode").value("VIRTUAL_WALLET"))
+                .andExpect(jsonPath("$.virtualWalletCode").value("NEQUI"))
                 .andExpect(jsonPath("$.lines[0].itemType").value("PHYSICAL_GOOD"))
                 .andExpect(jsonPath("$.lines[0].stockTracked").value(true));
     }
@@ -103,9 +107,9 @@ class SaleControllerTest {
     }
 
     private static SaleResult result(SaleStatus status) {
-        return new SaleResult(SALE_ID, COMPANY_ID, null, null, SaleChannel.POS, status, new BigDecimal("30000.00"),
-                BigDecimal.ZERO, new BigDecimal("5700.00"), new BigDecimal("35700.00"), "sale-1", null, NOW,
-                status == SaleStatus.CONFIRMED ? NOW : null,
+        return new SaleResult(SALE_ID, COMPANY_ID, null, PaymentMethodCode.VIRTUAL_WALLET, VirtualWalletCode.NEQUI,
+                SaleChannel.POS, status, new BigDecimal("30000.00"), BigDecimal.ZERO, new BigDecimal("5700.00"),
+                new BigDecimal("35700.00"), "sale-1", null, NOW, status == SaleStatus.CONFIRMED ? NOW : null,
                 List.of(new SaleLineResult(UUID.fromString("44444444-4444-4444-4444-444444444444"), PRODUCT_ID,
                         "SKU-1", "Producto", SaleItemType.PHYSICAL_GOOD, true,
                         new BigDecimal("2.00"), new BigDecimal("15000.00"), new BigDecimal("9000.00"), BigDecimal.ZERO, "IVA_19",
@@ -118,6 +122,8 @@ class SaleControllerTest {
         return """
                 {
                   "saleChannel": "POS",
+                  "paymentMethodCode": "VIRTUAL_WALLET",
+                  "virtualWalletCode": "NEQUI",
                   "items": [
                     {
                       "productId": "33333333-3333-3333-3333-333333333333",
