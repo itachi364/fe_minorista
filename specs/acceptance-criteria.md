@@ -152,3 +152,14 @@
 - AC-121: Dada una venta POS donde el comprador no desea identificarse para factura electronica nominada, cuando se cree la venta, entonces la SPA debe enviar `buyerIdentificationMode=FINAL_CONSUMER` y `billing-service` debe resolver el adquirente desde configuracion persistida, sin crear tercero `thirdparty`.
 - AC-122: Dada una venta POS donde el comprador si desea factura electronica nominada, cuando se cree la venta, entonces debe exigir `customerId` seleccionado por buscador y conservar snapshot fiscal del tercero.
 - AC-123: Dado el catalogo fiscal de impuestos, cuando cambie una tarifa o impuesto permitido, entonces `ROOT` puede parametrizarlo en base de datos y los productos nuevos deben usar el catalogo actualizado sin despliegue frontend.
+
+## Auditoria transversal y UX operativa
+
+- AC-124: Dado un usuario ROOT autenticado, cuando actualiza un item de catalogo global/regulatorio, entonces el backend persiste el cambio y registra auditoria `CATALOG_ITEM/UPDATE_CATALOG_ITEM/SUCCESS`.
+- AC-125: Dado un usuario ROOT autenticado, cuando activa o inactiva un item de catalogo global/regulatorio, entonces el backend persiste el estado y registra auditoria `CATALOG_ITEM/SET_CATALOG_ITEM_ACTIVE/SUCCESS`.
+- AC-126: Dado un usuario no ROOT sin permiso de administracion global, cuando intenta administrar catalogos globales, entonces la UI no habilita la accion y el backend conserva restricciones de dominio.
+- AC-127: Dado que una accion inicia desde la UI, cuando esta en proceso, entonces se muestra un modal con barra de carga y texto de estado sin mostrar JSON tecnico persistente.
+- AC-128: Dado que una accion finaliza correctamente, cuando el backend responde OK, entonces el modal informa exito y permite cerrarlo.
+- AC-129: Dado que una accion falla, cuando el backend responde error o no responde, entonces el modal informa error generico y referencia revisar Logs/Auditoria, conservando `correlationId` si existe.
+- AC-130: Dado un usuario ROOT o administrador de empresa, cuando entra al modulo Logs/Auditoria, entonces puede consultar eventos autorizados de auditoria.
+- AC-131: Dado un usuario sin permisos de auditoria, cuando usa la aplicacion, entonces no ve el modulo Logs/Auditoria.

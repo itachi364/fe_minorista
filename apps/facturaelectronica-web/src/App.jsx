@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createIdempotencyKey, requestJson } from './api/client.js';
-import { Result } from './components/forms.jsx';
+import { ActionStatusModal } from './components/ActionStatusModal.jsx';
 import { Modal } from './components/Modal.jsx';
 import { steps } from './data/catalogs.js';
 import {
@@ -19,6 +19,7 @@ import {
   initialThirdParty,
 } from './data/initialState.js';
 import { LoginPanel } from './features/auth/LoginPanel.jsx';
+import { AuditLogPanel } from './features/audit/AuditLogPanel.jsx';
 import { CatalogAdminPanel } from './features/catalogs/CatalogAdminPanel.jsx';
 import { AdminModal } from './features/company/AdminModal.jsx';
 import { CompanyForm } from './features/company/CompanyForm.jsx';
@@ -81,13 +82,16 @@ export default function App() {
   const [customerOptions, setCustomerOptions] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [reportsForm, setReportsForm] = useState(initialReports);
+  const [auditFilters, setAuditFilters] = useState({ resourceType: '', resourceId: '', from: '', to: '' });
+  const [auditEvents, setAuditEvents] = useState([]);
   const [saleId, setSaleId] = useState('');
   const [output, setOutput] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [actionStatus, setActionStatus] = useState({ status: 'idle' });
 
   const token = session?.accessToken || '';
-  const context = useMemo(() => ({ token, companyId: activeCompanyId }), [token, activeCompanyId]);
+  const context = useMemo(() => ({ token, companyId: activeCompanyId, userId: session?.userId }), [token, activeCompanyId, session?.userId]);
   const activeAccess = companyAccesses.find((access) => access.companyId === activeCompanyId);
   const activeCompany = rootCompanies.find((company) => company.id === activeCompanyId || company.companyId === activeCompanyId);
   const companyMunicipalityCode = activeCompany?.municipalityCode || issuerForm.municipalityCode;
@@ -96,6 +100,7 @@ export default function App() {
   const canUse = (permissions) => isRoot || isCompanyAdmin || hasAnyPermission(activeAccess, permissions);
   const canManageSecurity = canUse(stepPermissionRules['Usuarios y roles']);
   const canManageCatalogs = canUse(stepPermissionRules.Catalogos);
+  const canViewAudit = isRoot || isCompanyAdmin || hasAnyPermission(activeAccess, stepPermissionRules.Logs);
   const visibleSteps = steps.filter((step) => isRoot || isCompanyAdmin || hasAnyPermission(activeAccess, stepPermissionRules[step] || []));
   const currentStep = visibleSteps.includes(selectedStep) ? selectedStep : visibleSteps[0] || 'Empresa';
   const availableCompanyPermissions = companyScopedPermissions(permissionCatalog);
@@ -163,12 +168,22 @@ export default function App() {
     markActivity();
     setBusy(true);
     setError(null);
+    setActionStatus({ status: 'running', message: 'Procesando solicitud...' });
     try {
       const result = await action();
       setOutput(result);
+      setActionStatus({ status: 'success', message: 'La accion se realizo correctamente.' });
       return result;
     } catch (caught) {
-      setError(caught.status === 403 ? { status: 403, message: 'No tienes permisos para ejecutar esta accion.' } : caught.payload || { message: caught.message });
+      const payload = caught.status === 403
+        ? { status: 403, message: 'No tienes permisos para ejecutar esta accion.' }
+        : caught.payload || { message: caught.message };
+      setError(payload);
+      setActionStatus({
+        status: 'error',
+        message: 'Hay un error al realizar la accion. Revisa Logs/Auditoria para mas detalle.',
+        correlationId: payload?.correlationId,
+      });
       return null;
     } finally {
       setBusy(false);
@@ -267,6 +282,7 @@ export default function App() {
     setCustomerSearch('');
     setCustomerOptions([]);
     setSelectedCustomer(null);
+    setAuditEvents([]);
     setSaleId('');
     setSaleForm(initialSale);
     setAdminModalOpen(false);
@@ -294,7 +310,7 @@ export default function App() {
     const created = await requestJson('/api/v1/companies', {
       method: 'POST',
       body: buildCompanyPayload(companyForm),
-      token,
+      ...context,
       idempotencyKey: createIdempotencyKey('company'),
     });
     if (isRoot && created?.id) {
@@ -545,6 +561,18 @@ export default function App() {
     return { sales, stock, journal };
   }
 
+  async function loadAuditEvents() {
+    requireCompany();
+    const events = await requestJson(`/api/v1/audit-events${buildQuery({
+      resourceType: auditFilters.resourceType,
+      resourceId: auditFilters.resourceId,
+      from: toInstantQuery(auditFilters.from),
+      to: toInstantQuery(auditFilters.to),
+    })}`, context);
+    setAuditEvents(events || []);
+    return events || [];
+  }
+
   async function loadCatalogDefinitions() {
     const definitions = await requestJson('/api/v1/catalog-definitions', context);
     setCatalogDefinitions(definitions || []);
@@ -685,6 +713,7 @@ export default function App() {
           <LoginPanel form={loginForm} setForm={setLoginForm} busy={busy} onLogin={() => execute(login)} />
         </section>
         {licenseModal && <Modal title={licenseModal.title} message={licenseModal.message} onClose={() => setLicenseModal(null)} />}
+        <ActionStatusModal state={actionStatus} onClose={() => setActionStatus({ status: 'idle' })} />
       </main>
     );
   }
@@ -709,7 +738,10 @@ export default function App() {
 
         <section className="panel-grid">
           {currentStep === 'Empresa' && (
-            <CompanyForm form={companyForm} setForm={setCompanyForm} companies={rootCompanies} activeCompanyId={activeCompanyId} activeCompany={activeCompany} isRoot={isRoot} onCompanyChange={changeCompany} onSubmit={() => execute(createCompany)} onOpenAdminModal={() => setAdminModalOpen(true)} busy={busy} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} />
+            <CompanyForm form={companyForm} setForm={setCompanyForm} companies={rootCompanies} activeCompanyId={activeCompanyId} activeCompany={activeCompany} isRoot={isRoot} onCompanyChange={changeCompany} onSubmit={() => execute(createCompany)} onOpenAdminModal={() => {
+              setActionStatus({ status: 'idle' });
+              setAdminModalOpen(true);
+            }} busy={busy} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} />
           )}
           {currentStep === 'Terceros' && (
             <ThirdPartyForm form={thirdPartyForm} setForm={setThirdPartyForm} companyMunicipalityCode={companyMunicipalityCode} onSubmit={() => execute(createThirdParty)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Terceros)} documentTypeOptionsSource={runtimeCatalogs.dianDocumentTypes} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} taxRegimeOptionsSource={runtimeCatalogs.taxRegimeOptions} locations={runtimeCatalogs.locations} />
@@ -732,19 +764,28 @@ export default function App() {
           {currentStep === 'Catalogos' && (
             <CatalogAdminPanel definitions={catalogDefinitions} selectedCatalogCode={selectedCatalogCode} setSelectedCatalogCode={setSelectedCatalogCode} items={catalogItems} form={catalogItemForm} setForm={setCatalogItemForm} onLoadDefinitions={() => execute(loadCatalogDefinitions)} onLoadItems={() => execute(() => loadCatalogItems())} onNew={startNewCatalogItem} onEdit={editCatalogItem} onSave={() => execute(saveCatalogItem)} onToggleActive={(item) => execute(() => toggleCatalogItemActive(item))} busy={busy || !canManageCatalogs} isRoot={isRoot} />
           )}
-          {currentStep === 'Usuarios y roles' && (
-            <IdentityAdminPanel permissions={availableCompanyPermissions} roles={companyRoles} users={managedUsers} roleForm={companyRoleForm} setRoleForm={setCompanyRoleForm} userForm={managedUserForm} setUserForm={setManagedUserForm} onLoad={() => execute(loadIdentityAdminData)} onCreateRole={() => execute(createCompanyRole)} onCreateUser={() => execute(createManagedUser)} onOpenAssignModal={() => setRoleAssignmentModalOpen(true)} onTogglePermission={togglePermissionCode} busy={busy || !activeCompanyId || !canManageSecurity} />
+          {currentStep === 'Logs' && (
+            <AuditLogPanel events={auditEvents} filters={auditFilters} setFilters={setAuditFilters} onLoad={() => execute(loadAuditEvents)} busy={busy || !activeCompanyId || !canViewAudit} canViewGlobal={isRoot} activeCompanyId={activeCompanyId} />
           )}
-        </section>
-
-        <section className="result-grid">
-          <Result title="Respuesta" value={output} />
-          <Result title="Error" value={error} tone="danger" />
+          {currentStep === 'Usuarios y roles' && (
+            <IdentityAdminPanel permissions={availableCompanyPermissions} roles={companyRoles} users={managedUsers} roleForm={companyRoleForm} setRoleForm={setCompanyRoleForm} userForm={managedUserForm} setUserForm={setManagedUserForm} onLoad={() => execute(loadIdentityAdminData)} onCreateRole={() => execute(createCompanyRole)} onCreateUser={() => execute(createManagedUser)} onOpenAssignModal={() => {
+              setActionStatus({ status: 'idle' });
+              setRoleAssignmentModalOpen(true);
+            }} onTogglePermission={togglePermissionCode} busy={busy || !activeCompanyId || !canManageSecurity} />
+          )}
         </section>
       </section>
       {licenseModal && <Modal title={licenseModal.title} message={licenseModal.message} onClose={() => setLicenseModal(null)} />}
+      <ActionStatusModal state={actionStatus} onClose={() => setActionStatus({ status: 'idle' })} />
       {adminModalOpen && <AdminModal form={companyAdminForm} setForm={setCompanyAdminForm} activeCompany={activeCompany} activeCompanyId={activeCompanyId} onSubmit={() => execute(createInitialCompanyAdmin)} onClose={() => setAdminModalOpen(false)} busy={busy || !activeCompanyId} />}
       {roleAssignmentModalOpen && <RoleAssignmentModal users={managedUsers} roles={companyRoles} form={roleAssignmentForm} setForm={setRoleAssignmentForm} searchEmail={userSearchEmail} setSearchEmail={setUserSearchEmail} onSearch={() => execute(() => loadCompanyUsers(userSearchEmail))} onSubmit={() => execute(assignManagedRoles)} onToggleRole={toggleAssignedRole} onClose={() => setRoleAssignmentModalOpen(false)} busy={busy || !activeCompanyId || !canManageSecurity} />}
     </main>
   );
+}
+
+function toInstantQuery(value) {
+  if (!value) {
+    return '';
+  }
+  return new Date(value).toISOString();
 }

@@ -2969,3 +2969,63 @@
     - `npm run build` en `apps/facturaelectronica-web`: OK.
     - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: OK.
     - Evidencia E2E: CompanyId `b832cd9f-6c84-4091-a813-3cc1581db95b`, ProductId `a1cb9d34-4c45-4f37-8830-ec9b09c2b833`, SaleId `c2c19408-8197-4ab3-bc20-0553864fc16a`, DocumentId `fa532e8d-cb66-4393-93d5-0177f75f64ca`, ProviderTrackingId `mock-electronic_pos-fa532e8d-cb66-4393-93d5-0177f75f64ca`.
+
+- [x] TASK-090: Definir politica transversal de auditoria para acciones mutables
+  - Estado: DONE
+  - Requisitos: RN-046, RN-047, RN-048.
+  - Acceptance criteria: AC-124, AC-125, AC-129.
+  - Descripcion: Formalizar que toda accion mutable del backend debe registrar auditoria segura y trazable.
+  - Alcance:
+    - Documentar politica en specs y contratos.
+    - Usar `audit-service` como destino canonico de consulta.
+    - Conectar la primera implementacion concreta en catalogos globales.
+    - Registrar desde `bff-service` auditoria best-effort para mutaciones publicas `POST`, `PUT`, `PATCH` y `DELETE` con `X-Company-Id`.
+    - Propagar `X-User-Id` desde SPA/BFF para asociar actor en auditoria.
+  - Tests requeridos:
+    - Pruebas de catalogos y auditoria.
+  - Validacion:
+    - `./mvnw.cmd -pl services/bff-service -am test`: OK, 6 tests.
+    - `./mvnw.cmd -pl services/audit-service -am test`: OK, 10 tests.
+    - `./mvnw.cmd test`: OK, reactor completo.
+
+- [x] TASK-091: Permitir administracion ROOT auditada de catalogos globales
+  - Estado: DONE
+  - Requisitos: RF-038, RN-046, RN-047, RN-048.
+  - Acceptance criteria: AC-124, AC-125, AC-126.
+  - Descripcion: Permitir que ROOT administre catalogos regulatorios/globales, manteniendo restriccion para usuarios no ROOT y registrando auditoria por cada cambio.
+  - Alcance:
+    - Ajustar definiciones de catalogo para `global_editable_by_root=true` donde aplique.
+    - Agregar puerto/adaptador de auditoria en `catalog-service`.
+    - Registrar auditoria en crear/actualizar/activar/inactivar item global.
+    - Registrar auditoria en activar/inactivar items por empresa.
+    - Ajustar UI para habilitar acciones ROOT.
+  - Validacion:
+    - `./mvnw.cmd -pl services/catalog-service -am test`: OK, 9 tests.
+
+- [x] TASK-092: Reemplazar paneles Respuesta/Error por modal de proceso
+  - Estado: DONE
+  - Requisitos: RN-049.
+  - Acceptance criteria: AC-127, AC-128, AC-129.
+  - Descripcion: Cambiar la experiencia operativa para mostrar modal de carga/exito/error en lugar de paneles tecnicos JSON.
+  - Alcance:
+    - Nuevo componente de modal de proceso.
+    - Centralizar `execute` para manejar estados.
+    - Retirar render de paneles `Respuesta` y `Error`.
+    - Limpiar modal de estado cuando se abre otro modal operativo para evitar dialogos apilados.
+  - Validacion:
+    - `npm run test` en `apps/facturaelectronica-web`: OK, 15 tests.
+    - `npm run build` en `apps/facturaelectronica-web`: OK.
+
+- [x] TASK-093: Modulo Logs/Auditoria para ROOT y administradores
+  - Estado: DONE
+  - Requisitos: RF-039, RF-040.
+  - Acceptance criteria: AC-130, AC-131.
+  - Descripcion: Agregar modulo UI para consultar eventos de auditoria por empresa desde `audit-service`.
+  - Alcance:
+    - Agregar paso `Logs`.
+    - Consultar `GET /api/v1/audit-events`.
+    - Filtrar visibilidad por ROOT, OWNER/ADMIN o `AUDIT_VIEW`.
+    - Mostrar tabla con fecha, usuario, accion, recurso, resultado, detalle y correlacion cuando exista.
+  - Validacion:
+    - `npm run test` en `apps/facturaelectronica-web`: OK, 15 tests.
+    - `npm run build` en `apps/facturaelectronica-web`: OK.

@@ -656,6 +656,49 @@ pre {
   line-height: 1.5;
 }
 
+.action-modal {
+  border-color: #b7c8d8;
+}
+
+.progress-track {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #d9e2ea;
+}
+
+.progress-track span {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border-radius: inherit;
+  background: #1f7fb0;
+}
+
+.progress-track.active span {
+  width: 42%;
+  animation: progress-slide 1.1s ease-in-out infinite;
+}
+
+@keyframes progress-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  50% {
+    transform: translateX(70%);
+  }
+  100% {
+    transform: translateX(240%);
+  }
+}
+
+.audit-detail {
+  max-width: 520px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 
 .summary-strip {
   display: flex;

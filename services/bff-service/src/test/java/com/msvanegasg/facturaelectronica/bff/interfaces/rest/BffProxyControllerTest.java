@@ -61,6 +61,7 @@ class BffProxyControllerTest {
         mockMvc.perform(post("/api/v1/companies?bootstrap=true")
                 .header("Authorization", "Bearer token")
                 .header("X-Company-Id", "11111111-1111-1111-1111-111111111111")
+                .header("X-User-Id", "22222222-2222-2222-2222-222222222222")
                 .header(CorrelationId.HEADER_NAME, "corr-bff")
                 .header("Idempotency-Key", "company-1")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -74,6 +75,7 @@ class BffProxyControllerTest {
         assertThat(proxied.targetService()).isEqualTo(TargetService.TENANT);
         assertThat(proxied.uri().toString()).isEqualTo("/api/v1/companies?bootstrap=true");
         assertThat(proxied.headers().getFirst("Authorization")).isEqualTo("Bearer token");
+        assertThat(proxied.headers().getFirst("X-User-Id")).isEqualTo("22222222-2222-2222-2222-222222222222");
         assertThat(new String(proxied.body(), StandardCharsets.UTF_8)).contains("ACME SAS");
     }
 

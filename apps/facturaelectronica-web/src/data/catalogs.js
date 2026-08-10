@@ -1,4 +1,4 @@
-export const steps = ['Empresa', 'Terceros', 'Inventario', 'Fiscal', 'Venta POS', 'Reportes', 'Catalogos', 'Usuarios y roles'];
+export const steps = ['Empresa', 'Terceros', 'Inventario', 'Fiscal', 'Venta POS', 'Reportes', 'Catalogos', 'Logs', 'Usuarios y roles'];
 
 export const thirdPartyTypeOptions = [
   { value: 'CUSTOMER', label: 'Cliente' },

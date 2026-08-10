@@ -5,11 +5,14 @@ import java.util.Objects;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.catalog.application.dto.CatalogDefinitionResult;
+import com.msvanegasg.facturaelectronica.catalog.application.dto.AuditContext;
+import com.msvanegasg.facturaelectronica.catalog.application.dto.CatalogAuditEventCommand;
 import com.msvanegasg.facturaelectronica.catalog.application.dto.CatalogItemCommand;
 import com.msvanegasg.facturaelectronica.catalog.application.dto.CatalogItemResult;
 import com.msvanegasg.facturaelectronica.catalog.application.dto.DepartmentResult;
 import com.msvanegasg.facturaelectronica.catalog.application.dto.MunicipalityResult;
 import com.msvanegasg.facturaelectronica.catalog.application.port.in.ManageVersionedCatalogUseCase;
+import com.msvanegasg.facturaelectronica.catalog.application.port.out.CatalogAuditEventPort;
 import com.msvanegasg.facturaelectronica.catalog.application.port.out.VersionedCatalogRepositoryPort;
 import com.msvanegasg.facturaelectronica.catalog.domain.model.CatalogDefinition;
 import com.msvanegasg.facturaelectronica.catalog.domain.model.CatalogItem;
@@ -19,9 +22,16 @@ import com.msvanegasg.facturaelectronica.catalog.domain.model.Municipality;
 public class VersionedCatalogManagementService implements ManageVersionedCatalogUseCase {
 
     private final VersionedCatalogRepositoryPort repository;
+    private final CatalogAuditEventPort auditEventPort;
 
     public VersionedCatalogManagementService(VersionedCatalogRepositoryPort repository) {
+        this(repository, CatalogAuditEventPort.noop());
+    }
+
+    public VersionedCatalogManagementService(VersionedCatalogRepositoryPort repository,
+            CatalogAuditEventPort auditEventPort) {
         this.repository = Objects.requireNonNull(repository);
+        this.auditEventPort = Objects.requireNonNull(auditEventPort);
     }
 
     @Override
@@ -45,45 +55,91 @@ public class VersionedCatalogManagementService implements ManageVersionedCatalog
 
     @Override
     public CatalogItemResult createGlobalItem(String catalogCode, CatalogItemCommand command) {
+        return createGlobalItem(catalogCode, command, AuditContext.empty());
+    }
+
+    @Override
+    public CatalogItemResult createGlobalItem(String catalogCode, CatalogItemCommand command,
+            AuditContext auditContext) {
         String normalizedCatalogCode = normalizeCode(catalogCode);
-        CatalogDefinition definition = requireDefinition(normalizedCatalogCode);
-        if (!definition.globalEditableByRoot()) {
-            throw new IllegalArgumentException("catalog cannot be edited globally from UI");
+        String normalizedItemCode = command == null ? null : command.code();
+        try {
+            normalizedItemCode = normalizeCode(normalizedItemCode);
+            CatalogDefinition definition = requireDefinition(normalizedCatalogCode);
+            if (!definition.globalEditableByRoot()) {
+                throw new IllegalArgumentException("catalog cannot be edited globally from UI");
+            }
+            if (repository.findCatalogItem(normalizedCatalogCode, normalizedItemCode).isPresent()) {
+                throw new IllegalArgumentException("catalog item already exists");
+            }
+            CatalogItem item = toCatalogItem(normalizedCatalogCode, normalizedItemCode, command, true);
+            CatalogItemResult result = toResult(repository.saveCatalogItem(item), true);
+            audit(auditContext, "CREATE_CATALOG_ITEM", normalizedCatalogCode, normalizedItemCode, "SUCCESS", null);
+            return result;
+        } catch (RuntimeException ex) {
+            audit(auditContext, "CREATE_CATALOG_ITEM", normalizedCatalogCode, normalizedItemCode, "FAILURE",
+                    ex.getMessage());
+            throw ex;
         }
-        String normalizedItemCode = normalizeCode(command.code());
-        if (repository.findCatalogItem(normalizedCatalogCode, normalizedItemCode).isPresent()) {
-            throw new IllegalArgumentException("catalog item already exists");
-        }
-        CatalogItem item = toCatalogItem(normalizedCatalogCode, normalizedItemCode, command, true);
-        return toResult(repository.saveCatalogItem(item), true);
     }
 
     @Override
     public CatalogItemResult updateGlobalItem(String catalogCode, String itemCode, CatalogItemCommand command) {
+        return updateGlobalItem(catalogCode, itemCode, command, AuditContext.empty());
+    }
+
+    @Override
+    public CatalogItemResult updateGlobalItem(String catalogCode, String itemCode, CatalogItemCommand command,
+            AuditContext auditContext) {
         String normalizedCatalogCode = normalizeCode(catalogCode);
-        CatalogDefinition definition = requireDefinition(normalizedCatalogCode);
-        if (!definition.globalEditableByRoot()) {
-            throw new IllegalArgumentException("catalog cannot be edited globally from UI");
+        String normalizedItemCode = normalizeCode(itemCode);
+        try {
+            CatalogDefinition definition = requireDefinition(normalizedCatalogCode);
+            if (!definition.globalEditableByRoot()) {
+                throw new IllegalArgumentException("catalog cannot be edited globally from UI");
+            }
+            CatalogItem current = repository.findCatalogItem(normalizedCatalogCode, normalizedItemCode)
+                    .orElseThrow(() -> new IllegalArgumentException("catalog item was not found"));
+            CatalogItem item = toCatalogItem(normalizedCatalogCode, current.itemCode(), command, current.active());
+            CatalogItemResult result = toResult(repository.saveCatalogItem(item), true);
+            audit(auditContext, "UPDATE_CATALOG_ITEM", normalizedCatalogCode, normalizedItemCode, "SUCCESS", null);
+            return result;
+        } catch (RuntimeException ex) {
+            audit(auditContext, "UPDATE_CATALOG_ITEM", normalizedCatalogCode, normalizedItemCode, "FAILURE",
+                    ex.getMessage());
+            throw ex;
         }
-        CatalogItem current = repository.findCatalogItem(normalizedCatalogCode, normalizeCode(itemCode))
-                .orElseThrow(() -> new IllegalArgumentException("catalog item was not found"));
-        CatalogItem item = toCatalogItem(normalizedCatalogCode, current.itemCode(), command, current.active());
-        return toResult(repository.saveCatalogItem(item), true);
     }
 
     @Override
     public CatalogItemResult setGlobalItemActive(String catalogCode, String itemCode, boolean active) {
+        return setGlobalItemActive(catalogCode, itemCode, active, AuditContext.empty());
+    }
+
+    @Override
+    public CatalogItemResult setGlobalItemActive(String catalogCode, String itemCode, boolean active,
+            AuditContext auditContext) {
         String normalizedCatalogCode = normalizeCode(catalogCode);
-        CatalogDefinition definition = requireDefinition(normalizedCatalogCode);
-        if (!definition.globalEditableByRoot()) {
-            throw new IllegalArgumentException("catalog cannot be activated globally from UI");
+        String normalizedItemCode = normalizeCode(itemCode);
+        try {
+            CatalogDefinition definition = requireDefinition(normalizedCatalogCode);
+            if (!definition.globalEditableByRoot()) {
+                throw new IllegalArgumentException("catalog cannot be activated globally from UI");
+            }
+            CatalogItem current = repository.findCatalogItem(normalizedCatalogCode, normalizedItemCode)
+                    .orElseThrow(() -> new IllegalArgumentException("catalog item was not found"));
+            CatalogItem item = CatalogItem.restore(current.catalogCode(), current.itemCode(), current.label(),
+                    current.description(), active, current.regulatory(), current.source(), current.sourceVersion(),
+                    current.validFrom(), current.validTo(), current.sortOrder());
+            CatalogItemResult result = toResult(repository.saveCatalogItem(item), true);
+            audit(auditContext, "SET_CATALOG_ITEM_ACTIVE", normalizedCatalogCode, normalizedItemCode, "SUCCESS",
+                    "active=" + active);
+            return result;
+        } catch (RuntimeException ex) {
+            audit(auditContext, "SET_CATALOG_ITEM_ACTIVE", normalizedCatalogCode, normalizedItemCode, "FAILURE",
+                    ex.getMessage());
+            throw ex;
         }
-        CatalogItem current = repository.findCatalogItem(normalizedCatalogCode, normalizeCode(itemCode))
-                .orElseThrow(() -> new IllegalArgumentException("catalog item was not found"));
-        CatalogItem item = CatalogItem.restore(current.catalogCode(), current.itemCode(), current.label(),
-                current.description(), active, current.regulatory(), current.source(), current.sourceVersion(),
-                current.validFrom(), current.validTo(), current.sortOrder());
-        return toResult(repository.saveCatalogItem(item), true);
     }
 
     @Override
@@ -99,14 +155,30 @@ public class VersionedCatalogManagementService implements ManageVersionedCatalog
     @Override
     public CatalogItemResult setCompanyItemEnabled(UUID companyId, String catalogCode, String itemCode,
             boolean enabled) {
+        return setCompanyItemEnabled(companyId, catalogCode, itemCode, enabled, AuditContext.empty());
+    }
+
+    @Override
+    public CatalogItemResult setCompanyItemEnabled(UUID companyId, String catalogCode, String itemCode,
+            boolean enabled, AuditContext auditContext) {
         UUID requiredCompanyId = Objects.requireNonNull(companyId, "companyId is required");
-        CatalogItem item = repository.findCatalogItem(normalizeCode(catalogCode), normalizeCode(itemCode))
-                .orElseThrow(() -> new IllegalArgumentException("catalog item was not found"));
-        if (enabled && !item.active()) {
-            throw new IllegalArgumentException("inactive global catalog item cannot be enabled for company");
+        String normalizedCatalogCode = normalizeCode(catalogCode);
+        String normalizedItemCode = normalizeCode(itemCode);
+        try {
+            CatalogItem item = repository.findCatalogItem(normalizedCatalogCode, normalizedItemCode)
+                    .orElseThrow(() -> new IllegalArgumentException("catalog item was not found"));
+            if (enabled && !item.active()) {
+                throw new IllegalArgumentException("inactive global catalog item cannot be enabled for company");
+            }
+            repository.saveCompanyItemEnabled(requiredCompanyId, item.catalogCode(), item.itemCode(), enabled);
+            audit(auditContext, "SET_COMPANY_CATALOG_ITEM_ENABLED", normalizedCatalogCode, normalizedItemCode,
+                    "SUCCESS", "enabled=" + enabled);
+            return toResult(item, enabled);
+        } catch (RuntimeException ex) {
+            audit(auditContext, "SET_COMPANY_CATALOG_ITEM_ENABLED", normalizedCatalogCode, normalizedItemCode,
+                    "FAILURE", ex.getMessage());
+            throw ex;
         }
-        repository.saveCompanyItemEnabled(requiredCompanyId, item.catalogCode(), item.itemCode(), enabled);
-        return toResult(item, enabled);
     }
 
     @Override
@@ -171,5 +243,30 @@ public class VersionedCatalogManagementService implements ManageVersionedCatalog
         return CatalogItem.restore(catalogCode, itemCode, command.label(), command.description(), active,
                 command.regulatory(), command.source(), command.sourceVersion(), command.validFrom(),
                 command.validTo(), command.sortOrder());
+    }
+
+    private void audit(AuditContext context, String action, String catalogCode, String itemCode, String result,
+            String detail) {
+        AuditContext safeContext = context == null ? AuditContext.empty() : context;
+        String safeDetail = "{\"catalogCode\":\"%s\",\"itemCode\":\"%s\",\"correlationId\":\"%s\",\"detail\":\"%s\"}"
+                .formatted(escape(catalogCode), escape(itemCode), escape(safeContext.correlationId()),
+                        escape(detail));
+        auditEventPort.register(new CatalogAuditEventCommand(safeContext.companyId(), safeContext.userId(),
+                "CATALOG_ADMINISTRATION", "CATALOG_ITEM", truncate(catalogCode + "/" + itemCode, 120), action,
+                result, safeDetail));
+    }
+
+    private static String escape(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private static String truncate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength);
     }
 }

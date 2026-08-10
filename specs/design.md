@@ -933,3 +933,19 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 - DIAN documentacion tecnica del sistema de facturacion electronica: los anexos tecnicos publicados por DIAN son la fuente de reglas de validacion vigentes.
 - Resolucion DIAN 165 de 2023: adopta el Anexo Tecnico de Factura Electronica de Venta 1.9 y el Anexo Tecnico de Documento Equivalente Electronico 1.0.
 - DIAN prensa/guia de factura electronica: si el comprador no entrega datos debe aparecer la frase `Consumidor final`.
+
+## TASK-090 a TASK-093 auditoria global, catalogos y UX operativa
+
+### Decisiones
+
+- Toda accion mutable debe generar auditoria de negocio o seguridad. La cobertura se implementa por bounded context; esta iteracion conecta catalogos globales ROOT con `audit-service` y formaliza la politica transversal para los demas servicios.
+- Los catalogos regulatorios son protegidos para empresas, pero editables por ROOT porque ROOT administra la plataforma completa. Cada cambio debe registrar accion, recurso, resultado, usuario actor si llega por header y detalle seguro.
+- El modulo Logs/Auditoria consume `audit-service`. ROOT y administradores lo ven desde UI; ROOT opera sobre la empresa activa seleccionada en esta iteracion, evitando consultas globales sin controles backend adicionales.
+- La UI elimina paneles `Respuesta`/`Error`; las respuestas tecnicas quedan para logs, tests o consola de desarrollo, no para el flujo operativo.
+
+### Context7 evidence
+
+- Library/tool: React oficial (`/reactjs/react.dev`).
+- Topic consulted: async UI state, conditional rendering, loading/error/success states and effect cleanup for timers.
+- Relevant finding: React recomienda modelar estados visuales explicitos como estados de envio, exito y error, renderizar condicionalmente y limpiar temporizadores/efectos.
+- Decision impact: La SPA reemplaza paneles tecnicos persistentes por un modal de proceso controlado por estado y conserva `correlationId` solo como contexto tecnico.

@@ -218,6 +218,10 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RN-043: El escaneo USB HID se interpreta como entrada de teclado solo en campos de codigo de barras; la SPA debe mantener foco controlado para inventario/POS y procesar el codigo por debounce automatico o terminador del scanner sin requerir clic.
 - RN-044: Si el comprador no desea factura electronica nominada, `billing-service` debe resolver el consumidor final desde configuracion fiscal persistida y usarlo como snapshot del adquirente, sin persistirlo como tercero empresarial.
 - RN-045: El perfil de consumidor final debe ser parametrizable por empresa o global, auditable y modificable por `ROOT` si DIAN/proveedor tecnologico cambia el contrato tecnico; la SPA solo envia la decision `buyerIdentificationMode`.
+- RN-046: Toda accion mutable del backend (`POST`, `PUT`, `PATCH`, `DELETE`) debe registrar auditoria segura con empresa, usuario cuando exista, accion, recurso, resultado, detalle no sensible, fecha y correlacion.
+- RN-047: La auditoria no debe registrar secretos, tokens, passwords, certificados, hashes de contrasena ni payloads completos con datos sensibles.
+- RN-048: Un fallo temporal de auditoria no debe revertir una accion de negocio ya persistida; debe dejar trazabilidad tecnica y/o evento pendiente de reintento cuando exista infraestructura asincrona.
+- RN-049: La SPA no debe mostrar paneles tecnicos permanentes de respuesta/error JSON en el flujo operativo; debe mostrar modal de proceso, exito o error generico y orientar a revisar Logs/Auditoria.
 
 ## Supuestos
 
@@ -261,3 +265,6 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-035: Los permisos globales `GLOBAL_*` deben ser exclusivos de `ROOT` y no deben asignarse a roles empresariales.
 - RF-036: El frontend debe mostrar panel global para `ROOT` y panel empresarial para usuarios de empresa segun permisos efectivos.
 - RF-037: El backend debe validar permisos efectivos en cada accion protegida; el frontend no es fuente de seguridad.
+- RF-038: ROOT debe poder administrar catalogos globales/regulatorios de la plataforma, incluyendo crear, actualizar, activar e inactivar registros, siempre dejando auditoria.
+- RF-039: La UI debe ofrecer un modulo de Logs/Auditoria visible solo para ROOT, administradores de empresa o roles con permiso `AUDIT_VIEW`.
+- RF-040: ROOT debe poder consultar auditoria de la empresa activa seleccionada y administradores de empresa solo auditoria de su empresa.

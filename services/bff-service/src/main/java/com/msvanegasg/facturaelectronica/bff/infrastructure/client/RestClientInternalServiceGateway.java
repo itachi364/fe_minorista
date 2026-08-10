@@ -5,6 +5,7 @@ import java.net.URI;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.msvanegasg.facturaelectronica.bff.application.dto.ProxyRequest;
 import com.msvanegasg.facturaelectronica.bff.application.dto.ProxyResponse;
 import com.msvanegasg.facturaelectronica.bff.application.port.out.InternalServiceGateway;
@@ -22,12 +25,15 @@ import com.msvanegasg.facturaelectronica.bff.infrastructure.config.BffProperties
 public class RestClientInternalServiceGateway implements InternalServiceGateway {
 
     private static final Set<String> FORWARDED_HEADERS = Set.of("authorization", "x-company-id", "x-correlation-id",
-            "idempotency-key", "content-type", "accept");
+            "x-user-id", "idempotency-key", "content-type", "accept");
     private static final Set<String> RESPONSE_HEADERS = Set.of("content-type", "x-correlation-id");
+    private static final Set<String> MUTATING_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
 
     private final Map<TargetService, RestClient> clients;
+    private final ObjectMapper objectMapper;
 
-    public RestClientInternalServiceGateway(RestClient.Builder builder, BffProperties properties) {
+    public RestClientInternalServiceGateway(RestClient.Builder builder, BffProperties properties,
+            ObjectMapper objectMapper) {
         this.clients = new EnumMap<>(TargetService.class);
         this.clients.put(TargetService.TENANT, builder.clone().baseUrl(properties.tenantUrl()).build());
         this.clients.put(TargetService.IDENTITY, builder.clone().baseUrl(properties.identityUrl()).build());
@@ -37,6 +43,7 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         this.clients.put(TargetService.BILLING, builder.clone().baseUrl(properties.billingUrl()).build());
         this.clients.put(TargetService.ACCOUNTING, builder.clone().baseUrl(properties.accountingUrl()).build());
         this.clients.put(TargetService.AUDIT, builder.clone().baseUrl(properties.auditUrl()).build());
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -46,7 +53,7 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
             throw new DownstreamServiceException("Servicio interno no configurado: " + request.targetService(), null);
         }
         try {
-            return client.method(request.method())
+            ProxyResponse response = client.method(request.method())
                     .uri(request.uri())
                     .headers(headers -> copyRequestHeaders(request.headers(), headers))
                     .body(request.body() == null ? new byte[0] : request.body())
@@ -55,7 +62,11 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
                         HttpHeaders responseHeaders = filterResponseHeaders(clientResponse.getHeaders());
                         return new ProxyResponse(clientResponse.getStatusCode(), responseHeaders, responseBody);
                     });
+            auditMutableRequest(request, response.status().isError() ? "FAILURE" : "SUCCESS",
+                    "status=" + response.status().value(), response.body());
+            return response;
         } catch (RestClientException exception) {
+            auditMutableRequest(request, "FAILURE", "downstream_unavailable", null);
             throw new DownstreamServiceException("No fue posible comunicarse con el servicio interno.", exception);
         }
     }
@@ -76,5 +87,85 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
             }
         });
         return target;
+    }
+
+    private void auditMutableRequest(ProxyRequest request, String result, String detail, byte[] responseBody) {
+        if (request.targetService() == TargetService.AUDIT || !MUTATING_METHODS.contains(request.method().name())) {
+            return;
+        }
+        UUID companyId = resolveAuditCompanyId(request, responseBody);
+        if (companyId == null) {
+            return;
+        }
+        try {
+            clients.get(TargetService.AUDIT)
+                    .post()
+                    .uri("/api/v1/audit-events")
+                    .header("X-Company-Id", companyId.toString())
+                    .body(new AuditRequest(parseUuid(request.headers().getFirst("X-User-Id")),
+                            "BFF_MUTATION", request.targetService().name(), truncate(request.uri().getPath(), 120),
+                            request.method().name(), result, auditDetail(request, detail)))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RuntimeException ignored) {
+            // La auditoria es best-effort en modo sincrono para no tumbar la operacion principal.
+        }
+    }
+
+    private UUID resolveAuditCompanyId(ProxyRequest request, byte[] responseBody) {
+        UUID headerCompanyId = parseUuid(request.headers().getFirst("X-Company-Id"));
+        if (headerCompanyId != null) {
+            return headerCompanyId;
+        }
+        if (request.targetService() != TargetService.TENANT
+                || !"POST".equals(request.method().name())
+                || !"/api/v1/companies".equals(request.uri().getPath())
+                || responseBody == null
+                || responseBody.length == 0) {
+            return null;
+        }
+        try {
+            JsonNode idNode = objectMapper.readTree(responseBody).path("id");
+            return parseUuid(idNode.isMissingNode() ? null : idNode.asText());
+        } catch (RuntimeException ignored) {
+            return null;
+        } catch (IOException ignored) {
+            return null;
+        }
+    }
+
+    private static UUID parseUuid(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
+    }
+
+    private static String auditDetail(ProxyRequest request, String detail) {
+        return "{\"method\":\"%s\",\"path\":\"%s\",\"correlationId\":\"%s\",\"detail\":\"%s\"}"
+                .formatted(escape(request.method().name()), escape(request.uri().getPath()),
+                        escape(request.headers().getFirst("X-Correlation-Id")), escape(detail));
+    }
+
+    private static String escape(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private static String truncate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength);
+    }
+
+    private record AuditRequest(UUID userId, String eventType, String resourceType, String resourceId, String action,
+            String result, String detail) {
     }
 }

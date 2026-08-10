@@ -3,13 +3,16 @@ const DEFAULT_HEADERS = {
   'Content-Type': 'application/json',
 };
 
-export async function requestJson(path, { method = 'GET', body, token, companyId, idempotencyKey } = {}) {
+export async function requestJson(path, { method = 'GET', body, token, companyId, userId, idempotencyKey } = {}) {
   const headers = { ...DEFAULT_HEADERS };
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
   if (companyId) {
     headers['X-Company-Id'] = companyId;
+  }
+  if (userId) {
+    headers['X-User-Id'] = userId;
   }
   headers['X-Correlation-Id'] = crypto.randomUUID();
   if (idempotencyKey) {

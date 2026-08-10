@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.msvanegasg.facturaelectronica.catalog.application.port.in.ManageVersionedCatalogUseCase;
+import com.msvanegasg.facturaelectronica.catalog.application.port.out.CatalogAuditEventPort;
 import com.msvanegasg.facturaelectronica.catalog.application.port.out.VersionedCatalogRepositoryPort;
 import com.msvanegasg.facturaelectronica.catalog.application.usecase.VersionedCatalogManagementService;
 
@@ -12,7 +13,8 @@ public class CatalogUseCaseConfiguration {
 
     @Bean
     ManageVersionedCatalogUseCase manageVersionedCatalogUseCase(
-            VersionedCatalogRepositoryPort versionedCatalogRepositoryPort) {
-        return new VersionedCatalogManagementService(versionedCatalogRepositoryPort);
+            VersionedCatalogRepositoryPort versionedCatalogRepositoryPort,
+            CatalogAuditEventPort catalogAuditEventPort) {
+        return new VersionedCatalogManagementService(versionedCatalogRepositoryPort, catalogAuditEventPort);
     }
 }

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.msvanegasg.facturaelectronica.catalog.application.dto.AuditContext;
 import com.msvanegasg.facturaelectronica.catalog.application.port.in.ManageVersionedCatalogUseCase;
 import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.dto.CatalogItemActivationRequest;
 import com.msvanegasg.facturaelectronica.catalog.interfaces.rest.dto.CatalogDefinitionResponse;
@@ -27,6 +28,10 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/api/v1")
 public class VersionedCatalogController {
+
+    private static final String COMPANY_HEADER = "X-Company-Id";
+    private static final String USER_HEADER = "X-User-Id";
+    private static final String CORRELATION_HEADER = "X-Correlation-Id";
 
     private final ManageVersionedCatalogUseCase useCase;
 
@@ -51,25 +56,37 @@ public class VersionedCatalogController {
 
     @PostMapping("/catalogs/{catalogCode}/items")
     public ResponseEntity<CatalogItemResponse> createCatalogItem(@PathVariable String catalogCode,
+            @RequestHeader(value = COMPANY_HEADER, required = false) UUID companyId,
+            @RequestHeader(value = USER_HEADER, required = false) UUID userId,
+            @RequestHeader(value = CORRELATION_HEADER, required = false) String correlationId,
             @Valid @RequestBody CatalogItemRequest request) {
         return ResponseEntity.ok(VersionedCatalogRestMapper.toResponse(
-                useCase.createGlobalItem(catalogCode, VersionedCatalogRestMapper.toCommand(request))));
+                useCase.createGlobalItem(catalogCode, VersionedCatalogRestMapper.toCommand(request),
+                        new AuditContext(companyId, userId, correlationId))));
     }
 
     @PutMapping("/catalogs/{catalogCode}/items/{itemCode}")
     public ResponseEntity<CatalogItemResponse> updateCatalogItem(@PathVariable String catalogCode,
             @PathVariable String itemCode,
+            @RequestHeader(value = COMPANY_HEADER, required = false) UUID companyId,
+            @RequestHeader(value = USER_HEADER, required = false) UUID userId,
+            @RequestHeader(value = CORRELATION_HEADER, required = false) String correlationId,
             @Valid @RequestBody CatalogItemRequest request) {
         return ResponseEntity.ok(VersionedCatalogRestMapper.toResponse(
-                useCase.updateGlobalItem(catalogCode, itemCode, VersionedCatalogRestMapper.toCommand(request))));
+                useCase.updateGlobalItem(catalogCode, itemCode, VersionedCatalogRestMapper.toCommand(request),
+                        new AuditContext(companyId, userId, correlationId))));
     }
 
     @PutMapping("/catalogs/{catalogCode}/items/{itemCode}/activation")
     public ResponseEntity<CatalogItemResponse> setCatalogItemActive(@PathVariable String catalogCode,
             @PathVariable String itemCode,
+            @RequestHeader(value = COMPANY_HEADER, required = false) UUID companyId,
+            @RequestHeader(value = USER_HEADER, required = false) UUID userId,
+            @RequestHeader(value = CORRELATION_HEADER, required = false) String correlationId,
             @Valid @RequestBody CatalogItemActivationRequest request) {
         return ResponseEntity.ok(VersionedCatalogRestMapper.toResponse(
-                useCase.setGlobalItemActive(catalogCode, itemCode, request.active())));
+                useCase.setGlobalItemActive(catalogCode, itemCode, request.active(),
+                        new AuditContext(companyId, userId, correlationId))));
     }
 
     @GetMapping("/company-catalogs/{catalogCode}/items")
@@ -84,11 +101,14 @@ public class VersionedCatalogController {
     @PutMapping("/company-catalogs/{catalogCode}/items/{itemCode}/activation")
     public ResponseEntity<CatalogItemResponse> setCompanyCatalogItemEnabled(
             @RequestHeader("X-Company-Id") UUID companyId,
+            @RequestHeader(value = USER_HEADER, required = false) UUID userId,
+            @RequestHeader(value = CORRELATION_HEADER, required = false) String correlationId,
             @PathVariable String catalogCode,
             @PathVariable String itemCode,
             @Valid @RequestBody CatalogItemActivationRequest request) {
         return ResponseEntity.ok(VersionedCatalogRestMapper.toResponse(
-                useCase.setCompanyItemEnabled(companyId, catalogCode, itemCode, request.active())));
+                useCase.setCompanyItemEnabled(companyId, catalogCode, itemCode, request.active(),
+                        new AuditContext(companyId, userId, correlationId))));
     }
 
     @GetMapping("/catalogs/departments")

@@ -12,6 +12,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import com.msvanegasg.facturaelectronica.catalog.application.port.out.VersionedCatalogRepositoryPort;
+import com.msvanegasg.facturaelectronica.catalog.application.dto.AuditContext;
+import com.msvanegasg.facturaelectronica.catalog.application.dto.CatalogAuditEventCommand;
 import com.msvanegasg.facturaelectronica.catalog.application.dto.CatalogItemCommand;
 import com.msvanegasg.facturaelectronica.catalog.domain.model.CatalogDefinition;
 import com.msvanegasg.facturaelectronica.catalog.domain.model.CatalogItem;
@@ -66,6 +68,46 @@ class VersionedCatalogManagementServiceTest {
         assertThat(inactive.active()).isFalse();
         assertThat(service.findGlobalItems("PAYMENT_METHOD")).isEmpty();
         assertThat(service.findGlobalItems("PAYMENT_METHOD", true)).hasSize(1);
+    }
+
+    @Test
+    void auditsGlobalCatalogMutations() {
+        InMemoryVersionedCatalogRepository repository = new InMemoryVersionedCatalogRepository();
+        List<CatalogAuditEventCommand> events = new java.util.ArrayList<>();
+        VersionedCatalogManagementService service = new VersionedCatalogManagementService(repository, events::add);
+        UUID userId = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        AuditContext context = new AuditContext(COMPANY_ID, userId, "correlation-1");
+
+        service.updateGlobalItem("PAYMENT_METHOD", "CASH",
+                new CatalogItemCommand("IGNORED", "Efectivo en caja", "Pago contado", false, "APP",
+                        "2026-09", null, null, 5), context);
+        service.setGlobalItemActive("PAYMENT_METHOD", "CASH", false, context);
+
+        assertThat(events).extracting(CatalogAuditEventCommand::action)
+                .containsExactly("UPDATE_CATALOG_ITEM", "SET_CATALOG_ITEM_ACTIVE");
+        assertThat(events).allSatisfy(event -> {
+            assertThat(event.companyId()).isEqualTo(COMPANY_ID);
+            assertThat(event.userId()).isEqualTo(userId);
+            assertThat(event.resourceType()).isEqualTo("CATALOG_ITEM");
+            assertThat(event.result()).isEqualTo("SUCCESS");
+            assertThat(event.detail()).contains("correlation-1");
+        });
+    }
+
+    @Test
+    void auditsCompanyCatalogActivation() {
+        InMemoryVersionedCatalogRepository repository = new InMemoryVersionedCatalogRepository();
+        List<CatalogAuditEventCommand> events = new java.util.ArrayList<>();
+        VersionedCatalogManagementService service = new VersionedCatalogManagementService(repository, events::add);
+
+        service.setCompanyItemEnabled(COMPANY_ID, "PAYMENT_METHOD", "CASH", false,
+                new AuditContext(COMPANY_ID, null, "correlation-2"));
+
+        assertThat(events).singleElement().satisfies(event -> {
+            assertThat(event.action()).isEqualTo("SET_COMPANY_CATALOG_ITEM_ENABLED");
+            assertThat(event.result()).isEqualTo("SUCCESS");
+            assertThat(event.detail()).contains("enabled=false");
+        });
     }
 
     @Test

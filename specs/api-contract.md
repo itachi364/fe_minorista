@@ -40,6 +40,7 @@ Estos contratos son la base para futuros archivos OpenAPI por servicio.
 |---|---:|---|---|
 | `Authorization` | Si | APIs expuestas | Token de usuario o servicio. |
 | `X-Company-Id` | Si | Datos de negocio | Tenant/empresa propietaria de la operacion. |
+| `X-User-Id` | Si | Acciones autenticadas | Usuario autenticado que ejecuta la accion, derivado del login/BFF. |
 | `X-Correlation-Id` | Si | Todas | Trazabilidad entre servicios. |
 | `Idempotency-Key` | Si | Comandos criticos | Evita duplicados por reintentos. |
 
@@ -83,7 +84,9 @@ Estado TASK-063:
 - Microservicio fisico inicial implementado en `services/bff-service`.
 - No tiene persistencia ni reglas fiscales propias.
 - Expone `/api/v1/**` solo para rutas aprobadas y enruta hacia el microservicio dueno del contrato.
-- Propaga `Authorization`, `X-Company-Id`, `X-Correlation-Id`, `Idempotency-Key`, `Content-Type` y `Accept`.
+- Propaga `Authorization`, `X-Company-Id`, `X-User-Id`, `X-Correlation-Id`, `Idempotency-Key`, `Content-Type` y `Accept`.
+- Estado TASK-090: registra auditoria best-effort para `POST`, `PUT`, `PATCH` y `DELETE` que pasen por `/api/v1/**`, sin persistir payloads ni secretos.
+- Para `POST /api/v1/companies` sin `X-Company-Id`, el BFF toma el `id` de la empresa creada en la respuesta y registra auditoria contra esa empresa.
 - Filtra cabeceras de respuesta a `Content-Type` y `X-Correlation-Id`.
 - Rechaza rutas internas no publicas, por ejemplo `/api/v1/provider/**`.
 
@@ -93,6 +96,7 @@ Reglas:
 - Los microservicios internos no deben exponerse al navegador.
 - El BFF no debe implementar reglas de negocio que pertenezcan a billing, inventory, accounting, tenant, identity, catalog, thirdparty o audit.
 - Un fallo de servicio interno debe responder como error publico estructurado sin stack trace ni detalles de infraestructura.
+- La falla del registro de auditoria no debe tumbar la accion principal; debe quedar como integracion best-effort hasta completar eventing asincrono.
 - Estado TASK-065: `/api/v1/auth/**` y `/api/v1/me/**` se enrutan a `identity-service`; `/api/v1/companies/{companyId}/license/**` se enruta a `tenant-service`; `/api/v1/companies/{companyId}/memberships`, `/api/v1/companies/{companyId}/users/{userId}/roles` y `/api/v1/companies/{companyId}/permissions` se enrutan a `identity-service`.
 ## tenant-service
 
@@ -342,6 +346,7 @@ Regla:
 - Los catalogos configurables por empresa requieren `X-Company-Id`.
 - Los codigos regulatorios no son editables por empresa.
 - `ROOT` puede crear, actualizar o inactivar catalogos globales permitidos.
+- Las mutaciones globales y empresariales de catalogos registran auditoria `CATALOG_ADMINISTRATION` con resultado `SUCCESS` o `FAILURE`.
 - Un administrador empresarial solo puede operar `company-catalogs` y extensiones empresariales permitidas para su `company_id`.
 - La UI debe mostrar `CatalogDefinitionResponse.label` y `CatalogItemResponse.label` en espanol, aunque `code`, `catalogCode` e `itemCode` se conserven en ingles en contratos y base de datos.
 - Los catalogos regulatorios oficiales deben preservar `source`, `sourceVersion`, `validFrom` y `validTo`.
@@ -1057,6 +1062,7 @@ Estado TASK-042:
 - Registra eventos de auditoria fiscal/tecnica por empresa mediante `X-Company-Id`.
 - Permite consultar eventos por recurso, rango de fechas y usuario.
 - TASK-043 conecta `billing-service` como primer productor automatico para eventos de confirmacion de venta y documento electronico.
+- TASK-090 conecta el BFF como auditor transversal best-effort para mutaciones publicas y `catalog-service` como productor especifico de cambios de catalogos.
 - La integracion automatica desde `inventory-service` y `accounting-service` queda para lotes posteriores.
 
 ### Endpoints
@@ -1099,8 +1105,10 @@ Reglas:
 
 - No registrar secretos ni datos sensibles innecesarios.
 - Operaciones fiscales, cambios de resolucion, emision, anulacion, ajustes e integraciones externas son auditables.
+- Toda accion mutable expuesta por la SPA debe registrar un evento de auditoria si llega con `X-Company-Id`; si el registro falla, la accion principal no se revierte.
 - `detail` debe contener detalle seguro, sin certificados, API keys, tokens, credenciales, payloads completos del proveedor ni datos sensibles innecesarios.
 - Ninguna consulta debe retornar eventos de otra empresa.
+- La SPA expone el modulo `Logs` para `ROOT`, `OWNER`/`ADMIN` o usuarios con `AUDIT_VIEW`; consulta por empresa activa y filtra por recurso, identificador y rango de fechas.
 - `billing-service` publica `ELECTRONIC_DOCUMENT`/`SALE`/`CONFIRM_SALE` despues de confirmar una venta nueva. El resultado es `SUCCESS` cuando el documento queda `VALIDATED`; de lo contrario es `FAILURE`.
 - La publicacion inicial desde `billing-service` es sincrona y best-effort para no revertir una emision fiscal ya persistida; el patron outbox/inbox queda pendiente para endurecer garantias de entrega.
 

@@ -6,6 +6,7 @@ export const stepPermissionRules = {
   'Venta POS': ['SALES_CREATE', 'FISCAL_DOCUMENTS_ISSUE'],
   Reportes: ['REPORTS_VIEW', 'ACCOUNTING_VIEW'],
   Catalogos: ['COMPANY_CATALOGS_MANAGE', 'COMPANY_SETTINGS_MANAGE'],
+  Logs: ['AUDIT_VIEW', 'GLOBAL_AUDIT_VIEW'],
   'Usuarios y roles': ['COMPANY_USERS_MANAGE', 'COMPANY_ROLES_MANAGE', 'USERS_MANAGE', 'ROLES_MANAGE'],
 };
 
