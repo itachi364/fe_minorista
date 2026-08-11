@@ -1,0 +1,156 @@
+export function createLoginForm() {
+  return { email: '', password: '' };
+}
+
+export function createCompanyForm() {
+  return {
+    legalName: '',
+    tradeName: '',
+    identificationTypeCode: '',
+    identificationNumber: '',
+    verificationDigit: '',
+    email: '',
+  };
+}
+
+export function createCompanyAdminForm() {
+  return { fullName: '', email: '', password: '', role: 'OWNER' };
+}
+
+export function createManagedUserForm() {
+  return { fullName: '', email: '', password: '' };
+}
+
+export function createCompanyRoleForm() {
+  return { name: '', description: '', permissionCodes: [] };
+}
+
+export function createRoleAssignmentForm() {
+  return { userId: '', roleIds: [] };
+}
+
+export function createCatalogItemForm() {
+  return {
+    editingCode: '',
+    code: '',
+    label: '',
+    description: '',
+    regulatory: false,
+    source: 'APP',
+    sourceVersion: '',
+    validFrom: '',
+    validTo: '',
+    sortOrder: '10',
+  };
+}
+
+export function createThirdPartyForm() {
+  return {
+    thirdPartyType: '',
+    personType: '',
+    identificationTypeCode: '',
+    identificationNumber: '',
+    fullName: '',
+    businessName: '',
+    tradeName: '',
+    email: '',
+    phone: '',
+    address: '',
+    municipalityCode: '',
+    taxResponsibilities: [],
+    taxRegime: '',
+  };
+}
+
+export function createProductForm() {
+  return {
+    sku: '',
+    barcode: '',
+    name: '',
+    description: '',
+    itemType: '',
+    saleEnabled: false,
+    purchaseEnabled: false,
+    stockTracked: false,
+    salePrice: '',
+    cost: '',
+    initialStock: '',
+    taxCategoryCode: '',
+    taxCode: '',
+    taxLabel: '',
+    taxRate: '',
+  };
+}
+
+export function createIssuerForm() {
+  return {
+    legalName: '',
+    nit: '',
+    verificationDigit: '',
+    taxResponsibilities: [],
+    municipalityCode: '',
+    address: '',
+  };
+}
+
+export function createResolutionForm() {
+  return {
+    documentType: '',
+    resolutionNumber: '',
+    prefix: '',
+    fromNumber: '',
+    toNumber: '',
+    validFrom: '',
+    validTo: '',
+    environment: '',
+  };
+}
+
+export function createSaleForm() {
+  return {
+    buyerIdentificationMode: 'FINAL_CONSUMER',
+    customerId: '',
+    paymentMethodCode: '',
+    virtualWalletCode: '',
+    items: [{ productId: '', productName: '', quantity: '1', unitPrice: '0', discountAmount: '0' }],
+  };
+}
+
+export function createReportsForm() {
+  const today = new Date();
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+  return { status: '', from: toDateInputValue(firstDay), to: toDateInputValue(today), productId: '', accountCode: '' };
+}
+
+export function createPayrollSettingsForm() {
+  return { electronicPayrollEnabled: false, providerMode: 'MOCK' };
+}
+
+export function createPayrollWorkerForm() {
+  return {
+    identificationTypeCode: '',
+    identificationNumber: '',
+    verificationDigit: '',
+    fullName: '',
+    workerClassification: '',
+    active: true,
+  };
+}
+
+export function createDailyLaborPaymentForm() {
+  return {
+    workerId: '',
+    workDate: toDateInputValue(new Date()),
+    activityDescription: '',
+    agreedAmount: '',
+    paidAmount: '',
+    paymentMethodCode: '',
+    legalNoticeAccepted: false,
+    notes: '',
+  };
+}
+
+function toDateInputValue(date) {
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}

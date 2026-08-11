@@ -1,6 +1,6 @@
 # Prueba E2E Docker desde cero
 
-Esta guia valida el flujo local multi-contenedor desde una empresa nueva hasta una venta POS aceptada por el proveedor DIAN mock, con descuento de inventario y asiento contable generado.
+Esta guia valida el flujo local multi-contenedor desde una empresa nueva hasta una venta POS aceptada por el proveedor DIAN mock, con descuento de inventario, asiento contable generado, pago diario verbal y documento soporte de nomina electronica mock.
 
 No usa credenciales reales, certificados DIAN ni datos productivos.
 
@@ -16,6 +16,7 @@ No usa credenciales reales, certificados DIAN ni datos productivos.
 | `inventory-service` | `8087` | Crea producto, stock inicial, kardex y salida por venta |
 | `dian-provider-service` | `8089` | Simula aceptacion DIAN |
 | `accounting-service` | `8090` | Crea plantilla PUC basica, regla y asiento contable |
+| `payroll-service` | `8093` | Registra configuracion de nomina, trabajador, pago diario verbal y soporte electronico mock |
 | `billing-service` | `8088` | Crea venta, confirma POS y orquesta efectos posteriores |
 
 `legacy-monolith` fue removido del repositorio activo y no participa en esta prueba. `audit-service` participa como microservicio fisico y recibe desde `billing-service` el evento fiscal `ELECTRONIC_DOCUMENT`/`SALE`/`CONFIRM_SALE` cuando la venta POS queda confirmada.
@@ -24,7 +25,7 @@ No usa credenciales reales, certificados DIAN ni datos productivos.
 
 - El flujo principal usa `/api/v1/customers` y `/api/v1/suppliers`; las rutas legacy de terceros fueron retiradas en TASK-059 lote 2 y las rutas legacy de catalogo no se invocan en esta prueba.
 - `billing-service` crea emisor y resolucion POS reales para la corrida local; la integracion DIAN sigue en modo mock y no valida anexos tecnicos oficiales.
-- El aislamiento por `company_id` se verifica en `tenant-service`, `identity-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service` cuando aplica al endpoint.
+- El aislamiento por `company_id` se verifica en `tenant-service`, `identity-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `payroll-service` y `audit-service` cuando aplica al endpoint.
 - La integracion DIAN real queda fuera de alcance; `DIAN_PROVIDER_MODE=mock` y `DIAN_MOCK_DEFAULT_STATUS=ACCEPTED`.
 
 ## 1. Preparar entorno
@@ -43,7 +44,7 @@ DIAN_MOCK_DEFAULT_STATUS=ACCEPTED
 Levante los servicios requeridos:
 
 ```powershell
-docker compose up -d postgres tenant-service identity-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service audit-service billing-service
+docker compose up -d postgres tenant-service identity-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service audit-service payroll-service billing-service
 docker compose ps
 ```
 
@@ -61,6 +62,7 @@ curl.exe -s http://localhost:8088/actuator/health
 curl.exe -s http://localhost:8089/actuator/health
 curl.exe -s http://localhost:8090/actuator/health
 curl.exe -s http://localhost:8091/actuator/health
+curl.exe -s http://localhost:8093/actuator/health
 ```
 
 Cada respuesta debe incluir:
@@ -99,6 +101,7 @@ E2E flow completed successfully.
    - `1105` Caja.
    - `4135` Comercio al por mayor y al por menor.
    - `2408` IVA generado.
+   - `5105` Gastos de personal.
 6. Crea regla contable `SALE_CONFIRMED` + `SALE`:
    - Debito `1105` por `TOTAL`.
    - Credito `4135` por `SUBTOTAL`.
@@ -112,7 +115,11 @@ E2E flow completed successfully.
     - asiento contable balanceado en contabilidad.
     - marcas `inventoryAppliedAt` y `accountingAppliedAt` en el documento electronico.
 12. Verifica consulta de proveedor por `trackingId`.
-13. Verifica que otra empresa no pueda consultar el producto, venta, envio o cuentas de la primera.
+13. Activa nomina electronica mock en `payroll-service`.
+14. Crea trabajador y registra pago diario verbal con advertencia legal aceptada.
+15. Genera documento soporte de nomina electronica mock con CUNE simulado.
+16. Registra asiento contable de pago diario con evento `PAYROLL_DAILY_PAYMENT_REGISTERED`.
+17. Verifica que otra empresa no pueda consultar el producto, venta, envio o cuentas de la primera.
 
 ## 4. Consultas PostgreSQL
 
@@ -193,6 +200,26 @@ from accounting.accounting_entry_line line
 join accounting.accounting_entry entry on entry.id = line.entry_id
 order by line.id desc
 limit 10;
+
+select id, company_id, electronic_payroll_enabled, provider_mode, updated_at
+from payroll.payroll_settings
+order by updated_at desc
+limit 5;
+
+select id, company_id, identification_number, full_name, worker_classification, active
+from payroll.worker
+order by created_at desc
+limit 5;
+
+select id, company_id, worker_id, activity, agreed_amount, paid_amount, payment_method, legal_notice_accepted
+from payroll.daily_labor_payment
+order by work_date desc
+limit 5;
+
+select id, company_id, payment_id, status, mock_cune
+from payroll.electronic_payroll_document
+order by created_at desc
+limit 5;
 ```
 
 ## 5. Datos esperados
@@ -211,6 +238,8 @@ Estado documento esperado: VALIDATED
 Estado proveedor esperado: ACCEPTED
 Prefijo esperado: POS
 Asiento esperado: debitos 35700.00, creditos 35700.00
+Pago diario esperado: 80000.00
+Total diario contable esperado despues de venta + pago diario: debitos 115700.00, creditos 115700.00
 ```
 
 ## 6. Reset local opcional
@@ -219,5 +248,5 @@ Esto borra los datos locales del volumen PostgreSQL. Ejecutelo solo si quiere em
 
 ```powershell
 docker compose down -v
-docker compose up -d postgres tenant-service identity-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service audit-service billing-service
+docker compose up -d postgres tenant-service identity-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service audit-service payroll-service billing-service
 ```

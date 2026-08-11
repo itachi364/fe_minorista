@@ -256,6 +256,13 @@ nav {
   flex-wrap: wrap;
 }
 
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 h1,
 h2,
 p {
@@ -361,6 +368,22 @@ textarea:hover {
   border-radius: 6px;
   padding: 9px 11px;
   background: #fbfcfd;
+}
+
+.field-note {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  border: 1px solid #d8e0e7;
+  border-radius: 6px;
+  background: #f7fafc;
+  color: #536475;
+  padding: 9px 11px;
+  font-size: 13px;
+}
+
+.field-note.wide {
+  grid-column: span 2;
 }
 
 .primary,
@@ -488,6 +511,23 @@ textarea:hover {
   font-family: "Cascadia Mono", Consolas, monospace;
   font-size: 12px;
   overflow-wrap: anywhere;
+}
+
+.reports-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 14px;
+  padding-top: 14px;
+}
+
+.report-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.report-card .data-table {
+  min-width: 640px;
 }
 
 .dual-list-field {

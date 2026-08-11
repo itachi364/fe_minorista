@@ -54,6 +54,14 @@ class AuditEventPersistenceAdapterTest {
         assertThat(events.get(0).resourceType()).isEqualTo("SALE");
     }
 
+    @Test
+    void listsDistinctResourceTypes() {
+        when(repository.findDistinctResourceTypesByCompanyId(COMPANY_ID)).thenReturn(List.of("CATALOG", "SALE"));
+        AuditEventPersistenceAdapter adapter = new AuditEventPersistenceAdapter(repository);
+
+        assertThat(adapter.resourceTypes(COMPANY_ID)).containsExactly("CATALOG", "SALE");
+    }
+
     private static AuditEvent event() {
         return AuditEvent.register(EVENT_ID, COMPANY_ID, USER_ID, "ELECTRONIC_DOCUMENT", "SALE", "sale-1",
                 "VALIDATED", AuditResult.SUCCESS, "{\"status\":\"ACCEPTED\"}", NOW);

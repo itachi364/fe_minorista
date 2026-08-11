@@ -1,9 +1,24 @@
-import { colombiaLocations } from '../data/divipola.js';
 import { findLocationByMunicipality } from '../utils/locations.js';
 
-export function MunicipalityFields({ municipalityCode, onChange, disabled = false, locations = colombiaLocations }) {
-  const availableLocations = locations.length > 0 ? locations : colombiaLocations;
+export function MunicipalityFields({ municipalityCode, onChange, disabled = false, locations = [] }) {
+  const availableLocations = Array.isArray(locations) ? locations : [];
   const current = findLocationByMunicipality(municipalityCode, availableLocations);
+  if (!current) {
+    return <>
+      <label>
+        Departamento
+        <select value="" disabled>
+          <option value="">Catalogo no disponible</option>
+        </select>
+      </label>
+      <label>
+        Municipio / ciudad
+        <select value="" disabled>
+          <option value="">Catalogo no disponible</option>
+        </select>
+      </label>
+    </>;
+  }
   const departmentCode = current.department.departmentCode;
   const municipalities = current.department.municipalities;
   return <>

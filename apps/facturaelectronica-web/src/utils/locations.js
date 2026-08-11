@@ -1,7 +1,8 @@
-import { colombiaLocations } from '../data/divipola.js';
-
-export function findLocationByMunicipality(municipalityCode, locations = colombiaLocations) {
-  const availableLocations = locations.length > 0 ? locations : colombiaLocations;
+export function findLocationByMunicipality(municipalityCode, locations = []) {
+  const availableLocations = Array.isArray(locations) ? locations : [];
+  if (availableLocations.length === 0) {
+    return null;
+  }
   for (const department of availableLocations) {
     const municipality = department.municipalities.find((item) => item.code === municipalityCode);
     if (municipality) {

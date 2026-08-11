@@ -5,7 +5,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-test('loads catalog options and relational divipola locations from backend', async () => {
+test('loads catalog options and relational locations from backend', async () => {
   const fetchMock = vi.fn((path) => {
     if (String(path).includes('DIAN_DOCUMENT_TYPE')) {
       return jsonResponse([{ catalogCode: 'DIAN_DOCUMENT_TYPE', code: '13', label: 'Cedula de ciudadania', active: true, enabledForCompany: true }]);

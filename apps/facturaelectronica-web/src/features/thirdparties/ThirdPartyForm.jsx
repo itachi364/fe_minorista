@@ -1,4 +1,3 @@
-import { personTypeOptions, thirdPartyTypeOptions } from '../../data/catalogs.js';
 import { DualListField, Field, FormPanel, SelectField } from '../../components/forms.jsx';
 import { MunicipalityFields } from '../../components/MunicipalityFields.jsx';
 import { calculateNitVerificationDigit, isNit, onlyDigits } from '../../utils/nit.js';
@@ -18,6 +17,8 @@ export function ThirdPartyForm({
   documentTypeOptionsSource = [],
   taxResponsibilityOptionsSource = [],
   taxRegimeOptionsSource = [],
+  thirdPartyRoleCatalog = [],
+  personTypeCatalog = [],
   locations,
 }) {
   const normalizedForm = normalizeThirdPartyForm(form, companyMunicipalityCode);
@@ -58,8 +59,8 @@ export function ThirdPartyForm({
 
   return <FormPanel title="Cliente / proveedor" submitLabel="Guardar tercero" onSubmit={onSubmit} busy={busy}>
     <div className="form-grid">
-      <SelectField label="Tipo de tercero" value={normalizedForm.thirdPartyType} onChange={(value) => update({ ...normalizedForm, thirdPartyType: value })} options={thirdPartyTypeOptions} />
-      <SelectField label="Tipo de persona" value={normalizedForm.personType} onChange={(value) => update({ ...normalizedForm, personType: value })} options={personTypeOptions} />
+      <SelectField label="Tipo de tercero" value={normalizedForm.thirdPartyType} onChange={(value) => update({ ...normalizedForm, thirdPartyType: value })} options={thirdPartyRoleCatalog} />
+      <SelectField label="Tipo de persona" value={normalizedForm.personType} onChange={(value) => update({ ...normalizedForm, personType: value })} options={personTypeCatalog} />
       <SelectField label="Tipo de documento" value={normalizedForm.identificationTypeCode} onChange={updateIdentificationType} options={documentTypeOptions} />
       <Field label="Numero de documento" value={normalizedForm.identificationNumber} onChange={updateIdentificationNumber} />
       <Field label="Digito de verificacion" value={verificationDigit} onChange={() => {}} readOnly />

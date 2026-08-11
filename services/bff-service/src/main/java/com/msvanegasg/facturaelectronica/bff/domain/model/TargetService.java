@@ -8,5 +8,6 @@ public enum TargetService {
     INVENTORY,
     BILLING,
     ACCOUNTING,
+    PAYROLL,
     AUDIT
 }

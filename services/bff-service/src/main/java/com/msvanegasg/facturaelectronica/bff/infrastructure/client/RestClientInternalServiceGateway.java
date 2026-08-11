@@ -42,6 +42,7 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         this.clients.put(TargetService.INVENTORY, builder.clone().baseUrl(properties.inventoryUrl()).build());
         this.clients.put(TargetService.BILLING, builder.clone().baseUrl(properties.billingUrl()).build());
         this.clients.put(TargetService.ACCOUNTING, builder.clone().baseUrl(properties.accountingUrl()).build());
+        this.clients.put(TargetService.PAYROLL, builder.clone().baseUrl(properties.payrollUrl()).build());
         this.clients.put(TargetService.AUDIT, builder.clone().baseUrl(properties.auditUrl()).build());
         this.objectMapper = objectMapper;
     }

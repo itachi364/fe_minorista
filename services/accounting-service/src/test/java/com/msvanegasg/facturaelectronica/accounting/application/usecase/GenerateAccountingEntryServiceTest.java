@@ -120,6 +120,33 @@ class GenerateAccountingEntryServiceTest {
     }
 
     @Test
+    void generatePostsDailyPayrollPaymentEntryWithoutTax() {
+        TestContext context = TestContext.withDefaultAccounts();
+        context.rules.save(dailyPayrollRule(COMPANY_ID));
+        GenerateAccountingEntryService service = context.service();
+
+        AccountingEntryResult result = service.generate(new GenerateAccountingEntryCommand(
+                COMPANY_ID,
+                AccountingEventType.PAYROLL_DAILY_PAYMENT_REGISTERED,
+                AccountingSourceType.PAYROLL_DAILY_PAYMENT,
+                SOURCE_ID,
+                ENTRY_DATE,
+                "Pago diario verbal",
+                THIRDPARTY_ID,
+                money("80000.00"),
+                money("0.00"),
+                money("80000.00")));
+
+        assertThat(result.sourceType()).isEqualTo(AccountingSourceType.PAYROLL_DAILY_PAYMENT);
+        assertThat(result.lines()).hasSize(2);
+        assertThat(result.lines()).extracting("accountCode").containsExactly("5105", "1105");
+        assertThat(result.lines().get(0).debitAmount()).isEqualByComparingTo("80000.00");
+        assertThat(result.lines().get(1).creditAmount()).isEqualByComparingTo("80000.00");
+        assertThat(result.debitTotal()).isEqualByComparingTo("80000.00");
+        assertThat(result.creditTotal()).isEqualByComparingTo("80000.00");
+    }
+
+    @Test
     void generateRejectsUnbalancedRule() {
         TestContext context = TestContext.withDefaultAccounts();
         context.rules.save(AccountingRule.create(
@@ -325,6 +352,18 @@ class GenerateAccountingEntryServiceTest {
                         ruleLine("1105", AccountingEntrySide.CREDIT, AccountingAmountType.TOTAL)));
     }
 
+    private static AccountingRule dailyPayrollRule(UUID companyId) {
+        return AccountingRule.create(
+                UUID.randomUUID(),
+                companyId,
+                AccountingEventType.PAYROLL_DAILY_PAYMENT_REGISTERED,
+                AccountingSourceType.PAYROLL_DAILY_PAYMENT,
+                "Pago diario verbal",
+                List.of(
+                        ruleLine("5105", AccountingEntrySide.DEBIT, AccountingAmountType.TOTAL),
+                        ruleLine("1105", AccountingEntrySide.CREDIT, AccountingAmountType.TOTAL)));
+    }
+
     private static AccountingRuleLine ruleLine(
             String accountCode,
             AccountingEntrySide side,
@@ -382,6 +421,7 @@ class GenerateAccountingEntryServiceTest {
             save(Account.create(UUID.randomUUID(), companyId, "2205", "Proveedores nacionales", null));
             save(Account.create(UUID.randomUUID(), companyId, "2408", "Impuesto sobre las ventas por pagar", null));
             save(Account.create(UUID.randomUUID(), companyId, "4135", "Comercio al por mayor y al por menor", null));
+            save(Account.create(UUID.randomUUID(), companyId, "5105", "Gastos de personal", null));
             save(Account.create(UUID.randomUUID(), companyId, "5135", "Servicios", null));
         }
 

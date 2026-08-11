@@ -13,7 +13,7 @@ export function normalizeThirdPartyForm(form, companyMunicipalityCode) {
     return form;
   }
   const hasAddress = Boolean((form.address || '').trim());
-  const fallbackMunicipalityCode = companyMunicipalityCode || form.municipalityCode || '11001';
+  const fallbackMunicipalityCode = companyMunicipalityCode || form.municipalityCode || '';
   return {
     ...form,
     identificationTypeCode: isNit(form.identificationTypeCode) ? DEFAULT_NATURAL_DOCUMENT_TYPE : Number(form.identificationTypeCode),

@@ -60,4 +60,9 @@ public class AuditEventController {
                 .map(AuditRestMapper::toResponse)
                 .toList());
     }
+
+    @GetMapping("/resource-types")
+    public ResponseEntity<List<String>> resourceTypes(@RequestHeader(COMPANY_HEADER) UUID companyId) {
+        return ResponseEntity.ok(queryAuditEventsUseCase.resourceTypes(companyId));
+    }
 }

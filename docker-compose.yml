@@ -335,6 +335,37 @@ services:
       postgres:
         condition: service_healthy
 
+  payroll-service:
+    image: eclipse-temurin:17-jdk
+    container_name: facturaelectronica-payroll-service
+    working_dir: /workspace
+    environment:
+      SERVER_PORT: ${PAYROLL_SERVICE_PORT:-8093}
+      PAYROLL_DB_URL: ${PAYROLL_DB_URL:-${DB_URL}}
+      PAYROLL_DB_USERNAME: ${PAYROLL_DB_USERNAME:-${DB_USERNAME}}
+      PAYROLL_DB_PASSWORD: ${PAYROLL_DB_PASSWORD:-${DB_PASSWORD}}
+      PAYROLL_DB_POOL_MAX_SIZE: ${PAYROLL_DB_POOL_MAX_SIZE:-${DB_POOL_MAX_SIZE:-3}}
+      PAYROLL_DB_POOL_MIN_IDLE: ${PAYROLL_DB_POOL_MIN_IDLE:-${DB_POOL_MIN_IDLE:-0}}
+      PAYROLL_DB_CONNECTION_TIMEOUT_MS: ${PAYROLL_DB_CONNECTION_TIMEOUT_MS:-${DB_CONNECTION_TIMEOUT_MS:-10000}}
+      PAYROLL_DB_IDLE_TIMEOUT_MS: ${PAYROLL_DB_IDLE_TIMEOUT_MS:-${DB_IDLE_TIMEOUT_MS:-60000}}
+      PAYROLL_DB_MAX_LIFETIME_MS: ${PAYROLL_DB_MAX_LIFETIME_MS:-${DB_MAX_LIFETIME_MS:-300000}}
+      JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
+    ports:
+      - "${PAYROLL_SERVICE_PORT:-8093}:${PAYROLL_SERVICE_PORT:-8093}"
+    volumes:
+      - .:/workspace
+      - maven_cache:/root/.m2
+    command: ["sh", "./mvnw", "-pl", "services/payroll-service", "clean", "spring-boot:run"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${PAYROLL_SERVICE_PORT:-8093}/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   bff-service:
     image: eclipse-temurin:17-jdk
     container_name: facturaelectronica-bff-service
@@ -348,6 +379,7 @@ services:
       INVENTORY_SERVICE_URL: http://inventory-service:${INVENTORY_SERVICE_PORT:-8087}
       BILLING_SERVICE_URL: http://billing-service:${BILLING_SERVICE_PORT:-8088}
       ACCOUNTING_SERVICE_URL: http://accounting-service:${ACCOUNTING_SERVICE_PORT:-8090}
+      PAYROLL_SERVICE_URL: http://payroll-service:${PAYROLL_SERVICE_PORT:-8093}
       AUDIT_SERVICE_URL: http://audit-service:${AUDIT_SERVICE_PORT:-8091}
     ports:
       - "${BFF_SERVICE_PORT:-8083}:${BFF_SERVICE_PORT:-8083}"

@@ -33,6 +33,7 @@ Estos contratos son la base para futuros archivos OpenAPI por servicio.
 | `dian-provider-service` | Mock DIAN y futura integracion con proveedor real | `services/dian-provider-service` |
 | `accounting-service` | PUC, reglas, asientos, libro diario y mayor | `services/accounting-service` |
 | `audit-service` | Auditoria fiscal y tecnica | `services/audit-service` |
+| `payroll-service` | Empleados, contratos, pagos diarios, liquidaciones y nomina electronica opcional | `services/payroll-service` |
 
 ## Headers obligatorios
 
@@ -1561,6 +1562,115 @@ El dispatcher Outbox publica cada evento canonico a EventBridge con:
 - `detail`: envelope canonico JSON con `payload` como objeto JSON.
 
 Regla de error: si AWS SDK retorna `failedEntryCount > 0`, el evento queda `FAILED` en Outbox con `publishAttempts` incrementado y `lastError` seguro. No se deben registrar secretos ni credenciales en `lastError`.
+
+## Frontend data contract
+
+Reglas:
+
+- La SPA no debe enviar payloads construidos desde `initialState` demo.
+- La SPA solo puede usar datos capturados por el usuario, datos derivados de sesion autenticada o datos cargados desde BFF/API.
+- Las opciones de negocio seleccionables deben venir de `catalog-service` por BFF.
+- Si un catalogo requerido no esta disponible, el frontend debe bloquear el submit y mostrar error controlado.
+- El unico seed funcional permitido para pruebas locales iniciales es el usuario `ROOT`; las pruebas E2E crean el resto por API.
+
+Catalogos obligatorios por API:
+
+- `THIRD_PARTY_ROLE`
+- `PERSON_TYPE`
+- `ITEM_TYPE`
+- `DIAN_DOCUMENT_TYPE`
+- `TAX_RESPONSIBILITY`
+- `TAX_REGIME`
+- `SALES_TAX`
+- `PAYMENT_METHOD`
+- `VIRTUAL_WALLET`
+- `FISCAL_DOCUMENT_TYPE`
+- `FISCAL_ENVIRONMENT`
+- `PAYROLL_CONTRACT_TYPE`
+- `PAYROLL_WORKER_CLASSIFICATION`
+
+## audit-service v2
+
+### Endpoints
+
+- `GET /api/v1/audit-events?from=&to=&resourceType=`
+- `GET /api/v1/audit-events/resource-types?from=&to=`
+
+Reglas:
+
+- Si `from` y `to` se omiten, el backend retorna eventos del dia actual segun zona horaria operativa configurada.
+- `resourceType` es opcional y debe pertenecer a los tipos existentes o catalogados.
+- La UI no debe exponer filtro manual por `resourceId`.
+- ROOT puede consultar auditoria de la empresa activa o auditoria global cuando exista endpoint aprobado; administradores empresariales solo consultan su empresa.
+
+## payroll-service
+
+Responsabilidad: nomina interna, pagos diarios verbales, costos de personal y nomina electronica opcional por empresa.
+
+### Endpoints implementados
+
+- `GET /api/v1/payroll/settings`
+- `PUT /api/v1/payroll/settings`
+- `POST /api/v1/payroll/workers`
+- `GET /api/v1/payroll/workers`
+- `POST /api/v1/payroll/daily-payments`
+- `GET /api/v1/payroll/daily-payments?from=&to=`
+- `POST /api/v1/payroll/electronic-documents`
+- `GET /api/v1/payroll/electronic-documents`
+
+### PayrollSettingsRequest
+
+```json
+{
+  "electronicPayrollEnabled": false,
+  "providerMode": "MOCK"
+}
+```
+
+### PayrollWorkerRequest
+
+```json
+{
+  "fullName": "Persona Trabajo Diario",
+  "identificationTypeCode": 13,
+  "identificationNumber": "1234567890",
+  "verificationDigit": null,
+  "workerClassification": "DAILY_VERBAL_PAYMENT",
+  "active": true
+}
+```
+
+### DailyLaborPaymentRequest
+
+```json
+{
+  "workerId": "uuid",
+  "workDate": "2026-08-11",
+  "activityDescription": "Apoyo en punto de venta",
+  "agreedAmount": 80000,
+  "paidAmount": 80000,
+  "paymentMethodCode": "CASH",
+  "legalNoticeAccepted": true,
+  "notes": "Pago acordado verbalmente al final de la jornada"
+}
+```
+
+### ElectronicPayrollDocumentRequest
+
+```json
+{
+  "dailyLaborPaymentId": "uuid"
+}
+```
+
+Reglas:
+
+- `electronicPayrollEnabled=false` impide generar soporte electronico mock.
+- Todo pago diario verbal debe registrar aceptacion de advertencia legal configurable.
+- `classification=INDEPENDENT_CONTRACTOR` se contabiliza como egreso/proveedor o gasto operativo, no como empleado formal.
+- Todo comando requiere `X-Company-Id`, `X-User-Id`, `X-Correlation-Id` e idempotencia cuando cree pagos, periodos o documentos.
+- El evento contable para pago diario verbal es `PAYROLL_DAILY_PAYMENT_REGISTERED` con `sourceType=PAYROLL_DAILY_PAYMENT`.
+
 ## Ajustes TASK-076: UX colombiana y RBAC operativo
 
 ### tenant-service

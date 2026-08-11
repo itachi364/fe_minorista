@@ -1,6 +1,9 @@
 import { requestJson } from '../api/client.js';
 
 export const emptyRuntimeCatalogs = {
+  thirdPartyRoleCatalog: [],
+  personTypeCatalog: [],
+  itemTypeCatalog: [],
   dianDocumentTypes: [],
   taxResponsibilityOptions: [],
   taxRegimeOptions: [],
@@ -9,10 +12,17 @@ export const emptyRuntimeCatalogs = {
   virtualWalletOptions: [],
   fiscalDocumentTypeOptions: [],
   fiscalEnvironmentOptions: [],
+  payrollWorkerClassificationOptions: [],
+  payrollPaymentFrequencyOptions: [],
+  payrollEarningTypeOptions: [],
+  payrollDeductionTypeOptions: [],
   locations: [],
 };
 
 const catalogMap = {
+  THIRD_PARTY_ROLE: 'thirdPartyRoleCatalog',
+  PERSON_TYPE: 'personTypeCatalog',
+  ITEM_TYPE: 'itemTypeCatalog',
   DIAN_DOCUMENT_TYPE: 'dianDocumentTypes',
   TAX_RESPONSIBILITY: 'taxResponsibilityOptions',
   TAX_REGIME: 'taxRegimeOptions',
@@ -21,6 +31,10 @@ const catalogMap = {
   VIRTUAL_WALLET: 'virtualWalletOptions',
   FISCAL_DOCUMENT_TYPE: 'fiscalDocumentTypeOptions',
   FISCAL_ENVIRONMENT: 'fiscalEnvironmentOptions',
+  PAYROLL_WORKER_CLASSIFICATION: 'payrollWorkerClassificationOptions',
+  PAYROLL_PAYMENT_FREQUENCY: 'payrollPaymentFrequencyOptions',
+  PAYROLL_EARNING_TYPE: 'payrollEarningTypeOptions',
+  PAYROLL_DEDUCTION_TYPE: 'payrollDeductionTypeOptions',
 };
 
 export async function loadRuntimeCatalogs({ token, companyId }) {

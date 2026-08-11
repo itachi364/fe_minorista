@@ -19,6 +19,8 @@ public enum PermissionCode {
     PURCHASES_MANAGE(PermissionScope.COMPANY, "purchases", "Manage purchases"),
     ACCOUNTING_VIEW(PermissionScope.COMPANY, "accounting", "View accounting information"),
     ACCOUNTING_MANAGE(PermissionScope.COMPANY, "accounting", "Manage accounting information"),
+    PAYROLL_VIEW(PermissionScope.COMPANY, "payroll", "View payroll information"),
+    PAYROLL_MANAGE(PermissionScope.COMPANY, "payroll", "Manage payroll workers, settings and payments"),
     REPORTS_VIEW(PermissionScope.COMPANY, "reports", "View reports"),
     AUDIT_VIEW(PermissionScope.COMPANY, "audit", "View company audit"),
 

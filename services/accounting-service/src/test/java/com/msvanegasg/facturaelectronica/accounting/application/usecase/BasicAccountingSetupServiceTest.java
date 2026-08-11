@@ -31,14 +31,15 @@ class BasicAccountingSetupServiceTest {
 
         assertThat(result.templateName()).isEqualTo("BASIC_COLOMBIA_SMALL_BUSINESS");
         assertThat(result.accounts()).extracting("code")
-                .containsExactly("1105", "1110", "1305", "1435", "2205", "2408", "4135", "5135");
+                .containsExactly("1105", "1110", "1305", "1435", "2205", "2408", "4135", "5105", "5135");
         assertThat(result.rules()).extracting("eventType").containsExactly(
                 AccountingEventType.SALE_CONFIRMED,
                 AccountingEventType.PURCHASE_CONFIRMED,
                 AccountingEventType.EXPENSE_CONFIRMED,
                 AccountingEventType.ACCOUNTS_PAYABLE_PAYMENT_REGISTERED,
-                AccountingEventType.ACCOUNTS_RECEIVABLE_PAYMENT_REGISTERED);
-        assertThat(context.rules.findByCompanyId(COMPANY_ID, null, true)).hasSize(5);
+                AccountingEventType.ACCOUNTS_RECEIVABLE_PAYMENT_REGISTERED,
+                AccountingEventType.PAYROLL_DAILY_PAYMENT_REGISTERED);
+        assertThat(context.rules.findByCompanyId(COMPANY_ID, null, true)).hasSize(6);
     }
 
     @Test
@@ -56,7 +57,7 @@ class BasicAccountingSetupServiceTest {
                 .singleElement()
                 .extracting("active")
                 .isEqualTo(true);
-        assertThat(context.accounts.findByCompanyId(COMPANY_ID, null)).hasSize(8);
+        assertThat(context.accounts.findByCompanyId(COMPANY_ID, null)).hasSize(9);
         assertThat(context.rules.findByCompanyId(COMPANY_ID, AccountingEventType.SALE_CONFIRMED, true)).hasSize(1);
         assertThat(context.rules.findByCompanyId(COMPANY_ID, AccountingEventType.SALE_CONFIRMED, false)).hasSize(1);
     }

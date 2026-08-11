@@ -18,10 +18,11 @@ export function Field({ label, value, onChange, type = 'text', readOnly = false,
   </label>;
 }
 
-export function SelectField({ label, value, onChange, options, disabled = false }) {
+export function SelectField({ label, value, onChange, options, disabled = false, placeholder = 'Selecciona una opcion' }) {
   return <label>
     {label}
     <select value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled}>
+      <option value="">{placeholder}</option>
       {options.map((option) => {
         const normalized = typeof option === 'object' ? option : { value: option, label: option };
         return <option key={normalized.value} value={normalized.value}>{normalized.label}</option>;

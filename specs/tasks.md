@@ -2813,7 +2813,7 @@
     - Crear tablas especializadas `catalog.department` y `catalog.municipality` para DIVIPOLA, con relacion por `department_code`.
     - Crear configuracion por empresa para activar/inactivar medios de pago, billeteras y opciones operativas.
     - Exponer endpoints via BFF para que la SPA consuma catalogos desde backend.
-    - Mantener fallback estatico solo durante migracion.
+    - Eliminar fallback estatico de catalogos de negocio; los formularios deben consumir catalogos desde BFF/base de datos y bloquearse con error controlado si no estan disponibles.
   - Tests requeridos:
     - `./mvnw.cmd -pl services/catalog-service test`.
     - `npm run test` en `apps/facturaelectronica-web`.
@@ -2822,7 +2822,7 @@
     - `catalog-service` expone catalogos versionados en `/api/v1/catalogs/{catalogCode}/items`.
     - `company-catalogs` permite overlay empresarial para activar/inactivar items por empresa.
     - DIVIPOLA queda persistido en `catalog.department` y `catalog.municipality`, con relacion por `department_code`.
-    - La SPA carga catalogos desde BFF de forma best-effort y conserva fallback estatico si el servicio no responde.
+    - La SPA carga catalogos desde BFF; cualquier fallback estatico restante se considera deuda tecnica cubierta por TASK-094.
   - Tests ejecutados:
     - `./mvnw.cmd -pl services/catalog-service test`: 102 tests, 0 fallos.
     - `npm run test`: 15 tests, 0 fallos.
@@ -3029,3 +3029,332 @@
   - Validacion:
     - `npm run test` en `apps/facturaelectronica-web`: OK, 15 tests.
     - `npm run build` en `apps/facturaelectronica-web`: OK.
+
+## Fase 13: Catalogos DB-only, UX operativa, contabilidad y nomina
+
+- [x] TASK-094: Eliminar `initialState` demo y catalogos locales de negocio en frontend
+  - Estado: DONE
+  - Requisitos: RF-045, RF-046, RF-047, RNF-022, RNF-023, RN-050, RN-051, RN-052, RN-053.
+  - Acceptance criteria: AC-132, AC-133, AC-134.
+  - Archivos propuestos:
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/data/initialState.js`
+    - `apps/facturaelectronica-web/src/data/catalogs.js`
+    - `apps/facturaelectronica-web/src/data/divipola.js`
+    - `apps/facturaelectronica-web/src/utils/runtimeCatalogs.js`
+    - `apps/facturaelectronica-web/src/features/**`
+    - `services/catalog-service/src/main/resources/db/migration/*`
+  - Descripcion: Retirar datos demo y catalogos de negocio del frontend. Formularios deben iniciar vacios o con valores derivados de sesion/API. El unico seed funcional permitido es `ROOT`; datos de prueba se crean por API/E2E.
+  - Tests requeridos:
+    - `npm run test` en `apps/facturaelectronica-web`.
+    - `npm run build` en `apps/facturaelectronica-web`.
+    - Busqueda `rg "initialState|thirdPartyTypeOptions|personTypeOptions|itemTypeOptions|divipola" apps/facturaelectronica-web/src`.
+  - Validacion:
+    - Se eliminaron `data/initialState.js`, `data/catalogs.js` y `data/divipola.js`.
+    - `npm run test`: OK, 15 tests.
+    - `npm run build`: OK.
+    - `rg "initialState|data/catalogs|data/divipola|colombiaLocations|thirdPartyTypeOptions|thirdPartyRoleOptions|personTypeOptions|itemTypeOptions" apps/facturaelectronica-web/src`: sin coincidencias.
+
+- [x] TASK-095: Completar catalogos DB-only para UI operativa
+  - Estado: DONE
+  - Requisitos: RF-047, RN-050, RN-051.
+  - Acceptance criteria: AC-133, AC-142.
+  - Archivos propuestos:
+    - `services/catalog-service/src/main/resources/db/migration/*`
+    - `services/catalog-service/src/main/java/**`
+    - `services/bff-service/src/main/java/**`
+    - `apps/facturaelectronica-web/src/utils/runtimeCatalogs.js`
+  - Descripcion: Asegurar en base de datos catalogos `THIRD_PARTY_ROLE`, `PERSON_TYPE`, `ITEM_TYPE`, `PAYROLL_CONTRACT_TYPE`, `PAYROLL_WORKER_CLASSIFICATION`, `PAYROLL_PAYMENT_FREQUENCY`, `PAYROLL_EARNING_TYPE` y `PAYROLL_DEDUCTION_TYPE`, con etiquetas en espanol.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/catalog-service -am test`.
+    - `./mvnw.cmd -pl services/bff-service -am test`.
+    - `npm run test` y `npm run build`.
+  - Validacion:
+    - Se agrego `V008__seed_operational_and_payroll_catalogs.sql`.
+    - Catalogos operativos y de nomina se consumen desde BFF/base de datos.
+    - `./mvnw.cmd -pl services/catalog-service -am test`: OK.
+    - `./mvnw.cmd -pl services/bff-service -am test`: OK.
+
+- [x] TASK-096: Ajustar modales de proceso y mensajes contextuales
+  - Estado: DONE
+  - Requisitos: RF-055, RNF-023.
+  - Acceptance criteria: AC-135, AC-136, AC-137.
+  - Archivos propuestos:
+    - `apps/facturaelectronica-web/src/components/ProcessModal.jsx`
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/utils/apiClient.js`
+  - Descripcion: Cerrar automaticamente modales de exito, mantener errores visibles, personalizar credenciales invalidas y errores internos, y limpiar timers en React.
+  - Evidencia Context7: React oficial recomienda estados visuales explicitos y cleanup de efectos/temporizadores.
+  - Tests requeridos:
+    - `npm run test`.
+    - `npm run build`.
+  - Validacion:
+    - Modales de exito cierran automaticamente; errores quedan visibles.
+    - Login diferencia credenciales invalidas de fallos internos.
+    - `npm run test`: OK, 15 tests.
+    - `npm run build`: OK.
+
+- [x] TASK-097: Redisenar modulo Logs/Auditoria
+  - Estado: DONE
+  - Requisitos: RF-054, RN-046, RN-047, RN-048.
+  - Acceptance criteria: AC-138, AC-139, AC-140.
+  - Archivos propuestos:
+    - `services/audit-service/src/main/java/**`
+    - `services/bff-service/src/main/java/**`
+    - `apps/facturaelectronica-web/src/features/logs/**`
+  - Descripcion: Mostrar logs del dia actual por defecto, filtrar por fechas y `resourceType` opcional desde backend, eliminar filtro de `resourceId` y mantener acceso por permisos.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/audit-service -am test`.
+    - `./mvnw.cmd -pl services/bff-service -am test`.
+    - `npm run test` y `npm run build`.
+  - Validacion:
+    - Logs cargan el dia actual por defecto.
+    - `resourceType` se consulta desde backend mediante lista desplegable.
+    - Se elimino el filtro visible de `resourceId`.
+    - `./mvnw.cmd -pl services/audit-service -am test`: OK, 13 tests.
+    - `./mvnw.cmd -pl services/bff-service -am test`: OK, 6 tests.
+
+- [x] TASK-098: Mejorar UX de uso de items de inventario
+  - Estado: DONE
+  - Requisitos: RF-019, RF-042.
+  - Acceptance criteria: AC-141, AC-142.
+  - Archivos propuestos:
+    - `apps/facturaelectronica-web/src/features/inventory/ProductForm.jsx`
+    - `services/inventory-service/src/main/java/**`
+  - Descripcion: Reemplazar checks visibles `Vendido`, `Comprado` y `Controla stock` por configuracion guiada de uso del item, mapeada internamente a `saleEnabled`, `purchaseEnabled` y `stockTracked`.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/inventory-service -am test`.
+    - `npm run test` y `npm run build`.
+  - Validacion:
+    - Se reemplazaron checks sueltos por `Uso del item`.
+    - El frontend mapea internamente a `saleEnabled`, `purchaseEnabled` y `stockTracked`.
+    - `npm run test`: OK, 15 tests.
+    - `npm run build`: OK.
+
+- [x] TASK-099: Disenar modulo contable funcional v2
+  - Estado: DONE
+  - Requisitos: RF-053.
+  - Acceptance criteria: AC-143, AC-144.
+  - Archivos propuestos:
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+    - `specs/data-model.md`
+    - `specs/data-dictionary.md`
+  - Descripcion: Definir ingresos, egresos, costos de operacion, activos, CxC, CxP, reglas PUC y reportes contables por empresa.
+  - Tests requeridos: no aplica, documentacion SDD.
+  - Validacion:
+    - `specs/design.md`, `specs/api-contract.md`, `specs/database-design.md`, `specs/data-model.md` y `specs/data-dictionary.md` documentan contabilidad operativa, PUC minimo, CxC, CxP, gastos, libro diario/mayor y pagos diarios de nomina.
+
+- [x] TASK-100: Implementar contabilidad operativa v2
+  - Estado: DONE
+  - Requisitos: RF-053.
+  - Acceptance criteria: AC-143, AC-144.
+  - Archivos propuestos:
+    - `services/accounting-service/src/main/java/**`
+    - `services/accounting-service/src/main/resources/db/migration/*`
+    - `apps/facturaelectronica-web/src/features/accounting/**`
+  - Descripcion: Implementar reportes y operaciones contables para ingresos, egresos, costos, activos, CxC, CxP y asientos derivados de ventas, compras, gastos y nomina.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/accounting-service -am test`.
+    - `npm run test` y `npm run build`.
+  - Validacion:
+    - Plantilla contable basica incluye `5105` y regla `PAYROLL_DAILY_PAYMENT_REGISTERED`.
+    - UI de Reportes consulta ventas, inventario, gastos, CxC, CxP, libro diario y libro mayor.
+    - `./mvnw.cmd -pl services/accounting-service -am test`: OK, 50 tests.
+    - `npm run test`: OK, 15 tests.
+    - `npm run build`: OK.
+
+- [x] TASK-101: Disenar modulo de nomina y clasificacion laboral/contractual
+  - Estado: DONE
+  - Requisitos: RF-048, RF-049, RF-050, RF-051, RF-052, RN-054, RN-055, RN-056, RN-057.
+  - Acceptance criteria: AC-145, AC-146, AC-147, AC-148, AC-149, AC-150.
+  - Archivos propuestos:
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+    - `specs/data-model.md`
+    - `specs/data-dictionary.md`
+  - Descripcion: Definir nomina interna, empleados, contratos, pago diario verbal/jornal, contratistas, advertencias legales y nomina electronica opcional por empresa.
+  - Tests requeridos: no aplica, documentacion SDD.
+  - Validacion:
+    - Specs actualizadas para nomina interna, contratacion diaria verbal y nomina electronica opcional.
+
+- [x] TASK-102: Crear `payroll-service`
+  - Estado: DONE
+  - Requisitos: RF-048, RF-049.
+  - Acceptance criteria: AC-145, AC-148.
+  - Archivos propuestos:
+    - `services/payroll-service/pom.xml`
+    - `services/payroll-service/src/main/java/**`
+    - `services/payroll-service/src/main/resources/db/migration/*`
+    - `docker-compose.yml`
+    - `pom.xml`
+  - Descripcion: Crear microservicio fisico Clean Architecture para configuracion de nomina, trabajadores, contratos y periodos.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/payroll-service -am test`.
+    - `docker compose up -d --build payroll-service`.
+  - Validacion:
+    - Microservicio `payroll-service` agregado al reactor Maven y a `docker-compose.yml`.
+    - BFF enruta `/api/v1/payroll/**`.
+    - `./mvnw.cmd -pl services/payroll-service -am test`: OK, 5 tests.
+
+- [x] TASK-103: Implementar pagos diarios verbales/jornal
+  - Estado: DONE
+  - Requisitos: RF-050, RF-051, RF-052.
+  - Acceptance criteria: AC-146, AC-147, AC-150.
+  - Archivos propuestos:
+    - `services/payroll-service/src/main/java/**`
+    - `services/payroll-service/src/main/resources/db/migration/*`
+    - `apps/facturaelectronica-web/src/features/payroll/**`
+  - Descripcion: Registrar pagos diarios verbales con actividad, jornada, valor acordado/pagado, medio de pago, evidencia opcional, clasificacion y advertencia legal auditada.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/payroll-service -am test`.
+    - `npm run test` y `npm run build`.
+  - Validacion:
+    - Backend registra pagos diarios con actividad, valor acordado/pagado, medio de pago y aceptacion de advertencia legal.
+    - Frontend agrega formulario inicial de pago diario verbal.
+    - `./mvnw.cmd -pl services/payroll-service -am test`: OK, 5 tests.
+
+- [x] TASK-104: Configurar nomina electronica opcional por empresa
+  - Estado: DONE
+  - Requisitos: RF-049.
+  - Acceptance criteria: AC-148, AC-149.
+  - Archivos propuestos:
+    - `services/payroll-service/src/main/java/**`
+    - `apps/facturaelectronica-web/src/features/payroll/**`
+  - Descripcion: Permitir activar/desactivar nomina electronica por empresa. Si esta desactivada, no se genera documento soporte electronico.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/payroll-service -am test`.
+    - `npm run test` y `npm run build`.
+  - Validacion:
+    - `payroll_settings.electronic_payroll_enabled` controla si se permite generar soporte electronico mock.
+    - `./mvnw.cmd -pl services/payroll-service -am test`: OK, 5 tests.
+
+- [x] TASK-105: Implementar nomina electronica mock
+  - Estado: DONE
+  - Requisitos: RF-049.
+  - Acceptance criteria: AC-149.
+  - Archivos propuestos:
+    - `services/payroll-service/src/main/java/**`
+    - `services/payroll-service/src/main/resources/db/migration/*`
+  - Descripcion: Generar soporte de nomina electronica mock, CUNE simulado, estado de transmision y respuesta segura cuando la empresa tenga nomina electronica activa.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/payroll-service -am test`.
+  - Validacion:
+    - Se agrego persistencia de documentos mock con CUNE simulado, estado y respuesta segura.
+    - `./mvnw.cmd -pl services/payroll-service -am test`: OK, 5 tests.
+
+- [ ] TASK-106: Integrar nomina con contabilidad
+  - Estado: IN_PROGRESS
+  - Requisitos: RF-053.
+  - Acceptance criteria: AC-144, AC-150.
+  - Archivos propuestos:
+    - `services/payroll-service/src/main/java/**`
+    - `services/accounting-service/src/main/java/**`
+  - Descripcion: Contabilizar costos de empleados, pagos diarios y contratistas segun clasificacion y reglas PUC.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/payroll-service,services/accounting-service -am test`.
+  - Validacion parcial:
+    - `accounting-service` soporta evento `PAYROLL_DAILY_PAYMENT_REGISTERED` con origen `PAYROLL_DAILY_PAYMENT`.
+    - E2E registra pago diario verbal y genera asiento contable idempotente por API.
+    - `./mvnw.cmd -pl services/accounting-service -am test`: OK, 50 tests.
+    - Falta cerrar integracion automatica/eventual desde `payroll-service` hacia contabilidad sin acoplar disponibilidad.
+
+- [ ] TASK-107: Endurecer RBAC para catalogos, logs, contabilidad y nomina
+  - Estado: IN_PROGRESS
+  - Requisitos: RF-026, RF-054.
+  - Acceptance criteria: AC-064, AC-130, AC-131.
+  - Archivos propuestos:
+    - `services/identity-service/src/main/java/**`
+    - `services/bff-service/src/main/java/**`
+    - `apps/facturaelectronica-web/src/**`
+  - Descripcion: Agregar permisos modulares para nomina, contabilidad avanzada, catalogos y logs; ROOT mantiene acceso global y administradores se limitan a su empresa.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/identity-service,services/bff-service -am test`.
+    - `npm run test` y `npm run build`.
+  - Validacion parcial:
+    - Se agregaron permisos `PAYROLL_VIEW` y `PAYROLL_MANAGE`.
+    - Falta cerrar validacion transversal de permisos en BFF/UI para contabilidad avanzada y catalogos editables.
+
+- [ ] TASK-108: Mejorar frontend profesional y componentes reutilizables
+  - Estado: IN_PROGRESS
+  - Requisitos: RF-045, RF-047, RF-055.
+  - Acceptance criteria: AC-132, AC-133, AC-135, AC-136, AC-137.
+  - Archivos propuestos:
+    - `apps/facturaelectronica-web/src/components/**`
+    - `apps/facturaelectronica-web/src/features/**`
+    - `apps/facturaelectronica-web/src/App.jsx`
+  - Descripcion: Modularizar formularios, estados de carga, errores, modales y navegacion por permisos, manteniendo UI en espanol profesional.
+  - Tests requeridos:
+    - `npm run test`.
+    - `npm run build`.
+  - Validacion parcial:
+    - Formularios empiezan a usar factories reutilizables y navegacion desacoplada.
+    - Reportes y nomina electronica mock ya tienen paneles operativos con tablas y acciones.
+    - Falta completar componentes reutilizables para contabilidad avanzada y E2E guiado.
+
+- [x] TASK-109: Prueba E2E desde cero sin datos demo frontend
+  - Estado: DONE
+  - Requisitos: RF-046, RF-047, RF-048, RF-053.
+  - Acceptance criteria: AC-151.
+  - Archivos propuestos:
+    - `scripts/e2e-from-zero.ps1`
+    - `apps/facturaelectronica-web/**`
+  - Descripcion: Ejecutar flujo completo creando todo por API: ROOT login, empresa, administrador, catalogos requeridos, tercero, inventario, venta, factura mock, logs, contabilidad y pago diario/nomina minima.
+  - Tests requeridos:
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`.
+    - `./mvnw.cmd test`.
+    - `npm run test` y `npm run build`.
+  - Validacion:
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: OK.
+    - Flujo validado nuevamente con CompanyId `c716fd56-424b-459c-b469-d2e68fb510a4`, SaleId `256cfacb-a130-4182-af01-4cd42daddf61`, DocumentId `367cb87f-7e30-426c-9269-a76ccd07d737`, PayrollPaymentId `f0d98ceb-3a23-41b6-b550-1131fcbb59d5` y PayrollMockCune `MOCK-CUNE-c716fd56-f0d98ceb`.
+
+- [x] TASK-110: Revision normativa y catalogos de cumplimiento
+  - Estado: DONE
+  - Requisitos: RF-047, RF-049, RF-052.
+  - Acceptance criteria: AC-133, AC-142, AC-147, AC-149.
+  - Archivos propuestos:
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/database-design.md`
+  - Descripcion: Verificar fuentes DIAN, DANE/DIVIPOLA, UGPP y PUC antes de cerrar catalogos productivos de impuestos, nomina, responsabilidades fiscales y clasificaciones laborales.
+  - Tests requeridos: checklist documental y actualizacion de evidencias.
+  - Validacion:
+    - Se revisaron fuentes oficiales DIAN de documentacion tecnica, normatividad de facturacion electronica y nomina electronica, DANE DIVIPOLA y SUIN/Juriscol para PUC.
+    - `specs/design.md` documenta la evidencia normativa y su impacto en catalogos DB-only, nomina electronica opcional, consumidor final parametrizado, DIVIPOLA relacional y PUC configurable.
+    - `rg -n "payroll_configuration|payroll_electronic_enabled|electronic_provider_mode|daily_payment|legal_warning_accepted|provider_response_json" specs\data-dictionary.md specs\data-model.md specs\database-design.md specs\api-contract.md specs\design.md`: sin coincidencias legacy de nomina desalineadas.
+
+- [ ] TASK-111: Preparacion cloud/productiva para nuevos modulos
+  - Estado: PENDING
+  - Requisitos: RNF-019, RNF-020, RNF-021.
+  - Acceptance criteria: AC-054, AC-055, AC-056, AC-057, AC-058.
+  - Archivos propuestos:
+    - `infra/terraform/**`
+    - `docker-compose.yml`
+    - `README.md`
+  - Descripcion: Extender Terraform, ECS Fargate, API Gateway/BFF, S3/CloudFront, Secrets Manager, EventBridge/SQS y observabilidad para contabilidad avanzada y payroll-service.
+  - Tests requeridos:
+    - `terraform fmt`.
+    - `terraform validate` cuando variables requeridas esten disponibles.
+
+- [ ] TASK-112: Commit y reporte de cierre de fase
+  - Estado: IN_PROGRESS
+  - Requisitos: RNF-004.
+  - Acceptance criteria: AC-024.
+  - Archivos propuestos:
+    - `README.md`
+    - `specs/tasks.md`
+  - Descripcion: Actualizar README, ejecutar validaciones disponibles, revisar secretos, generar mensaje de commit Gitmoji y pedir confirmacion separada para commit/push.
+  - Tests requeridos:
+    - `git status`.
+    - `git diff --stat`.
+    - Validaciones ejecutadas en tareas previas.
+  - Validacion parcial:
+    - `./mvnw.cmd -q test`: OK.
+    - `npm run test`: OK, 15 tests.
+    - `npm run build`: OK.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: OK.
+    - `git status --short`: ejecutado; cambios pendientes esperados de la fase.
+    - `git diff --stat`: ejecutado; 52 archivos modificados, 1619 inserciones y 6071 eliminaciones.
+    - Revision de secretos en diff: sin secretos reales detectados; solo variable de sesion `session?.accessToken`.

@@ -38,6 +38,20 @@ const ACTIVE_LICENSE = {
   message: 'Licencia activa.',
 };
 const TEST_RUNTIME_CATALOGS = {
+  thirdPartyRoleCatalog: [
+    { value: 'CUSTOMER', label: 'Cliente' },
+    { value: 'SUPPLIER', label: 'Proveedor' },
+    { value: 'BOTH', label: 'Cliente y proveedor' },
+  ],
+  personTypeCatalog: [
+    { value: 'NATURAL', label: 'Natural' },
+    { value: 'JURIDICA', label: 'Juridica' },
+  ],
+  itemTypeCatalog: [
+    { value: 'PHYSICAL_GOOD', label: 'Bien fisico' },
+    { value: 'SERVICE', label: 'Servicio / intangible' },
+    { value: 'SUPPLY', label: 'Insumo' },
+  ],
   dianDocumentTypes: [
     { value: 13, label: '13 - Cedula de ciudadania' },
     { value: 22, label: '22 - Cedula de extranjeria' },
@@ -64,6 +78,9 @@ const TEST_RUNTIME_CATALOGS = {
   ],
   fiscalEnvironmentOptions: [
     { value: 'TEST', label: 'Pruebas' },
+  ],
+  salesTaxOptions: [
+    { value: 'IVA_19', label: 'IVA 19%', taxCategoryCode: 'IVA', taxCode: 'IVA_19', taxLabel: 'IVA 19%', taxRate: 19 },
   ],
   locations: [
     {
@@ -235,11 +252,13 @@ test('root creates company and initial administrator', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
   await waitFor(() => expect(screen.getByText('Panel global')).toBeInTheDocument());
 
+  fillCompanyForm();
   fireEvent.click(screen.getByRole('button', { name: 'Crear empresa' }));
   await waitFor(() => expect(screen.getAllByText('Empresa Demo SAS (900123456)').length).toBeGreaterThan(0));
 
   fireEvent.click(screen.getAllByRole('button', { name: 'Crear administrador' })[0]);
   await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+  fillInitialAdminForm();
   const adminButtons = screen.getAllByRole('button', { name: 'Crear administrador' });
   fireEvent.click(adminButtons[adminButtons.length - 1]);
 
@@ -307,6 +326,7 @@ test('root manages company roles users and assignments', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
   await waitFor(() => expect(screen.getByText('Panel global')).toBeInTheDocument());
 
+  fillCompanyForm();
   fireEvent.click(screen.getByRole('button', { name: 'Crear empresa' }));
   await waitFor(() => expect(screen.getAllByText('Empresa Demo SAS (900123456)').length).toBeGreaterThan(0));
 
@@ -315,9 +335,11 @@ test('root manages company roles users and assignments', async () => {
   await waitFor(() => expect(screen.getByText('SALES_CREATE')).toBeInTheDocument());
   expect(screen.queryByText('GLOBAL_COMPANIES_MANAGE')).not.toBeInTheDocument();
 
+  fillCompanyRoleForm();
   fireEvent.click(screen.getByRole('button', { name: 'Crear rol' }));
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
 
+  fillManagedUserForm();
   fireEvent.click(screen.getByRole('button', { name: 'Crear usuario' }));
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(7));
 
@@ -359,6 +381,7 @@ test('creates simple natural customer with automatic fiscal profile', async () =
   await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: 'Terceros' }));
+  fillSimpleNaturalCustomerForm();
   expect(screen.getByLabelText('Tipo de documento')).not.toHaveTextContent('31 - NIT');
   expect(screen.queryByLabelText('Razon social')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Nombre comercial')).not.toBeInTheDocument();
@@ -382,7 +405,9 @@ test('creates simple natural customer with automatic fiscal profile', async () =
     method: 'POST',
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
-});test('creates third party with imported DIVIPOLA municipality code', async () => {
+});
+
+test('creates third party with municipality loaded from backend catalogs', async () => {
   const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
     .mockResolvedValueOnce(jsonResponse({ id: '88888888-8888-8888-8888-888888888888', municipalityCode: '91001' }));
 
@@ -391,6 +416,7 @@ test('creates simple natural customer with automatic fiscal profile', async () =
   await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: 'Terceros' }));
+  fillSimpleNaturalCustomerForm();
   fireEvent.change(screen.getByLabelText('Direccion'), { target: { value: 'Calle 10 # 1-2' } });
   fireEvent.change(screen.getByLabelText('Departamento'), { target: { value: '91' } });
   await waitFor(() => expect(screen.getByText('Leticia')).toBeInTheDocument());
@@ -481,4 +507,42 @@ function jsonResponse(payload) {
     status: 200,
     text: () => Promise.resolve(JSON.stringify(payload)),
   };
+}
+
+function fillCompanyForm() {
+  fireEvent.change(screen.getByLabelText('Razon social'), { target: { value: 'Empresa Demo SAS' } });
+  fireEvent.change(screen.getByLabelText('Nombre comercial'), { target: { value: 'Tienda Demo' } });
+  fireEvent.change(screen.getByLabelText('Tipo de identificacion'), { target: { value: '31' } });
+  fireEvent.change(screen.getByLabelText('Numero de identificacion'), { target: { value: '900123456' } });
+  fireEvent.change(screen.getByLabelText('Correo administrativo'), { target: { value: 'admin@example.com' } });
+}
+
+function fillInitialAdminForm() {
+  fireEvent.change(screen.getByLabelText('Nombre completo'), { target: { value: 'Administrador Empresa' } });
+  fireEvent.change(screen.getByLabelText('Correo electronico'), { target: { value: 'admin.empresa@example.com' } });
+  fireEvent.change(screen.getByLabelText('Password inicial'), { target: { value: 'AdminDemo#2026!' } });
+}
+
+function fillCompanyRoleForm() {
+  fireEvent.change(screen.getByLabelText('Nombre del rol'), { target: { value: 'VENDEDOR' } });
+  fireEvent.change(screen.getByLabelText('Descripcion'), { target: { value: 'Puede registrar ventas POS y consultar inventario.' } });
+  fireEvent.click(screen.getByText('SALES_CREATE').closest('label').querySelector('input'));
+  fireEvent.click(screen.getByText('FISCAL_DOCUMENTS_ISSUE').closest('label').querySelector('input'));
+  fireEvent.click(screen.getByText('INVENTORY_VIEW').closest('label').querySelector('input'));
+}
+
+function fillManagedUserForm() {
+  fireEvent.change(screen.getByLabelText('Nombre completo'), { target: { value: 'Usuario Vendedor' } });
+  fireEvent.change(screen.getByLabelText('Correo electronico'), { target: { value: 'vendedor@example.com' } });
+  fireEvent.change(screen.getByLabelText('Password inicial'), { target: { value: 'VendedorDemo#2026!' } });
+}
+
+function fillSimpleNaturalCustomerForm() {
+  fireEvent.change(screen.getByLabelText('Tipo de tercero'), { target: { value: 'CUSTOMER' } });
+  fireEvent.change(screen.getByLabelText('Tipo de persona'), { target: { value: 'NATURAL' } });
+  fireEvent.change(screen.getByLabelText('Tipo de documento'), { target: { value: '13' } });
+  fireEvent.change(screen.getByLabelText('Numero de documento'), { target: { value: '1234567890' } });
+  fireEvent.change(screen.getByLabelText('Nombre completo'), { target: { value: 'Cliente Demo' } });
+  fireEvent.change(screen.getByLabelText('Correo electronico'), { target: { value: 'cliente@example.com' } });
+  fireEvent.change(screen.getByLabelText('Telefono'), { target: { value: '3000000000' } });
 }

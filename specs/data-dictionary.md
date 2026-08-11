@@ -692,6 +692,67 @@ Regla: `event_id + consumer` debe ser unico para impedir reprocesamiento no idem
 | enabled | boolean | Si | Item habilitado o inhabilitado para la empresa. |
 | updated_at | timestamptz | Si | Fecha de ultima modificacion. |
 
+## payroll.payroll_settings
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| company_id | uuid | Si | Empresa propietaria de la configuracion. |
+| electronic_payroll_enabled | boolean | Si | Habilita nomina electronica opcional mock. |
+| provider_mode | varchar(30) | Si | MOCK o proveedor real futuro aprobado. |
+| updated_at | timestamptz | Si | Fecha de ultima modificacion. |
+
+## payroll.worker
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del trabajador o persona pagada. |
+| company_id | uuid | Si | Empresa propietaria. |
+| identification_type_code | smallint | Si | Codigo DIAN de tipo de documento. |
+| identification_number | varchar(40) | Si | Numero de documento. |
+| verification_digit | smallint | No | Digito de verificacion cuando aplique. |
+| full_name | varchar(180) | Si | Nombre completo. |
+| worker_classification | varchar(40) | Si | FORMAL_EMPLOYEE, WORKER_BY_DAYS, DAILY_VERBAL_PAYMENT, INDEPENDENT_CONTRACTOR o UNCLASSIFIED_OPERATIONAL_PAYMENT. |
+| active | boolean | Si | Estado. |
+| created_at | timestamptz | Si | Fecha de creacion. |
+
+## payroll.contract
+
+Tabla planificada para fase posterior. Todavia no existe en Flyway.
+
+## payroll.daily_labor_payment
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del pago diario. |
+| company_id | uuid | Si | Empresa propietaria. |
+| worker_id | uuid | Si | Persona pagada. |
+| work_date | date | Si | Fecha del trabajo realizado. |
+| activity_description | varchar(300) | Si | Actividad realizada. |
+| agreed_amount | numeric(19,2) | Si | Valor acordado. |
+| paid_amount | numeric(19,2) | Si | Valor pagado. |
+| payment_method_code | varchar(40) | Si | Metodo de pago usado. |
+| legal_notice_accepted | boolean | Si | Confirmacion auditada de advertencia legal. |
+| notes | varchar(500) | No | Observaciones del acuerdo verbal o pago. |
+| created_at | timestamptz | Si | Fecha de registro. |
+
+## payroll.electronic_payroll_document
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del soporte electronico de nomina. |
+| company_id | uuid | Si | Empresa propietaria. |
+| daily_labor_payment_id | uuid | Si | Pago diario origen. |
+| cune | varchar(120) | Si | CUNE simulado o real futuro. |
+| status | varchar(30) | Si | ACCEPTED, REJECTED o estados futuros del proveedor. |
+| provider_response | varchar(500) | No | Respuesta segura del mock/proveedor. |
+| created_at | timestamptz | Si | Fecha de generacion. |
+
+## Politica de datos iniciales
+
+- El unico seed funcional permitido para pruebas locales iniciales es el usuario `ROOT`.
+- Los catalogos se cargan en base de datos mediante migraciones o modulo administrativo.
+- No se permiten datos demo de negocio como fuente de formularios frontend.
+
 ### `catalog.department`
 
 | Campo | Tipo | Requerido | Descripcion |

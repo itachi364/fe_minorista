@@ -8,11 +8,11 @@ El proyecto migro desde una estructura legacy CRUD hacia Clean Architecture por 
 
 - Arquitectura Clean Architecture implementada por modulos.
 - PostgreSQL con migraciones Flyway versionadas.
-- Docker Compose local para PostgreSQL, `bff-service`, frontend SPA, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service`.
+- Docker Compose local para PostgreSQL, `bff-service`, frontend SPA, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `audit-service` y `payroll-service`.
 - POS electronico con emisor/resolucion fiscal persistidos en `billing-service`, proveedor DIAN mock configurable como microservicio HTTP y efectos posteriores idempotentes sobre inventario/contabilidad.
-- Persistencia JPA y endpoints REST para billing/POS, accounting y audit.
+- Persistencia JPA y endpoints REST para billing/POS, accounting, audit y nomina.
 - Limpieza legacy en curso: monolito removido, catalogos/terceros legacy de microservicios retirados mediante migraciones nuevas y datos historicos `public.*` preservados hasta migracion aprobada.
-- Suite multi-modulo activa validada con `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service`.
+- Suite multi-modulo activa validada con `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `audit-service` y `payroll-service`.
 
 ## Alcance Funcional
 
@@ -21,6 +21,8 @@ El proyecto migro desde una estructura legacy CRUD hacia Clean Architecture por 
 - Inventario: productos multiempresa, costos, compras, stock simple, movimientos y kardex.
 - Billing/POS: emisor, resoluciones, emision POS electronico, consulta y envio a proveedor DIAN mock.
 - Contabilidad: cuentas PUC por empresa, reglas contables configurables, asientos `POSTED`, libro diario y libro mayor.
+- Nomina: configuracion por empresa, trabajadores, pagos diarios verbales, documento soporte electronico mock opcional y contabilizacion base de pagos diarios.
+- Reportes: ventas, inventario, gastos, cuentas por cobrar, cuentas por pagar, libro diario y libro mayor.
 - Errores API: contrato estandar con `timestamp`, `status`, `code`, `message`, `correlationId` y `details`.
 - Observabilidad HTTP: correlation ID por request y logs estructurados de inicio/fin.
 
@@ -49,6 +51,7 @@ Estructura actual:
 - `services/dian-provider-service`: microservicio fisico para mock DIAN y futura integracion real.
 - `services/accounting-service`: microservicio fisico para PUC, reglas contables, asientos, libro diario y mayor.
 - `services/audit-service`: microservicio fisico para auditoria fiscal y tecnica.
+- `services/payroll-service`: microservicio fisico para trabajadores, pagos diarios verbales y nomina electronica mock opcional.
 
 
 La unidad de despliegue objetivo es un artefacto/contenedor por microservicio, no uno por endpoint individual.
@@ -335,6 +338,7 @@ El proyecto incluye `docker-compose.yml` con:
 - `dian-provider-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/dian-provider-service clean spring-boot:run`.
 - `accounting-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/accounting-service clean spring-boot:run`.
 - `audit-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/audit-service clean spring-boot:run`.
+- `payroll-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/payroll-service clean spring-boot:run`.
 
 Politica de arranque local:
 
@@ -370,6 +374,7 @@ docker compose logs -f billing-service
 docker compose logs -f dian-provider-service
 docker compose logs -f accounting-service
 docker compose logs -f audit-service
+docker compose logs -f payroll-service
 docker compose logs -f postgres
 ```
 
@@ -405,6 +410,7 @@ services/inventory-service/src/main/resources/db/migration
 services/billing-service/src/main/resources/db/migration
 services/dian-provider-service/src/main/resources/db/migration
 services/accounting-service/src/main/resources/db/migration
+services/payroll-service/src/main/resources/db/migration
 services/audit-service/src/main/resources/db/migration
 ```
 
@@ -590,12 +596,31 @@ Los comandos requieren `Idempotency-Key`. Las consultas requieren `X-Company-Id`
 
 - `POST /api/v1/accounts`
 - `GET /api/v1/accounts?code=`
+- `POST /api/v1/accounting-setup/basic`
 - `POST /api/v1/accounting-rules`
 - `POST /api/v1/accounting-entries`
+- `GET /api/v1/reports/expenses?status=&from=&to=`
+- `GET /api/v1/accounts-payable?status=&from=&to=`
+- `GET /api/v1/reports/accounts-receivable?status=&from=&to=`
 - `GET /api/v1/reports/journal?from=&to=`
 - `GET /api/v1/reports/ledger?from=&to=&accountCode=`
 
-Los asientos se generan desde reglas activas por empresa y son idempotentes por `companyId`, `sourceType` y `sourceId`.
+Los asientos se generan desde reglas activas por empresa y son idempotentes por `companyId`, `sourceType` y `sourceId`. La plantilla basica crea cuentas PUC iniciales y reglas para ventas, compras, gastos, cuentas por cobrar, cuentas por pagar y pago diario de nomina.
+
+### Payroll
+
+`payroll-service` expone en `http://localhost:8093`:
+
+- `GET /api/v1/payroll/settings`
+- `PUT /api/v1/payroll/settings`
+- `GET /api/v1/payroll/workers`
+- `POST /api/v1/payroll/workers`
+- `GET /api/v1/payroll/daily-payments`
+- `POST /api/v1/payroll/daily-payments`
+- `GET /api/v1/payroll/electronic-documents`
+- `POST /api/v1/payroll/electronic-documents`
+
+La nomina electronica es configurable por empresa. Si `electronicPayrollEnabled=false`, la empresa puede registrar nomina interna, pero no emitir documento soporte electronico mock. Los pagos diarios verbales se registran con advertencia legal y clasificacion laboral/contractual; no se tratan automaticamente como exentos de obligaciones laborales.
 
 ### Audit
 
@@ -633,7 +658,7 @@ Lambdas iniciales:
 
 ## Guia De Pruebas Docker
 
-La guia E2E desde cero para microservicios, con empresa nueva, inventario, venta POS, proveedor DIAN mock, asiento contable, auditoria central, consultas SQL y checklist AC-024/AC-031/AC-032/AC-035 esta en:
+La guia E2E desde cero para microservicios, con empresa nueva, inventario, venta POS, proveedor DIAN mock, asiento contable, auditoria central, nomina minima con pago diario verbal, documento soporte mock, consultas SQL y checklist AC-024/AC-031/AC-032/AC-035 esta en:
 
 En Windows el script usa `127.0.0.1` por defecto para evitar bloqueos de resolucion de `localhost`.
 

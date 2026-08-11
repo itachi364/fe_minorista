@@ -1,0 +1,73 @@
+INSERT INTO catalog.catalog_definition (
+    catalog_code,
+    label,
+    description,
+    regulatory,
+    company_configurable,
+    global_editable_by_root,
+    active,
+    sort_order
+) VALUES
+    ('THIRD_PARTY_ROLE', 'Tipos de tercero', 'Clasificacion operativa de terceros como clientes, proveedores o ambos.', false, false, true, true, 80),
+    ('PERSON_TYPE', 'Tipos de persona', 'Tipos de persona usados para identificacion fiscal y operativa.', true, false, true, true, 90),
+    ('ITEM_TYPE', 'Tipos de item', 'Clasificacion de productos, servicios e insumos.', false, false, true, true, 100),
+    ('PAYROLL_CONTRACT_TYPE', 'Tipos de contratacion', 'Tipos de contrato o acuerdo para nomina y pagos operativos.', false, true, true, true, 110),
+    ('PAYROLL_WORKER_CLASSIFICATION', 'Clasificacion laboral', 'Clasificacion laboral o contractual de personas pagadas por la empresa.', false, true, true, true, 120),
+    ('PAYROLL_PAYMENT_FREQUENCY', 'Frecuencias de pago de nomina', 'Frecuencias usadas en contratos y pagos de nomina.', false, true, true, true, 130),
+    ('PAYROLL_EARNING_TYPE', 'Conceptos devengados', 'Conceptos de ingresos o devengados en nomina.', false, true, true, true, 140),
+    ('PAYROLL_DEDUCTION_TYPE', 'Conceptos deducidos', 'Conceptos de deducciones en nomina.', false, true, true, true, 150)
+ON CONFLICT (catalog_code) DO UPDATE SET
+    label = EXCLUDED.label,
+    description = EXCLUDED.description,
+    regulatory = EXCLUDED.regulatory,
+    company_configurable = EXCLUDED.company_configurable,
+    global_editable_by_root = EXCLUDED.global_editable_by_root,
+    active = EXCLUDED.active,
+    sort_order = EXCLUDED.sort_order;
+
+INSERT INTO catalog.catalog_item (
+    catalog_code,
+    item_code,
+    label,
+    description,
+    active,
+    regulatory,
+    source,
+    source_version,
+    sort_order
+) VALUES
+    ('THIRD_PARTY_ROLE', 'CUSTOMER', 'Cliente', 'Tercero al que la empresa vende bienes o servicios.', true, false, 'APP', '2026-08', 10),
+    ('THIRD_PARTY_ROLE', 'SUPPLIER', 'Proveedor', 'Tercero que vende bienes, servicios, insumos, gastos o activos a la empresa.', true, false, 'APP', '2026-08', 20),
+    ('THIRD_PARTY_ROLE', 'BOTH', 'Cliente y proveedor', 'Tercero que puede operar como cliente y proveedor dentro de la misma empresa.', true, false, 'APP', '2026-08', 30),
+    ('PERSON_TYPE', 'NATURAL', 'Natural', 'Persona natural.', true, true, 'DIAN/APP', '2026-08', 10),
+    ('PERSON_TYPE', 'JURIDICA', 'Juridica', 'Persona juridica.', true, true, 'DIAN/APP', '2026-08', 20),
+    ('ITEM_TYPE', 'PHYSICAL_GOOD', 'Bien fisico', 'Bien tangible que puede venderse y, si aplica, controlar inventario.', true, false, 'APP', '2026-08', 10),
+    ('ITEM_TYPE', 'SERVICE', 'Servicio / intangible', 'Servicio o intangible vendible sin consumo automatico de insumos.', true, false, 'APP', '2026-08', 20),
+    ('ITEM_TYPE', 'SUPPLY', 'Insumo', 'Insumo comprado o consumido por la operacion.', true, false, 'APP', '2026-08', 30),
+    ('PAYROLL_CONTRACT_TYPE', 'INDEFINITE_TERM', 'Contrato a termino indefinido', 'Relacion laboral sin fecha final definida.', true, false, 'APP', '2026-08', 10),
+    ('PAYROLL_CONTRACT_TYPE', 'FIXED_TERM', 'Contrato a termino fijo', 'Relacion laboral con fecha final definida.', true, false, 'APP', '2026-08', 20),
+    ('PAYROLL_CONTRACT_TYPE', 'SERVICE_CONTRACT', 'Contrato de prestacion de servicios', 'Servicio independiente o contratista segun clasificacion aprobada.', true, false, 'APP', '2026-08', 30),
+    ('PAYROLL_CONTRACT_TYPE', 'VERBAL_DAILY_AGREEMENT', 'Acuerdo verbal por dia', 'Pago diario o jornal registrado con advertencia legal.', true, false, 'APP', '2026-08', 40),
+    ('PAYROLL_WORKER_CLASSIFICATION', 'FORMAL_EMPLOYEE', 'Empleado formal', 'Trabajador vinculado formalmente a nomina.', true, false, 'APP', '2026-08', 10),
+    ('PAYROLL_WORKER_CLASSIFICATION', 'WORKER_BY_DAYS', 'Trabajador por dias', 'Trabajador que labora por periodos inferiores a un mes.', true, false, 'APP', '2026-08', 20),
+    ('PAYROLL_WORKER_CLASSIFICATION', 'DAILY_VERBAL_PAYMENT', 'Pago diario verbal', 'Persona contratada por jornada o por horas con pago al finalizar el dia.', true, false, 'APP', '2026-08', 30),
+    ('PAYROLL_WORKER_CLASSIFICATION', 'INDEPENDENT_CONTRACTOR', 'Contratista independiente', 'Prestador de servicio independiente contabilizado como egreso o proveedor.', true, false, 'APP', '2026-08', 40),
+    ('PAYROLL_WORKER_CLASSIFICATION', 'UNCLASSIFIED_OPERATIONAL_PAYMENT', 'Pago operativo pendiente de clasificacion', 'Pago que requiere revision administrativa o contable antes de cierre.', true, false, 'APP', '2026-08', 50),
+    ('PAYROLL_PAYMENT_FREQUENCY', 'MONTHLY', 'Mensual', 'Pago mensual.', true, false, 'APP', '2026-08', 10),
+    ('PAYROLL_PAYMENT_FREQUENCY', 'BIWEEKLY', 'Quincenal', 'Pago quincenal.', true, false, 'APP', '2026-08', 20),
+    ('PAYROLL_PAYMENT_FREQUENCY', 'DAILY', 'Diario', 'Pago por dia o jornada.', true, false, 'APP', '2026-08', 30),
+    ('PAYROLL_PAYMENT_FREQUENCY', 'HOURLY', 'Por horas', 'Pago por horas trabajadas.', true, false, 'APP', '2026-08', 40),
+    ('PAYROLL_EARNING_TYPE', 'BASE_SALARY', 'Salario base', 'Devengado por salario base.', true, false, 'APP', '2026-08', 10),
+    ('PAYROLL_EARNING_TYPE', 'DAILY_PAYMENT', 'Pago diario', 'Devengado por pago diario o jornal.', true, false, 'APP', '2026-08', 20),
+    ('PAYROLL_EARNING_TYPE', 'OVERTIME', 'Horas extra', 'Devengado por horas extra.', true, false, 'APP', '2026-08', 30),
+    ('PAYROLL_DEDUCTION_TYPE', 'HEALTH', 'Salud', 'Deduccion o aporte asociado a salud cuando aplique.', true, false, 'APP', '2026-08', 10),
+    ('PAYROLL_DEDUCTION_TYPE', 'PENSION', 'Pension', 'Deduccion o aporte asociado a pension cuando aplique.', true, false, 'APP', '2026-08', 20),
+    ('PAYROLL_DEDUCTION_TYPE', 'OTHER', 'Otra deduccion', 'Deduccion operativa o legal adicional.', true, false, 'APP', '2026-08', 30)
+ON CONFLICT (catalog_code, item_code) DO UPDATE SET
+    label = EXCLUDED.label,
+    description = EXCLUDED.description,
+    active = EXCLUDED.active,
+    regulatory = EXCLUDED.regulatory,
+    source = EXCLUDED.source,
+    source_version = EXCLUDED.source_version,
+    sort_order = EXCLUDED.sort_order;

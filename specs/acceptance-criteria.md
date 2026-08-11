@@ -163,3 +163,26 @@
 - AC-129: Dado que una accion falla, cuando el backend responde error o no responde, entonces el modal informa error generico y referencia revisar Logs/Auditoria, conservando `correlationId` si existe.
 - AC-130: Dado un usuario ROOT o administrador de empresa, cuando entra al modulo Logs/Auditoria, entonces puede consultar eventos autorizados de auditoria.
 - AC-131: Dado un usuario sin permisos de auditoria, cuando usa la aplicacion, entonces no ve el modulo Logs/Auditoria.
+
+## Catalogos desde base de datos, UX operativa, contabilidad y nomina
+
+- AC-132: Dada la SPA, cuando se compile para produccion, entonces no debe contener `initialState` con datos demo de empresa, tercero, inventario, fiscal, venta, usuarios, roles ni catalogos de negocio.
+- AC-133: Dada una pantalla que depende de catalogos, cuando `catalog-service` o BFF no entregue los catalogos requeridos, entonces la pantalla debe mostrar error controlado y bloquear la accion sin inventar opciones locales.
+- AC-134: Dado el entorno local inicial, cuando se levante la plataforma, entonces el unico usuario semilla permitido es `ROOT`; empresas, administradores, terceros, productos y ventas se crean por API o E2E.
+- AC-135: Dado un flujo de login con credenciales invalidas, cuando el backend responda 401 o 403, entonces el modal debe indicar credenciales incorrectas sin mostrar errores tecnicos.
+- AC-136: Dada una accion de negocio exitosa, cuando el backend responda OK, entonces el modal de proceso debe mostrar exito y cerrarse automaticamente.
+- AC-137: Dada una accion fallida por error 5xx, timeout o fallo de red, entonces el modal debe permanecer visible con mensaje generico de fallo interno y referencia a Logs/Auditoria.
+- AC-138: Dado el modulo Logs/Auditoria, cuando se abra, entonces debe cargar por defecto los eventos del dia actual.
+- AC-139: Dado el modulo Logs/Auditoria, cuando el usuario filtre, entonces solo debe poder filtrar por rango de fechas y `resourceType` opcional cargado desde backend.
+- AC-140: Dado el modulo Logs/Auditoria, entonces no debe mostrar filtro manual por `resourceId`.
+- AC-141: Dado el formulario de inventario, cuando el usuario configure el uso del item, entonces debe elegir opciones guiadas en espanol y el frontend debe mapearlas a `saleEnabled`, `purchaseEnabled` y `stockTracked`.
+- AC-142: Dado un producto vendible, cuando se cree o actualice, entonces el impuesto debe seleccionarse desde catalogo persistido `SALES_TAX` y no desde una constante frontend.
+- AC-143: Dado el modulo contable, cuando se consulten ingresos, egresos, costos, activos, cuentas por cobrar o cuentas por pagar, entonces los datos deben estar aislados por empresa y provenir del modelo contable activo.
+- AC-144: Dada una venta, compra, gasto o pago de nomina contabilizable, cuando quede confirmado, entonces debe generar asiento contable balanceado o dejar error estructurado si no existe regla PUC configurada.
+- AC-145: Dado el modulo de nomina, cuando se registre un empleado o contrato, entonces debe persistirse por empresa y auditarse.
+- AC-146: Dado un pago diario verbal, cuando se registre, entonces debe conservar fecha, actividad, jornada/horas, valor acordado, valor pagado, medio de pago, observaciones, evidencia opcional y clasificacion laboral/contractual.
+- AC-147: Dado un pago diario verbal, cuando se confirme, entonces debe mostrar advertencia legal configurable y exigir confirmacion administrativa auditada.
+- AC-148: Dada una empresa con nomina electronica desactivada, cuando registre nomina interna, entonces no debe generar documento soporte electronico mock.
+- AC-149: Dada una empresa con nomina electronica activada, cuando cierre un periodo de nomina, entonces debe poder generar documento soporte de nomina electronica mock y registrar estado.
+- AC-150: Dado un pago clasificado como contratista independiente, cuando se contabilice, entonces debe registrarse como egreso/proveedor o gasto operativo y no como empleado de nomina formal.
+- AC-151: Dada la suite E2E actualizada, cuando se ejecute desde cero, entonces debe crear empresa, administrador, catalogos requeridos, tercero, inventario, venta, factura mock, contabilidad, logs y un flujo minimo de nomina/pago diario sin depender de datos demo del frontend.

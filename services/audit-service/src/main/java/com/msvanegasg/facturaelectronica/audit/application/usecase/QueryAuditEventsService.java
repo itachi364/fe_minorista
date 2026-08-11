@@ -2,6 +2,7 @@ package com.msvanegasg.facturaelectronica.audit.application.usecase;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.audit.application.dto.AuditEventQuery;
 import com.msvanegasg.facturaelectronica.audit.application.dto.AuditEventResult;
@@ -24,5 +25,11 @@ public class QueryAuditEventsService implements QueryAuditEventsUseCase {
             throw new IllegalArgumentException("from must be before or equal to to");
         }
         return repository.find(query).stream().map(AuditEventResultMapper::toResult).toList();
+    }
+
+    @Override
+    public List<String> resourceTypes(UUID companyId) {
+        Objects.requireNonNull(companyId, "companyId is required");
+        return repository.resourceTypes(companyId);
     }
 }

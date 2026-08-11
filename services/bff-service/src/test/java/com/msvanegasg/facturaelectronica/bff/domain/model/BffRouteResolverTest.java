@@ -19,6 +19,7 @@ class BffRouteResolverTest {
         assertThat(resolver.resolve("/api/v1/products/123/kardex")).isEqualTo(TargetService.INVENTORY);
         assertThat(resolver.resolve("/api/v1/sales/123/confirm")).isEqualTo(TargetService.BILLING);
         assertThat(resolver.resolve("/api/v1/accounting-rules")).isEqualTo(TargetService.ACCOUNTING);
+        assertThat(resolver.resolve("/api/v1/payroll/workers")).isEqualTo(TargetService.PAYROLL);
         assertThat(resolver.resolve("/api/v1/audit-events")).isEqualTo(TargetService.AUDIT);
     }
 

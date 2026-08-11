@@ -75,11 +75,21 @@ class AuditEventControllerTest {
 
         mockMvc.perform(get("/api/v1/audit-events")
                 .header("X-Company-Id", COMPANY_ID)
-                .param("resourceType", "SALE")
-                .param("resourceId", "sale-1"))
+                .param("resourceType", "SALE"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].resourceType").value("SALE"))
                 .andExpect(jsonPath("$[0].resourceId").value("sale-1"));
+    }
+
+    @Test
+    void listsResourceTypes() throws Exception {
+        when(queryAuditEventsUseCase.resourceTypes(COMPANY_ID)).thenReturn(List.of("CATALOG", "SALE"));
+
+        mockMvc.perform(get("/api/v1/audit-events/resource-types")
+                .header("X-Company-Id", COMPANY_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value("CATALOG"))
+                .andExpect(jsonPath("$[1]").value("SALE"));
     }
 
     @Test

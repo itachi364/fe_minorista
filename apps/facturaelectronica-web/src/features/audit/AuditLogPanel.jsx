@@ -1,6 +1,7 @@
-import { Field } from '../../components/forms.jsx';
+import { Field, SelectField } from '../../components/forms.jsx';
 
-export function AuditLogPanel({ events, filters, setFilters, onLoad, busy, canViewGlobal, activeCompanyId }) {
+export function AuditLogPanel({ events, filters, setFilters, onLoad, busy, canViewGlobal, activeCompanyId, resourceTypes = [] }) {
+  const resourceTypeOptions = resourceTypes.map((resourceType) => ({ value: resourceType, label: resourceType }));
   return (
     <section className="audit-panel stack">
       <section className="tool-panel">
@@ -12,8 +13,7 @@ export function AuditLogPanel({ events, filters, setFilters, onLoad, busy, canVi
           <button className="primary" type="button" onClick={onLoad} disabled={busy || !activeCompanyId}>Consultar logs</button>
         </header>
         <div className="form-grid compact">
-          <Field label="Tipo de recurso" value={filters.resourceType} onChange={(value) => setFilters({ ...filters, resourceType: value })} placeholder="SALE, CATALOG_ITEM..." />
-          <Field label="ID recurso" value={filters.resourceId} onChange={(value) => setFilters({ ...filters, resourceId: value })} placeholder="Identificador del recurso" />
+          <SelectField label="Tipo de recurso" value={filters.resourceType} onChange={(value) => setFilters({ ...filters, resourceType: value })} options={resourceTypeOptions} placeholder="Todos los recursos" />
           <Field label="Desde" value={filters.from} onChange={(value) => setFilters({ ...filters, from: value })} type="datetime-local" />
           <Field label="Hasta" value={filters.to} onChange={(value) => setFilters({ ...filters, to: value })} type="datetime-local" />
         </div>
@@ -45,7 +45,7 @@ export function AuditLogPanel({ events, filters, setFilters, onLoad, busy, canVi
                   <td>{formatDate(event.occurredAt)}</td>
                   <td><code>{event.userId || 'Sistema'}</code></td>
                   <td>{event.action}</td>
-                  <td>{event.resourceType}<br /><code>{event.resourceId || 'N/A'}</code></td>
+                  <td>{event.resourceType}</td>
                   <td>{event.result}</td>
                   <td className="audit-detail">{event.detail || 'Sin detalle'}</td>
                 </tr>

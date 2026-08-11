@@ -35,6 +35,9 @@ public final class BffRouteResolver {
                 "accounts-payable", "accounts-receivable", "expenses")) {
             return TargetService.ACCOUNTING;
         }
+        if (matchesAny(normalized, "payroll")) {
+            return TargetService.PAYROLL;
+        }
         if (normalized.startsWith("reports/")) {
             return resolveReport(normalized);
         }

@@ -1,6 +1,7 @@
 package com.msvanegasg.facturaelectronica.audit.infrastructure.persistence;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
@@ -36,6 +37,11 @@ public class AuditEventPersistenceAdapter implements AuditEventRepositoryPort {
                 .filter(event -> query.userId() == null || query.userId().equals(event.getUserId()))
                 .map(AuditEventPersistenceAdapter::toDomain)
                 .toList();
+    }
+
+    @Override
+    public List<String> resourceTypes(UUID companyId) {
+        return repository.findDistinctResourceTypesByCompanyId(companyId);
     }
 
     private static AuditEventJpaEntity toEntity(AuditEvent event) {

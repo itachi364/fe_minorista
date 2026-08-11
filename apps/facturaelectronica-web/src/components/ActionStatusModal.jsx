@@ -1,4 +1,14 @@
+import { useEffect } from 'react';
+
 export function ActionStatusModal({ state, onClose }) {
+  useEffect(() => {
+    if (state?.status !== 'success' || !state.autoClose) {
+      return undefined;
+    }
+    const timeout = window.setTimeout(onClose, 1200);
+    return () => window.clearTimeout(timeout);
+  }, [state, onClose]);
+
   if (!state || state.status === 'idle') {
     return null;
   }
@@ -19,7 +29,7 @@ export function ActionStatusModal({ state, onClose }) {
           <span />
         </div>
         {state.correlationId && <p className="hint">Correlacion: <code>{state.correlationId}</code></p>}
-        {!running && <button className="primary" type="button" onClick={onClose}>Cerrar</button>}
+        {state.status === 'error' && <button className="primary" type="button" onClick={onClose}>Cerrar</button>}
       </section>
     </div>
   );

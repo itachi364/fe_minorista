@@ -68,6 +68,16 @@ class AuditEventServiceTest {
     }
 
     @Test
+    void listsResourceTypesByCompany() {
+        RegisterAuditEventService registerService = new RegisterAuditEventService(repository, idGenerator, clock);
+        QueryAuditEventsService queryService = new QueryAuditEventsService(repository);
+        registerService.register(new RegisterAuditEventCommand(COMPANY_ID, USER_ID, "ELECTRONIC_DOCUMENT",
+                "SALE", "sale-1", "VALIDATED", AuditResult.SUCCESS, null));
+
+        assertThat(queryService.resourceTypes(COMPANY_ID)).containsExactly("SALE");
+    }
+
+    @Test
     void rejectsInvertedDateRange() {
         QueryAuditEventsService queryService = new QueryAuditEventsService(repository);
 
@@ -93,6 +103,16 @@ class AuditEventServiceTest {
                     .filter(event -> event.companyId().equals(query.companyId()))
                     .filter(event -> query.resourceType() == null || event.resourceType().equals(query.resourceType()))
                     .filter(event -> query.resourceId() == null || event.resourceId().equals(query.resourceId()))
+                    .toList();
+        }
+
+        @Override
+        public List<String> resourceTypes(UUID companyId) {
+            return events.stream()
+                    .filter(event -> event.companyId().equals(companyId))
+                    .map(AuditEvent::resourceType)
+                    .distinct()
+                    .sorted()
                     .toList();
         }
     }

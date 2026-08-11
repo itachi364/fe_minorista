@@ -8,7 +8,8 @@ param(
     [string]$BillingUrl = "http://127.0.0.1:8088",
     [string]$ProviderUrl = "http://127.0.0.1:8089",
     [string]$AccountingUrl = "http://127.0.0.1:8090",
-    [string]$AuditUrl = "http://127.0.0.1:8091"
+    [string]$AuditUrl = "http://127.0.0.1:8091",
+    [string]$PayrollUrl = "http://127.0.0.1:8093"
 )
 
 $ErrorActionPreference = "Stop"
@@ -106,7 +107,7 @@ function Assert-NotEmpty {
 
 if ($StartContainers) {
     Write-Host "Starting Docker Compose services..."
-    docker compose up -d postgres tenant-service identity-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service audit-service billing-service
+    docker compose up -d postgres tenant-service identity-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service audit-service billing-service payroll-service
 }
 
 Wait-Health "tenant-service" $TenantUrl
@@ -118,6 +119,7 @@ Wait-Health "accounting-service" $AccountingUrl
 Wait-Health "dian-provider-service" $ProviderUrl
 Wait-Health "audit-service" $AuditUrl
 Wait-Health "billing-service" $BillingUrl
+Wait-Health "payroll-service" $PayrollUrl
 
 $suffix = (Get-Date -Format "yyyyMMddHHmmss")
 $ownerEmail = "owner-$suffix@example.com"
@@ -324,6 +326,58 @@ if (@($journal.entries).Count -lt 1) {
     throw "Expected at least one accounting entry in journal."
 }
 
+Write-Host "Registering daily payroll payment and electronic payroll mock..."
+$payrollSettings = Invoke-Api -Method Put -Uri "$PayrollUrl/api/v1/payroll/settings" -Headers $companyHeaders -Body @{
+    electronicPayrollEnabled = $true
+    providerMode = "MOCK"
+}
+Assert-Equal $payrollSettings.electronicPayrollEnabled "True" "Electronic payroll must be enabled for mock support"
+
+$worker = Invoke-Api -Method Post -Uri "$PayrollUrl/api/v1/payroll/workers" -Headers $companyHeaders -Body @{
+    identificationTypeCode = 13
+    identificationNumber = "20$suffix"
+    verificationDigit = $null
+    fullName = "Trabajador Diario E2E $suffix"
+    workerClassification = "DAILY_VERBAL_PAYMENT"
+    active = $true
+}
+Assert-Equal $worker.companyId $companyId "Worker must belong to company"
+
+$dailyPayment = Invoke-Api -Method Post -Uri "$PayrollUrl/api/v1/payroll/daily-payments" -Headers $companyHeaders -Body @{
+    workerId = $worker.id
+    workDate = $entryDate
+    activityDescription = "Apoyo operativo diario"
+    agreedAmount = 80000.00
+    paidAmount = 80000.00
+    paymentMethodCode = "CASH"
+    legalNoticeAccepted = $true
+    notes = "Pago diario verbal E2E"
+}
+Assert-Equal $dailyPayment.companyId $companyId "Daily payment must belong to company"
+
+$payrollDocument = Invoke-Api -Method Post -Uri "$PayrollUrl/api/v1/payroll/electronic-documents" -Headers $companyHeaders -Body @{
+    dailyLaborPaymentId = $dailyPayment.id
+}
+Assert-Equal $payrollDocument.status "ACCEPTED" "Payroll electronic mock document must be accepted"
+Assert-NotEmpty $payrollDocument.cune "Payroll mock CUNE is required"
+
+$payrollAccountingEntry = Invoke-Api -Method Post -Uri "$AccountingUrl/api/v1/accounting-entries" -Headers $accountHeaders -Body @{
+    eventType = "PAYROLL_DAILY_PAYMENT_REGISTERED"
+    sourceType = "PAYROLL_DAILY_PAYMENT"
+    sourceId = $dailyPayment.id
+    entryDate = $entryDate
+    description = "Pago diario verbal E2E $suffix"
+    thirdpartyId = $null
+    subtotal = 80000.00
+    taxTotal = 0.00
+    total = 80000.00
+}
+Assert-Equal $payrollAccountingEntry.sourceType "PAYROLL_DAILY_PAYMENT" "Payroll accounting source type must match"
+
+$journalWithPayroll = Invoke-Api -Method Get -Uri "$AccountingUrl/api/v1/reports/journal?from=$entryDate&to=$entryDate" -Headers $accountHeaders
+Assert-DecimalEqual $journalWithPayroll.debitTotal 115700.00 "Journal debit total must include payroll daily payment"
+Assert-DecimalEqual $journalWithPayroll.creditTotal 115700.00 "Journal credit total must include payroll daily payment"
+
 Write-Host "Verifying audit event..."
 $auditEvents = @(Invoke-Api -Method Get -Uri "$AuditUrl/api/v1/audit-events?resourceType=SALE&resourceId=$saleId" -Headers $companyHeaders)
 $saleAuditEvent = @($auditEvents | Where-Object { $_.action -eq "CONFIRM_SALE" -and $_.result -eq "SUCCESS" })
@@ -387,3 +441,5 @@ Write-Host "ProductId: $productId"
 Write-Host "SaleId: $saleId"
 Write-Host "DocumentId: $($confirmedSale.electronicDocument.id)"
 Write-Host "ProviderTrackingId: $trackingId"
+Write-Host "PayrollPaymentId: $($dailyPayment.id)"
+Write-Host "PayrollMockCune: $($payrollDocument.cune)"

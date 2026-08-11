@@ -798,3 +798,105 @@ Configuracion fiscal para comprador no identificado:
 - `updated_at`: ultima modificacion.
 
 Regla: este perfil no representa un tercero de negocio y no se inserta en `thirdparty.third_party`.
+
+## Extensiones TASK-094 a TASK-112
+
+### Politica de datos iniciales
+
+- El unico seed funcional permitido para pruebas locales iniciales es `identity.user_account` con rol global `ROOT`.
+- Los catalogos regulatorios y operativos se cargan mediante migraciones Flyway de `catalog-service`, no desde archivos frontend.
+- Empresas, administradores, terceros, productos, resoluciones, ventas y datos de nomina deben crearse por API o scripts E2E.
+- La SPA no debe persistir ni importar datos demo como fuente de formularios.
+
+### Catalogos requeridos adicionales
+
+`catalog.catalog_definition` y `catalog.catalog_item` deben incluir, como minimo:
+
+- `THIRD_PARTY_ROLE`
+- `PERSON_TYPE`
+- `ITEM_TYPE`
+- `PAYROLL_CONTRACT_TYPE`
+- `PAYROLL_WORKER_CLASSIFICATION`
+- `PAYROLL_PAYMENT_FREQUENCY`
+- `PAYROLL_EARNING_TYPE`
+- `PAYROLL_DEDUCTION_TYPE`
+
+### Nomina
+
+Schema objetivo: `payroll`.
+
+Tablas principales:
+
+- `payroll.payroll_settings`
+- `payroll.worker`
+- `payroll.daily_labor_payment`
+- `payroll.electronic_payroll_document`
+
+Tablas futuras planificadas:
+
+- `payroll.contract`
+- `payroll.payroll_period`
+- `payroll.payroll_settlement`
+- `payroll.payroll_settlement_line`
+
+#### `payroll.payroll_settings`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `company_id` | uuid | Si | Empresa propietaria. |
+| `electronic_payroll_enabled` | boolean | Si | Habilita documento soporte de nomina electronica mock. |
+| `provider_mode` | varchar(30) | Si | `MOCK` o futuro proveedor real aprobado. |
+| `updated_at` | timestamptz | Si | Fecha de ultima actualizacion. |
+
+#### `payroll.worker`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador del trabajador/persona. |
+| `company_id` | uuid | Si | Empresa propietaria. |
+| `identification_type_code` | smallint | Si | Codigo DIAN de identificacion. |
+| `identification_number` | varchar(40) | Si | Numero de documento. |
+| `verification_digit` | smallint | No | DV si aplica. |
+| `full_name` | varchar(180) | Si | Nombre completo. |
+| `worker_classification` | varchar(40) | Si | `FORMAL_EMPLOYEE`, `WORKER_BY_DAYS`, `DAILY_VERBAL_PAYMENT`, `INDEPENDENT_CONTRACTOR`, `UNCLASSIFIED_OPERATIONAL_PAYMENT`. |
+| `active` | boolean | Si | Estado. |
+| `created_at` | timestamptz | Si | Fecha de creacion. |
+
+#### `payroll.daily_labor_payment`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador del pago. |
+| `company_id` | uuid | Si | Empresa propietaria. |
+| `worker_id` | uuid | Si | Persona pagada. |
+| `work_date` | date | Si | Fecha del trabajo. |
+| `activity_description` | varchar(300) | Si | Actividad realizada. |
+| `agreed_amount` | numeric(19,2) | Si | Valor acordado. |
+| `paid_amount` | numeric(19,2) | Si | Valor pagado. |
+| `payment_method_code` | varchar(40) | Si | Metodo de pago. |
+| `legal_notice_accepted` | boolean | Si | Confirmacion de advertencia legal. |
+| `notes` | varchar(500) | No | Observaciones. |
+| `created_at` | timestamptz | Si | Fecha de registro. |
+
+#### `payroll.electronic_payroll_document`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| `id` | uuid | Si | Identificador. |
+| `company_id` | uuid | Si | Empresa propietaria. |
+| `daily_labor_payment_id` | uuid | Si | Pago diario origen. |
+| `cune` | varchar(120) | Si | CUNE simulado o real futuro. |
+| `status` | varchar(30) | Si | `ACCEPTED`, `REJECTED` o estados futuros del proveedor. |
+| `provider_response` | varchar(500) | No | Respuesta segura. |
+| `created_at` | timestamptz | Si | Fecha de generacion. |
+
+### Contabilidad ampliada
+
+`accounting-service` debe ampliar sus reportes y reglas para:
+
+- Ingresos por ventas/documentos.
+- Egresos por compras, gastos, pagos a proveedores y contratistas.
+- Costos de operacion, incluyendo inventario consumido y pagos de personal.
+- Activos y movimientos de activos basicos.
+- Cuentas por cobrar y por pagar.
+- Asientos derivados de nomina y pagos diarios.

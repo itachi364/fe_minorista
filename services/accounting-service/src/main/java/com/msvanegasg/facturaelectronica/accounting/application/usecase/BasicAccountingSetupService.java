@@ -77,6 +77,7 @@ public class BasicAccountingSetupService implements InitializeBasicAccountingSet
                 new AccountTemplate("2205", "Proveedores nacionales"),
                 new AccountTemplate("2408", "Impuesto sobre las ventas"),
                 new AccountTemplate("4135", "Ingresos operacionales"),
+                new AccountTemplate("5105", "Gastos de personal"),
                 new AccountTemplate("5135", "Gastos operacionales"));
     }
 
@@ -119,7 +120,14 @@ public class BasicAccountingSetupService implements InitializeBasicAccountingSet
                                 new RuleLineTemplate("1105", AccountingEntrySide.DEBIT, AccountingAmountType.TOTAL,
                                         "Entrada de caja"),
                                 new RuleLineTemplate("1305", AccountingEntrySide.CREDIT, AccountingAmountType.TOTAL,
-                                        "Disminucion cartera clientes"))));
+                                        "Disminucion cartera clientes"))),
+                new RuleTemplate(AccountingEventType.PAYROLL_DAILY_PAYMENT_REGISTERED,
+                        AccountingSourceType.PAYROLL_DAILY_PAYMENT,
+                        "Pago diario verbal o jornal - plantilla basica", List.of(
+                                new RuleLineTemplate("5105", AccountingEntrySide.DEBIT, AccountingAmountType.TOTAL,
+                                        "Costo de personal pagado por jornal"),
+                                new RuleLineTemplate("1105", AccountingEntrySide.CREDIT, AccountingAmountType.TOTAL,
+                                        "Salida de caja"))));
     }
 
     private static AccountResult toResult(Account account) {

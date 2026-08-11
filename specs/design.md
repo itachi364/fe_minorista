@@ -350,7 +350,7 @@ Toda transicion fiscal debe registrar evento de trazabilidad con estado anterior
 - La persistencia local usa tablas prefijadas `accounting_*` para evitar colisiones entre bounded contexts.
 - La administracion inicial de reglas contables se expone por REST y valida que las cuentas PUC existan antes de activar la regla.
 - TASK-053 permite listar cuentas PUC por empresa, listar reglas contables por empresa/evento/estado, reemplazar la regla activa de un evento y desactivar reglas activas sin eliminar historial.
-- TASK-053 incluye `POST /api/v1/accounting-setup/basic` para crear una plantilla minima editable por empresa con cuentas `1105`, `1110`, `1305`, `1435`, `2205`, `2408`, `4135` y `5135`, y reglas base para venta, compra, gasto y pago de cuenta por pagar.
+- TASK-053/TASK-100 incluye `POST /api/v1/accounting-setup/basic` para crear una plantilla minima editable por empresa con cuentas `1105`, `1110`, `1305`, `1435`, `2205`, `2408`, `4135`, `5105` y `5135`, y reglas base para venta, compra, gasto, pago de cuenta por pagar, recaudo de cuenta por cobrar y pago diario de nomina.
 - La plantilla base es una ayuda operativa local; no carga el PUC oficial completo y debe poder ser reemplazada por parametrizacion de cada empresa.
 - El reemplazo de reglas conserva el historial dejando la regla anterior `active=false`; la generacion de asientos siempre usa la regla activa vigente al momento del comando.
 - En la implementacion local actual, los asientos se crean directamente en estado `POSTED`; el flujo de borradores contables queda pendiente hasta que sea aprobado.
@@ -834,7 +834,7 @@ Politica propuesta:
 - Catalogos regulatorios oficiales: tipos de documento DIAN, responsabilidades fiscales, regimenes, tipos de documento fiscal y codigos tributarios. Deben persistirse como catalogos globales versionados, con `code`, `label`, `source`, `version`, `valid_from`, `valid_to`, `active` y auditoria. No se editan codigos oficiales desde empresas.
 - DIVIPOLA/DANE no se modela como catalogo generico; usa tablas relacionales `catalog.department` y `catalog.municipality`, con FK por `department_code`, porque el flujo de UI selecciona departamento y luego municipios asociados.
 - Catalogos operativos por empresa: metodos de pago habilitados, billeteras virtuales habilitadas, categorias internas, centros de costo y etiquetas operativas. Pueden activarse/inactivarse por empresa y extenderse si mantienen un mapeo fiscal valido.
-- La UI de configuracion debe consumir estos catalogos desde `catalog-service` via BFF. Mientras se implementan endpoints, los catalogos estaticos del frontend quedan como fallback transitorio.
+- La UI de configuracion debe consumir estos catalogos desde `catalog-service` via BFF. No se permite fallback productivo con catalogos estaticos del frontend; si el backend no entrega catalogos, el formulario dependiente debe bloquear la accion con error controlado.
 - La depuracion futura no debe eliminar catalogos legacy hasta que existan seeds/migraciones y endpoints equivalentes en `catalog-service`.
 
 Endpoints iniciales:
@@ -949,3 +949,77 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 - Topic consulted: async UI state, conditional rendering, loading/error/success states and effect cleanup for timers.
 - Relevant finding: React recomienda modelar estados visuales explicitos como estados de envio, exito y error, renderizar condicionalmente y limpiar temporizadores/efectos.
 - Decision impact: La SPA reemplaza paneles tecnicos persistentes por un modal de proceso controlado por estado y conserva `correlationId` solo como contexto tecnico.
+
+## TASK-094 a TASK-112 catalogos DB-only, contabilidad y nomina
+
+### Decisiones de frontend y catalogos
+
+- La SPA no debe contener `initialState` con datos demo de negocio ni catalogos regulatorios/operativos. Los formularios deben iniciar vacios, con valores derivados de sesion/API o con selecciones explicitas del usuario.
+- Los archivos locales de datos solo pueden conservar constantes de presentacion no sensibles, por ejemplo nombres de pasos o etiquetas de navegacion. Las opciones seleccionables de negocio deben venir de PostgreSQL por `catalog-service` y BFF.
+- El unico seed funcional permitido para pruebas locales iniciales es el usuario global `ROOT` en `identity-service`. Empresas, administradores, terceros, productos, resoluciones y ventas deben crearse por API o por scripts E2E.
+- El modulo de catalogos queda como fuente operativa para tipos de tercero, tipos de persona, tipos de item, impuestos de venta, medios de pago, billeteras, responsabilidades fiscales, regimenes, tipos de documento fiscal y entornos fiscales.
+- DIVIPOLA mantiene tablas especializadas `catalog.department` y `catalog.municipality`; la UI selecciona departamento por nombre y luego municipio por nombre.
+
+### Decisiones de UX asincrona
+
+- El modal de proceso usa estados explicitos `idle`, `loading`, `success` y `error`.
+- El estado `success` debe cerrarse automaticamente mediante temporizador con cleanup.
+- El estado `error` debe permanecer visible hasta cierre manual.
+- Errores 401/403 del login se traducen como credenciales incorrectas.
+- Errores 5xx, timeout o red se traducen como fallo interno generico y referencia a Logs/Auditoria.
+- Validaciones 400 deben mostrar mensaje funcional de validacion sin stack trace ni payload tecnico.
+
+### Decisiones de inventario
+
+- Los checks tecnicos `saleEnabled`, `purchaseEnabled` y `stockTracked` se conservan en contrato/backend, pero la UI debe presentarlos como configuracion guiada de uso del item:
+  - Producto vendible con inventario.
+  - Servicio/intangible vendible.
+  - Insumo comprado y controlado.
+  - Gasto/servicio de proveedor no inventariable.
+- La UI debe explicar el impacto operacional de cada opcion en espanol y evitar que el usuario final tenga que entender flags tecnicos.
+
+### Decisiones contables
+
+- `accounting-service` sera el dueno de ingresos, egresos, costos de operacion, activos, cuentas por cobrar, cuentas por pagar, reglas PUC y reportes contables.
+- Ventas, compras, gastos y nomina publican o solicitan contabilizacion usando contratos idempotentes.
+- Si falta una regla contable PUC, el comando debe fallar de forma explicita y auditable; no se deben generar asientos incompletos.
+- El pago diario verbal se contabiliza con evento `PAYROLL_DAILY_PAYMENT_REGISTERED`, origen `PAYROLL_DAILY_PAYMENT`, debito a `5105` y credito a `1105` en la plantilla basica editable.
+
+### Decisiones de nomina
+
+- Se agrega `payroll-service` como bounded context independiente para empleados, contratos, periodos, liquidaciones, pagos diarios verbales y configuracion de nomina electronica.
+- La nomina electronica queda como funcionalidad configurable por empresa. Si `electronicPayrollEnabled=false`, la empresa puede registrar nomina interna sin generar documento soporte electronico mock.
+- Los pagos diarios verbales se modelan como registro operacional auditado, no como exencion automatica de obligaciones laborales.
+- El sistema debe clasificar cada pago de personal como empleado formal, trabajador por dias, pago diario verbal, contratista independiente o pago pendiente de clasificacion.
+- Un contratista independiente se integra contablemente como egreso/proveedor o gasto operativo, no como empleado formal.
+- El flujo inicial genera documento soporte mock por pago diario verbal mediante `POST /api/v1/payroll/electronic-documents` solo cuando la empresa tenga la funcionalidad activada.
+
+### Logs/Auditoria
+
+- El modulo Logs/Auditoria muestra por defecto eventos del dia actual.
+- Los filtros UI son rango de fechas y `resourceType` opcional cargado desde backend.
+- Se elimina filtro manual por `resourceId` de la UI operativa.
+- La tabla debe mostrar fecha, usuario, accion, tipo de recurso, resultado, detalle seguro y correlacion cuando exista.
+
+### Evidencia normativa TASK-110
+
+- DIAN facturacion electronica: la documentacion tecnica vigente publicada en julio de 2026 lista anexos tecnicos de factura electronica, incluyendo version 1.9, y la normatividad vigente referencia Resolucion 00165 de 2023 y modificaciones posteriores. Impacto: los catalogos fiscales deben seguir siendo parametrizables desde base de datos y no quedar quemados en frontend.
+  - Fuente: https://www.dian.gov.co/impuestos/factura-electronica/documentacion/Paginas/documentacion-tecnica.aspx
+  - Fuente: https://micrositios.dian.gov.co/sistema-de-facturacion-electronica/normatividad/
+- DIAN datos de factura: la identificacion de factura electronica exige datos de emisor/receptor, productos, medios de pago, impuestos, QR y CUFE; consumidor final aplica cuando el comprador no entrega datos. Impacto: POS mantiene consumidor final parametrizado y evita exigir registro de tercero para ese caso.
+  - Fuente: https://www.dian.gov.co/Prensa/Paginas/NG-Como-identificar-una-factura-electronica.aspx
+- DIAN nomina electronica: el documento soporte de pago de nomina electronica soporta costos/deducciones asociados a pagos derivados de relacion laboral/legal y se genera por beneficiario cuando el sujeto obligado lo requiere como soporte fiscal. Impacto: nomina electronica queda opcional por empresa y bloqueada cuando `electronicPayrollEnabled=false`.
+  - Fuente: https://www.dian.gov.co/impuestos/Paginas/Sistema-de-Factura-Electronica/Documento-Soporte-de-Pago-de-Nomina-Electronica.aspx
+  - Fuente: https://normograma.dian.gov.co/dian/compilacion/docs/resolucion_dian_0013_2021.htm
+- DANE DIVIPOLA: DIVIPOLA es nomenclatura estandarizada para identificar departamentos, municipios, distritos, areas no municipalizadas y centros poblados mediante codigos. Impacto: se mantienen tablas relacionales `catalog.department` y `catalog.municipality`, con UI por nombre y persistencia por codigo DANE.
+  - Fuente: https://www.dane.gov.co/index.php/sistema-estadistico-nacional-sen/normas-y-estandares/nomenclaturas-y-clasificaciones/nomenclaturas/codificacion-de-la-division-politica-administrativa-de-colombia-divipola
+  - Fuente: https://geoportal.dane.gov.co/servicios/descarga-y-metadatos/descarga-divipola/
+- PUC Colombia: el Decreto 2650 de 1993 define el Plan Unico de Cuentas para comerciantes obligados a llevar contabilidad. Impacto: la plantilla basica usa cuentas PUC editables y la carga completa del PUC queda como parametrizacion/carga regulatoria futura.
+  - Fuente: https://suin-juriscol.gov.co/viewDocument.asp?id=1772403
+
+### Context7 evidence
+
+- Library/tool: React oficial (`/reactjs/react.dev`).
+- Topic consulted: controlled forms, async UI state, fetch cleanup and timer cleanup.
+- Relevant finding: React recomienda formularios controlados, estados visuales explicitos para envio/exito/error y `useEffect` con cleanup para evitar respuestas obsoletas o temporizadores huerfanos.
+- Decision impact: Los formularios no tendran datos demo locales; la carga de catalogos sera asincrona desde BFF, el modal de exito cerrara con temporizador limpio y los errores quedaran visibles hasta cierre manual.

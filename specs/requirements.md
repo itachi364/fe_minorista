@@ -146,6 +146,17 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RF-042: El sistema debe asociar a cada producto/servicio/insumo vendible el impuesto de venta aplicable desde inventario, para que el vendedor POS no capture impuesto ni tarifa al vender.
 - RF-043: El sistema debe permitir escaneo de codigo de barras USB HID en inventario y venta POS usando campos dedicados; al escanear en venta debe buscar automaticamente el producto y agregar o incrementar la linea sin clic manual.
 - RF-044: El sistema debe permitir que el comprador decida si desea identificarse para factura electronica; si no, la venta debe usar un perfil fiscal de consumidor final parametrizado en base de datos, sin crear tercero ni quemar datos en frontend.
+- RF-045: El sistema debe eliminar datos de negocio precargados en frontend; la SPA no debe contener `initialState` con empresas, terceros, productos, resoluciones, ventas, catalogos regulatorios ni datos demo.
+- RF-046: El unico seed funcional permitido para pruebas locales iniciales es el usuario global `ROOT`; cualquier otro dato de prueba debe crearse por API durante scripts E2E o migraciones controladas de catalogos.
+- RF-047: El sistema debe cargar todos los catalogos operativos y regulatorios desde PostgreSQL mediante `catalog-service` y BFF; si no estan disponibles, la UI debe bloquear el formulario dependiente con error controlado.
+- RF-048: El sistema debe implementar un modulo de nomina para registrar empleados, contratos, pagos periodicos, pagos diarios verbales, devengados, deducciones y costos por empleado.
+- RF-049: El sistema debe permitir configurar por empresa si usa o no nomina electronica; la funcionalidad queda disponible, pero no se activa automaticamente para todas las empresas.
+- RF-050: El sistema debe registrar pagos diarios verbales/jornales con fecha, actividad, horas o jornada, valor acordado, valor pagado, medio de pago, observaciones, evidencia opcional y clasificacion laboral/contractual.
+- RF-051: El sistema debe clasificar pagos de personal como empleado formal, trabajador por dias, pago diario verbal, contratista independiente o pago operativo pendiente de clasificacion.
+- RF-052: El sistema debe mostrar advertencias legales configurables cuando un pago diario verbal pueda implicar obligaciones laborales, seguridad social, riesgos laborales o revision contable.
+- RF-053: El sistema debe implementar un modulo contable operativo para ingresos, egresos, costos de operacion, activos, cuentas por cobrar, cuentas por pagar y reportes basicos por empresa.
+- RF-054: El sistema debe mejorar el modulo de logs para mostrar por defecto los eventos del dia actual, filtrar por fechas y permitir `resourceType` opcional desde lista desplegable cargada de backend.
+- RF-055: El sistema debe personalizar los mensajes de modales segun contexto; login por credenciales invalidas debe mostrar mensaje especifico y errores 5xx deben mostrar fallo interno generico.
 
 ## Requisitos no funcionales
 
@@ -170,6 +181,8 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RNF-019: El despliegue cloud objetivo debe usar frontend estatico en Amazon S3 + CloudFront, entrada publica por API Gateway/BFF, microservicios Spring Boot en ECS Fargate, procesos event-driven en Lambda y persistencia en RDS/Aurora PostgreSQL.
 - RNF-020: Ningun microservicio de negocio debe exponerse directamente al navegador; el frontend debe consumir el BFF/API Gateway y los servicios internos deben permanecer privados.
 - RNF-021: La IaC productiva no debe incluir contenedores, artefactos o rutas legacy eliminadas; Docker Compose queda limitado a desarrollo local y pruebas.
+- RNF-022: La SPA debe mantener estado inicial vacio o derivado de sesion/API; no debe importar datos de negocio desde archivos locales.
+- RNF-023: La carga de catalogos en frontend debe usar estados asincronos explicitos, cleanup de fetches/temporizadores y bloqueo seguro de formularios cuando falten catalogos requeridos.
 
 ## Reglas de negocio
 
@@ -222,6 +235,14 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RN-047: La auditoria no debe registrar secretos, tokens, passwords, certificados, hashes de contrasena ni payloads completos con datos sensibles.
 - RN-048: Un fallo temporal de auditoria no debe revertir una accion de negocio ya persistida; debe dejar trazabilidad tecnica y/o evento pendiente de reintento cuando exista infraestructura asincrona.
 - RN-049: La SPA no debe mostrar paneles tecnicos permanentes de respuesta/error JSON en el flujo operativo; debe mostrar modal de proceso, exito o error generico y orientar a revisar Logs/Auditoria.
+- RN-050: Los catalogos regulatorios, operativos, tipos de tercero, tipos de persona, tipos de item, metodos de pago, billeteras, impuestos, responsabilidades fiscales, regimenes y DIVIPOLA deben provenir de base de datos.
+- RN-051: El frontend puede conservar constantes de presentacion como nombres de pasos o labels de navegacion, pero no opciones de negocio seleccionables ni datos demo.
+- RN-052: Ningun formulario debe autocompletar datos demo de empresa, tercero, producto, resolucion, venta, usuario o catalogo; el usuario debe capturar datos o seleccionarlos desde catalogos persistidos.
+- RN-053: Los scripts E2E deben crear los datos de prueba por API desde cero y no depender de `initialState` del frontend.
+- RN-054: El flujo de nomina electronica se habilita solo si la configuracion empresarial `payrollElectronicEnabled=true`; si esta apagada, la empresa puede registrar nomina interna sin generar documento soporte electronico mock.
+- RN-055: Un pago diario verbal no se debe tratar automaticamente como exento de obligaciones laborales; el sistema debe registrar clasificacion, advertencia y auditoria de la decision administrativa.
+- RN-056: Si el pago corresponde a contratista independiente, el costo debe integrarse como egreso/proveedor o gasto operativo, no como empleado de nomina formal.
+- RN-057: Todo registro de nomina, pago diario, liquidacion, activacion de nomina electronica y contabilizacion asociada debe generar auditoria segura.
 
 ## Supuestos
 
@@ -246,6 +267,16 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - No crear nanoservicios por endpoint; cada artefacto debe representar una capacidad de negocio cohesionada.
 - No eliminar codigo, tablas ni migraciones legacy hasta completar la matriz de reemplazo y la prueba end-to-end aprobada.
 - No introducir broker, login ni infraestructura adicional antes de completar y validar el flujo core de negocio por API, persistencia PostgreSQL y prueba end-to-end desde cero, salvo documentacion/planificacion SDD aprobada.
+- No mantener catalogos regulatorios u operativos hardcodeados en frontend, ni fallback productivo de catalogos locales.
+- No crear seeds de empresas, terceros, productos, ventas, resoluciones o usuarios empresariales para UI local; solo `ROOT` puede existir como seed inicial de pruebas.
+
+## Fuentes normativas de referencia
+
+- Facturacion electronica y documento equivalente electronico: documentacion tecnica y normatividad oficial DIAN, incluyendo anexos tecnicos vigentes, Resolucion 00165 de 2023 y modificaciones publicadas.
+- Nomina electronica: documento soporte de pago de nomina electronica DIAN y Resolucion 000013 de 2021; se implementa como funcionalidad opcional por empresa, no como activacion obligatoria global.
+- DIVIPOLA: codificacion oficial DANE; departamentos y municipios se modelan en tablas separadas y la UI muestra nombres, no codigos crudos.
+- PUC colombiano: Decreto 2650 de 1993 y modificaciones publicadas en SUIN/Juriscol; la plantilla contable inicial es editable y debe evolucionar hacia carga parametrizable del PUC completo.
+- Los catalogos regulatorios deben quedar en base de datos con fuente, version, vigencia y estado; el frontend no puede contener catalogos fiscales productivos hardcodeados.
 
 ## Criterios de aceptacion
 

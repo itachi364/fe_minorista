@@ -1,13 +1,157 @@
-import { Field, FormPanel } from '../../components/forms.jsx';
+import { Field, SelectField } from '../../components/forms.jsx';
 
-export function ReportsForm({ form, setForm, onSubmit, busy }) {
-  return <FormPanel title="Reportes" submitLabel="Consultar" onSubmit={onSubmit} busy={busy}>
+const statusOptions = [
+  { value: 'PENDING', label: 'Pendiente' },
+  { value: 'CONFIRMED', label: 'Confirmado' },
+  { value: 'PAID', label: 'Pagado' },
+  { value: 'PARTIALLY_PAID', label: 'Parcialmente pagado' },
+  { value: 'OPEN', label: 'Abierto' },
+  { value: 'OVERDUE', label: 'Vencido' },
+  { value: 'VOIDED', label: 'Anulado' },
+];
+
+export function ReportsForm({ form, setForm, data, onSubmit, onInitializeAccounting, busy }) {
+  return <section className="tool-panel">
+    <header className="panel-header">
+      <div>
+        <h1>Reportes</h1>
+        <p>Consulta ventas, inventario y contabilidad de la empresa activa.</p>
+      </div>
+      <div className="toolbar-actions">
+        <button className="secondary" disabled={busy} onClick={onInitializeAccounting} type="button">Configurar contabilidad basica</button>
+        <button className="primary" disabled={busy} onClick={onSubmit} type="button">Consultar</button>
+      </div>
+    </header>
     <div className="form-grid">
-      <Field label="Estado" value={form.status} onChange={(value) => setForm({ ...form, status: value })} />
+      <SelectField label="Estado" value={form.status} onChange={(value) => setForm({ ...form, status: value })} options={statusOptions} placeholder="Todos" />
       <Field label="Desde" value={form.from} onChange={(value) => setForm({ ...form, from: value })} type="date" />
       <Field label="Hasta" value={form.to} onChange={(value) => setForm({ ...form, to: value })} type="date" />
-      <Field label="Producto" value={form.productId} onChange={(value) => setForm({ ...form, productId: value })} />
-      <Field label="Cuenta" value={form.accountCode} onChange={(value) => setForm({ ...form, accountCode: value })} />
+      <Field label="Codigo cuenta PUC" value={form.accountCode} onChange={(value) => setForm({ ...form, accountCode: value })} placeholder="Opcional" />
     </div>
-  </FormPanel>;
+    {data && <ReportResults data={data} />}
+  </section>;
+}
+
+function ReportResults({ data }) {
+  return <div className="reports-grid">
+    <ReportCard title="Ventas" rows={toSalesRows(data.sales)} columns={['Fecha', 'Estado', 'Subtotal', 'IVA', 'Total']} />
+    <ReportCard title="Inventario" rows={toStockRows(data.stock)} columns={['Item', 'SKU', 'Stock', 'Costo', 'Precio']} />
+    <ReportCard title="Gastos" rows={toExpenseRows(data.expenses)} columns={['Fecha', 'Estado', 'Concepto', 'Subtotal', 'Total']} />
+    <ReportCard title="Cuentas por cobrar" rows={toReceivableRows(data.accountsReceivable)} columns={['Fecha', 'Estado', 'Cliente', 'Total', 'Saldo']} />
+    <ReportCard title="Cuentas por pagar" rows={toPayableRows(data.accountsPayable)} columns={['Fecha', 'Estado', 'Proveedor', 'Total', 'Saldo']} />
+    <ReportCard title="Libro mayor" rows={toLedgerRows(data.ledger)} columns={['Cuenta', 'Nombre', 'Debitos', 'Creditos', 'Saldo']} />
+    <ReportCard title="Libro diario" rows={toJournalRows(data.journal)} columns={['Fecha', 'Origen', 'Descripcion', 'Debitos', 'Creditos']} />
+  </div>;
+}
+
+function ReportCard({ title, rows, columns }) {
+  return <section className="report-card">
+    <h2>{title}</h2>
+    <div className="table-wrap">
+      <table className="data-table">
+        <thead>
+          <tr>{columns.map((column) => <th key={column}>{column}</th>)}</tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 && <tr><td colSpan={columns.length}>Sin datos para el periodo.</td></tr>}
+          {rows.map((row, index) => (
+            <tr key={`${title}-${index}`}>
+              {row.map((cell, cellIndex) => <td key={cellIndex}>{cell}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>;
+}
+
+function toSalesRows(sales = []) {
+  return sales.map((sale) => [
+    shortDate(sale.createdAt || sale.saleDate || sale.issuedAt),
+    sale.status || '',
+    money(sale.subtotal),
+    money(sale.taxTotal),
+    money(sale.total),
+  ]);
+}
+
+function toStockRows(stock = []) {
+  return stock.map((item) => [
+    item.name || item.productName || item.productId || '',
+    item.sku || '',
+    quantity(item.currentStock ?? item.stock ?? item.quantityOnHand),
+    money(item.cost),
+    money(item.salePrice),
+  ]);
+}
+
+function toExpenseRows(expenses = []) {
+  return expenses.map((expense) => [
+    shortDate(expense.expenseDate),
+    expense.status || '',
+    expense.concept || '',
+    money(expense.subtotal),
+    money(expense.total),
+  ]);
+}
+
+function toReceivableRows(receivables = []) {
+  return receivables.map((item) => [
+    shortDate(item.issueDate || item.dueDate),
+    item.status || '',
+    item.customerId || '',
+    money(item.total),
+    money(item.balance),
+  ]);
+}
+
+function toPayableRows(payables = []) {
+  return payables.map((item) => [
+    shortDate(item.issueDate || item.dueDate),
+    item.status || '',
+    item.supplierId || '',
+    money(item.total),
+    money(item.balance),
+  ]);
+}
+
+function toLedgerRows(ledger = {}) {
+  return (ledger.accounts || []).map((account) => [
+    account.accountCode || '',
+    account.accountName || '',
+    money(account.debitTotal),
+    money(account.creditTotal),
+    money(account.balance),
+  ]);
+}
+
+function toJournalRows(journal = {}) {
+  return (journal.entries || []).map((entry) => [
+    shortDate(entry.entryDate),
+    entry.sourceType || '',
+    entry.description || '',
+    money(entry.debitTotal),
+    money(entry.creditTotal),
+  ]);
+}
+
+function shortDate(value) {
+  if (!value) {
+    return '';
+  }
+  return String(value).slice(0, 10);
+}
+
+function money(value) {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+  return Number(value).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 2 });
+}
+
+function quantity(value) {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+  return Number(value).toLocaleString('es-CO');
 }

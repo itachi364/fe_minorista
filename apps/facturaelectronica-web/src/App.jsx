@@ -2,22 +2,25 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createIdempotencyKey, requestJson } from './api/client.js';
 import { ActionStatusModal } from './components/ActionStatusModal.jsx';
 import { Modal } from './components/Modal.jsx';
-import { steps } from './data/catalogs.js';
+import { steps } from './data/navigation.js';
 import {
-  initialCatalogItem,
-  initialCompany,
-  initialCompanyAdmin,
-  initialCompanyRole,
-  initialIssuer,
-  initialLogin,
-  initialManagedUser,
-  initialProduct,
-  initialReports,
-  initialResolution,
-  initialRoleAssignment,
-  initialSale,
-  initialThirdParty,
-} from './data/initialState.js';
+  createCatalogItemForm,
+  createCompanyAdminForm,
+  createCompanyForm,
+  createCompanyRoleForm,
+  createDailyLaborPaymentForm,
+  createIssuerForm,
+  createLoginForm,
+  createManagedUserForm,
+  createPayrollSettingsForm,
+  createPayrollWorkerForm,
+  createProductForm,
+  createReportsForm,
+  createResolutionForm,
+  createRoleAssignmentForm,
+  createSaleForm,
+  createThirdPartyForm,
+} from './utils/formStateFactory.js';
 import { LoginPanel } from './features/auth/LoginPanel.jsx';
 import { AuditLogPanel } from './features/audit/AuditLogPanel.jsx';
 import { CatalogAdminPanel } from './features/catalogs/CatalogAdminPanel.jsx';
@@ -28,6 +31,7 @@ import { IssuerForm } from './features/company/IssuerForm.jsx';
 import { ResolutionForm } from './features/fiscal/ResolutionForm.jsx';
 import { IdentityAdminPanel, RoleAssignmentModal } from './features/identity/IdentityAdminPanel.jsx';
 import { ProductForm } from './features/inventory/ProductForm.jsx';
+import { PayrollPanel } from './features/payroll/PayrollPanel.jsx';
 import { ReportsForm } from './features/reports/ReportsForm.jsx';
 import { SaleForm } from './features/sales/SaleForm.jsx';
 import { ThirdPartyForm } from './features/thirdparties/ThirdPartyForm.jsx';
@@ -48,7 +52,7 @@ import { clearStoredSession, loadStoredSession, saveStoredSession, SESSION_TIMEO
 export default function App() {
   const [storedSnapshot] = useState(() => loadStoredSession());
   const [selectedStep, setSelectedStep] = useState(steps[0]);
-  const [loginForm, setLoginForm] = useState(initialLogin);
+  const [loginForm, setLoginForm] = useState(createLoginForm);
   const [session, setSession] = useState(storedSnapshot?.session || null);
   const [companyAccesses, setCompanyAccesses] = useState(storedSnapshot?.companyAccesses || []);
   const [activeCompanyId, setActiveCompanyId] = useState(storedSnapshot?.activeCompanyId || '');
@@ -58,37 +62,44 @@ export default function App() {
   const [lastActivityAt, setLastActivityAt] = useState(storedSnapshot?.lastActivityAt || Date.now());
   const lastActivityRef = useRef(lastActivityAt);
   const [licenseModal, setLicenseModal] = useState(null);
-  const [companyForm, setCompanyForm] = useState(initialCompany);
-  const [companyAdminForm, setCompanyAdminForm] = useState(initialCompanyAdmin);
-  const [managedUserForm, setManagedUserForm] = useState(initialManagedUser);
-  const [companyRoleForm, setCompanyRoleForm] = useState(initialCompanyRole);
-  const [roleAssignmentForm, setRoleAssignmentForm] = useState(initialRoleAssignment);
+  const [companyForm, setCompanyForm] = useState(createCompanyForm);
+  const [companyAdminForm, setCompanyAdminForm] = useState(createCompanyAdminForm);
+  const [managedUserForm, setManagedUserForm] = useState(createManagedUserForm);
+  const [companyRoleForm, setCompanyRoleForm] = useState(createCompanyRoleForm);
+  const [roleAssignmentForm, setRoleAssignmentForm] = useState(createRoleAssignmentForm);
   const [permissionCatalog, setPermissionCatalog] = useState([]);
   const [companyRoles, setCompanyRoles] = useState([]);
   const [managedUsers, setManagedUsers] = useState([]);
   const [catalogDefinitions, setCatalogDefinitions] = useState([]);
   const [selectedCatalogCode, setSelectedCatalogCode] = useState('');
   const [catalogItems, setCatalogItems] = useState([]);
-  const [catalogItemForm, setCatalogItemForm] = useState(initialCatalogItem);
+  const [catalogItemForm, setCatalogItemForm] = useState(createCatalogItemForm);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [roleAssignmentModalOpen, setRoleAssignmentModalOpen] = useState(false);
   const [userSearchEmail, setUserSearchEmail] = useState('');
-  const [thirdPartyForm, setThirdPartyForm] = useState(initialThirdParty);
-  const [productForm, setProductForm] = useState(initialProduct);
-  const [issuerForm, setIssuerForm] = useState(initialIssuer);
-  const [resolutionForm, setResolutionForm] = useState(initialResolution);
-  const [saleForm, setSaleForm] = useState(initialSale);
+  const [thirdPartyForm, setThirdPartyForm] = useState(createThirdPartyForm);
+  const [productForm, setProductForm] = useState(createProductForm);
+  const [issuerForm, setIssuerForm] = useState(createIssuerForm);
+  const [resolutionForm, setResolutionForm] = useState(createResolutionForm);
+  const [saleForm, setSaleForm] = useState(createSaleForm);
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerOptions, setCustomerOptions] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [reportsForm, setReportsForm] = useState(initialReports);
-  const [auditFilters, setAuditFilters] = useState({ resourceType: '', resourceId: '', from: '', to: '' });
+  const [reportsForm, setReportsForm] = useState(createReportsForm);
+  const [reportsData, setReportsData] = useState(null);
+  const [payrollSettingsForm, setPayrollSettingsForm] = useState(createPayrollSettingsForm);
+  const [payrollWorkerForm, setPayrollWorkerForm] = useState(createPayrollWorkerForm);
+  const [dailyLaborPaymentForm, setDailyLaborPaymentForm] = useState(createDailyLaborPaymentForm);
+  const [payrollWorkers, setPayrollWorkers] = useState([]);
+  const [dailyLaborPayments, setDailyLaborPayments] = useState([]);
+  const [electronicPayrollDocuments, setElectronicPayrollDocuments] = useState([]);
+  const [auditFilters, setAuditFilters] = useState(todayAuditFilters);
+  const [auditResourceTypes, setAuditResourceTypes] = useState([]);
   const [auditEvents, setAuditEvents] = useState([]);
   const [saleId, setSaleId] = useState('');
-  const [output, setOutput] = useState(null);
-  const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [actionStatus, setActionStatus] = useState({ status: 'idle' });
+  const autoAuditLoadKeyRef = useRef('');
 
   const token = session?.accessToken || '';
   const context = useMemo(() => ({ token, companyId: activeCompanyId, userId: session?.userId }), [token, activeCompanyId, session?.userId]);
@@ -148,6 +159,19 @@ export default function App() {
   }, [session, token, activeCompanyId]);
 
   useEffect(() => {
+    if (currentStep !== 'Logs' || !activeCompanyId || !canViewAudit) {
+      return;
+    }
+    const key = `${activeCompanyId}|${auditFilters.resourceType}|${auditFilters.from}|${auditFilters.to}`;
+    if (autoAuditLoadKeyRef.current === key) {
+      return;
+    }
+    autoAuditLoadKeyRef.current = key;
+    loadAuditResourceTypes().catch(() => undefined);
+    loadAuditEvents().catch(() => undefined);
+  }, [currentStep, activeCompanyId, canViewAudit, auditFilters.resourceType, auditFilters.from, auditFilters.to]);
+
+  useEffect(() => {
     if (!session) {
       return undefined;
     }
@@ -164,24 +188,31 @@ export default function App() {
     };
   }, [session]);
 
-  async function execute(action) {
+  async function execute(action, options = {}) {
     markActivity();
     setBusy(true);
-    setError(null);
     setActionStatus({ status: 'running', message: 'Procesando solicitud...' });
     try {
       const result = await action();
-      setOutput(result);
-      setActionStatus({ status: 'success', message: 'La accion se realizo correctamente.' });
+      if (result === null && options.silentNullSuccess) {
+        setActionStatus({ status: 'idle' });
+        return null;
+      }
+      const successMessage = options.successMessage || 'La accion se realizo correctamente.';
+      setActionStatus({ status: 'success', message: successMessage, autoClose: true });
       return result;
     } catch (caught) {
       const payload = caught.status === 403
         ? { status: 403, message: 'No tienes permisos para ejecutar esta accion.' }
-        : caught.payload || { message: caught.message };
-      setError(payload);
+        : caught.payload || { status: caught.status, message: caught.message };
+      const message = caught.status === 401 && options.authAction
+        ? 'Credenciales invalidas. Verifica el correo y la contrasena.'
+        : caught.status && caught.status >= 500
+          ? 'Fallo interno en la aplicacion. Intenta nuevamente o revisa los logs.'
+          : 'Hay un error al realizar la accion. Revisa Logs/Auditoria para mas detalle.';
       setActionStatus({
         status: 'error',
-        message: 'Hay un error al realizar la accion. Revisa Logs/Auditoria para mas detalle.',
+        message,
         correlationId: payload?.correlationId,
       });
       return null;
@@ -268,23 +299,30 @@ export default function App() {
     setCompanyAccesses([]);
     setActiveCompanyId('');
     setLicense(null);
-    setOutput(null);
-    setError(null);
     setPermissionCatalog([]);
     setCompanyRoles([]);
     setManagedUsers([]);
     setCatalogDefinitions([]);
     setSelectedCatalogCode('');
     setCatalogItems([]);
-    setCatalogItemForm(initialCatalogItem);
-    setRoleAssignmentForm(initialRoleAssignment);
+    setCatalogItemForm(createCatalogItemForm());
+    setRoleAssignmentForm(createRoleAssignmentForm());
     setRootCompanies([]);
     setCustomerSearch('');
     setCustomerOptions([]);
     setSelectedCustomer(null);
     setAuditEvents([]);
+    setAuditResourceTypes([]);
+    setAuditFilters(todayAuditFilters());
+    autoAuditLoadKeyRef.current = '';
+    setPayrollSettingsForm(createPayrollSettingsForm());
+    setPayrollWorkerForm(createPayrollWorkerForm());
+    setDailyLaborPaymentForm(createDailyLaborPaymentForm());
+    setPayrollWorkers([]);
+    setDailyLaborPayments([]);
+    setElectronicPayrollDocuments([]);
     setSaleId('');
-    setSaleForm(initialSale);
+    setSaleForm(createSaleForm());
     setAdminModalOpen(false);
     setRoleAssignmentModalOpen(false);
     setUserSearchEmail('');
@@ -553,24 +591,120 @@ export default function App() {
 
   async function loadReports() {
     requireCompany();
-    const [sales, stock, journal] = await Promise.all([
+    const [sales, stock, journal, ledger, expenses, accountsReceivable, accountsPayable] = await Promise.all([
       requestJson(`/api/v1/reports/sales${buildQuery({ status: reportsForm.status, from: reportsForm.from, to: reportsForm.to })}`, context),
       requestJson(`/api/v1/reports/inventory-stock${buildQuery({ active: true })}`, context),
       requestJson(`/api/v1/reports/journal${buildQuery({ from: reportsForm.from, to: reportsForm.to })}`, context),
+      requestJson(`/api/v1/reports/ledger${buildQuery({ from: reportsForm.from, to: reportsForm.to, accountCode: reportsForm.accountCode })}`, context),
+      requestJson(`/api/v1/reports/expenses${buildQuery({ status: reportsForm.status, from: reportsForm.from, to: reportsForm.to })}`, context),
+      requestJson(`/api/v1/reports/accounts-receivable${buildQuery({ status: reportsForm.status, from: reportsForm.from, to: reportsForm.to })}`, context),
+      requestJson(`/api/v1/accounts-payable${buildQuery({ status: reportsForm.status, from: reportsForm.from, to: reportsForm.to })}`, context),
     ]);
-    return { sales, stock, journal };
+    const result = { sales, stock, journal, ledger, expenses, accountsReceivable, accountsPayable };
+    setReportsData(result);
+    return result;
+  }
+
+  async function initializeAccountingSetup() {
+    requireCompany();
+    return requestJson('/api/v1/accounting-setup/basic', {
+      method: 'POST',
+      ...context,
+      idempotencyKey: createIdempotencyKey('accounting-setup'),
+    });
+  }
+
+  async function loadPayrollData() {
+    requireCompany();
+    const [settings, workers, payments, documents] = await Promise.all([
+      requestJson('/api/v1/payroll/settings', context),
+      requestJson('/api/v1/payroll/workers', context),
+      requestJson('/api/v1/payroll/daily-payments', context),
+      requestJson('/api/v1/payroll/electronic-documents', context),
+    ]);
+    setPayrollSettingsForm({
+      electronicPayrollEnabled: Boolean(settings?.electronicPayrollEnabled),
+      providerMode: settings?.providerMode || 'MOCK',
+    });
+    setPayrollWorkers(workers || []);
+    setDailyLaborPayments(payments || []);
+    setElectronicPayrollDocuments(documents || []);
+    return { settings, workers, payments, documents };
+  }
+
+  async function savePayrollSettings() {
+    requireCompany();
+    const settings = await requestJson('/api/v1/payroll/settings', {
+      ...context,
+      method: 'PUT',
+      body: payrollSettingsForm,
+    });
+    setPayrollSettingsForm({
+      electronicPayrollEnabled: Boolean(settings?.electronicPayrollEnabled),
+      providerMode: settings?.providerMode || 'MOCK',
+    });
+    return settings;
+  }
+
+  async function createPayrollWorker() {
+    requireCompany();
+    const worker = await requestJson('/api/v1/payroll/workers', {
+      ...context,
+      method: 'POST',
+      body: {
+        ...payrollWorkerForm,
+        identificationTypeCode: Number(payrollWorkerForm.identificationTypeCode),
+        verificationDigit: payrollWorkerForm.verificationDigit === '' ? null : Number(payrollWorkerForm.verificationDigit),
+      },
+    });
+    setPayrollWorkers((current) => [...current, worker]);
+    setPayrollWorkerForm(createPayrollWorkerForm());
+    return worker;
+  }
+
+  async function createDailyLaborPayment() {
+    requireCompany();
+    const payment = await requestJson('/api/v1/payroll/daily-payments', {
+      ...context,
+      method: 'POST',
+      body: {
+        ...dailyLaborPaymentForm,
+        agreedAmount: Number(dailyLaborPaymentForm.agreedAmount),
+        paidAmount: Number(dailyLaborPaymentForm.paidAmount),
+      },
+    });
+    setDailyLaborPayments((current) => [payment, ...current]);
+    setDailyLaborPaymentForm(createDailyLaborPaymentForm());
+    return payment;
+  }
+
+  async function issueElectronicPayrollDocument(paymentId) {
+    requireCompany();
+    const document = await requestJson('/api/v1/payroll/electronic-documents', {
+      ...context,
+      method: 'POST',
+      body: { dailyLaborPaymentId: paymentId },
+    });
+    setElectronicPayrollDocuments((current) => [document, ...current]);
+    return document;
   }
 
   async function loadAuditEvents() {
     requireCompany();
     const events = await requestJson(`/api/v1/audit-events${buildQuery({
       resourceType: auditFilters.resourceType,
-      resourceId: auditFilters.resourceId,
       from: toInstantQuery(auditFilters.from),
       to: toInstantQuery(auditFilters.to),
     })}`, context);
     setAuditEvents(events || []);
     return events || [];
+  }
+
+  async function loadAuditResourceTypes() {
+    requireCompany();
+    const resourceTypes = await requestJson('/api/v1/audit-events/resource-types', context);
+    setAuditResourceTypes(resourceTypes || []);
+    return resourceTypes || [];
   }
 
   async function loadCatalogDefinitions() {
@@ -595,7 +729,7 @@ export default function App() {
   }
 
   function startNewCatalogItem() {
-    setCatalogItemForm({ ...initialCatalogItem, sourceVersion: '2026-08' });
+    setCatalogItemForm({ ...createCatalogItemForm(), sourceVersion: '2026-08' });
   }
 
   function editCatalogItem(item) {
@@ -710,7 +844,7 @@ export default function App() {
             <h1>Iniciar sesion</h1>
             <p>Acceso seguro al panel operativo de facturacion, inventario y contabilidad.</p>
           </div>
-          <LoginPanel form={loginForm} setForm={setLoginForm} busy={busy} onLogin={() => execute(login)} />
+          <LoginPanel form={loginForm} setForm={setLoginForm} busy={busy} onLogin={() => execute(login, { authAction: true, silentNullSuccess: true, successMessage: 'Sesion iniciada correctamente.' })} />
         </section>
         {licenseModal && <Modal title={licenseModal.title} message={licenseModal.message} onClose={() => setLicenseModal(null)} />}
         <ActionStatusModal state={actionStatus} onClose={() => setActionStatus({ status: 'idle' })} />
@@ -744,10 +878,10 @@ export default function App() {
             }} busy={busy} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} />
           )}
           {currentStep === 'Terceros' && (
-            <ThirdPartyForm form={thirdPartyForm} setForm={setThirdPartyForm} companyMunicipalityCode={companyMunicipalityCode} onSubmit={() => execute(createThirdParty)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Terceros)} documentTypeOptionsSource={runtimeCatalogs.dianDocumentTypes} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} taxRegimeOptionsSource={runtimeCatalogs.taxRegimeOptions} locations={runtimeCatalogs.locations} />
+            <ThirdPartyForm form={thirdPartyForm} setForm={setThirdPartyForm} companyMunicipalityCode={companyMunicipalityCode} onSubmit={() => execute(createThirdParty)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Terceros)} documentTypeOptionsSource={runtimeCatalogs.dianDocumentTypes} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} taxRegimeOptionsSource={runtimeCatalogs.taxRegimeOptions} thirdPartyRoleCatalog={runtimeCatalogs.thirdPartyRoleCatalog} personTypeCatalog={runtimeCatalogs.personTypeCatalog} locations={runtimeCatalogs.locations} />
           )}
           {currentStep === 'Inventario' && (
-            <ProductForm form={productForm} setForm={setProductForm} onSubmit={() => execute(createProduct)} busy={busy || !activeCompanyId || !canUse(['INVENTORY_MANAGE'])} taxOptions={runtimeCatalogs.salesTaxOptions} />
+            <ProductForm form={productForm} setForm={setProductForm} onSubmit={() => execute(createProduct)} busy={busy || !activeCompanyId || !canUse(['INVENTORY_MANAGE'])} taxOptions={runtimeCatalogs.salesTaxOptions} itemTypeCatalog={runtimeCatalogs.itemTypeCatalog} />
           )}
           {currentStep === 'Fiscal' && (
             <div className="split">
@@ -758,14 +892,17 @@ export default function App() {
           {currentStep === 'Venta POS' && (
             <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onCreate={() => execute(createSale)} onConfirm={() => execute(confirmSale)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Venta POS'])} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
           )}
+          {currentStep === 'Nomina' && (
+            <PayrollPanel settingsForm={payrollSettingsForm} setSettingsForm={setPayrollSettingsForm} workerForm={payrollWorkerForm} setWorkerForm={setPayrollWorkerForm} paymentForm={dailyLaborPaymentForm} setPaymentForm={setDailyLaborPaymentForm} workers={payrollWorkers} payments={dailyLaborPayments} electronicDocuments={electronicPayrollDocuments} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} workerClassificationOptions={runtimeCatalogs.payrollWorkerClassificationOptions} paymentMethodOptions={runtimeCatalogs.paymentMethodOptions} onLoad={() => execute(loadPayrollData)} onSaveSettings={() => execute(savePayrollSettings)} onCreateWorker={() => execute(createPayrollWorker)} onCreateDailyPayment={() => execute(createDailyLaborPayment)} onIssueElectronicDocument={(paymentId) => execute(() => issueElectronicPayrollDocument(paymentId))} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Nomina)} />
+          )}
           {currentStep === 'Reportes' && (
-            <ReportsForm form={reportsForm} setForm={setReportsForm} onSubmit={() => execute(loadReports)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Reportes)} />
+            <ReportsForm form={reportsForm} setForm={setReportsForm} data={reportsData} onSubmit={() => execute(loadReports)} onInitializeAccounting={() => execute(initializeAccountingSetup)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Reportes)} />
           )}
           {currentStep === 'Catalogos' && (
             <CatalogAdminPanel definitions={catalogDefinitions} selectedCatalogCode={selectedCatalogCode} setSelectedCatalogCode={setSelectedCatalogCode} items={catalogItems} form={catalogItemForm} setForm={setCatalogItemForm} onLoadDefinitions={() => execute(loadCatalogDefinitions)} onLoadItems={() => execute(() => loadCatalogItems())} onNew={startNewCatalogItem} onEdit={editCatalogItem} onSave={() => execute(saveCatalogItem)} onToggleActive={(item) => execute(() => toggleCatalogItemActive(item))} busy={busy || !canManageCatalogs} isRoot={isRoot} />
           )}
           {currentStep === 'Logs' && (
-            <AuditLogPanel events={auditEvents} filters={auditFilters} setFilters={setAuditFilters} onLoad={() => execute(loadAuditEvents)} busy={busy || !activeCompanyId || !canViewAudit} canViewGlobal={isRoot} activeCompanyId={activeCompanyId} />
+            <AuditLogPanel events={auditEvents} filters={auditFilters} setFilters={setAuditFilters} onLoad={() => execute(loadAuditEvents)} busy={busy || !activeCompanyId || !canViewAudit} canViewGlobal={isRoot} activeCompanyId={activeCompanyId} resourceTypes={auditResourceTypes} />
           )}
           {currentStep === 'Usuarios y roles' && (
             <IdentityAdminPanel permissions={availableCompanyPermissions} roles={companyRoles} users={managedUsers} roleForm={companyRoleForm} setRoleForm={setCompanyRoleForm} userForm={managedUserForm} setUserForm={setManagedUserForm} onLoad={() => execute(loadIdentityAdminData)} onCreateRole={() => execute(createCompanyRole)} onCreateUser={() => execute(createManagedUser)} onOpenAssignModal={() => {
@@ -788,4 +925,21 @@ function toInstantQuery(value) {
     return '';
   }
   return new Date(value).toISOString();
+}
+
+function todayAuditFilters(now = new Date()) {
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+  return {
+    resourceType: '',
+    from: toDateTimeLocalValue(start),
+    to: toDateTimeLocalValue(end),
+  };
+}
+
+function toDateTimeLocalValue(date) {
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
