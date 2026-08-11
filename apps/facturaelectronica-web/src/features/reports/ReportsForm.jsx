@@ -1,3 +1,4 @@
+import { DataTable } from '../../components/DataTable.jsx';
 import { Field, SelectField } from '../../components/forms.jsx';
 
 const statusOptions = [
@@ -45,24 +46,15 @@ function ReportResults({ data }) {
 }
 
 function ReportCard({ title, rows, columns }) {
-  return <section className="report-card">
-    <h2>{title}</h2>
-    <div className="table-wrap">
-      <table className="data-table">
-        <thead>
-          <tr>{columns.map((column) => <th key={column}>{column}</th>)}</tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 && <tr><td colSpan={columns.length}>Sin datos para el periodo.</td></tr>}
-          {rows.map((row, index) => (
-            <tr key={`${title}-${index}`}>
-              {row.map((cell, cellIndex) => <td key={cellIndex}>{cell}</td>)}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </section>;
+  return <DataTable
+    title={title}
+    titleLevel={2}
+    rows={rows}
+    columns={columns}
+    emptyMessage="Sin datos para el periodo."
+    sectionClassName="report-card"
+    rowKey={(_row, index) => `${title}-${index}`}
+  />;
 }
 
 function toSalesRows(sales = []) {

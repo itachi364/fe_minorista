@@ -1002,6 +1002,18 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 - Se elimina filtro manual por `resourceId` de la UI operativa.
 - La tabla debe mostrar fecha, usuario, accion, tipo de recurso, resultado, detalle seguro y correlacion cuando exista.
 
+### RBAC en BFF
+
+- El frontend oculta modulos segun permisos efectivos, pero la autorizacion real para catálogos administrables, contabilidad, nomina y logs se valida en `bff-service` contra `identity-service`.
+- `ROOT` se valida con `/api/v1/platform/permissions` y conserva acceso global.
+- Los usuarios empresariales deben enviar `Authorization`, `X-Company-Id` y `X-User-Id`; el BFF confirma que `X-User-Id` coincide con `/api/v1/me` antes de evaluar permisos efectivos de empresa.
+- Las mutaciones de plataforma en `tenant-service` quedan reservadas para `ROOT`.
+
+### Cloud productivo
+
+- Terraform incluye `payroll-service` como servicio ECS/Fargate privado, con `PAYROLL_DB_PASSWORD` inyectado desde Secrets Manager/RDS y `ACCOUNTING_SERVICE_URL` por Cloud Map.
+- El BFF en ECS recibe URLs internas Cloud Map hacia todos los microservicios para evitar defaults `localhost` en despliegue productivo.
+
 ### Evidencia normativa TASK-110
 
 - DIAN facturacion electronica: la documentacion tecnica vigente publicada en julio de 2026 lista anexos tecnicos de factura electronica, incluyendo version 1.9, y la normatividad vigente referencia Resolucion 00165 de 2023 y modificaciones posteriores. Impacto: los catalogos fiscales deben seguir siendo parametrizables desde base de datos y no quedar quemados en frontend.
@@ -1024,3 +1036,7 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 - Topic consulted: controlled forms, async UI state, fetch cleanup and timer cleanup.
 - Relevant finding: React recomienda formularios controlados, estados visuales explicitos para envio/exito/error y `useEffect` con cleanup para evitar respuestas obsoletas o temporizadores huerfanos.
 - Decision impact: Los formularios no tendran datos demo locales; la carga de catalogos sera asincrona desde BFF, el modal de exito cerrara con temporizador limpio y los errores quedaran visibles hasta cierre manual.
+- Library/tool: Terraform AWS Provider (`/hashicorp/terraform-provider-aws`).
+- Topic consulted: ECS Fargate task definitions, environment variables, secrets and logging.
+- Relevant finding: Las definiciones de contenedor ECS/Fargate declaran `environment`, `secrets`, puertos y `awslogs`; Fargate opera con `awsvpc` y servicios privados pueden resolverse internamente.
+- Decision impact: `infra/aws` inyecta URLs internas Cloud Map al BFF, secretos RDS a servicios y registra `payroll-service` como artefacto ECS/Fargate privado.

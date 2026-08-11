@@ -37,19 +37,20 @@ const catalogMap = {
   PAYROLL_DEDUCTION_TYPE: 'payrollDeductionTypeOptions',
 };
 
-export async function loadRuntimeCatalogs({ token, companyId }) {
+export async function loadRuntimeCatalogs({ token, companyId, userId }) {
   const entries = await Promise.all(Object.entries(catalogMap).map(async ([catalogCode, target]) => {
     const path = companyId
       ? `/api/v1/company-catalogs/${catalogCode}/items`
       : `/api/v1/catalogs/${catalogCode}/items`;
-    const items = await requestJson(path, { token, companyId });
+    const items = await requestJson(path, { token, companyId, userId });
     return [target, items.filter((item) => item.active && item.enabledForCompany !== false).map(toOption)];
   }));
-  const departments = await requestJson('/api/v1/catalogs/departments', { token, companyId });
+  const departments = await requestJson('/api/v1/catalogs/departments', { token, companyId, userId });
   const locations = await Promise.all(departments.map(async (department) => {
     const municipalities = await requestJson(`/api/v1/catalogs/departments/${department.code}/municipalities`, {
       token,
       companyId,
+      userId,
     });
     return {
       departmentCode: department.code,

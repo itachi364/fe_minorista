@@ -28,7 +28,8 @@ locals {
     "BILLING_DB_PASSWORD",
     "DIAN_PROVIDER_DB_PASSWORD",
     "ACCOUNTING_DB_PASSWORD",
-    "AUDIT_DB_PASSWORD"
+    "AUDIT_DB_PASSWORD",
+    "PAYROLL_DB_PASSWORD"
   ]
 
   db_common_secrets = {
@@ -48,7 +49,17 @@ locals {
       memory         = 512
       desired_count  = 0
       environment = merge(local.base_environment, {
-        SERVER_PORT = "8080"
+        SERVER_PORT               = "8080"
+        TENANT_SERVICE_URL        = "http://tenant-service.${local.service_domain}:8084"
+        IDENTITY_SERVICE_URL      = "http://identity-service.${local.service_domain}:8092"
+        CATALOG_SERVICE_URL       = "http://catalog-service.${local.service_domain}:8085"
+        THIRDPARTY_SERVICE_URL    = "http://thirdparty-service.${local.service_domain}:8086"
+        INVENTORY_SERVICE_URL     = "http://inventory-service.${local.service_domain}:8087"
+        BILLING_SERVICE_URL       = "http://billing-service.${local.service_domain}:8088"
+        ACCOUNTING_SERVICE_URL    = "http://accounting-service.${local.service_domain}:8090"
+        AUDIT_SERVICE_URL         = "http://audit-service.${local.service_domain}:8091"
+        PAYROLL_SERVICE_URL       = "http://payroll-service.${local.service_domain}:8093"
+        DIAN_PROVIDER_SERVICE_URL = "http://dian-provider-service.${local.service_domain}:8089"
       })
     }
 
@@ -156,6 +167,18 @@ locals {
       environment = merge(local.base_environment, {
         SERVER_PORT  = "8091"
         AUDIT_DB_URL = module.database.jdbc_url
+      })
+    }
+
+    payroll-service = {
+      container_port = 8093
+      cpu            = 512
+      memory         = 1024
+      desired_count  = 0
+      environment = merge(local.base_environment, {
+        SERVER_PORT            = "8093"
+        PAYROLL_DB_URL         = module.database.jdbc_url
+        ACCOUNTING_SERVICE_URL = "http://accounting-service.${local.service_domain}:8090"
       })
     }
   }

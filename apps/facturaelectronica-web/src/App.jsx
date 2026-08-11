@@ -142,7 +142,7 @@ export default function App() {
       return undefined;
     }
     let ignore = false;
-    loadRuntimeCatalogs({ token, companyId: activeCompanyId })
+    loadRuntimeCatalogs({ token, companyId: activeCompanyId, userId: session.userId })
       .then((catalogs) => {
         if (!ignore) {
           setRuntimeCatalogs(catalogs);

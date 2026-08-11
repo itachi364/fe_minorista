@@ -1,3 +1,4 @@
+import { DataTable } from '../../components/DataTable.jsx';
 import { Field, SelectField } from '../../components/forms.jsx';
 
 export function AuditLogPanel({ events, filters, setFilters, onLoad, busy, canViewGlobal, activeCompanyId, resourceTypes = [] }) {
@@ -19,41 +20,21 @@ export function AuditLogPanel({ events, filters, setFilters, onLoad, busy, canVi
         </div>
       </section>
 
-      <section className="tool-panel">
-        <header className="panel-header">
-          <div>
-            <h1>Eventos registrados</h1>
-            <p className="hint">Las acciones muestran detalle seguro. Para trazas tecnicas completas usa el correlationId en logs del servicio.</p>
-          </div>
-        </header>
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Usuario</th>
-                <th>Accion</th>
-                <th>Recurso</th>
-                <th>Resultado</th>
-                <th>Detalle</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.length === 0 && <tr><td colSpan="6">No hay eventos cargados.</td></tr>}
-              {events.map((event) => (
-                <tr key={event.id}>
-                  <td>{formatDate(event.occurredAt)}</td>
-                  <td><code>{event.userId || 'Sistema'}</code></td>
-                  <td>{event.action}</td>
-                  <td>{event.resourceType}</td>
-                  <td>{event.result}</td>
-                  <td className="audit-detail">{event.detail || 'Sin detalle'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <DataTable
+        title="Eventos registrados"
+        description="Las acciones muestran detalle seguro. Para trazas tecnicas completas usa el correlationId en logs del servicio."
+        columns={['Fecha', 'Usuario', 'Accion', 'Recurso', 'Resultado', 'Detalle']}
+        rows={events.map((event) => [
+          formatDate(event.occurredAt),
+          <code>{event.userId || 'Sistema'}</code>,
+          event.action,
+          event.resourceType,
+          event.result,
+          <span className="audit-detail">{event.detail || 'Sin detalle'}</span>,
+        ])}
+        emptyMessage="No hay eventos cargados."
+        rowKey={(_row, index) => events[index]?.id || index}
+      />
     </section>
   );
 }

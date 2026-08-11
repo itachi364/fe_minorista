@@ -3,6 +3,7 @@ package com.msvanegasg.facturaelectronica.bff.infrastructure.client;
 import java.io.IOException;
 import java.net.URI;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -28,6 +29,14 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
             "x-user-id", "idempotency-key", "content-type", "accept");
     private static final Set<String> RESPONSE_HEADERS = Set.of("content-type", "x-correlation-id");
     private static final Set<String> MUTATING_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
+    private static final Map<TargetService, AccessRule> ACCESS_RULES = Map.of(
+            TargetService.CATALOG, new AccessRule(Set.of("COMPANY_CATALOGS_MANAGE", "COMPANY_SETTINGS_MANAGE"),
+                    Set.of("COMPANY_CATALOGS_MANAGE", "COMPANY_SETTINGS_MANAGE")),
+            TargetService.ACCOUNTING, new AccessRule(Set.of("ACCOUNTING_VIEW", "ACCOUNTING_MANAGE", "REPORTS_VIEW"),
+                    Set.of("ACCOUNTING_MANAGE")),
+            TargetService.PAYROLL, new AccessRule(Set.of("PAYROLL_VIEW", "PAYROLL_MANAGE"), Set.of("PAYROLL_MANAGE")),
+            TargetService.AUDIT, new AccessRule(Set.of("AUDIT_VIEW", "GLOBAL_AUDIT_VIEW"), Set.of("AUDIT_VIEW",
+                    "GLOBAL_AUDIT_VIEW")));
 
     private final Map<TargetService, RestClient> clients;
     private final ObjectMapper objectMapper;
@@ -53,6 +62,7 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         if (client == null) {
             throw new DownstreamServiceException("Servicio interno no configurado: " + request.targetService(), null);
         }
+        authorize(request);
         try {
             ProxyResponse response = client.method(request.method())
                     .uri(request.uri())
@@ -69,6 +79,95 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         } catch (RestClientException exception) {
             auditMutableRequest(request, "FAILURE", "downstream_unavailable", null);
             throw new DownstreamServiceException("No fue posible comunicarse con el servicio interno.", exception);
+        }
+    }
+
+    private void authorize(ProxyRequest request) {
+        if (request.targetService() == TargetService.IDENTITY) {
+            return;
+        }
+        if (request.targetService() == TargetService.TENANT && !MUTATING_METHODS.contains(request.method().name())) {
+            return;
+        }
+        AccessRule rule = ACCESS_RULES.get(request.targetService());
+        if (rule == null && request.targetService() != TargetService.TENANT) {
+            return;
+        }
+        String authorization = request.headers().getFirst(HttpHeaders.AUTHORIZATION);
+        if (authorization == null || authorization.isBlank()) {
+            throw new BffAccessDeniedException("authorization is required");
+        }
+        if (isRoot(authorization)) {
+            return;
+        }
+        if (request.targetService() == TargetService.TENANT) {
+            throw new BffAccessDeniedException("ROOT is required for platform administration");
+        }
+        UUID userId = currentUserId(authorization);
+        UUID headerUserId = parseUuid(request.headers().getFirst("X-User-Id"));
+        if (headerUserId == null || !headerUserId.equals(userId)) {
+            throw new BffAccessDeniedException("X-User-Id does not match authenticated user");
+        }
+        UUID companyId = parseUuid(request.headers().getFirst("X-Company-Id"));
+        if (companyId == null) {
+            throw new BffAccessDeniedException("X-Company-Id is required");
+        }
+        Set<String> requiredPermissions = MUTATING_METHODS.contains(request.method().name()) ? rule.writePermissions()
+                : rule.readPermissions();
+        Set<String> actualPermissions = effectivePermissions(companyId, userId);
+        if (actualPermissions.stream().noneMatch(requiredPermissions::contains)) {
+            throw new BffAccessDeniedException("insufficient permissions");
+        }
+    }
+
+    private boolean isRoot(String authorization) {
+        try {
+            clients.get(TargetService.IDENTITY)
+                    .get()
+                    .uri("/api/v1/platform/permissions")
+                    .header(HttpHeaders.AUTHORIZATION, authorization)
+                    .retrieve()
+                    .toBodilessEntity();
+            return true;
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+    }
+
+    private UUID currentUserId(String authorization) {
+        try {
+            UserResponse response = clients.get(TargetService.IDENTITY)
+                    .get()
+                    .uri("/api/v1/me")
+                    .header(HttpHeaders.AUTHORIZATION, authorization)
+                    .retrieve()
+                    .body(UserResponse.class);
+            if (response == null || response.id() == null) {
+                throw new BffAccessDeniedException("authenticated user is required");
+            }
+            return response.id();
+        } catch (BffAccessDeniedException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new BffAccessDeniedException("invalid authorization");
+        }
+    }
+
+    private Set<String> effectivePermissions(UUID companyId, UUID userId) {
+        try {
+            CompanyAccessResponse response = clients.get(TargetService.IDENTITY)
+                    .get()
+                    .uri(uriBuilder -> uriBuilder.path("/api/v1/companies/{companyId}/permissions")
+                            .queryParam("userId", userId)
+                            .build(companyId))
+                    .retrieve()
+                    .body(CompanyAccessResponse.class);
+            if (response == null || response.permissions() == null) {
+                return Set.of();
+            }
+            return Set.copyOf(response.permissions());
+        } catch (RuntimeException exception) {
+            throw new BffAccessDeniedException("permissions could not be resolved");
         }
     }
 
@@ -168,5 +267,14 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
 
     private record AuditRequest(UUID userId, String eventType, String resourceType, String resourceId, String action,
             String result, String detail) {
+    }
+
+    private record AccessRule(Set<String> readPermissions, Set<String> writePermissions) {
+    }
+
+    private record UserResponse(UUID id) {
+    }
+
+    private record CompanyAccessResponse(UUID companyId, List<String> roles, Set<String> permissions) {
     }
 }

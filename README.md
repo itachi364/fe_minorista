@@ -189,7 +189,9 @@ La SPA consume solamente el BFF por `/api/v1`. En desarrollo Vite usa proxy haci
 
 El flujo operativo actual inicia con login desde la UI. Sin sesion activa solo se muestra la pantalla de login; los menus y formularios no se renderizan. La SPA llama `POST /api/v1/auth/login`, consulta `GET /api/v1/me/companies`, selecciona una empresa autorizada y valida internamente su licencia con `GET /api/v1/companies/{companyId}/license/validation?action=CREATE_TRANSACTION`.
 
-Despues del login exitoso con licencia activa, la SPA muestra un shell operativo profesional con sidebar, panel superior de sesion/empresa y formularios de empresa, terceros, inventario, configuracion fiscal, venta POS/factura y reportes con campos editables. El JSON de request se arma al enviar cada formulario y se envia al BFF con `Authorization`, `X-Company-Id`, `X-Correlation-Id` e `Idempotency-Key` cuando aplica. El campo `companyId` ya no se digita manualmente en la UI operativa; proviene de las empresas asociadas al usuario autenticado. Si la licencia no esta activa, la UI muestra un modal informativo, limpia la sesion automaticamente y vuelve al login. El encabezado autenticado incluye `Cerrar sesion`.
+Despues del login exitoso con licencia activa, la SPA muestra un shell operativo profesional con sidebar, panel superior de sesion/empresa y formularios de empresa, terceros, inventario, configuracion fiscal, venta POS/factura y reportes con campos editables. El JSON de request se arma al enviar cada formulario y se envia al BFF con `Authorization`, `X-Company-Id`, `X-User-Id`, `X-Correlation-Id` e `Idempotency-Key` cuando aplica. El campo `companyId` ya no se digita manualmente en la UI operativa; proviene de las empresas asociadas al usuario autenticado. Si la licencia no esta activa, la UI muestra un modal informativo, limpia la sesion automaticamente y vuelve al login. El encabezado autenticado incluye `Cerrar sesion`.
+
+El BFF endurece acceso para catálogos administrables, contabilidad, nomina y logs: `ROOT` conserva acceso global, las mutaciones de plataforma quedan reservadas a `ROOT` y las acciones empresariales validan permisos efectivos contra `identity-service`.
 
 La UI operativa no muestra paneles permanentes de JSON tecnico. Cada accion usa un modal de proceso/exito/error y los detalles de trazabilidad se consultan en el modulo `Logs`, visible para `ROOT`, administradores de empresa y usuarios con permiso de auditoria.
 
@@ -627,11 +629,11 @@ La nomina electronica es configurable por empresa. Si `electronicPayrollEnabled=
 `audit-service` expone en `http://localhost:8091`:
 
 - `POST /api/v1/audit-events`
-- `GET /api/v1/audit-events?resourceType=&resourceId=&from=&to=&userId=`
+- `GET /api/v1/audit-events?resourceType=&from=&to=&userId=`
 
 Los eventos requieren `X-Company-Id` y almacenan detalle seguro sin secretos en `audit.audit_event`.
 
-El BFF propaga `X-User-Id` y registra auditoria best-effort para mutaciones `POST`, `PUT`, `PATCH` y `DELETE` que pasen por `/api/v1/**`. Para creacion de empresas sin `X-Company-Id`, toma el `id` de la empresa creada y registra la auditoria contra esa empresa. `catalog-service` tambien registra eventos especificos para crear, actualizar, activar e inactivar catalogos globales o configuracion empresarial. La falla de auditoria no detiene la operacion principal en el flujo sincrono local.
+El BFF propaga `X-User-Id`, valida permisos efectivos con `identity-service` para recursos protegidos y registra auditoria best-effort para mutaciones `POST`, `PUT`, `PATCH` y `DELETE` que pasen por `/api/v1/**`. Para creacion de empresas sin `X-Company-Id`, toma el `id` de la empresa creada y registra la auditoria contra esa empresa. `catalog-service` tambien registra eventos especificos para crear, actualizar, activar e inactivar catalogos globales o configuracion empresarial. La falla de auditoria no detiene la operacion principal en el flujo sincrono local.
 
 `billing-service` registra eventos canonicos en Outbox al confirmar una venta POS/factura y obtener resultado del proveedor DIAN mock. `inventory-service` registra `InventoryMovementRegistered` al crear movimientos y `accounting-service` registra `AccountingEntryPosted` al postear asientos. La entrega hacia EventBridge/SQS ya cuenta con dispatcher condicional, consumidor Lambda `audit-event-writer-lambda` para auditoria, consumidor Lambda `inventory-sale-effect-lambda` para descontar stock desde `SaleConfirmed`, consumidor Lambda `accounting-sale-entry-lambda` para generar asientos contables de forma idempotente, consumidor `provider-submission-retry-lambda` para reintentos tecnicos de proveedor y consumidor `reporting-projection-lambda` para proyecciones de reportes.
 
@@ -888,4 +890,4 @@ terraform validate
 terraform plan -out dev.tfplan
 ```
 
-No ejecutar `terraform apply` sin aprobacion explicita. El ambiente `dev` crea recursos cloud objetivo con servicios ECS en `desired_count = 0` hasta publicar imagenes productivas en ECR.
+No ejecutar `terraform apply` sin aprobacion explicita. El ambiente `dev` crea recursos cloud objetivo con servicios ECS en `desired_count = 0` hasta publicar imagenes productivas en ECR. `payroll-service` queda incluido como artefacto ECS/Fargate privado y el BFF usa URLs internas Cloud Map hacia todos los microservicios.

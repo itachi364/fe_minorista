@@ -1,3 +1,4 @@
+import { DataTable } from '../../components/DataTable.jsx';
 import { CheckField, Field, FormPanel, SelectField } from '../../components/forms.jsx';
 
 export function PayrollPanel({
@@ -101,26 +102,13 @@ export function PayrollPanel({
 }
 
 function PayrollTable({ title, columns, rows }) {
-  return <section className="tool-panel compact-panel">
-    <header className="panel-header">
-      <h1>{title}</h1>
-    </header>
-    <div className="table-wrap">
-      <table className="data-table">
-        <thead>
-          <tr>{columns.map((column) => <th key={column}>{column}</th>)}</tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 && <tr><td colSpan={columns.length}>Sin registros.</td></tr>}
-          {rows.map((row, rowIndex) => (
-            <tr key={rowIndex}>
-              {row.map((cell, cellIndex) => <td key={cellIndex}>{cell}</td>)}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </section>;
+  return <DataTable
+    title={title}
+    columns={columns}
+    rows={rows}
+    emptyMessage="Sin registros."
+    sectionClassName="tool-panel compact-panel"
+  />;
 }
 
 function workerName(workers, workerId) {

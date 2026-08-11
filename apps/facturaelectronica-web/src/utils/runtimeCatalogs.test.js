@@ -33,7 +33,7 @@ test('loads catalog options and relational locations from backend', async () => 
   vi.stubGlobal('crypto', { randomUUID: () => '00000000-0000-4000-8000-000000000000' });
   vi.stubGlobal('fetch', fetchMock);
 
-  const catalogs = await loadRuntimeCatalogs({ token: 'token', companyId: 'company-id' });
+  const catalogs = await loadRuntimeCatalogs({ token: 'token', companyId: 'company-id', userId: 'user-id' });
 
   expect(catalogs.dianDocumentTypes).toEqual([
     { value: 13, label: '13 - Cedula de ciudadania', description: '' },
@@ -46,6 +46,7 @@ test('loads catalog options and relational locations from backend', async () => 
     departmentName: 'Bogota, D.C.',
     municipalities: [{ code: '11001', name: 'Bogota, D.C.' }],
   }]);
+  expect(fetchMock.mock.calls[0][1].headers['X-User-Id']).toBe('user-id');
 });
 
 function jsonResponse(payload) {

@@ -3263,8 +3263,8 @@
     - `./mvnw.cmd -pl services\accounting-service -am test`: OK, 50 tests.
     - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: OK; el E2E verifica que el asiento `PAYROLL_DAILY_PAYMENT_REGISTERED` fue generado por `payroll-service`.
 
-- [ ] TASK-107: Endurecer RBAC para catalogos, logs, contabilidad y nomina
-  - Estado: IN_PROGRESS
+- [x] TASK-107: Endurecer RBAC para catalogos, logs, contabilidad y nomina
+  - Estado: DONE
   - Requisitos: RF-026, RF-054.
   - Acceptance criteria: AC-064, AC-130, AC-131.
   - Archivos propuestos:
@@ -3275,12 +3275,16 @@
   - Tests requeridos:
     - `./mvnw.cmd -pl services/identity-service,services/bff-service -am test`.
     - `npm run test` y `npm run build`.
-  - Validacion parcial:
+  - Validacion:
     - Se agregaron permisos `PAYROLL_VIEW` y `PAYROLL_MANAGE`.
-    - Falta cerrar validacion transversal de permisos en BFF/UI para contabilidad avanzada y catalogos editables.
+    - `bff-service` valida `Authorization`, `X-Company-Id`, `X-User-Id` y permisos efectivos de `identity-service` para catálogos administrables, contabilidad, nomina y logs.
+    - `ROOT` conserva acceso global via `/api/v1/platform/permissions`; mutaciones de plataforma en `tenant-service` quedan reservadas a ROOT.
+    - La SPA propaga `X-User-Id` tambien en la carga de catalogos runtime desde backend.
+    - `.\mvnw.cmd -pl services\identity-service -am test`: OK, 17 tests.
+    - `.\mvnw.cmd -pl services\bff-service -am test`: OK, 8 tests.
 
-- [ ] TASK-108: Mejorar frontend profesional y componentes reutilizables
-  - Estado: IN_PROGRESS
+- [x] TASK-108: Mejorar frontend profesional y componentes reutilizables
+  - Estado: DONE
   - Requisitos: RF-045, RF-047, RF-055.
   - Acceptance criteria: AC-132, AC-133, AC-135, AC-136, AC-137.
   - Archivos propuestos:
@@ -3291,10 +3295,12 @@
   - Tests requeridos:
     - `npm run test`.
     - `npm run build`.
-  - Validacion parcial:
-    - Formularios empiezan a usar factories reutilizables y navegacion desacoplada.
-    - Reportes y nomina electronica mock ya tienen paneles operativos con tablas y acciones.
-    - Falta completar componentes reutilizables para contabilidad avanzada y E2E guiado.
+  - Validacion:
+    - Formularios usan factories reutilizables y navegacion desacoplada.
+    - Reportes, nomina y logs comparten `DataTable`, reduciendo duplicacion de tablas y manteniendo UI en espanol.
+    - La carga de catálogos runtime sigue siendo DB-only y via BFF, sin `initialState` ni catalogos operativos en frontend.
+    - `npm test`: OK, 15 tests.
+    - `npm run build`: OK.
 
 - [x] TASK-109: Prueba E2E desde cero sin datos demo frontend
   - Estado: DONE
@@ -3327,8 +3333,8 @@
     - `specs/design.md` documenta la evidencia normativa y su impacto en catalogos DB-only, nomina electronica opcional, consumidor final parametrizado, DIVIPOLA relacional y PUC configurable.
     - `rg -n "payroll_configuration|payroll_electronic_enabled|electronic_provider_mode|daily_payment|legal_warning_accepted|provider_response_json" specs\data-dictionary.md specs\data-model.md specs\database-design.md specs\api-contract.md specs\design.md`: sin coincidencias legacy de nomina desalineadas.
 
-- [ ] TASK-111: Preparacion cloud/productiva para nuevos modulos
-  - Estado: PENDING
+- [x] TASK-111: Preparacion cloud/productiva para nuevos modulos
+  - Estado: DONE
   - Requisitos: RNF-019, RNF-020, RNF-021.
   - Acceptance criteria: AC-054, AC-055, AC-056, AC-057, AC-058.
   - Archivos propuestos:
@@ -3339,9 +3345,14 @@
   - Tests requeridos:
     - `terraform fmt`.
     - `terraform validate` cuando variables requeridas esten disponibles.
+  - Validacion:
+    - `infra/aws/envs/dev/main.tf` incluye `payroll-service` como ECS/Fargate privado con puerto 8093, `PAYROLL_DB_URL`, `PAYROLL_DB_PASSWORD` y `ACCOUNTING_SERVICE_URL`.
+    - `bff-service` en ECS recibe URLs internas Cloud Map hacia todos los microservicios para evitar defaults `localhost`.
+    - `terraform -chdir=infra\aws\envs\dev fmt`: OK.
+    - `terraform -chdir=infra\aws\envs\dev validate`: OK.
 
-- [ ] TASK-112: Commit y reporte de cierre de fase
-  - Estado: IN_PROGRESS
+- [x] TASK-112: Commit y reporte de cierre de fase
+  - Estado: DONE
   - Requisitos: RNF-004.
   - Acceptance criteria: AC-024.
   - Archivos propuestos:
@@ -3352,11 +3363,10 @@
     - `git status`.
     - `git diff --stat`.
     - Validaciones ejecutadas en tareas previas.
-  - Validacion parcial:
+  - Validacion:
     - `./mvnw.cmd -q test`: OK.
     - `npm run test`: OK, 15 tests.
     - `npm run build`: OK.
-    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: OK.
-    - `git status --short`: ejecutado; cambios pendientes esperados de la fase.
-    - `git diff --stat`: ejecutado; 52 archivos modificados, 1619 inserciones y 6071 eliminaciones.
-    - Revision de secretos en diff: sin secretos reales detectados; solo variable de sesion `session?.accessToken`.
+    - `terraform -chdir=infra\aws\envs\dev validate`: OK.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: OK con CompanyId `87c7b293-b2ff-4567-89d8-e6877aaaea8c`, SaleId `f0b6a469-8d9e-45a3-99bc-2ca6608599e1`, DocumentId `368d737e-23e4-4b07-8dda-4507e81d316a` y PayrollPaymentId `6b073700-8687-49ed-ab0f-b4de48279dae`.
+    - Commit/push no ejecutados por regla de confirmacion separada. Mensaje sugerido: `✨ feat(platform): cerrar flujo operativo cloud y rbac`.

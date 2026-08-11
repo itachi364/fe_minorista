@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import com.msvanegasg.facturaelectronica.bff.domain.model.UnsupportedBffRouteException;
+import com.msvanegasg.facturaelectronica.bff.infrastructure.client.BffAccessDeniedException;
 import com.msvanegasg.facturaelectronica.bff.infrastructure.client.DownstreamServiceException;
 import com.msvanegasg.facturaelectronica.bff.observability.CorrelationId;
 
@@ -34,6 +35,13 @@ public class BffExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleUnsupportedRoute(UnsupportedBffRouteException exception,
             HttpServletRequest request) {
         return build(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, exception.getMessage(), List.of(), request);
+    }
+
+    @ExceptionHandler(BffAccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccessDenied(BffAccessDeniedException exception,
+            HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, ApiErrorCode.ACCESS_DENIED,
+                "No tienes permisos suficientes para realizar esta accion.", List.of(), request);
     }
 
     @ExceptionHandler(DownstreamServiceException.class)

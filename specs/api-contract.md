@@ -1497,6 +1497,8 @@ Reglas:
 El frontend objetivo consume solo el `bff-service` expuesto por API Gateway. Los microservicios internos no se publican directamente al navegador. El BFF debe:
 
 - Propagar `Authorization`, `X-Company-Id`, `X-Correlation-Id` e `Idempotency-Key`.
+- Propagar y validar `X-User-Id` contra `/api/v1/me` para acciones empresariales protegidas.
+- Validar permisos efectivos en `identity-service` antes de enrutar catálogos administrables, contabilidad, nomina y logs. `ROOT` conserva acceso global por `/api/v1/platform/permissions`.
 - Agregar respuestas de varios servicios cuando el flujo de pantalla lo requiera.
 - Normalizar errores publicos sin exponer detalles internos.
 - Mantener contratos publicos versionados independientes de contratos internos.
