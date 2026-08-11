@@ -1669,7 +1669,8 @@ Reglas:
 - Todo pago diario verbal debe registrar aceptacion de advertencia legal configurable.
 - `classification=INDEPENDENT_CONTRACTOR` se contabiliza como egreso/proveedor o gasto operativo, no como empleado formal.
 - Todo comando requiere `X-Company-Id`, `X-User-Id`, `X-Correlation-Id` e idempotencia cuando cree pagos, periodos o documentos.
-- El evento contable para pago diario verbal es `PAYROLL_DAILY_PAYMENT_REGISTERED` con `sourceType=PAYROLL_DAILY_PAYMENT`.
+- `POST /api/v1/payroll/daily-payments` intenta crear automaticamente un asiento en `accounting-service` con evento `PAYROLL_DAILY_PAYMENT_REGISTERED`, `sourceType=PAYROLL_DAILY_PAYMENT`, `sourceId=dailyLaborPaymentId`, `subtotal=0`, `taxTotal=0` y `total=paidAmount`.
+- La integracion contable de pagos diarios es best-effort en la fase REST local: si `accounting-service` no esta disponible o rechaza temporalmente la solicitud, el pago de nomina ya persistido no se revierte.
 
 ## Ajustes TASK-076: UX colombiana y RBAC operativo
 

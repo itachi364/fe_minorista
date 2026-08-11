@@ -17,6 +17,7 @@ import com.msvanegasg.facturaelectronica.payroll.application.dto.DailyLaborPayme
 import com.msvanegasg.facturaelectronica.payroll.application.dto.ElectronicPayrollDocumentCommand;
 import com.msvanegasg.facturaelectronica.payroll.application.dto.PayrollSettingsCommand;
 import com.msvanegasg.facturaelectronica.payroll.application.dto.WorkerCommand;
+import com.msvanegasg.facturaelectronica.payroll.application.port.out.PayrollAccountingPort;
 import com.msvanegasg.facturaelectronica.payroll.application.port.out.PayrollRepositoryPort;
 import com.msvanegasg.facturaelectronica.payroll.domain.model.DailyLaborPayment;
 import com.msvanegasg.facturaelectronica.payroll.domain.model.ElectronicPayrollDocument;
@@ -32,7 +33,9 @@ class PayrollServiceTest {
     private static final Instant NOW = Instant.parse("2026-08-11T10:00:00Z");
 
     private final InMemoryPayrollRepository repository = new InMemoryPayrollRepository();
-    private final PayrollService service = new PayrollService(repository, new SequenceIdGenerator(), () -> NOW);
+    private final CapturingPayrollAccountingPort accountingPort = new CapturingPayrollAccountingPort();
+    private final PayrollService service = new PayrollService(repository, new SequenceIdGenerator(), () -> NOW,
+            accountingPort);
 
     @Test
     void returnsDefaultSettingsWithElectronicPayrollDisabled() {
@@ -61,6 +64,24 @@ class PayrollServiceTest {
 
         assertThat(payment.workerId()).isEqualTo(worker.id());
         assertThat(payment.legalNoticeAccepted()).isTrue();
+        assertThat(accountingPort.payments).containsExactly(payment);
+    }
+
+    @Test
+    void keepsDailyPaymentRegisteredWhenAccountingFails() {
+        PayrollService serviceWithFailingAccounting = new PayrollService(repository, new SequenceIdGenerator(), () -> NOW,
+                payment -> {
+                    throw new IllegalStateException("accounting unavailable");
+                });
+        Worker worker = serviceWithFailingAccounting.registerWorker(COMPANY_ID, new WorkerCommand(13, "1234567890",
+                null, "Trabajador Diario", "DAILY_VERBAL", true));
+
+        DailyLaborPayment payment = serviceWithFailingAccounting.registerDailyPayment(COMPANY_ID,
+                new DailyLaborPaymentCommand(worker.id(), LocalDate.parse("2026-08-11"), "Apoyo en ventas",
+                        new BigDecimal("80000.00"), new BigDecimal("80000.00"), "CASH", true, null));
+
+        assertThat(payment.id()).isEqualTo(PAYMENT_ID);
+        assertThat(repository.findDailyPayment(COMPANY_ID, PAYMENT_ID)).contains(payment);
     }
 
     @Test
@@ -166,6 +187,15 @@ class PayrollServiceTest {
         @Override
         public List<ElectronicPayrollDocument> findElectronicDocuments(UUID companyId) {
             return documents.stream().filter(document -> document.companyId().equals(companyId)).toList();
+        }
+    }
+
+    private static final class CapturingPayrollAccountingPort implements PayrollAccountingPort {
+        private final List<DailyLaborPayment> payments = new ArrayList<>();
+
+        @Override
+        public void applyDailyPayment(DailyLaborPayment payment) {
+            payments.add(payment);
         }
     }
 }

@@ -984,6 +984,7 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 - Ventas, compras, gastos y nomina publican o solicitan contabilizacion usando contratos idempotentes.
 - Si falta una regla contable PUC, el comando debe fallar de forma explicita y auditable; no se deben generar asientos incompletos.
 - El pago diario verbal se contabiliza con evento `PAYROLL_DAILY_PAYMENT_REGISTERED`, origen `PAYROLL_DAILY_PAYMENT`, debito a `5105` y credito a `1105` en la plantilla basica editable.
+- `payroll-service` invoca `accounting-service` mediante puerto de salida/adaptador HTTP best-effort configurable por `ACCOUNTING_SERVICE_URL`; la falla de contabilidad no revierte el pago diario persistido ni crea dependencia de arranque entre contenedores.
 
 ### Decisiones de nomina
 

@@ -118,7 +118,7 @@ E2E flow completed successfully.
 13. Activa nomina electronica mock en `payroll-service`.
 14. Crea trabajador y registra pago diario verbal con advertencia legal aceptada.
 15. Genera documento soporte de nomina electronica mock con CUNE simulado.
-16. Registra asiento contable de pago diario con evento `PAYROLL_DAILY_PAYMENT_REGISTERED`.
+16. Verifica el asiento contable automatico de pago diario con evento `PAYROLL_DAILY_PAYMENT_REGISTERED`.
 17. Verifica que otra empresa no pueda consultar el producto, venta, envio o cuentas de la primera.
 
 ## 4. Consultas PostgreSQL

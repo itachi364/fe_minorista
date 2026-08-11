@@ -3245,8 +3245,8 @@
     - Se agrego persistencia de documentos mock con CUNE simulado, estado y respuesta segura.
     - `./mvnw.cmd -pl services/payroll-service -am test`: OK, 5 tests.
 
-- [ ] TASK-106: Integrar nomina con contabilidad
-  - Estado: IN_PROGRESS
+- [x] TASK-106: Integrar nomina con contabilidad
+  - Estado: DONE
   - Requisitos: RF-053.
   - Acceptance criteria: AC-144, AC-150.
   - Archivos propuestos:
@@ -3255,11 +3255,13 @@
   - Descripcion: Contabilizar costos de empleados, pagos diarios y contratistas segun clasificacion y reglas PUC.
   - Tests requeridos:
     - `./mvnw.cmd -pl services/payroll-service,services/accounting-service -am test`.
-  - Validacion parcial:
+  - Validacion:
     - `accounting-service` soporta evento `PAYROLL_DAILY_PAYMENT_REGISTERED` con origen `PAYROLL_DAILY_PAYMENT`.
-    - E2E registra pago diario verbal y genera asiento contable idempotente por API.
-    - `./mvnw.cmd -pl services/accounting-service -am test`: OK, 50 tests.
-    - Falta cerrar integracion automatica/eventual desde `payroll-service` hacia contabilidad sin acoplar disponibilidad.
+    - `payroll-service` registra pago diario verbal y solicita asiento contable automaticamente por puerto/adaptador HTTP best-effort configurable con `ACCOUNTING_SERVICE_URL`.
+    - Si contabilidad falla o no esta configurada, el pago diario ya persistido no se revierte.
+    - `./mvnw.cmd -pl services\payroll-service -am test`: OK, 8 tests.
+    - `./mvnw.cmd -pl services\accounting-service -am test`: OK, 50 tests.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: OK; el E2E verifica que el asiento `PAYROLL_DAILY_PAYMENT_REGISTERED` fue generado por `payroll-service`.
 
 - [ ] TASK-107: Endurecer RBAC para catalogos, logs, contabilidad y nomina
   - Estado: IN_PROGRESS
@@ -3308,7 +3310,7 @@
     - `npm run test` y `npm run build`.
   - Validacion:
     - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: OK.
-    - Flujo validado nuevamente con CompanyId `c716fd56-424b-459c-b469-d2e68fb510a4`, SaleId `256cfacb-a130-4182-af01-4cd42daddf61`, DocumentId `367cb87f-7e30-426c-9269-a76ccd07d737`, PayrollPaymentId `f0d98ceb-3a23-41b6-b550-1131fcbb59d5` y PayrollMockCune `MOCK-CUNE-c716fd56-f0d98ceb`.
+    - Flujo validado nuevamente con CompanyId `5fab707a-e198-4131-a7c5-1a14c439ebf5`, SaleId `4d522672-4fc9-4195-9401-81621bb2e6e6`, DocumentId `c02cbf22-36eb-43bf-8bc3-1205bc2707ef`, PayrollPaymentId `81afd23c-a22f-46e3-8d9f-5d0885904948` y PayrollMockCune `MOCK-CUNE-5fab707a-81afd23c`.
 
 - [x] TASK-110: Revision normativa y catalogos de cumplimiento
   - Estado: DONE

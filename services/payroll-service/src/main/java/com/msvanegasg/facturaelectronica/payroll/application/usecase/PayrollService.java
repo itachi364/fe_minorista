@@ -14,6 +14,7 @@ import com.msvanegasg.facturaelectronica.payroll.application.dto.WorkerCommand;
 import com.msvanegasg.facturaelectronica.payroll.application.port.in.PayrollUseCase;
 import com.msvanegasg.facturaelectronica.payroll.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.payroll.application.port.out.IdGeneratorPort;
+import com.msvanegasg.facturaelectronica.payroll.application.port.out.PayrollAccountingPort;
 import com.msvanegasg.facturaelectronica.payroll.application.port.out.PayrollRepositoryPort;
 import com.msvanegasg.facturaelectronica.payroll.domain.model.DailyLaborPayment;
 import com.msvanegasg.facturaelectronica.payroll.domain.model.ElectronicPayrollDocument;
@@ -26,11 +27,14 @@ public class PayrollService implements PayrollUseCase {
     private final PayrollRepositoryPort repository;
     private final IdGeneratorPort idGenerator;
     private final ClockPort clock;
+    private final PayrollAccountingPort accountingPort;
 
-    public PayrollService(PayrollRepositoryPort repository, IdGeneratorPort idGenerator, ClockPort clock) {
+    public PayrollService(PayrollRepositoryPort repository, IdGeneratorPort idGenerator, ClockPort clock,
+            PayrollAccountingPort accountingPort) {
         this.repository = Objects.requireNonNull(repository);
         this.idGenerator = Objects.requireNonNull(idGenerator);
         this.clock = Objects.requireNonNull(clock);
+        this.accountingPort = Objects.requireNonNull(accountingPort);
     }
 
     @Override
@@ -69,9 +73,15 @@ public class PayrollService implements PayrollUseCase {
         Objects.requireNonNull(command, "command is required");
         repository.findWorker(companyId, command.workerId())
                 .orElseThrow(() -> new IllegalArgumentException("workerId does not belong to company"));
-        return repository.saveDailyPayment(new DailyLaborPayment(idGenerator.newId(), companyId, command.workerId(),
+        DailyLaborPayment payment = repository.saveDailyPayment(new DailyLaborPayment(idGenerator.newId(), companyId, command.workerId(),
                 command.workDate(), command.activityDescription(), command.agreedAmount(), command.paidAmount(),
                 command.paymentMethodCode(), command.legalNoticeAccepted(), command.notes(), clock.now()));
+        try {
+            accountingPort.applyDailyPayment(payment);
+        } catch (RuntimeException ignored) {
+            // La contabilidad es best-effort hasta cerrar el flujo asincrono productivo.
+        }
+        return payment;
     }
 
     @Override

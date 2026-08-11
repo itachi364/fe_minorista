@@ -620,7 +620,7 @@ Los asientos se generan desde reglas activas por empresa y son idempotentes por 
 - `GET /api/v1/payroll/electronic-documents`
 - `POST /api/v1/payroll/electronic-documents`
 
-La nomina electronica es configurable por empresa. Si `electronicPayrollEnabled=false`, la empresa puede registrar nomina interna, pero no emitir documento soporte electronico mock. Los pagos diarios verbales se registran con advertencia legal y clasificacion laboral/contractual; no se tratan automaticamente como exentos de obligaciones laborales.
+La nomina electronica es configurable por empresa. Si `electronicPayrollEnabled=false`, la empresa puede registrar nomina interna, pero no emitir documento soporte electronico mock. Los pagos diarios verbales se registran con advertencia legal y clasificacion laboral/contractual; no se tratan automaticamente como exentos de obligaciones laborales. Al registrar un pago diario, `payroll-service` intenta crear el asiento contable `PAYROLL_DAILY_PAYMENT_REGISTERED` en `accounting-service` de forma best-effort usando `ACCOUNTING_SERVICE_URL`; si contabilidad no esta disponible, el pago ya persistido no se revierte.
 
 ### Audit
 
