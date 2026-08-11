@@ -1,110 +1,211 @@
-import { ActionModal } from '../../components/Modal.jsx';
 import { Field, FormPanel, StatusBadge } from '../../components/forms.jsx';
 import { moduleLabel, permissionDescription, permissionLabel } from '../../utils/permissionLabels.js';
 
-export function IdentityAdminPanel({ permissions, roles, users, roleForm, setRoleForm, userForm, setUserForm, onLoad, onCreateRole, onCreateUser, onOpenAssignModal, onTogglePermission, busy }) {
+export function RolesPanel({
+  permissions,
+  roles,
+  form,
+  setForm,
+  editingRoleId,
+  onNew,
+  onEdit,
+  onSave,
+  onToggleActive,
+  onTogglePermission,
+  busy,
+}) {
   const groupedPermissions = permissions.reduce((groups, permission) => {
     const key = permission.module || 'general';
     return { ...groups, [key]: [...(groups[key] || []), permission] };
   }, {});
 
-  return <div className="stack identity-admin">
-    <section className="tool-panel identity-overview">
-      <header className="panel-header">
-        <div>
-          <h1>Usuarios, roles y permisos</h1>
-          <p>Administra roles empresariales con permisos delegables y asigna accesos a usuarios.</p>
+  return (
+    <div className="stack identity-admin">
+      <section className="tool-panel identity-overview">
+        <header className="panel-header">
+          <div>
+            <h1>Roles</h1>
+            <p>Define roles por empresa con permisos delegables y mantenlos activos solo cuando se usen.</p>
+          </div>
+          <button className="secondary" disabled={busy} onClick={onNew} type="button">Nuevo rol</button>
+        </header>
+        <div className="summary-strip">
+          <StatusBadge label="Permisos" value={permissions.length || 0} />
+          <StatusBadge label="Roles" value={roles.length || 0} />
+          <StatusBadge label="Activos" value={roles.filter((role) => role.active !== false).length || 0} />
         </div>
-        <div className="button-row">
-          <button className="secondary" disabled={busy} onClick={onLoad} type="button">Cargar permisos y roles</button>
-          <button className="primary" disabled={busy || roles.length === 0} onClick={onOpenAssignModal} type="button">Asignar rol</button>
-        </div>
-      </header>
-      <div className="summary-strip">
-        <StatusBadge label="Permisos" value={permissions.length || 0} />
-        <StatusBadge label="Roles" value={roles.length || 0} />
-        <StatusBadge label="Usuarios" value={users.length || 0} />
-      </div>
-    </section>
+      </section>
 
-    <div className="split identity-split">
-      <FormPanel title="Rol empresarial" submitLabel="Crear rol" onSubmit={onCreateRole} busy={busy || roleForm.permissionCodes.length === 0}>
+      <FormPanel title={editingRoleId ? 'Actualizar rol' : 'Crear rol'} submitLabel={editingRoleId ? 'Actualizar rol' : 'Crear rol'} onSubmit={onSave} busy={busy || form.permissionCodes.length === 0}>
         <div className="form-grid compact">
-          <Field label="Nombre del rol" value={roleForm.name} onChange={(value) => setRoleForm({ ...roleForm, name: value })} />
-          <Field label="Descripcion" value={roleForm.description} onChange={(value) => setRoleForm({ ...roleForm, description: value })} />
+          <Field label="Nombre del rol" value={form.name} onChange={(value) => setForm({ ...form, name: value })} />
+          <Field label="Descripcion" value={form.description} onChange={(value) => setForm({ ...form, description: value })} />
         </div>
-        <PermissionPicker groupedPermissions={groupedPermissions} selected={roleForm.permissionCodes} onToggle={onTogglePermission} />
+        <PermissionPicker groupedPermissions={groupedPermissions} selected={form.permissionCodes} onToggle={onTogglePermission} />
       </FormPanel>
 
-      <FormPanel title="Usuario empresarial" submitLabel="Crear usuario" onSubmit={onCreateUser} busy={busy}>
-        <div className="form-grid compact">
-          <Field label="Nombre completo" value={userForm.fullName} onChange={(value) => setUserForm({ ...userForm, fullName: value })} />
-          <Field label="Correo electronico" value={userForm.email} onChange={(value) => setUserForm({ ...userForm, email: value })} type="email" />
-          <Field label="Password inicial" value={userForm.password} onChange={(value) => setUserForm({ ...userForm, password: value })} type="password" />
+      <section className="tool-panel">
+        <header className="panel-header">
+          <div>
+            <h1>Roles disponibles</h1>
+            <p>Actualiza o inactiva roles de la empresa seleccionada.</p>
+          </div>
+        </header>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rol</th>
+                <th>Descripcion</th>
+                <th>Permisos</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {roles.map((role) => (
+                <tr key={role.id}>
+                  <td>{role.name}</td>
+                  <td>{role.description || 'Sin descripcion'}</td>
+                  <td>{role.permissionCodes?.length || 0}</td>
+                  <td>{role.active === false ? 'Inactivo' : 'Activo'}</td>
+                  <td>
+                    <div className="button-row">
+                      <button className="secondary" disabled={busy} onClick={() => onEdit(role)} type="button">Actualizar</button>
+                      <button className="secondary" disabled={busy} onClick={() => onToggleActive(role)} type="button">
+                        {role.active === false ? 'Activar' : 'Inactivar'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {roles.length === 0 && (
+                <tr>
+                  <td colSpan="5">No hay roles creados para esta empresa.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      </FormPanel>
+      </section>
     </div>
-  </div>;
+  );
+}
+
+export function UsersPanel({
+  users,
+  roles,
+  form,
+  setForm,
+  editingUserId,
+  onNew,
+  onEdit,
+  onSave,
+  onToggleActive,
+  busy,
+}) {
+  const activeRoles = roles.filter((role) => role.active !== false);
+  return (
+    <div className="stack identity-admin">
+      <section className="tool-panel identity-overview">
+        <header className="panel-header">
+          <div>
+            <h1>Usuarios</h1>
+            <p>Crea usuarios empresariales, asigna un rol obligatorio y administra su estado.</p>
+          </div>
+          <button className="secondary" disabled={busy} onClick={onNew} type="button">Nuevo usuario</button>
+        </header>
+        <div className="summary-strip">
+          <StatusBadge label="Usuarios" value={users.length || 0} />
+          <StatusBadge label="Activos" value={users.filter((user) => user.status !== 'INACTIVE').length || 0} />
+          <StatusBadge label="Roles activos" value={activeRoles.length || 0} />
+        </div>
+      </section>
+
+      <FormPanel title={editingUserId ? 'Actualizar usuario' : 'Crear usuario'} submitLabel={editingUserId ? 'Actualizar usuario' : 'Crear usuario'} onSubmit={onSave} busy={busy || !form.roleId || (!editingUserId && !form.password)}>
+        <div className="form-grid compact">
+          <Field label="Nombre completo" value={form.fullName} onChange={(value) => setForm({ ...form, fullName: value })} />
+          <Field label="Correo electronico" value={form.email} onChange={(value) => setForm({ ...form, email: value })} type="email" />
+          {!editingUserId && <Field label="Password inicial" value={form.password} onChange={(value) => setForm({ ...form, password: value })} type="password" />}
+          <label>
+            Rol obligatorio
+            <select value={form.roleId} onChange={(event) => setForm({ ...form, roleId: event.target.value })}>
+              <option value="">Selecciona un rol</option>
+              {activeRoles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+            </select>
+          </label>
+        </div>
+      </FormPanel>
+
+      <section className="tool-panel">
+        <header className="panel-header">
+          <div>
+            <h1>Usuarios disponibles</h1>
+            <p>Actualiza datos basicos o activa/inactiva accesos empresariales.</p>
+          </div>
+        </header>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id}>
+                  <td>{user.fullName}</td>
+                  <td>{user.email}</td>
+                  <td>{user.status === 'INACTIVE' ? 'Inactivo' : 'Activo'}</td>
+                  <td>
+                    <div className="button-row">
+                      <button className="secondary" disabled={busy} onClick={() => onEdit(user)} type="button">Actualizar</button>
+                      <button className="secondary" disabled={busy} onClick={() => onToggleActive(user)} type="button">
+                        {user.status === 'INACTIVE' ? 'Activar' : 'Inactivar'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan="4">No hay usuarios creados para esta empresa.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
 }
 
 function PermissionPicker({ groupedPermissions, selected, onToggle }) {
   const modules = Object.keys(groupedPermissions).sort();
   if (modules.length === 0) {
-    return <p className="hint">Carga el catalogo de permisos para seleccionar permisos delegables.</p>;
+    return <p className="hint">No hay permisos disponibles para asignar.</p>;
   }
-  return <div className="permission-groups">
-    {modules.map((module) => (
-      <section className="permission-group" key={module}>
-        <h2>{moduleLabel(module)}</h2>
-        <div className="permission-list">
-          {groupedPermissions[module].map((permission) => (
-            <label className="permission-option" key={permission.code}>
-              <input checked={selected.includes(permission.code)} onChange={() => onToggle(permission.code)} type="checkbox" />
-              <span>
-                <b>{permissionLabel(permission.code)}</b>
-                <small>{permissionDescription(permission)}</small>
-              </span>
-            </label>
-          ))}
-        </div>
-      </section>
-    ))}
-  </div>;
-}
-
-export function RoleAssignmentModal({ users, roles, form, setForm, searchEmail, setSearchEmail, onSearch, onSubmit, onToggleRole, onClose, busy }) {
-  const selectedUser = users.find((user) => user.id === form.userId);
-  return <ActionModal title="Asignar rol empresarial" onClose={onClose}>
-    <div className="form-grid compact modal-form-grid">
-      <Field label="Buscar por correo" value={searchEmail} onChange={setSearchEmail} type="email" />
-      <label>
-        Usuario
-        <select value={form.userId} onChange={(event) => setForm({ ...form, userId: event.target.value })}>
-          <option value="">Seleccione un usuario</option>
-          {users.map((user) => <option key={user.id} value={user.id}>{user.email} - {user.fullName}</option>)}
-        </select>
-      </label>
-      <label>
-        Rol empresarial
-        <select value={form.roleIds[0] || ''} onChange={(event) => setForm({ ...form, roleIds: event.target.value ? [event.target.value] : [] })}>
-          <option value="">Seleccione un rol</option>
-          {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
-        </select>
-      </label>
-      <Field label="Usuario ID que viaja al backend" value={selectedUser?.id || form.userId} onChange={() => {}} readOnly />
-    </div>
-    <div className="role-list compact-role-list">
-      {roles.map((role) => (
-        <label className="role-option" key={role.id}>
-          <input checked={form.roleIds.includes(role.id)} onChange={() => onToggleRole(role.id)} type="checkbox" />
-          <span><b>{role.name}</b><small>{role.description || 'Sin descripcion'} - {role.permissionCodes?.length || 0} permisos</small></span>
-        </label>
+  return (
+    <div className="permission-groups">
+      {modules.map((module) => (
+        <section className="permission-group" key={module}>
+          <h2>{moduleLabel(module)}</h2>
+          <div className="permission-list">
+            {groupedPermissions[module].map((permission) => (
+              <label className="permission-option" key={permission.code}>
+                <input checked={selected.includes(permission.code)} onChange={() => onToggle(permission.code)} type="checkbox" />
+                <span>
+                  <b>{permissionLabel(permission.code)}</b>
+                  <small>{permissionDescription(permission)}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+        </section>
       ))}
     </div>
-    <div className="modal-actions">
-      <button className="secondary" disabled={busy} onClick={onSearch} type="button">Buscar usuario</button>
-      <button className="secondary" onClick={onClose} type="button">Cancelar</button>
-      <button className="primary" disabled={busy || !form.userId || form.roleIds.length === 0} onClick={onSubmit} type="button">Asignar rol</button>
-    </div>
-  </ActionModal>;
+  );
 }

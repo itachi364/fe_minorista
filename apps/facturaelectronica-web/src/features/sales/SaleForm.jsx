@@ -79,7 +79,7 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
 
   return <section className="tool-panel">
     <header className="panel-header">
-      <h1>Venta POS</h1>
+      <h1>Ventas</h1>
       <div className="button-row">
         <button className="secondary" onClick={addItem} type="button">Agregar linea</button>
         <button className="primary" disabled={busy} onClick={onCreate} type="button">Crear venta</button>

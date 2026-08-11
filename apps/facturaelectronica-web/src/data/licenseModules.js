@@ -2,7 +2,7 @@ export const licenseModuleOptions = [
   { value: 'COMPANY', label: 'Empresa y configuracion' },
   { value: 'THIRDPARTY', label: 'Clientes y proveedores' },
   { value: 'INVENTORY', label: 'Inventario' },
-  { value: 'BILLING', label: 'Venta POS y facturacion electronica' },
+  { value: 'BILLING', label: 'Ventas y facturacion electronica' },
   { value: 'ACCOUNTING', label: 'Contabilidad' },
   { value: 'PAYROLL', label: 'Nomina' },
   { value: 'REPORTS', label: 'Reportes' },
@@ -16,12 +16,13 @@ export const stepLicenseModules = {
   Terceros: 'THIRDPARTY',
   Inventario: 'INVENTORY',
   Fiscal: 'BILLING',
-  'Venta POS': 'BILLING',
+  Ventas: 'BILLING',
   Nomina: 'PAYROLL',
   Reportes: 'REPORTS',
   Catalogos: 'CATALOGS',
   Logs: 'AUDIT',
-  'Usuarios y roles': 'USERS',
+  Usuarios: 'USERS',
+  Roles: 'USERS',
 };
 
 export function licenseModuleLabel(moduleCode) {

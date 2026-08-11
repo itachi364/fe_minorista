@@ -31,6 +31,18 @@ public record UserAccount(
         return status == UserStatus.ACTIVE;
     }
 
+    public UserAccount update(String newEmail, String newFullName, Instant now) {
+        return new UserAccount(id, newEmail, newFullName, passwordHash, status, createdAt, now);
+    }
+
+    public UserAccount activate(Instant now) {
+        return new UserAccount(id, email, fullName, passwordHash, UserStatus.ACTIVE, createdAt, now);
+    }
+
+    public UserAccount deactivate(Instant now) {
+        return new UserAccount(id, email, fullName, passwordHash, UserStatus.INACTIVE, createdAt, now);
+    }
+
     private static String required(String value, String field) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(field + " is required");

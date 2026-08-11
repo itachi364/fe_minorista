@@ -29,6 +29,7 @@ import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.Membership
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.MembershipResponse;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.MembershipRolesRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.PermissionCatalogResponse;
+import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.UpdateUserRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.UserResponse;
 
 import jakarta.validation.Valid;
@@ -160,6 +161,35 @@ public class IdentityController {
     public CompanyRoleResponse deactivateRole(@PathVariable UUID companyId, @PathVariable UUID roleId,
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
         return IdentityRestMapper.toResponse(manageIdentityUseCase.deactivateCompanyRole(companyId, roleId,
+                authorizationHeader));
+    }
+
+    @PutMapping("/companies/{companyId}/roles/{roleId}/activate")
+    public CompanyRoleResponse activateRole(@PathVariable UUID companyId, @PathVariable UUID roleId,
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
+        return IdentityRestMapper.toResponse(manageIdentityUseCase.activateCompanyRole(companyId, roleId,
+                authorizationHeader));
+    }
+
+    @PutMapping("/companies/{companyId}/users/{userId}")
+    public UserResponse updateCompanyUser(@PathVariable UUID companyId, @PathVariable UUID userId,
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader,
+            @Valid @RequestBody UpdateUserRequest request) {
+        return IdentityRestMapper.toResponse(manageIdentityUseCase.updateCompanyUser(
+                IdentityRestMapper.toCommand(companyId, userId, request, authorizationHeader)));
+    }
+
+    @PutMapping("/companies/{companyId}/users/{userId}/activate")
+    public UserResponse activateCompanyUser(@PathVariable UUID companyId, @PathVariable UUID userId,
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
+        return IdentityRestMapper.toResponse(manageIdentityUseCase.activateCompanyUser(companyId, userId,
+                authorizationHeader));
+    }
+
+    @PutMapping("/companies/{companyId}/users/{userId}/deactivate")
+    public UserResponse deactivateCompanyUser(@PathVariable UUID companyId, @PathVariable UUID userId,
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
+        return IdentityRestMapper.toResponse(manageIdentityUseCase.deactivateCompanyUser(companyId, userId,
                 authorizationHeader));
     }
 

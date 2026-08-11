@@ -41,6 +41,11 @@ public class UserAccountPersistenceAdapter implements UserAccountRepositoryPort 
     }
 
     @Override
+    public boolean existsByEmailAndIdNot(String email, UUID id) {
+        return repository.existsByEmailAndIdNot(email, id);
+    }
+
+    @Override
     public List<UserAccount> findByCompanyIdAndEmailContaining(UUID companyId, String email) {
         String normalized = email == null || email.isBlank() ? null : email.trim().toLowerCase(java.util.Locale.ROOT);
         return repository.findByCompanyIdAndEmailContaining(companyId, normalized).stream()

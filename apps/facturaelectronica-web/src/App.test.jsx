@@ -151,6 +151,8 @@ test('login with active license hides login and shows operational shell', async 
   expect(screen.getByDisplayValue('Empresa Demo SAS (900123456)')).toBeInTheDocument();
   expect(screen.queryByDisplayValue(COMPANY_ID)).not.toBeInTheDocument();
   expect(screen.getByText('ACTIVA')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Ventas' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Empresa' }));
   expect(screen.getByLabelText('Razon social')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Actualizar empresa' })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Crear empresa' })).not.toBeInTheDocument();
@@ -199,7 +201,7 @@ test('company user sees only modules allowed by effective permissions', async ()
   await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
   expect(screen.getByRole('button', { name: 'Reportes' })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Empresa' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Usuarios y roles' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Usuarios' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Consultar' })).toBeInTheDocument();
 });
 
@@ -210,10 +212,10 @@ test('sales user can access POS without fiscal advanced permission', async () =>
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
 
   await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
-  expect(screen.getByRole('button', { name: 'Venta POS' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Ventas' })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Fiscal' })).not.toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole('button', { name: 'Venta POS' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
   expect(screen.getByRole('button', { name: 'Crear venta' })).toBeInTheDocument();
 });
 
@@ -224,6 +226,8 @@ test('company owner updates active company without create company action', async
 
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: 'Empresa' }));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Actualizar empresa' })).toBeInTheDocument());
 
   expect(screen.queryByRole('button', { name: 'Crear empresa' })).not.toBeInTheDocument();
@@ -293,10 +297,11 @@ test('root login shows global panel without company or license validation', asyn
   expect(screen.getByText('Root Platform User - root@example.com')).toBeInTheDocument();
   expect(screen.getByText('PLATAFORMA')).toBeInTheDocument();
   expect(screen.getByText('ROOT')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Empresa' }));
   expect(screen.getByLabelText('Razon social')).toBeInTheDocument();
-  expect(screen.getByText('Venta POS')).toBeInTheDocument();
+  expect(screen.getByText('Ventas')).toBeInTheDocument();
   expect(screen.getByText('Administrador inicial')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Usuarios y roles' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Usuarios' })).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(2);
   expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/companies', expect.objectContaining({
     headers: expect.objectContaining({ Authorization: 'Bearer token-1' }),
@@ -329,7 +334,7 @@ test('root assigns configurable company license', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Licencias' }));
   fireEvent.change(screen.getByLabelText('Empresa contratante'), { target: { value: COMPANY_ID } });
   fireEvent.click(screen.getByLabelText('Empresa y configuracion'));
-  fireEvent.click(screen.getByLabelText('Venta POS y facturacion electronica'));
+  fireEvent.click(screen.getByLabelText('Ventas y facturacion electronica'));
   fireEvent.click(screen.getByLabelText('Usuarios, roles y permisos'));
   fireEvent.click(screen.getByRole('button', { name: 'Guardar licencia' }));
 
@@ -376,6 +381,7 @@ test('root creates company and initial administrator', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
   await waitFor(() => expect(screen.getByText('Panel global')).toBeInTheDocument());
 
+  fireEvent.click(screen.getByRole('button', { name: 'Empresa' }));
   fillCompanyForm();
   fireEvent.click(screen.getByRole('button', { name: 'Crear empresa' }));
   await waitFor(() => expect(screen.getAllByText('Empresa Demo SAS (900123456)').length).toBeGreaterThan(0));
@@ -442,20 +448,22 @@ test('root manages company roles users and assignments', async () => {
     .mockResolvedValueOnce(jsonResponse(permissionCatalog))
     .mockResolvedValueOnce(jsonResponse([]))
     .mockResolvedValueOnce(jsonResponse(createdRole))
+    .mockResolvedValueOnce(jsonResponse([]))
     .mockResolvedValueOnce(jsonResponse(createdUser))
-    .mockResolvedValueOnce(jsonResponse(assignedAccess));
+    .mockResolvedValueOnce(jsonResponse(assignedAccess))
+    .mockResolvedValueOnce(jsonResponse([createdUser]));
   vi.stubGlobal('fetch', fetchMock);
 
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
   await waitFor(() => expect(screen.getByText('Panel global')).toBeInTheDocument());
 
+  fireEvent.click(screen.getByRole('button', { name: 'Empresa' }));
   fillCompanyForm();
   fireEvent.click(screen.getByRole('button', { name: 'Crear empresa' }));
   await waitFor(() => expect(screen.getAllByText('Empresa Demo SAS (900123456)').length).toBeGreaterThan(0));
 
-  fireEvent.click(screen.getByRole('button', { name: 'Usuarios y roles' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Cargar permisos y roles' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Roles' }));
   await waitFor(() => expect(screen.getByText('Registrar ventas POS')).toBeInTheDocument());
   expect(screen.queryByText('Gestionar empresas de la plataforma')).not.toBeInTheDocument();
 
@@ -463,15 +471,12 @@ test('root manages company roles users and assignments', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Crear rol' }));
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
 
+  fireEvent.click(screen.getByRole('button', { name: 'Usuarios' }));
+  await waitFor(() => expect(screen.getByText('Usuarios disponibles')).toBeInTheDocument());
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(7));
   fillManagedUserForm();
   fireEvent.click(screen.getByRole('button', { name: 'Crear usuario' }));
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(7));
-
-  fireEvent.click(screen.getByRole('button', { name: 'Asignar rol' }));
-  await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
-  const assignButtons = screen.getAllByRole('button', { name: 'Asignar rol' });
-  fireEvent.click(assignButtons[assignButtons.length - 1]);
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(8));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(10));
 
   expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/v1/platform/permissions', expect.objectContaining({
     headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
@@ -484,12 +489,15 @@ test('root manages company roles users and assignments', async () => {
     description: 'Puede registrar ventas POS y consultar inventario.',
     permissionCodes: ['SALES_CREATE', 'INVENTORY_VIEW'],
   });
-  expect(JSON.parse(fetchMock.mock.calls[6][1].body)).toEqual({
+  expect(fetchMock).toHaveBeenNthCalledWith(7, `/api/v1/companies/${COMPANY_ID}/users`, expect.objectContaining({
+    headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(JSON.parse(fetchMock.mock.calls[7][1].body)).toEqual({
     email: 'vendedor@example.com',
     fullName: 'Usuario Vendedor',
     password: 'VendedorDemo#2026!',
   });
-  expect(fetchMock).toHaveBeenNthCalledWith(8, `/api/v1/companies/${COMPANY_ID}/users/${createdUser.id}/role-assignments`, expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(9, `/api/v1/companies/${COMPANY_ID}/users/${createdUser.id}/role-assignments`, expect.objectContaining({
     method: 'POST',
     body: JSON.stringify({ roleIds: [createdRole.id] }),
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
@@ -560,7 +568,7 @@ test('creates POS sale with controlled virtual wallet payment method', async () 
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Venta POS' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
   fireEvent.change(screen.getByLabelText('Metodo de pago'), { target: { value: 'VIRTUAL_WALLET' } });
   expect(screen.getByLabelText('Billetera virtual')).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Billetera virtual'), { target: { value: 'NEQUI' } });
@@ -591,7 +599,7 @@ test('searches customer by document and sends selected customer id in POS sale',
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Venta POS' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
   fireEvent.change(screen.getByLabelText('Cliente por numero de documento'), { target: { value: '900123456' } });
   await waitFor(() => expect(screen.getByText('Cliente seleccionado: Cliente Demo SAS (900123456)')).toBeInTheDocument());
   fireEvent.click(screen.getByRole('button', { name: 'Crear venta' }));
@@ -668,6 +676,7 @@ function fillManagedUserForm() {
   fireEvent.change(screen.getByLabelText('Nombre completo'), { target: { value: 'Usuario Vendedor' } });
   fireEvent.change(screen.getByLabelText('Correo electronico'), { target: { value: 'vendedor@example.com' } });
   fireEvent.change(screen.getByLabelText('Password inicial'), { target: { value: 'VendedorDemo#2026!' } });
+  fireEvent.change(screen.getByLabelText('Rol obligatorio'), { target: { value: '66666666-6666-6666-6666-666666666666' } });
 }
 
 function fillSimpleNaturalCustomerForm() {

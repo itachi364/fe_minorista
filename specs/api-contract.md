@@ -195,9 +195,14 @@ Roles y usuarios por empresa:
 - `POST /api/v1/companies/{companyId}/roles`
 - `GET /api/v1/companies/{companyId}/roles/{roleId}`
 - `PUT /api/v1/companies/{companyId}/roles/{roleId}`
+- `PUT /api/v1/companies/{companyId}/roles/{roleId}/activate`
 - `PUT /api/v1/companies/{companyId}/roles/{roleId}/deactivate`
 - `GET /api/v1/companies/{companyId}/permissions/catalog`
 - `POST /api/v1/companies/{companyId}/users`
+- `GET /api/v1/companies/{companyId}/users?email=`
+- `PUT /api/v1/companies/{companyId}/users/{userId}`
+- `PUT /api/v1/companies/{companyId}/users/{userId}/activate`
+- `PUT /api/v1/companies/{companyId}/users/{userId}/deactivate`
 - `POST /api/v1/companies/{companyId}/users/{userId}/role-assignments`
 - `DELETE /api/v1/companies/{companyId}/users/{userId}/role-assignments/{roleId}`
 - `GET /api/v1/companies/{companyId}/users/{userId}/effective-permissions`
@@ -221,6 +226,16 @@ Reglas:
 - El backend rechaza cualquier rol empresarial que contenga permisos `GLOBAL_*`.
 - El backend rechaza delegar permisos iguales, superiores o no poseidos por el actor.
 - La licencia empresarial se valida al crear usuarios o roles empresariales cuando la politica comercial lo requiera; `ROOT` no consume licencia para entrar al panel global.
+
+## Frontend navegacion operativa
+
+- Pantalla inicial autenticada: `Ventas`.
+- Menus principales:
+  - `Ventas`.
+  - `Reportes`.
+  - `Contabilidad`: agrupa `Terceros`, `Inventario`, `Fiscal` y `Nomina`.
+  - `Configuracion`: agrupa `Empresa`, `Licencias`, `Catalogos`, `Logs`, `Usuarios` y `Roles`.
+- Los submenus conservan validacion por licencia y permisos efectivos. El frontend puede ocultar opciones, pero la autorizacion real permanece en BFF/backend.
 
 ## catalog-service
 

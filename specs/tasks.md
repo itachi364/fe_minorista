@@ -3596,3 +3596,56 @@
     - `npm run build`: OK.
     - `npm audit fix`: OK, 0 vulnerabilidades reportadas despues del ajuste de `nanoid` transitivo.
     - `docker compose up -d --build` + `docker compose restart`: OK; servicios con healthcheck en estado `healthy`.
+
+- [x] TASK-123: Redisenar navegacion principal con submenus
+  - Estado: DONE
+  - Requisitos: RF-058.
+  - Acceptance criteria:
+    - `Ventas` es el modulo inicial despues del login cuando el usuario tiene permiso/licencia.
+    - `Configuracion` agrupa Empresa, Licencias, Catalogos, Logs, Usuarios y Roles.
+    - `Contabilidad` agrupa Terceros, Inventario, Fiscal y Nomina.
+    - Reportes queda como menu principal.
+    - Cada submenu respeta licencia y RBAC efectivo.
+
+- [x] TASK-124: Crear pantalla exclusiva de Roles
+  - Estado: DONE
+  - Requisitos: RF-059.
+  - Acceptance criteria:
+    - Al entrar a `Roles` se cargan permisos y roles sin boton manual.
+    - Se puede crear rol con permisos seleccionados y se refleja inmediatamente en la tabla.
+    - Se puede editar rol existente.
+    - Se puede activar/inactivar rol y el estado se refleja en tabla.
+
+- [x] TASK-125: Crear pantalla exclusiva de Usuarios
+  - Estado: DONE
+  - Requisitos: RF-060.
+  - Acceptance criteria:
+    - Al entrar a `Usuarios` se cargan usuarios y roles sin boton manual.
+    - Crear usuario exige seleccionar rol inicial y ejecuta creacion + asignacion.
+    - La tabla muestra usuarios de la empresa con estado y rol asignado cuando aplique.
+    - Los errores del flujo no ocultan el detalle funcional.
+
+- [x] TASK-126: Reducir autocierre de modales exitosos
+  - Estado: DONE
+  - Requisitos: RF-061.
+  - Acceptance criteria:
+    - Modal de exito se cierra en maximo 1 segundo.
+    - Modal de error queda abierto hasta cierre manual.
+    - El temporizador se limpia al desmontar o cambiar de estado.
+
+- [x] TASK-127: Endurecer contratos backend de roles
+  - Estado: DONE
+  - Requisitos: RF-059.
+  - Acceptance criteria:
+    - `identity-service` expone actualizar, activar e inactivar rol empresarial.
+    - La delegacion de permisos sigue impidiendo permisos superiores/no poseidos.
+    - Tests de use case/controller cubren actualizacion y activacion/inactivacion.
+
+- [x] TASK-128: Actualizar e inactivar usuarios empresariales
+  - Estado: DONE
+  - Requisitos: RF-060.
+  - Acceptance criteria:
+    - `identity-service` permite actualizar nombre/correo de usuario asociado a una empresa.
+    - `identity-service` permite activar/inactivar usuario asociado a una empresa.
+    - Usuario inactivo no puede iniciar sesion.
+    - UI permite editar y activar/inactivar usuarios desde `Usuarios`.

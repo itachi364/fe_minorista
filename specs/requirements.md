@@ -160,6 +160,10 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RF-055: El sistema debe personalizar los mensajes de modales segun contexto; login por credenciales invalidas debe mostrar mensaje especifico y errores 5xx deben mostrar fallo interno generico.
 - RF-056: El permiso empresarial `SALES_CREATE` debe habilitar el flujo completo de venta POS: registrar venta, confirmar POS y emitir el documento electronico asociado hacia DIAN/proveedor mock. El permiso `FISCAL_DOCUMENTS_ISSUE` queda reservado para operaciones fiscales avanzadas como configuracion de emisor/resoluciones, notas, ajustes, gestion manual y reenvios.
 - RF-057: Las traducciones visibles del frontend deben gestionarse mediante una libreria de internacionalizacion y recursos externos. Los codigos internos pueden permanecer en ingles, pero la UI debe renderizar textos en espanol sin diccionarios manuales dispersos en componentes.
+- RF-058: La navegacion principal debe priorizar `Ventas` como modulo inicial y agrupar configuracion y procesos administrativos en submenus: `Configuracion` y `Contabilidad`.
+- RF-059: La administracion de roles debe tener una pantalla exclusiva con formulario de permisos, tabla de roles por empresa, actualizacion y activacion/inactivacion.
+- RF-060: La administracion de usuarios debe tener una pantalla exclusiva con creacion de usuario y asignacion obligatoria de rol en el mismo flujo, listado por empresa, actualizacion y activacion/inactivacion.
+- RF-061: Las acciones exitosas deben cerrar el modal de progreso/exito en maximo 1 segundo; los errores deben permanecer visibles hasta cierre manual.
 
 ## Requisitos no funcionales
 

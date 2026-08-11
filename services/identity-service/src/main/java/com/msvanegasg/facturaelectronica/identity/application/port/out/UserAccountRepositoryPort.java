@@ -19,4 +19,6 @@ public interface UserAccountRepositoryPort {
     long countByCompanyId(UUID companyId);
 
     boolean existsByEmail(String email);
+
+    boolean existsByEmailAndIdNot(String email, UUID id);
 }

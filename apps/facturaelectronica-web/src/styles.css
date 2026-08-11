@@ -140,6 +140,24 @@ nav {
   gap: 6px;
 }
 
+.nav-group {
+  display: grid;
+  gap: 5px;
+}
+
+.nav-group + .nav-group {
+  margin-top: 10px;
+}
+
+.nav-group-label {
+  padding: 8px 10px 3px;
+  color: #9cb4c4;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
 .nav-item {
   width: 100%;
   min-height: 40px;
@@ -151,6 +169,12 @@ nav {
   text-align: left;
   cursor: pointer;
   transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.nav-item.child {
+  min-height: 36px;
+  padding-left: 20px;
+  color: #c7d8e4;
 }
 
 .nav-item:hover {

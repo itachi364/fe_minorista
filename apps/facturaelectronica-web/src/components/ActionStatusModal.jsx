@@ -5,7 +5,7 @@ export function ActionStatusModal({ state, onClose }) {
     if (state?.status !== 'success' || !state.autoClose) {
       return undefined;
     }
-    const timeout = window.setTimeout(onClose, 1200);
+    const timeout = window.setTimeout(onClose, 800);
     return () => window.clearTimeout(timeout);
   }, [state, onClose]);
 

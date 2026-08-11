@@ -12,7 +12,7 @@
     "platform": "Plataforma",
     "reports": "Reportes",
     "sales": "Ventas",
-    "users": "Usuarios y roles"
+    "users": "Usuarios"
   },
   "permissions": {
     "ACCOUNTING_MANAGE": {

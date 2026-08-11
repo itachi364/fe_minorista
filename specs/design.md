@@ -1115,3 +1115,21 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 - Topic consulted: setup with `useTranslation` hook and external translation resources in React.
 - Relevant finding: La libreria documenta integracion con i18next, recursos externos y uso de `t()`/hooks para traducir componentes React.
 - Decision impact: La SPA inicializa i18n al arrancar y resuelve textos de permisos/modulos desde recursos versionados en `src/i18n/locales/es/translation.json`.
+
+## TASK-123 a TASK-128 navegacion, roles, usuarios y modales
+
+### Decisiones
+
+- La SPA deja de usar una lista plana de modulos. `Ventas` queda como pantalla inicial y los modulos administrativos se agrupan en `Configuracion` y `Contabilidad`.
+- `Roles` y `Usuarios` se separan en pantallas propias para evitar el acoplamiento entre cargar permisos, crear roles y asignar usuarios.
+- La pantalla `Roles` carga permisos y roles al entrar, permite crear/actualizar roles con permisos disponibles y activar/inactivar roles desde una tabla.
+- La pantalla `Usuarios` carga roles y usuarios al entrar, crea usuarios asignando un rol obligatorio en el mismo flujo y permite actualizar/activar/inactivar usuarios de la empresa.
+- Los usuarios inactivos no deben operar: `identity-service` bloquea login de usuario inactivo y los listados/acciones empresariales exponen su estado.
+- Los modales de exito se cierran automaticamente con un timeout maximo de 1 segundo; los errores quedan esperando accion del usuario.
+
+### Context7 evidence
+
+- Library/tool: React (`/reactjs/react.dev`).
+- Topic consulted: controlled forms, list rendering, conditional UI and timer cleanup.
+- Relevant finding: React recomienda formularios controlados, listas con `map()` y `key`, UI por estado y efectos/temporizadores con cleanup.
+- Decision impact: Las pantallas `Roles` y `Usuarios` usan estado controlado, render de tablas derivado de arrays y `ActionStatusModal` conserva cleanup del temporizador.

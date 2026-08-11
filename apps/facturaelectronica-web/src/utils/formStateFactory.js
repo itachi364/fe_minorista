@@ -33,15 +33,11 @@ export function createLicenseForm() {
 }
 
 export function createManagedUserForm() {
-  return { fullName: '', email: '', password: '' };
+  return { fullName: '', email: '', password: '', roleId: '' };
 }
 
 export function createCompanyRoleForm() {
   return { name: '', description: '', permissionCodes: [] };
-}
-
-export function createRoleAssignmentForm() {
-  return { userId: '', roleIds: [] };
 }
 
 export function createCatalogItemForm() {

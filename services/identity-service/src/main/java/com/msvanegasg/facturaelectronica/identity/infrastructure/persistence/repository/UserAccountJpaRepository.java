@@ -15,6 +15,8 @@ public interface UserAccountJpaRepository extends JpaRepository<UserAccountJpaEn
     Optional<UserAccountJpaEntity> findByEmail(String email);
 
     boolean existsByEmail(String email);
+
+    boolean existsByEmailAndIdNot(String email, UUID id);
     @Query("""
             select distinct u
             from UserAccountJpaEntity u

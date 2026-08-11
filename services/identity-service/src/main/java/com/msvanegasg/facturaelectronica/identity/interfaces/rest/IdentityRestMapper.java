@@ -15,6 +15,7 @@ import com.msvanegasg.facturaelectronica.identity.application.dto.PermissionCata
 import com.msvanegasg.facturaelectronica.identity.application.dto.RevokeCompanyRoleCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.UpdateCompanyRoleCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.UpdateMembershipRolesCommand;
+import com.msvanegasg.facturaelectronica.identity.application.dto.UpdateUserCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.UserResult;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CompanyAccessResponse;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CompanyRoleAssignmentsRequest;
@@ -27,6 +28,7 @@ import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.Membership
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.MembershipResponse;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.MembershipRolesRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.PermissionCatalogResponse;
+import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.UpdateUserRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.UserResponse;
 
 public final class IdentityRestMapper {
@@ -66,6 +68,11 @@ public final class IdentityRestMapper {
     public static AssignCompanyRolesCommand toCommand(UUID companyId, UUID userId,
             CompanyRoleAssignmentsRequest request, String authorizationHeader) {
         return new AssignCompanyRolesCommand(companyId, userId, request.roleIds(), authorizationHeader);
+    }
+
+    public static UpdateUserCommand toCommand(UUID companyId, UUID userId, UpdateUserRequest request,
+            String authorizationHeader) {
+        return new UpdateUserCommand(companyId, userId, request.email(), request.fullName(), authorizationHeader);
     }
 
     public static RevokeCompanyRoleCommand toRevokeCommand(UUID companyId, UUID userId, UUID roleId,

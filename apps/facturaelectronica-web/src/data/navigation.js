@@ -1,1 +1,8 @@
-export const steps = ['Empresa', 'Licencias', 'Terceros', 'Inventario', 'Fiscal', 'Venta POS', 'Nomina', 'Reportes', 'Catalogos', 'Logs', 'Usuarios y roles'];
+export const navigationGroups = [
+  { label: 'Ventas', items: ['Ventas'] },
+  { label: 'Reportes', items: ['Reportes'] },
+  { label: 'Contabilidad', items: ['Terceros', 'Inventario', 'Fiscal', 'Nomina'] },
+  { label: 'Configuracion', items: ['Empresa', 'Licencias', 'Catalogos', 'Logs', 'Usuarios', 'Roles'] },
+];
+
+export const steps = navigationGroups.flatMap((group) => group.items);

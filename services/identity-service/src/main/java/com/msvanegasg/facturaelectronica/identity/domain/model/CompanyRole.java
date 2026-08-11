@@ -42,6 +42,11 @@ public record CompanyRole(
                 createdAt, now);
     }
 
+    public CompanyRole activate(Instant now) {
+        return new CompanyRole(id, companyId, name, description, permissionCodes, systemSeed, true, createdBy,
+                createdAt, now);
+    }
+
     private static Set<PermissionCode> normalizeCompanyPermissions(Set<PermissionCode> permissions) {
         if (permissions == null || permissions.isEmpty()) {
             throw new IllegalArgumentException("permissionCodes are required");

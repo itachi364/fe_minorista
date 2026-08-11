@@ -24,6 +24,7 @@ import com.msvanegasg.facturaelectronica.identity.application.dto.PermissionCata
 import com.msvanegasg.facturaelectronica.identity.application.dto.RevokeCompanyRoleCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.UpdateCompanyRoleCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.UpdateMembershipRolesCommand;
+import com.msvanegasg.facturaelectronica.identity.application.dto.UpdateUserCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.UserResult;
 import com.msvanegasg.facturaelectronica.identity.application.port.in.ManageIdentityUseCase;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.AccessAuditRepositoryPort;
@@ -318,6 +319,65 @@ public class IdentityManagementService implements ManageIdentityUseCase {
     }
 
     @Override
+    public CompanyRoleResult activateCompanyRole(UUID companyId, UUID roleId, String authorizationHeader) {
+        UserAccount actor = authenticate(authorizationHeader);
+        CompanyRole existing = findRole(companyId, roleId);
+        if (!isRoot(actor)) {
+            ensureHasPermission(companyId, actor.id(), PermissionCode.COMPANY_ROLES_MANAGE, "ACTIVATE_ROLE");
+        }
+        CompanyRole saved = companyRoleRepository.save(existing.activate(clock.now()));
+        audit(companyId, actor.id(), "ACTIVATE_ROLE", "COMPANY_ROLE", saved.id().toString(),
+                AccessAuditResult.SUCCESS, null);
+        return CompanyRoleResult.from(saved);
+    }
+
+    @Override
+    public UserResult updateCompanyUser(UpdateUserCommand command) {
+        Objects.requireNonNull(command, "command is required");
+        UserAccount actor = authenticate(command.authorizationHeader());
+        ensureCanManageCompanyUsers(command.companyId(), actor, "UPDATE_COMPANY_USER");
+        UserAccount target = findCompanyUser(command.companyId(), command.userId());
+        String email = normalizeEmail(command.email());
+        if (userRepository.existsByEmailAndIdNot(email, target.id())) {
+            audit(command.companyId(), actor.id(), "UPDATE_COMPANY_USER", "USER", target.id().toString(),
+                    AccessAuditResult.FAILURE, "DUPLICATE_EMAIL");
+            throw new UserAlreadyExistsException(email);
+        }
+        UserAccount saved = userRepository.save(target.update(email, required(command.fullName(), "fullName"),
+                clock.now()));
+        audit(command.companyId(), actor.id(), "UPDATE_COMPANY_USER", "USER", saved.id().toString(),
+                AccessAuditResult.SUCCESS, null);
+        return UserResult.from(saved);
+    }
+
+    @Override
+    public UserResult activateCompanyUser(UUID companyId, UUID userId, String authorizationHeader) {
+        UserAccount actor = authenticate(authorizationHeader);
+        ensureCanManageCompanyUsers(companyId, actor, "ACTIVATE_COMPANY_USER");
+        UserAccount target = findCompanyUser(companyId, userId);
+        UserAccount saved = userRepository.save(target.activate(clock.now()));
+        audit(companyId, actor.id(), "ACTIVATE_COMPANY_USER", "USER", saved.id().toString(),
+                AccessAuditResult.SUCCESS, null);
+        return UserResult.from(saved);
+    }
+
+    @Override
+    public UserResult deactivateCompanyUser(UUID companyId, UUID userId, String authorizationHeader) {
+        UserAccount actor = authenticate(authorizationHeader);
+        ensureCanManageCompanyUsers(companyId, actor, "DEACTIVATE_COMPANY_USER");
+        UserAccount target = findCompanyUser(companyId, userId);
+        if (actor.id().equals(target.id())) {
+            audit(companyId, actor.id(), "DEACTIVATE_COMPANY_USER", "USER", target.id().toString(),
+                    AccessAuditResult.FAILURE, "SELF_DEACTIVATION_NOT_ALLOWED");
+            throw new AccessDeniedException(companyId, PermissionCode.COMPANY_USERS_MANAGE);
+        }
+        UserAccount saved = userRepository.save(target.deactivate(clock.now()));
+        audit(companyId, actor.id(), "DEACTIVATE_COMPANY_USER", "USER", saved.id().toString(),
+                AccessAuditResult.SUCCESS, null);
+        return UserResult.from(saved);
+    }
+
+    @Override
     public CompanyAccessResult assignCompanyRoles(AssignCompanyRolesCommand command) {
         Objects.requireNonNull(command, "command is required");
         if (command.roleIds() == null || command.roleIds().isEmpty()) {
@@ -401,6 +461,29 @@ public class IdentityManagementService implements ManageIdentityUseCase {
             throw new AccessDeniedException(companyId, PermissionCode.COMPANY_USERS_MANAGE);
         }
     }
+
+    private void ensureCanManageCompanyUsers(UUID companyId, UserAccount actor, String action) {
+        if (isRoot(actor)) {
+            return;
+        }
+        Set<PermissionCode> permissions = effectivePermissions(companyId, actor.id());
+        if (!permissions.contains(PermissionCode.COMPANY_USERS_MANAGE)
+                && !permissions.contains(PermissionCode.USERS_MANAGE)) {
+            audit(companyId, actor.id(), action, "USER", companyId.toString(), AccessAuditResult.FAILURE,
+                    "FORBIDDEN");
+            throw new AccessDeniedException(companyId, PermissionCode.COMPANY_USERS_MANAGE);
+        }
+    }
+
+    private UserAccount findCompanyUser(UUID companyId, UUID userId) {
+        UserAccount user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        if (!hasCompanyAccess(companyId, user.id())) {
+            throw new UserNotFoundException(userId);
+        }
+        return user;
+    }
+
     private void ensureCanViewCompany(UUID companyId, String authorizationHeader) {
         UserAccount actor = authenticate(authorizationHeader);
         if (isRoot(actor)) {

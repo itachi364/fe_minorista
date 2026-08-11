@@ -4,12 +4,13 @@ export const stepPermissionRules = {
   Terceros: ['COMPANY_SETTINGS_MANAGE'],
   Inventario: ['INVENTORY_VIEW', 'INVENTORY_MANAGE'],
   Fiscal: ['FISCAL_DOCUMENTS_ISSUE', 'COMPANY_SETTINGS_MANAGE'],
-  'Venta POS': ['SALES_CREATE'],
+  Ventas: ['SALES_CREATE'],
   Nomina: ['PAYROLL_VIEW', 'PAYROLL_MANAGE'],
   Reportes: ['REPORTS_VIEW', 'ACCOUNTING_VIEW'],
   Catalogos: ['COMPANY_CATALOGS_MANAGE', 'COMPANY_SETTINGS_MANAGE'],
   Logs: ['AUDIT_VIEW', 'GLOBAL_AUDIT_VIEW'],
-  'Usuarios y roles': ['COMPANY_USERS_MANAGE', 'COMPANY_ROLES_MANAGE', 'USERS_MANAGE', 'ROLES_MANAGE'],
+  Usuarios: ['COMPANY_USERS_MANAGE', 'USERS_MANAGE'],
+  Roles: ['COMPANY_ROLES_MANAGE', 'ROLES_MANAGE'],
 };
 
 export function hasAnyPermission(access, permissions) {

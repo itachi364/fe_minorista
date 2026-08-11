@@ -16,6 +16,7 @@ import com.msvanegasg.facturaelectronica.identity.application.dto.PermissionCata
 import com.msvanegasg.facturaelectronica.identity.application.dto.RevokeCompanyRoleCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.UpdateCompanyRoleCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.UpdateMembershipRolesCommand;
+import com.msvanegasg.facturaelectronica.identity.application.dto.UpdateUserCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.UserResult;
 
 public interface ManageIdentityUseCase {
@@ -47,6 +48,14 @@ public interface ManageIdentityUseCase {
     CompanyRoleResult updateCompanyRole(UpdateCompanyRoleCommand command);
 
     CompanyRoleResult deactivateCompanyRole(UUID companyId, UUID roleId, String authorizationHeader);
+
+    CompanyRoleResult activateCompanyRole(UUID companyId, UUID roleId, String authorizationHeader);
+
+    UserResult updateCompanyUser(UpdateUserCommand command);
+
+    UserResult activateCompanyUser(UUID companyId, UUID userId, String authorizationHeader);
+
+    UserResult deactivateCompanyUser(UUID companyId, UUID userId, String authorizationHeader);
 
     CompanyAccessResult assignCompanyRoles(AssignCompanyRolesCommand command);
 

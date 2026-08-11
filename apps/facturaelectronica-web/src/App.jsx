@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createIdempotencyKey, requestJson } from './api/client.js';
 import { ActionStatusModal } from './components/ActionStatusModal.jsx';
 import { Modal } from './components/Modal.jsx';
-import { steps } from './data/navigation.js';
+import { navigationGroups, steps } from './data/navigation.js';
 import {
   createCatalogItemForm,
   createCompanyAdminForm,
@@ -18,7 +18,6 @@ import {
   createProductForm,
   createReportsForm,
   createResolutionForm,
-  createRoleAssignmentForm,
   createSaleForm,
   createServiceConsumptionState,
   createThirdPartyForm,
@@ -31,7 +30,7 @@ import { CompanyForm } from './features/company/CompanyForm.jsx';
 import { CompanySessionPanel } from './features/company/CompanySessionPanel.jsx';
 import { IssuerForm } from './features/company/IssuerForm.jsx';
 import { ResolutionForm } from './features/fiscal/ResolutionForm.jsx';
-import { IdentityAdminPanel, RoleAssignmentModal } from './features/identity/IdentityAdminPanel.jsx';
+import { RolesPanel, UsersPanel } from './features/identity/IdentityAdminPanel.jsx';
 import { ProductForm } from './features/inventory/ProductForm.jsx';
 import { PayrollPanel } from './features/payroll/PayrollPanel.jsx';
 import { LicenseAdminPanel } from './features/licenses/LicenseAdminPanel.jsx';
@@ -56,7 +55,7 @@ import { clearStoredSession, loadStoredSession, saveStoredSession, SESSION_TIMEO
 import { stepLicenseModules } from './data/licenseModules.js';
 export default function App() {
   const [storedSnapshot] = useState(() => loadStoredSession());
-  const [selectedStep, setSelectedStep] = useState(steps[0]);
+  const [selectedStep, setSelectedStep] = useState('Ventas');
   const [loginForm, setLoginForm] = useState(createLoginForm);
   const [session, setSession] = useState(storedSnapshot?.session || null);
   const [companyAccesses, setCompanyAccesses] = useState(storedSnapshot?.companyAccesses || []);
@@ -73,7 +72,8 @@ export default function App() {
   const [companyAdminForm, setCompanyAdminForm] = useState(createCompanyAdminForm);
   const [managedUserForm, setManagedUserForm] = useState(createManagedUserForm);
   const [companyRoleForm, setCompanyRoleForm] = useState(createCompanyRoleForm);
-  const [roleAssignmentForm, setRoleAssignmentForm] = useState(createRoleAssignmentForm);
+  const [editingUserId, setEditingUserId] = useState('');
+  const [editingRoleId, setEditingRoleId] = useState('');
   const [permissionCatalog, setPermissionCatalog] = useState([]);
   const [companyRoles, setCompanyRoles] = useState([]);
   const [managedUsers, setManagedUsers] = useState([]);
@@ -82,8 +82,6 @@ export default function App() {
   const [catalogItems, setCatalogItems] = useState([]);
   const [catalogItemForm, setCatalogItemForm] = useState(createCatalogItemForm);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
-  const [roleAssignmentModalOpen, setRoleAssignmentModalOpen] = useState(false);
-  const [userSearchEmail, setUserSearchEmail] = useState('');
   const [thirdPartyForm, setThirdPartyForm] = useState(createThirdPartyForm);
   const [productForm, setProductForm] = useState(createProductForm);
   const [issuerForm, setIssuerForm] = useState(createIssuerForm);
@@ -108,6 +106,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [actionStatus, setActionStatus] = useState({ status: 'idle' });
   const autoAuditLoadKeyRef = useRef('');
+  const autoIdentityLoadKeyRef = useRef('');
 
   const token = session?.accessToken || '';
   const context = useMemo(() => ({ token, companyId: activeCompanyId, userId: session?.userId }), [token, activeCompanyId, session?.userId]);
@@ -117,7 +116,8 @@ export default function App() {
   const isRoot = session?.globalRoles?.includes('ROOT') || false;
   const isCompanyAdmin = hasAnyRole(activeAccess, ['OWNER', 'ADMIN']);
   const canUse = (permissions) => isRoot || isCompanyAdmin || hasAnyPermission(activeAccess, permissions);
-  const canManageSecurity = canUse(stepPermissionRules['Usuarios y roles']);
+  const canManageUsers = canUse(stepPermissionRules.Usuarios);
+  const canManageRoles = canUse(stepPermissionRules.Roles);
   const canManageCatalogs = canUse(stepPermissionRules.Catalogos);
   const canViewAudit = isRoot || isCompanyAdmin || hasAnyPermission(activeAccess, stepPermissionRules.Logs);
   const licensedModules = new Set(license?.enabledModules || []);
@@ -129,7 +129,7 @@ export default function App() {
     return !moduleCode || licensedModules.has(moduleCode);
   };
   const visibleSteps = steps.filter((step) => licenseAllowsStep(step) && (isRoot || isCompanyAdmin || hasAnyPermission(activeAccess, stepPermissionRules[step] || [])));
-  const currentStep = visibleSteps.includes(selectedStep) ? selectedStep : visibleSteps[0] || 'Empresa';
+  const currentStep = visibleSteps.includes(selectedStep) ? selectedStep : visibleSteps[0] || 'Ventas';
   const availableCompanyPermissions = companyScopedPermissions(permissionCatalog);
 
   function markActivity() {
@@ -198,6 +198,32 @@ export default function App() {
     loadAuditResourceTypes().catch(() => undefined);
     loadAuditEvents().catch(() => undefined);
   }, [currentStep, activeCompanyId, canViewAudit, auditFilters.resourceType, auditFilters.from, auditFilters.to]);
+
+  useEffect(() => {
+    if (!activeCompanyId) {
+      return;
+    }
+    if (currentStep === 'Roles' && canManageRoles) {
+      const key = `roles|${activeCompanyId}`;
+      if (autoIdentityLoadKeyRef.current === key) {
+        return;
+      }
+      autoIdentityLoadKeyRef.current = key;
+      loadIdentityAdminData().catch(() => undefined);
+    }
+    if (currentStep === 'Usuarios' && canManageUsers) {
+      const key = `users|${activeCompanyId}`;
+      if (autoIdentityLoadKeyRef.current === key) {
+        return;
+      }
+      autoIdentityLoadKeyRef.current = key;
+      const loaders = [loadCompanyUsers('')];
+      if (permissionCatalog.length === 0 || companyRoles.length === 0) {
+        loaders.unshift(loadIdentityAdminData());
+      }
+      Promise.all(loaders).catch(() => undefined);
+    }
+  }, [currentStep, activeCompanyId, canManageRoles, canManageUsers, permissionCatalog.length, companyRoles.length]);
 
   useEffect(() => {
     if (!session) {
@@ -302,7 +328,7 @@ export default function App() {
       hydrateCompanyForm(firstCompany);
       setIssuerForm((current) => buildIssuerFromCompany(firstCompany, current));
       setLicense(null);
-      setSelectedStep('Empresa');
+      setSelectedStep('Ventas');
       setLicenseModal(null);
       return { login: loginResult, companies, scope: 'ROOT' };
     }
@@ -346,6 +372,7 @@ export default function App() {
     setIssuerForm((current) => buildIssuerFromCompany(activeCompanyResult, current));
     setLicense({ ...currentLicense, validation });
     setLicenseModal(null);
+    setSelectedStep('Ventas');
     return { login: loginResult, companies: accesses, license: currentLicense };
   }
 
@@ -391,7 +418,10 @@ export default function App() {
     setSelectedCatalogCode('');
     setCatalogItems([]);
     setCatalogItemForm(createCatalogItemForm());
-    setRoleAssignmentForm(createRoleAssignmentForm());
+    setManagedUserForm(createManagedUserForm());
+    setCompanyRoleForm(createCompanyRoleForm());
+    setEditingUserId('');
+    setEditingRoleId('');
     setRootCompanies([]);
     setCustomerSearch('');
     setCustomerOptions([]);
@@ -409,8 +439,7 @@ export default function App() {
     setSaleId('');
     setSaleForm(createSaleForm());
     setAdminModalOpen(false);
-    setRoleAssignmentModalOpen(false);
-    setUserSearchEmail('');
+    autoIdentityLoadKeyRef.current = '';
   }
 
   function closeSessionWithModal(title, message) {
@@ -599,7 +628,7 @@ export default function App() {
     return { permissions, roles };
   }
 
-  async function loadCompanyUsers(email = userSearchEmail) {
+  async function loadCompanyUsers(email = '') {
     requireCompany();
     const users = await requestJson(`/api/v1/companies/${activeCompanyId}/users${buildQuery({ email })}`, {
       token,
@@ -608,46 +637,115 @@ export default function App() {
     setManagedUsers(users || []);
     return users || [];
   }
-  async function createCompanyRole() {
+  function startNewCompanyRole() {
+    setEditingRoleId('');
+    setCompanyRoleForm(createCompanyRoleForm());
+  }
+
+  function editCompanyRole(role) {
+    setEditingRoleId(role.id);
+    setCompanyRoleForm({
+      name: role.name || '',
+      description: role.description || '',
+      permissionCodes: role.permissionCodes || [],
+    });
+  }
+
+  async function saveCompanyRole() {
     requireCompany();
-    const created = await requestJson(`/api/v1/companies/${activeCompanyId}/roles`, {
-      method: 'POST',
+    const saved = await requestJson(editingRoleId
+      ? `/api/v1/companies/${activeCompanyId}/roles/${editingRoleId}`
+      : `/api/v1/companies/${activeCompanyId}/roles`, {
+      method: editingRoleId ? 'PUT' : 'POST',
       body: companyRoleForm,
       token,
       companyId: activeCompanyId,
       idempotencyKey: createIdempotencyKey('company-role'),
     });
-    setCompanyRoles((current) => [created, ...current.filter((role) => role.id !== created.id)]);
-    setRoleAssignmentForm((current) => ({ ...current, roleIds: created?.id ? [created.id] : current.roleIds }));
-    return created;
+    setCompanyRoles((current) => [saved, ...current.filter((role) => role.id !== saved.id)]);
+    setEditingRoleId(saved.id);
+    return saved;
   }
 
-  async function createManagedUser() {
-    const created = await requestJson('/api/v1/users', {
-      method: 'POST',
-      body: managedUserForm,
-      token,
-      idempotencyKey: createIdempotencyKey('managed-user'),
-    });
-    setManagedUsers((current) => [created, ...current.filter((user) => user.id !== created.id)]);
-    setRoleAssignmentForm((current) => ({ ...current, userId: created?.id || current.userId }));
-    return created;
-  }
-
-  async function assignManagedRoles() {
+  async function toggleCompanyRoleActive(role) {
     requireCompany();
-    if (!roleAssignmentForm.userId || roleAssignmentForm.roleIds.length === 0) {
-      throw new Error('Selecciona un usuario y al menos un rol para asignar.');
-    }
-    const assigned = await requestJson(`/api/v1/companies/${activeCompanyId}/users/${roleAssignmentForm.userId}/role-assignments`, {
+    const action = role.active === false ? 'activate' : 'deactivate';
+    const updated = await requestJson(`/api/v1/companies/${activeCompanyId}/roles/${role.id}/${action}`, {
+      method: 'PUT',
+      token,
+      companyId: activeCompanyId,
+      idempotencyKey: createIdempotencyKey(`company-role-${action}`),
+    });
+    setCompanyRoles((current) => [updated, ...current.filter((currentRole) => currentRole.id !== updated.id)]);
+    return updated;
+  }
+
+  function startNewManagedUser() {
+    setEditingUserId('');
+    setManagedUserForm(createManagedUserForm());
+  }
+
+  function editManagedUser(user) {
+    setEditingUserId(user.id);
+    setManagedUserForm({
+      fullName: user.fullName || '',
+      email: user.email || '',
+      password: '',
+      roleId: '',
+    });
+  }
+
+  async function assignRoleToUser(userId, roleId) {
+    return requestJson(`/api/v1/companies/${activeCompanyId}/users/${userId}/role-assignments`, {
       method: 'POST',
-      body: { roleIds: roleAssignmentForm.roleIds },
+      body: { roleIds: [roleId] },
       token,
       companyId: activeCompanyId,
       idempotencyKey: createIdempotencyKey('role-assignment'),
     });
-    setRoleAssignmentModalOpen(false);
-    return assigned;
+  }
+
+  async function saveManagedUser() {
+    requireCompany();
+    if (!managedUserForm.roleId) {
+      throw new Error('Selecciona un rol obligatorio para el usuario.');
+    }
+    const user = editingUserId
+      ? await requestJson(`/api/v1/companies/${activeCompanyId}/users/${editingUserId}`, {
+        method: 'PUT',
+        body: { fullName: managedUserForm.fullName, email: managedUserForm.email },
+        token,
+        companyId: activeCompanyId,
+        idempotencyKey: createIdempotencyKey('managed-user-update'),
+      })
+      : await requestJson('/api/v1/users', {
+        method: 'POST',
+        body: {
+          fullName: managedUserForm.fullName,
+          email: managedUserForm.email,
+          password: managedUserForm.password,
+        },
+        token,
+        idempotencyKey: createIdempotencyKey('managed-user'),
+      });
+    await assignRoleToUser(user.id, managedUserForm.roleId);
+    const users = await loadCompanyUsers('');
+    setManagedUsers(users);
+    setEditingUserId(user.id);
+    return user;
+  }
+
+  async function toggleManagedUserActive(user) {
+    requireCompany();
+    const action = user.status === 'INACTIVE' ? 'activate' : 'deactivate';
+    const updated = await requestJson(`/api/v1/companies/${activeCompanyId}/users/${user.id}/${action}`, {
+      method: 'PUT',
+      token,
+      companyId: activeCompanyId,
+      idempotencyKey: createIdempotencyKey(`managed-user-${action}`),
+    });
+    setManagedUsers((current) => [updated, ...current.filter((currentUser) => currentUser.id !== updated.id)]);
+    return updated;
   }
 
   function togglePermissionCode(code) {
@@ -662,15 +760,6 @@ export default function App() {
     });
   }
 
-  function toggleAssignedRole(roleId) {
-    setRoleAssignmentForm((current) => {
-      const exists = current.roleIds.includes(roleId);
-      return {
-        ...current,
-        roleIds: exists ? current.roleIds.filter((id) => id !== roleId) : [...current.roleIds, roleId],
-      };
-    });
-  }
   async function createThirdParty() {
     requireCompany();
     return requestJson('/api/v1/third-parties', {
@@ -1126,11 +1215,27 @@ export default function App() {
       <aside className="sidebar">
         <div className="brand">Factura Electronica</div>
         <nav aria-label="Flujo principal">
-          {visibleSteps.map((step) => (
-            <button key={step} className={currentStep === step ? 'nav-item active' : 'nav-item'} onClick={() => setSelectedStep(step)} type="button">
-              {step}
-            </button>
-          ))}
+          {navigationGroups
+            .map((group) => ({ ...group, items: group.items.filter((item) => visibleSteps.includes(item)) }))
+            .filter((group) => group.items.length > 0)
+            .map((group) => (
+              <div className="nav-group" key={group.label}>
+                {group.items.length === 1 && group.label === group.items[0] ? (
+                  <button className={currentStep === group.items[0] ? 'nav-item active' : 'nav-item'} onClick={() => setSelectedStep(group.items[0])} type="button">
+                    {group.label}
+                  </button>
+                ) : (
+                  <>
+                    <span className="nav-group-label">{group.label}</span>
+                    {group.items.map((step) => (
+                      <button key={step} className={currentStep === step ? 'nav-item child active' : 'nav-item child'} onClick={() => setSelectedStep(step)} type="button">
+                        {step}
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
+            ))}
         </nav>
       </aside>
 
@@ -1161,8 +1266,8 @@ export default function App() {
               <ResolutionForm form={resolutionForm} setForm={setResolutionForm} onSubmit={() => execute(configureResolution)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Fiscal)} fiscalDocumentTypeOptions={runtimeCatalogs.fiscalDocumentTypeOptions} environmentOptions={runtimeCatalogs.fiscalEnvironmentOptions} />
             </div>
           )}
-          {currentStep === 'Venta POS' && (
-            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onCreate={() => execute(createSale)} onConfirm={() => execute(confirmSale)} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Venta POS'])} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
+          {currentStep === 'Ventas' && (
+            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onCreate={() => execute(createSale)} onConfirm={() => execute(confirmSale)} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
           )}
           {currentStep === 'Nomina' && (
             <PayrollPanel settingsForm={payrollSettingsForm} setSettingsForm={setPayrollSettingsForm} workerForm={payrollWorkerForm} setWorkerForm={setPayrollWorkerForm} paymentForm={dailyLaborPaymentForm} setPaymentForm={setDailyLaborPaymentForm} workers={payrollWorkers} payments={dailyLaborPayments} electronicDocuments={electronicPayrollDocuments} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} workerClassificationOptions={runtimeCatalogs.payrollWorkerClassificationOptions} paymentMethodOptions={runtimeCatalogs.paymentMethodOptions} onLoad={() => execute(loadPayrollData)} onSaveSettings={() => execute(savePayrollSettings)} onCreateWorker={() => execute(createPayrollWorker)} onCreateDailyPayment={() => execute(createDailyLaborPayment)} onIssueElectronicDocument={(paymentId) => execute(() => issueElectronicPayrollDocument(paymentId))} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Nomina)} />
@@ -1176,18 +1281,17 @@ export default function App() {
           {currentStep === 'Logs' && (
             <AuditLogPanel events={auditEvents} filters={auditFilters} setFilters={setAuditFilters} onLoad={() => execute(loadAuditEvents)} busy={busy || !activeCompanyId || !canViewAudit} canViewGlobal={isRoot} activeCompanyId={activeCompanyId} resourceTypes={auditResourceTypes} />
           )}
-          {currentStep === 'Usuarios y roles' && (
-            <IdentityAdminPanel permissions={availableCompanyPermissions} roles={companyRoles} users={managedUsers} roleForm={companyRoleForm} setRoleForm={setCompanyRoleForm} userForm={managedUserForm} setUserForm={setManagedUserForm} onLoad={() => execute(loadIdentityAdminData)} onCreateRole={() => execute(createCompanyRole)} onCreateUser={() => execute(createManagedUser)} onOpenAssignModal={() => {
-              setActionStatus({ status: 'idle' });
-              setRoleAssignmentModalOpen(true);
-            }} onTogglePermission={togglePermissionCode} busy={busy || !activeCompanyId || !canManageSecurity} />
+          {currentStep === 'Roles' && (
+            <RolesPanel permissions={availableCompanyPermissions} roles={companyRoles} form={companyRoleForm} setForm={setCompanyRoleForm} editingRoleId={editingRoleId} onNew={startNewCompanyRole} onEdit={editCompanyRole} onSave={() => execute(saveCompanyRole)} onToggleActive={(role) => execute(() => toggleCompanyRoleActive(role))} onTogglePermission={togglePermissionCode} busy={busy || !activeCompanyId || !canManageRoles} />
+          )}
+          {currentStep === 'Usuarios' && (
+            <UsersPanel users={managedUsers} roles={companyRoles} form={managedUserForm} setForm={setManagedUserForm} editingUserId={editingUserId} onNew={startNewManagedUser} onEdit={editManagedUser} onSave={() => execute(saveManagedUser)} onToggleActive={(user) => execute(() => toggleManagedUserActive(user))} busy={busy || !activeCompanyId || !canManageUsers} />
           )}
         </section>
       </section>
       {licenseModal && <Modal title={licenseModal.title} message={licenseModal.message} onClose={() => setLicenseModal(null)} />}
       <ActionStatusModal state={actionStatus} onClose={() => setActionStatus({ status: 'idle' })} />
       {adminModalOpen && <AdminModal form={companyAdminForm} setForm={setCompanyAdminForm} activeCompany={activeCompany} activeCompanyId={activeCompanyId} onSubmit={() => execute(createInitialCompanyAdmin)} onClose={() => setAdminModalOpen(false)} busy={busy || !activeCompanyId} />}
-      {roleAssignmentModalOpen && <RoleAssignmentModal users={managedUsers} roles={companyRoles} form={roleAssignmentForm} setForm={setRoleAssignmentForm} searchEmail={userSearchEmail} setSearchEmail={setUserSearchEmail} onSearch={() => execute(() => loadCompanyUsers(userSearchEmail))} onSubmit={() => execute(assignManagedRoles)} onToggleRole={toggleAssignedRole} onClose={() => setRoleAssignmentModalOpen(false)} busy={busy || !activeCompanyId || !canManageSecurity} />}
     </main>
   );
 }

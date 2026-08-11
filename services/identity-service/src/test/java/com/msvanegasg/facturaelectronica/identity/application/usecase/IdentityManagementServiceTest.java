@@ -23,6 +23,7 @@ import com.msvanegasg.facturaelectronica.identity.application.dto.CreateCompanyR
 import com.msvanegasg.facturaelectronica.identity.application.dto.CreateUserCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.LicensePolicy;
 import com.msvanegasg.facturaelectronica.identity.application.dto.LoginCommand;
+import com.msvanegasg.facturaelectronica.identity.application.dto.UpdateUserCommand;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.AccessAuditRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.CompanyMembershipRepositoryPort;
@@ -173,6 +174,47 @@ class IdentityManagementServiceTest {
     }
 
     @Test
+    void ownerCanActivateCompanyRoleAgain() {
+        InMemoryCompanyRoles companyRoles = new InMemoryCompanyRoles();
+        IdentityManagementService rbacService = serviceWithCompanyRoles(companyRoles);
+        var owner = rbacService.createUser(new CreateUserCommand("owner@example.com", "Owner User", "secret123"));
+        rbacService.assignRoles(new AssignRolesCommand(COMPANY_ID, owner.id(), Set.of(RoleCode.OWNER), null));
+        var login = rbacService.login(new LoginCommand("owner@example.com", "secret123"));
+        var role = rbacService.createCompanyRole(new CreateCompanyRoleCommand(COMPANY_ID, "Vendedor POS",
+                "Puede vender", Set.of(PermissionCode.SALES_CREATE), "Bearer " + login.accessToken()));
+
+        rbacService.deactivateCompanyRole(COMPANY_ID, role.id(), "Bearer " + login.accessToken());
+        var activated = rbacService.activateCompanyRole(COMPANY_ID, role.id(), "Bearer " + login.accessToken());
+
+        assertThat(activated.active()).isTrue();
+        assertThat(audit.events).extracting(AccessAuditEvent::action).contains("ACTIVATE_ROLE");
+    }
+
+    @Test
+    void ownerCanUpdateAndDeactivateCompanyUser() {
+        InMemoryCompanyRoles companyRoles = new InMemoryCompanyRoles();
+        IdentityManagementService rbacService = serviceWithCompanyRoles(companyRoles);
+        var owner = rbacService.createUser(new CreateUserCommand("owner@example.com", "Owner User", "secret123"));
+        rbacService.assignRoles(new AssignRolesCommand(COMPANY_ID, owner.id(), Set.of(RoleCode.OWNER), null));
+        var login = rbacService.login(new LoginCommand("owner@example.com", "secret123"));
+        var cashier = rbacService.createUser(new CreateUserCommand("cashier@example.com", "Cashier User", "secret123"));
+        var role = rbacService.createCompanyRole(new CreateCompanyRoleCommand(COMPANY_ID, "Vendedor POS",
+                "Puede vender", Set.of(PermissionCode.SALES_CREATE), "Bearer " + login.accessToken()));
+        rbacService.assignCompanyRoles(new AssignCompanyRolesCommand(COMPANY_ID, cashier.id(),
+                Set.of(role.id()), "Bearer " + login.accessToken()));
+
+        var updated = rbacService.updateCompanyUser(new UpdateUserCommand(COMPANY_ID, cashier.id(),
+                "seller@example.com", "Seller User", "Bearer " + login.accessToken()));
+        var deactivated = rbacService.deactivateCompanyUser(COMPANY_ID, cashier.id(), "Bearer " + login.accessToken());
+
+        assertThat(updated.email()).isEqualTo("seller@example.com");
+        assertThat(updated.fullName()).isEqualTo("Seller User");
+        assertThat(deactivated.status().name()).isEqualTo("INACTIVE");
+        assertThatThrownBy(() -> rbacService.login(new LoginCommand("seller@example.com", "secret123")))
+                .isInstanceOf(AuthenticationFailedException.class);
+    }
+
+    @Test
     void blocksNewCompanyAccessWhenLicenseUserLimitIsReached() {
         InMemoryCompanyRoles companyRoles = new InMemoryCompanyRoles();
         LicenseValidationPort limitedLicense = new LicenseValidationPort() {
@@ -253,6 +295,11 @@ class IdentityManagementServiceTest {
         public long countByCompanyId(UUID companyId) { return companyUserCount; }
         @Override
         public boolean existsByEmail(String email) { return byEmail.containsKey(email); }
+
+        @Override
+        public boolean existsByEmailAndIdNot(String email, UUID id) {
+            return Optional.ofNullable(byEmail.get(email)).map(user -> !user.id().equals(id)).orElse(false);
+        }
     }
 
     private static final class InMemoryMemberships implements CompanyMembershipRepositoryPort {
