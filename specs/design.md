@@ -1096,3 +1096,22 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 - Topic consulted: conditional rendering and controlled form inputs.
 - Relevant finding: React recomienda render condicional con estado y formularios controlados con `value`/`onChange`; el estado debe dirigir que componente se muestra.
 - Decision impact: La cabecera de empresa cambia entre selector ROOT y campo informativo empresarial sin duplicar estado; los formularios siguen controlados y las etiquetas visibles se derivan antes del render.
+
+## TASK-122 POS obligatorio e i18n de permisos
+
+### Decisiones
+
+- El permiso `SALES_CREATE` representa el flujo completo de caja: crear venta POS, confirmar POS y emitir automaticamente el documento electronico asociado. El vendedor no necesita `FISCAL_DOCUMENTS_ISSUE` para completar una venta normal.
+- El permiso `FISCAL_DOCUMENTS_ISSUE` queda reservado para configuracion fiscal, resoluciones, notas, ajustes, reenvios o gestion manual de documentos.
+- El BFF aplica autorizacion real por ruta de `billing-service`:
+  - `/sales/**`, `/electronic-pos` y confirmaciones POS aceptan `SALES_CREATE` para mutaciones.
+  - `/issuers/**`, `/numbering-resolutions/**`, `/credit-notes/**`, `/debit-notes/**` y ajustes POS exigen permiso fiscal avanzado.
+- La SPA oculta/muestra `Venta POS` solo con `SALES_CREATE` y conserva `Fiscal` para permisos fiscales o configuracion empresarial.
+- Las etiquetas visibles de modulos/permisos se centralizan en `react-i18next`/`i18next` con recursos `es`, evitando diccionarios manuales en componentes/utilidades.
+
+### Context7 evidence
+
+- Library/tool: React i18next (`/i18next/react-i18next`).
+- Topic consulted: setup with `useTranslation` hook and external translation resources in React.
+- Relevant finding: La libreria documenta integracion con i18next, recursos externos y uso de `t()`/hooks para traducir componentes React.
+- Decision impact: La SPA inicializa i18n al arrancar y resuelve textos de permisos/modulos desde recursos versionados en `src/i18n/locales/es/translation.json`.

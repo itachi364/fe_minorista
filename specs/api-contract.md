@@ -99,6 +99,7 @@ Reglas:
 - Un fallo de servicio interno debe responder como error publico estructurado sin stack trace ni detalles de infraestructura.
 - La falla del registro de auditoria no debe tumbar la accion principal; debe quedar como integracion best-effort hasta completar eventing asincrono.
 - Estado TASK-065: `/api/v1/auth/**` y `/api/v1/me/**` se enrutan a `identity-service`; `/api/v1/companies/{companyId}/license/**` se enruta a `tenant-service`; `/api/v1/companies/{companyId}/memberships`, `/api/v1/companies/{companyId}/users/{userId}/roles` y `/api/v1/companies/{companyId}/permissions` se enrutan a `identity-service`.
+- Estado TASK-122: `billing-service` queda protegido por permisos efectivos en BFF. `SALES_CREATE` autoriza registrar y confirmar venta POS con emision electronica asociada; `FISCAL_DOCUMENTS_ISSUE` autoriza configuracion fiscal, resoluciones, notas, ajustes y operaciones fiscales avanzadas.
 ## tenant-service
 
 Responsabilidad: empresas, configuracion multiempresa y estado del tenant.
@@ -1329,6 +1330,13 @@ Reglas:
 - El BFF no debe implementar reglas de negocio que pertenezcan a billing, inventory, accounting, tenant, identity, catalog, thirdparty o audit.
 - Un fallo de servicio interno debe responder como error publico estructurado sin stack trace ni detalles de infraestructura.
 - Estado TASK-065: `/api/v1/auth/**` y `/api/v1/me/**` se enrutan a `identity-service`; `/api/v1/companies/{companyId}/license/**` se enruta a `tenant-service`; `/api/v1/companies/{companyId}/memberships`, `/api/v1/companies/{companyId}/users/{userId}/roles` y `/api/v1/companies/{companyId}/permissions` se enrutan a `identity-service`.
+
+### Reglas RBAC billing via BFF
+
+- `POST /api/v1/sales` y `POST /api/v1/sales/{saleId}/confirm`: requiere `SALES_CREATE`.
+- `POST /api/v1/electronic-pos?saleId=`: requiere `SALES_CREATE` o `FISCAL_DOCUMENTS_ISSUE`.
+- `GET /api/v1/sales/**`, `GET /api/v1/electronic-pos/**`, `GET /api/v1/electronic-invoices/**`: permite `SALES_CREATE`, `REPORTS_VIEW` o `FISCAL_DOCUMENTS_ISSUE` segun consulta operativa.
+- `POST /api/v1/issuers`, `POST /api/v1/numbering-resolutions`, `POST /api/v1/credit-notes`, `POST /api/v1/debit-notes` y `POST /api/v1/electronic-pos/{documentId}/adjustment-notes`: requiere `FISCAL_DOCUMENTS_ISSUE` o permiso administrativo indicado para configuracion fiscal.
 ## tenant-service: licenciamiento
 
 - `POST /api/v1/companies/{companyId}/license`

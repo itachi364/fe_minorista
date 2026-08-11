@@ -29,6 +29,7 @@ const COMPANY_ACCESS = [{
   ],
 }];
 const REPORT_ONLY_ACCESS = [{ companyId: COMPANY_ID, roles: ['REPORT_VIEWER'], permissions: ['REPORTS_VIEW'] }];
+const SALES_ONLY_ACCESS = [{ companyId: COMPANY_ID, roles: ['VENDEDOR'], permissions: ['SALES_CREATE'] }];
 const ACTIVE_LICENSE = {
   id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
   companyId: COMPANY_ID,
@@ -200,6 +201,20 @@ test('company user sees only modules allowed by effective permissions', async ()
   expect(screen.queryByRole('button', { name: 'Empresa' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Usuarios y roles' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Consultar' })).toBeInTheDocument();
+});
+
+test('sales user can access POS without fiscal advanced permission', async () => {
+  mockLoginFlow(ACTIVE_LICENSE, SALES_ONLY_ACCESS);
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
+  expect(screen.getByRole('button', { name: 'Venta POS' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Fiscal' })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Venta POS' }));
+  expect(screen.getByRole('button', { name: 'Crear venta' })).toBeInTheDocument();
 });
 
 test('company owner updates active company without create company action', async () => {
@@ -405,7 +420,7 @@ test('root manages company roles users and assignments', async () => {
     companyId: COMPANY_ID,
     name: 'VENDEDOR',
     description: 'Puede registrar ventas POS y consultar inventario.',
-    permissionCodes: ['SALES_CREATE', 'FISCAL_DOCUMENTS_ISSUE', 'INVENTORY_VIEW'],
+    permissionCodes: ['SALES_CREATE', 'INVENTORY_VIEW'],
     active: true,
   };
   const createdUser = {
@@ -467,7 +482,7 @@ test('root manages company roles users and assignments', async () => {
   expect(JSON.parse(fetchMock.mock.calls[5][1].body)).toEqual({
     name: 'VENDEDOR',
     description: 'Puede registrar ventas POS y consultar inventario.',
-    permissionCodes: ['SALES_CREATE', 'FISCAL_DOCUMENTS_ISSUE', 'INVENTORY_VIEW'],
+    permissionCodes: ['SALES_CREATE', 'INVENTORY_VIEW'],
   });
   expect(JSON.parse(fetchMock.mock.calls[6][1].body)).toEqual({
     email: 'vendedor@example.com',
@@ -646,7 +661,6 @@ function fillCompanyRoleForm() {
   fireEvent.change(screen.getByLabelText('Nombre del rol'), { target: { value: 'VENDEDOR' } });
   fireEvent.change(screen.getByLabelText('Descripcion'), { target: { value: 'Puede registrar ventas POS y consultar inventario.' } });
   fireEvent.click(screen.getByText('Registrar ventas POS').closest('label').querySelector('input'));
-  fireEvent.click(screen.getByText('Emitir documentos fiscales').closest('label').querySelector('input'));
   fireEvent.click(screen.getByText('Ver inventario').closest('label').querySelector('input'));
 }
 

@@ -158,6 +158,8 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RF-053: El sistema debe implementar un modulo contable operativo para ingresos, egresos, costos de operacion, activos, cuentas por cobrar, cuentas por pagar y reportes basicos por empresa.
 - RF-054: El sistema debe mejorar el modulo de logs para mostrar por defecto los eventos del dia actual, filtrar por fechas y permitir `resourceType` opcional desde lista desplegable cargada de backend.
 - RF-055: El sistema debe personalizar los mensajes de modales segun contexto; login por credenciales invalidas debe mostrar mensaje especifico y errores 5xx deben mostrar fallo interno generico.
+- RF-056: El permiso empresarial `SALES_CREATE` debe habilitar el flujo completo de venta POS: registrar venta, confirmar POS y emitir el documento electronico asociado hacia DIAN/proveedor mock. El permiso `FISCAL_DOCUMENTS_ISSUE` queda reservado para operaciones fiscales avanzadas como configuracion de emisor/resoluciones, notas, ajustes, gestion manual y reenvios.
+- RF-057: Las traducciones visibles del frontend deben gestionarse mediante una libreria de internacionalizacion y recursos externos. Los codigos internos pueden permanecer en ingles, pero la UI debe renderizar textos en espanol sin diccionarios manuales dispersos en componentes.
 
 ## Requisitos no funcionales
 
@@ -184,6 +186,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RNF-021: La IaC productiva no debe incluir contenedores, artefactos o rutas legacy eliminadas; Docker Compose queda limitado a desarrollo local y pruebas.
 - RNF-022: La SPA debe mantener estado inicial vacio o derivado de sesion/API; no debe importar datos de negocio desde archivos locales.
 - RNF-023: La carga de catalogos en frontend debe usar estados asincronos explicitos, cleanup de fetches/temporizadores y bloqueo seguro de formularios cuando falten catalogos requeridos.
+- RNF-024: La SPA debe centralizar textos traducibles con `react-i18next`/`i18next` o libreria equivalente, manteniendo recursos versionados por idioma y evitando constantes UI duplicadas.
 
 ## Reglas de negocio
 

@@ -3566,3 +3566,33 @@
     - `.\mvnw.cmd -q test`: OK.
     - `npm test`: OK, 18 tests.
     - `npm run build`: OK.
+
+- [x] TASK-122: Unificar permiso de Venta POS e internacionalizar permisos
+  - Estado: DONE
+  - Requisitos: RF-037, RF-056, RF-057, RNF-024.
+  - Acceptance criteria:
+    - Un usuario con `SALES_CREATE` y sin `FISCAL_DOCUMENTS_ISSUE` puede acceder al modulo `Venta POS` en la SPA.
+    - `POST /api/v1/sales/**` y la emision POS derivada quedan autorizadas por BFF con `SALES_CREATE`.
+    - Las operaciones fiscales avanzadas (`issuers`, `numbering-resolutions`, notas y ajustes) no quedan abiertas a un vendedor que solo tiene `SALES_CREATE`.
+    - Las etiquetas y descripciones visibles de permisos/modulos se cargan mediante `react-i18next`/`i18next` y recursos de idioma, conservando codigos internos en ingles.
+    - La documentacion SDD registra la diferencia entre permiso de venta y permiso fiscal avanzado.
+  - Archivos propuestos:
+    - `services/bff-service/src/main/java/**`
+    - `services/bff-service/src/test/java/**`
+    - `apps/facturaelectronica-web/package.json`
+    - `apps/facturaelectronica-web/package-lock.json`
+    - `apps/facturaelectronica-web/src/i18n/**`
+    - `apps/facturaelectronica-web/src/utils/**`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+    - `specs/**`
+  - Tests requeridos:
+    - `.\mvnw.cmd -q -pl services\bff-service -am test`
+    - `npm test`
+    - `npm run build`
+  - Validacion:
+    - `.\mvnw.cmd -q -pl services\bff-service -am test`: OK.
+    - `.\mvnw.cmd -q test`: OK.
+    - `npm test`: OK, 19 tests.
+    - `npm run build`: OK.
+    - `npm audit fix`: OK, 0 vulnerabilidades reportadas despues del ajuste de `nanoid` transitivo.
+    - `docker compose up -d --build` + `docker compose restart`: OK; servicios con healthcheck en estado `healthy`.

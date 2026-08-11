@@ -27,9 +27,11 @@ class RestClientInternalServiceGatewayTest {
 
     private static final String COMPANY_ID = "11111111-1111-1111-1111-111111111111";
     private static final String USER_ID = "22222222-2222-2222-2222-222222222222";
+    private static final String SALE_ID = "33333333-3333-3333-3333-333333333333";
 
     private HttpServer identityServer;
     private HttpServer payrollServer;
+    private HttpServer billingServer;
 
     @AfterEach
     void tearDown() {
@@ -38,6 +40,9 @@ class RestClientInternalServiceGatewayTest {
         }
         if (payrollServer != null) {
             payrollServer.stop(0);
+        }
+        if (billingServer != null) {
+            billingServer.stop(0);
         }
     }
 
@@ -66,12 +71,45 @@ class RestClientInternalServiceGatewayTest {
         assertThat(payrollHandler.requestBody).isNull();
     }
 
+    @Test
+    void allowsSaleConfirmationWhenUserOnlyHasSalesCreatePermission() throws IOException {
+        startIdentityServer("[\"SALES_CREATE\"]");
+        CapturingHandler billingHandler = startBillingServer("/api/v1/sales");
+        RestClientInternalServiceGateway gateway = gateway();
+
+        ProxyResponse response = gateway.exchange(new ProxyRequest(TargetService.BILLING, HttpMethod.POST,
+                URI.create("/api/v1/sales/" + SALE_ID + "/confirm"), headers(), new byte[0]));
+
+        assertThat(response.status()).isEqualTo(HttpStatus.CREATED);
+        assertThat(billingHandler.requestPath).isEqualTo("/api/v1/sales/" + SALE_ID + "/confirm");
+    }
+
+    @Test
+    void rejectsFiscalConfigurationMutationWhenSalesUserDoesNotHaveFiscalPermission() throws IOException {
+        startIdentityServer("[\"SALES_CREATE\"]");
+        CapturingHandler billingHandler = startBillingServer("/api/v1/issuers");
+        RestClientInternalServiceGateway gateway = gateway();
+
+        assertThatThrownBy(() -> gateway.exchange(new ProxyRequest(TargetService.BILLING, HttpMethod.POST,
+                URI.create("/api/v1/issuers"), headers(), "{}".getBytes(StandardCharsets.UTF_8))))
+                .isInstanceOf(BffAccessDeniedException.class);
+        assertThat(billingHandler.requestBody).isNull();
+    }
+
     private RestClientInternalServiceGateway gateway() {
         String identityUrl = "http://localhost:" + identityServer.getAddress().getPort();
-        String payrollUrl = "http://localhost:" + payrollServer.getAddress().getPort();
+        String payrollUrl = serverUrl(payrollServer, "http://payroll");
+        String billingUrl = serverUrl(billingServer, "http://billing");
         BffProperties properties = new BffProperties("http://tenant", identityUrl, "http://catalog", "http://thirdparty",
-                "http://inventory", "http://billing", "http://accounting", payrollUrl, "http://audit");
+                "http://inventory", billingUrl, "http://accounting", payrollUrl, "http://audit");
         return new RestClientInternalServiceGateway(RestClient.builder(), properties, new ObjectMapper());
+    }
+
+    private static String serverUrl(HttpServer server, String fallback) {
+        if (server == null) {
+            return fallback;
+        }
+        return "http://localhost:" + server.getAddress().getPort();
     }
 
     private void startIdentityServer(String permissionsJson) throws IOException {
@@ -106,6 +144,14 @@ class RestClientInternalServiceGatewayTest {
         return handler;
     }
 
+    private CapturingHandler startBillingServer(String path) throws IOException {
+        billingServer = HttpServer.create(new InetSocketAddress(0), 0);
+        CapturingHandler handler = new CapturingHandler();
+        billingServer.createContext(path, handler::handle);
+        billingServer.start();
+        return handler;
+    }
+
     private static HttpHeaders headers() {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth("token");
@@ -117,8 +163,10 @@ class RestClientInternalServiceGatewayTest {
 
     private static final class CapturingHandler {
         private String requestBody;
+        private String requestPath;
 
         private void handle(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
+            requestPath = exchange.getRequestURI().getPath();
             requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             byte[] body = "{\"id\":\"payment-1\"}".getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(201, body.length);

@@ -165,6 +165,7 @@ El modelo objetivo aprobado para identidad usa RBAC modular:
 - Cada empresa puede crear roles propios y asignar permisos modulares a sus usuarios.
 - Un administrador empresarial no puede crear ni asignar roles con permisos iguales, superiores o no poseidos por el mismo.
 - Los permisos `GLOBAL_*` son exclusivos de `ROOT`.
+- `SALES_CREATE` habilita el flujo completo de venta POS: registrar venta, confirmar POS y emitir el documento electronico asociado. `FISCAL_DOCUMENTS_ISSUE` se reserva para configuracion fiscal, resoluciones, notas, ajustes y gestion avanzada.
 - El frontend debe ocultar modulos no permitidos, pero la autorizacion real siempre debe validarse en backend.
 Credenciales ROOT locales dummy para pruebas Docker:
 
@@ -193,7 +194,7 @@ Despues del login exitoso con licencia activa, la SPA muestra un shell operativo
 
 El BFF endurece acceso para catálogos administrables, contabilidad, nomina y logs: `ROOT` conserva acceso global, las mutaciones de plataforma quedan reservadas a `ROOT` y las acciones empresariales validan permisos efectivos contra `identity-service`.
 
-La UI operativa no muestra paneles permanentes de JSON tecnico. Cada accion usa un modal de proceso/exito/error y los detalles de trazabilidad se consultan en el modulo `Logs`, visible para `ROOT`, administradores de empresa y usuarios con permiso de auditoria. Los permisos y modulos RBAC se presentan en espanol en la SPA aunque sus codigos internos sigan en ingles para mantener contratos estables.
+La UI operativa no muestra paneles permanentes de JSON tecnico. Cada accion usa un modal de proceso/exito/error y los detalles de trazabilidad se consultan en el modulo `Logs`, visible para `ROOT`, administradores de empresa y usuarios con permiso de auditoria. Los permisos y modulos RBAC se presentan en espanol mediante `react-i18next`/`i18next`, aunque sus codigos internos sigan en ingles para mantener contratos estables.
 
 Ejecutar BFF fuera de Docker:
 

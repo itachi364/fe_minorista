@@ -1,0 +1,95 @@
+{
+  "modules": {
+    "accounting": "Contabilidad",
+    "audit": "Auditoria",
+    "billing": "Facturacion",
+    "catalogs": "Catalogos",
+    "company": "Empresa",
+    "fiscal": "Fiscal",
+    "general": "General",
+    "inventory": "Inventario",
+    "payroll": "Nomina",
+    "platform": "Plataforma",
+    "reports": "Reportes",
+    "sales": "Ventas",
+    "users": "Usuarios y roles"
+  },
+  "permissions": {
+    "ACCOUNTING_MANAGE": {
+      "label": "Gestionar contabilidad",
+      "description": "Permite configurar y registrar informacion contable."
+    },
+    "ACCOUNTING_VIEW": {
+      "label": "Ver contabilidad",
+      "description": "Permite consultar reportes e informacion contable."
+    },
+    "AUDIT_VIEW": {
+      "label": "Ver auditoria de la empresa",
+      "description": "Permite consultar logs y auditoria de la empresa."
+    },
+    "CATALOGS_MANAGE": {
+      "label": "Gestionar catalogos",
+      "description": "Permite administrar catalogos operativos autorizados."
+    },
+    "COMPANY_CATALOGS_MANAGE": {
+      "label": "Gestionar catalogos de la empresa",
+      "description": "Permite activar o inactivar catalogos disponibles para la empresa."
+    },
+    "COMPANY_ROLES_MANAGE": {
+      "label": "Gestionar roles de la empresa",
+      "description": "Permite crear roles empresariales y asignar permisos delegables."
+    },
+    "COMPANY_SETTINGS_MANAGE": {
+      "label": "Gestionar configuracion de la empresa",
+      "description": "Permite actualizar datos y configuraciones de la empresa."
+    },
+    "COMPANY_USERS_MANAGE": {
+      "label": "Gestionar usuarios de la empresa",
+      "description": "Permite crear usuarios y administrar accesos de la empresa."
+    },
+    "FISCAL_DOCUMENTS_ISSUE": {
+      "label": "Gestionar documentos fiscales avanzados",
+      "description": "Permite administrar emisor, resoluciones, notas, ajustes y reenvios fiscales."
+    },
+    "GLOBAL_AUDIT_VIEW": {
+      "label": "Ver auditoria global",
+      "description": "Permite consultar auditoria global de plataforma."
+    },
+    "GLOBAL_COMPANIES_MANAGE": {
+      "label": "Gestionar empresas de la plataforma",
+      "description": "Permite crear, actualizar, activar e inactivar empresas."
+    },
+    "INVENTORY_MANAGE": {
+      "label": "Gestionar inventario",
+      "description": "Permite crear productos, registrar movimientos y ajustar inventario."
+    },
+    "INVENTORY_VIEW": {
+      "label": "Ver inventario",
+      "description": "Permite consultar productos, existencias y movimientos."
+    },
+    "PAYROLL_MANAGE": {
+      "label": "Gestionar nomina",
+      "description": "Permite registrar trabajadores, pagos y documentos de nomina."
+    },
+    "PAYROLL_VIEW": {
+      "label": "Ver nomina",
+      "description": "Permite consultar informacion de nomina."
+    },
+    "REPORTS_VIEW": {
+      "label": "Ver reportes",
+      "description": "Permite consultar reportes operativos y financieros."
+    },
+    "ROLES_MANAGE": {
+      "label": "Gestionar roles",
+      "description": "Permite administrar roles heredados."
+    },
+    "SALES_CREATE": {
+      "label": "Registrar ventas POS",
+      "description": "Permite registrar ventas POS y emitir automaticamente el documento electronico asociado."
+    },
+    "USERS_MANAGE": {
+      "label": "Gestionar usuarios",
+      "description": "Permite administrar usuarios heredados."
+    }
+  }
+}

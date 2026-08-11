@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -91,7 +92,7 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         if (request.targetService() == TargetService.TENANT && !MUTATING_METHODS.contains(request.method().name())) {
             return;
         }
-        AccessRule rule = ACCESS_RULES.get(request.targetService());
+        AccessRule rule = accessRuleFor(request);
         if (rule == null && request.targetService() != TargetService.TENANT) {
             return;
         }
@@ -120,6 +121,47 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         if (actualPermissions.stream().noneMatch(requiredPermissions::contains)) {
             throw new BffAccessDeniedException("insufficient permissions");
         }
+    }
+
+    private static AccessRule accessRuleFor(ProxyRequest request) {
+        if (request.targetService() == TargetService.BILLING) {
+            return billingAccessRule(request.uri());
+        }
+        return ACCESS_RULES.get(request.targetService());
+    }
+
+    private static AccessRule billingAccessRule(URI uri) {
+        String normalized = normalizeApiPath(uri.getPath());
+        if (matchesAny(normalized, "reports/sales", "reports/electronic-documents")) {
+            return new AccessRule(Set.of("REPORTS_VIEW", "SALES_CREATE", "FISCAL_DOCUMENTS_ISSUE"), Set.of());
+        }
+        if (matchesAny(normalized, "sales")) {
+            return new AccessRule(Set.of("SALES_CREATE", "REPORTS_VIEW", "FISCAL_DOCUMENTS_ISSUE"),
+                    Set.of("SALES_CREATE"));
+        }
+        if (normalized.matches("electronic-pos/[^/]+/adjustment-notes(/.*)?")) {
+            return fiscalDocumentAccessRule();
+        }
+        if (matchesAny(normalized, "electronic-pos")) {
+            return new AccessRule(Set.of("SALES_CREATE", "REPORTS_VIEW", "FISCAL_DOCUMENTS_ISSUE"),
+                    Set.of("SALES_CREATE", "FISCAL_DOCUMENTS_ISSUE"));
+        }
+        if (matchesAny(normalized, "electronic-invoices")) {
+            return new AccessRule(Set.of("SALES_CREATE", "REPORTS_VIEW", "FISCAL_DOCUMENTS_ISSUE"),
+                    Set.of("SALES_CREATE", "FISCAL_DOCUMENTS_ISSUE"));
+        }
+        if (matchesAny(normalized, "issuers", "numbering-resolutions")) {
+            return new AccessRule(Set.of("FISCAL_DOCUMENTS_ISSUE", "COMPANY_SETTINGS_MANAGE"),
+                    Set.of("FISCAL_DOCUMENTS_ISSUE", "COMPANY_SETTINGS_MANAGE"));
+        }
+        if (matchesAny(normalized, "credit-notes", "debit-notes")) {
+            return fiscalDocumentAccessRule();
+        }
+        return new AccessRule(Set.of("FISCAL_DOCUMENTS_ISSUE"), Set.of("FISCAL_DOCUMENTS_ISSUE"));
+    }
+
+    private static AccessRule fiscalDocumentAccessRule() {
+        return new AccessRule(Set.of("FISCAL_DOCUMENTS_ISSUE"), Set.of("FISCAL_DOCUMENTS_ISSUE"));
     }
 
     private boolean isRoot(String authorization) {
@@ -245,6 +287,26 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         } catch (IllegalArgumentException exception) {
             return null;
         }
+    }
+
+    private static String normalizeApiPath(String path) {
+        String value = path == null ? "" : path.strip().toLowerCase(Locale.ROOT);
+        if (value.startsWith("/")) {
+            value = value.substring(1);
+        }
+        if (value.startsWith("api/v1/")) {
+            value = value.substring("api/v1/".length());
+        }
+        return value;
+    }
+
+    private static boolean matchesAny(String normalized, String... prefixes) {
+        for (String prefix : prefixes) {
+            if (normalized.equals(prefix) || normalized.startsWith(prefix + "/")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String auditDetail(ProxyRequest request, String detail) {
