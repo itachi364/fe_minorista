@@ -3370,3 +3370,34 @@
     - `terraform -chdir=infra\aws\envs\dev validate`: OK.
     - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: OK con CompanyId `87c7b293-b2ff-4567-89d8-e6877aaaea8c`, SaleId `f0b6a469-8d9e-45a3-99bc-2ca6608599e1`, DocumentId `368d737e-23e4-4b07-8dda-4507e81d316a` y PayrollPaymentId `6b073700-8687-49ed-ab0f-b4de48279dae`.
     - Commit/push no ejecutados por regla de confirmacion separada. Mensaje sugerido: `✨ feat(platform): cerrar flujo operativo cloud y rbac`.
+
+- [x] TASK-113: Implementar consumo asistido de insumos por servicios facturados
+  - Estado: DONE
+  - Requisitos: RF-020, RF-021, RF-022, RF-056, RN-021, RN-022, RN-023, RN-060.
+  - Acceptance criteria: AC-041, AC-042.
+  - Archivos:
+    - `services/inventory-service/src/main/java/**`
+    - `services/inventory-service/src/test/java/**`
+    - `services/bff-service/src/main/java/**`
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/features/sales/SaleForm.jsx`
+    - `apps/facturaelectronica-web/src/utils/formStateFactory.js`
+    - `apps/facturaelectronica-web/src/styles.css`
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+  - Descripcion: Permitir que una venta POS con servicios facturables cargue insumos asociados como sugerencias y que el usuario confirme cantidades reales consumidas para descontar stock de insumos controlados.
+  - Criterios:
+    - Un servicio `SERVICE` puede tener insumos `SUPPLY` asociados mediante `service_supply_reference`.
+    - `GET /api/v1/products/{serviceProductId}/supply-consumption-suggestions` retorna insumos activos, stock actual, costo y notas.
+    - `POST /api/v1/service-supply-consumptions` descuenta cantidades reales con movimientos `CONSUMPTION_OUT`, origen `MANUAL_SUPPLY_CONSUMPTION`, motivo obligatorio e idempotencia por insumo.
+    - La venta del servicio no descuenta insumos automaticamente; la SPA exige accion explicita del usuario.
+    - El BFF protege mutaciones de inventario con `INVENTORY_MANAGE`.
+  - Validacion:
+    - Context7 React: formularios/listas controladas para cantidades editables.
+    - Context7 Spring Boot: `@Valid @RequestBody` y controladores REST con JSON.
+    - `.\mvnw.cmd -pl services\inventory-service -am test`: OK, 47 tests.
+    - `.\mvnw.cmd -pl services\bff-service -am test`: OK, 8 tests.
+    - `npm test`: OK, 15 tests.
+    - `npm run build`: OK.

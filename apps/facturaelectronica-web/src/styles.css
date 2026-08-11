@@ -476,6 +476,26 @@ textarea:hover {
   gap: 10px;
 }
 
+.service-consumption-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  border-top: 1px solid #e6edf3;
+  padding-top: 16px;
+}
+
+.service-consumption-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.muted-block {
+  display: block;
+  margin-top: 3px;
+  color: #687787;
+  font-size: 12px;
+}
+
 .table-wrap {
   width: 100%;
   overflow: auto;

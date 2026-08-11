@@ -977,6 +977,8 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
   - Insumo comprado y controlado.
   - Gasto/servicio de proveedor no inventariable.
 - La UI debe explicar el impacto operacional de cada opcion en espanol y evitar que el usuario final tenga que entender flags tecnicos.
+- Los servicios facturables pueden tener insumos asociados como sugerencias operativas. Despues de crear una venta con lineas `SERVICE`, la SPA permite cargar esas sugerencias, editar cantidades reales y confirmar consumo.
+- La confirmacion de consumo asistido no crea receta automatica ni descuenta insumos sin accion del usuario; genera movimientos `CONSUMPTION_OUT` idempotentes con origen `MANUAL_SUPPLY_CONSUMPTION` y `sourceDocumentId` de la venta/documento origen.
 
 ### Decisiones contables
 

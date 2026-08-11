@@ -14,8 +14,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.msvanegasg.facturaelectronica.inventory.application.port.in.ManageServiceSupplyReferenceUseCase;
+import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.ConfirmServiceSupplyConsumptionRequest;
+import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.ConfirmedServiceSupplyConsumptionResponse;
 import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.ServiceSupplyReferenceRequest;
 import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.ServiceSupplyReferenceResponse;
+import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.SuggestedSupplyConsumptionResponse;
 
 import jakarta.validation.Valid;
 
@@ -42,5 +45,23 @@ public class ServiceSupplyReferenceController {
             @PathVariable UUID serviceProductId) {
         return InventoryRestMapper
                 .toServiceSupplyReferenceResponses(useCase.findByService(companyId, serviceProductId));
+    }
+
+    @GetMapping("/products/{serviceProductId}/supply-consumption-suggestions")
+    public List<SuggestedSupplyConsumptionResponse> suggestConsumptions(@RequestHeader("X-Company-Id") UUID companyId,
+            @PathVariable UUID serviceProductId) {
+        return InventoryRestMapper.toSuggestedConsumptionResponses(useCase.suggestConsumptions(companyId,
+                serviceProductId));
+    }
+
+    @PostMapping("/service-supply-consumptions")
+    public ResponseEntity<ConfirmedServiceSupplyConsumptionResponse> confirmConsumption(
+            @RequestHeader("X-Company-Id") UUID companyId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody ConfirmServiceSupplyConsumptionRequest request) {
+        ConfirmedServiceSupplyConsumptionResponse response = InventoryRestMapper.toResponse(useCase.confirmConsumption(
+                InventoryRestMapper.toCommand(companyId, request, userId, idempotencyKey)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

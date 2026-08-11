@@ -34,6 +34,8 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
                     Set.of("COMPANY_CATALOGS_MANAGE", "COMPANY_SETTINGS_MANAGE")),
             TargetService.ACCOUNTING, new AccessRule(Set.of("ACCOUNTING_VIEW", "ACCOUNTING_MANAGE", "REPORTS_VIEW"),
                     Set.of("ACCOUNTING_MANAGE")),
+            TargetService.INVENTORY, new AccessRule(Set.of("INVENTORY_VIEW", "INVENTORY_MANAGE", "SALES_CREATE"),
+                    Set.of("INVENTORY_MANAGE")),
             TargetService.PAYROLL, new AccessRule(Set.of("PAYROLL_VIEW", "PAYROLL_MANAGE"), Set.of("PAYROLL_MANAGE")),
             TargetService.AUDIT, new AccessRule(Set.of("AUDIT_VIEW", "GLOBAL_AUDIT_VIEW"), Set.of("AUDIT_VIEW",
                     "GLOBAL_AUDIT_VIEW")));

@@ -72,6 +72,14 @@ Reglas:
 - `INDEPENDENT_CONTRACTOR` se contabiliza como egreso/proveedor o gasto operativo.
 - Todas las tablas de nomina incluyen `company_id` y auditoria.
 
+## Inventario Y Consumo De Insumos
+
+- Los servicios facturables se almacenan en `inventory.product` con `item_type='SERVICE'`, `sale_enabled=true` y `stock_tracked=false`.
+- Los insumos controlados se almacenan en `inventory.product` con `item_type='SUPPLY'` y `stock_tracked=true`.
+- La relacion sugerida servicio-insumo usa `inventory.service_supply_reference`; no representa una receta automatica ni descuenta stock por si sola.
+- El consumo asistido confirmado por usuario reutiliza `inventory.inventory_movement` con `movement_type='CONSUMPTION_OUT'` y `source_document_type='MANUAL_SUPPLY_CONSUMPTION'`.
+- No se requiere tabla nueva para TASK-113; la trazabilidad se conserva con `source_document_id`, `idempotency_key`, `reason`, `created_by` y kardex.
+
 ## Contabilidad
 
 El modelo contable debe cubrir:

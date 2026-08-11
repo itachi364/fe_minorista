@@ -112,7 +112,17 @@ export function createSaleForm() {
     customerId: '',
     paymentMethodCode: '',
     virtualWalletCode: '',
-    items: [{ productId: '', productName: '', quantity: '1', unitPrice: '0', discountAmount: '0' }],
+    items: [{ productId: '', productName: '', itemType: '', quantity: '1', unitPrice: '0', discountAmount: '0' }],
+  };
+}
+
+export function createServiceConsumptionState() {
+  return {
+    serviceProductId: '',
+    sourceDocumentId: '',
+    reason: 'Consumo real de insumos por servicio facturado',
+    suggestions: [],
+    quantities: {},
   };
 }
 

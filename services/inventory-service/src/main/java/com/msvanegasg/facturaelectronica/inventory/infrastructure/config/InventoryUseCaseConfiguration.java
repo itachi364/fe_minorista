@@ -52,7 +52,9 @@ public class InventoryUseCaseConfiguration {
     @Bean
     ManageServiceSupplyReferenceUseCase manageServiceSupplyReferenceUseCase(
             ServiceSupplyReferenceRepositoryPort referenceRepository, ProductRepositoryPort productRepository,
+            StockBalanceRepositoryPort stockBalanceRepository, RegisterInventoryMovementUseCase movementUseCase,
             IdGeneratorPort idGenerator, ClockPort clock) {
-        return new ServiceSupplyReferenceManagementService(referenceRepository, productRepository, idGenerator, clock);
+        return new ServiceSupplyReferenceManagementService(referenceRepository, productRepository,
+                stockBalanceRepository, movementUseCase, idGenerator, clock);
     }
 }

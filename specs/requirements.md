@@ -130,6 +130,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RF-020: El sistema debe permitir que un servicio o intangible se facture como item vendible sin descontar automaticamente insumos asociados.
 - RF-021: El sistema debe permitir registrar referencias de insumos sugeridos para servicios, solo como informacion operativa, sin generar consumos automaticos.
 - RF-022: El sistema debe permitir movimientos manuales de inventario para insumos por compra, consumo, desperdicio, ajuste de entrada y ajuste de salida.
+- RF-056: El sistema debe permitir, despues de vender un servicio facturable, cargar los insumos asociados como sugerencia y confirmar manualmente las cantidades reales consumidas para descontarlas del inventario.
 - RF-023: El sistema debe registrar compras, gastos, cuentas por pagar y pagos basicos asociados a proveedores, inventario y contabilidad.
 - RF-024: El sistema debe generar factura electronica o POS electronico tanto para bienes fisicos como para servicios, conservando snapshot fiscal de lineas, impuestos y tercero adquirente.
 - RF-025: El sistema debe exponer reportes operativos minimos de ventas, inventario/kardex, compras/gastos, documentos electronicos, cuentas por cobrar/pagar y libros contables.
@@ -209,6 +210,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RN-021: Un servicio/intangible puede venderse y facturarse, pero no debe descontar insumos automaticamente por receta.
 - RN-022: Los insumos asociados a servicios deben afectarse mediante movimientos manuales de inventario por compra, consumo, desperdicio o ajuste.
 - RN-023: Un movimiento manual de consumo o desperdicio de insumo requiere motivo, producto/insumo, cantidad, usuario o proceso origen, fecha y empresa.
+- RN-060: El consumo asistido de insumos por servicio debe requerir confirmacion explicita del usuario, motivo, `sourceDocumentId` de la venta o documento origen, `Idempotency-Key` y cantidades mayores a cero; no puede crear consumos duplicados para el mismo insumo en una misma confirmacion.
 - RN-024: Las compras de productos o insumos incrementan inventario al confirmarse; los gastos sin inventario no deben crear stock.
 - RN-025: Las compras, gastos y cuentas por pagar deben contabilizarse con reglas parametrizables por empresa y cuentas PUC aprobadas.
 - RN-026: Ninguna venta, compra, gasto, movimiento o reporte puede operar sin `company_id`.

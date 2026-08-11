@@ -443,6 +443,8 @@ Estado TASK-048:
 - Si `itemType` se omite, se conserva compatibilidad y se crea `PHYSICAL_GOOD` con venta, compra y stock habilitados.
 - `SERVICE` es facturable, pero no puede tener stock automatico ni stock inicial.
 - `POST /api/v1/service-supply-references` y `GET /api/v1/products/{serviceProductId}/supply-references` permiten registrar insumos sugeridos para servicios sin generar movimientos de kardex.
+- `GET /api/v1/products/{serviceProductId}/supply-consumption-suggestions` permite cargar insumos sugeridos, stock actual y costo para que el usuario confirme consumo real despues de vender el servicio.
+- `POST /api/v1/service-supply-consumptions` registra consumos reales confirmados como movimientos `CONSUMPTION_OUT` con origen `MANUAL_SUPPLY_CONSUMPTION`.
 - Compras y movimientos solo afectan items con `stockTracked=true`.
 
 ### Productos
@@ -453,6 +455,7 @@ Estado TASK-048:
 - `GET /api/v1/products/{productId}/availability?quantity=`
 - `GET /api/v1/products/{productId}/kardex`
 - `GET /api/v1/products/{serviceProductId}/supply-references`
+- `GET /api/v1/products/{serviceProductId}/supply-consumption-suggestions`
 
 ### Compras
 
@@ -468,6 +471,7 @@ Estado TASK-048:
 
 - `POST /api/v1/service-supply-references`
 - `GET /api/v1/products/{serviceProductId}/supply-references`
+- `POST /api/v1/service-supply-consumptions`
 
 ### ProductRequest
 
@@ -567,6 +571,47 @@ Estado TASK-048:
   "createdAt": "2026-05-20T10:00:00Z"
 }
 ```
+
+### SuggestedSupplyConsumptionResponse
+
+```json
+[
+  {
+    "serviceProductId": "uuid",
+    "supplyProductId": "uuid",
+    "supplySku": "SUP-ESMALTE-ROJO",
+    "supplyName": "Esmalte rojo",
+    "currentStock": 10,
+    "unitCost": 1500,
+    "notes": "Insumo sugerido para manicura"
+  }
+]
+```
+
+### ConfirmServiceSupplyConsumptionRequest
+
+Requiere `X-Company-Id`, `X-User-Id` cuando exista sesion y `Idempotency-Key`.
+
+```json
+{
+  "serviceProductId": "uuid",
+  "sourceDocumentId": "uuid",
+  "reason": "Consumo real de insumos por manicura facturada",
+  "lines": [
+    {
+      "supplyProductId": "uuid",
+      "quantity": 0.25
+    }
+  ]
+}
+```
+
+Reglas:
+
+- `sourceDocumentId` debe ser la venta, factura o documento operativo que origina el consumo.
+- Cada `supplyProductId` debe estar asociado previamente al servicio mediante `service_supply_reference`.
+- El backend registra un movimiento `CONSUMPTION_OUT` por insumo, con idempotencia derivada de `Idempotency-Key + supplyProductId`.
+- La confirmacion no calcula receta automatica; el usuario decide cantidades reales.
 
 ### PurchaseRequest
 

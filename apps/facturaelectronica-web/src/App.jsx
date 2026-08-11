@@ -19,6 +19,7 @@ import {
   createResolutionForm,
   createRoleAssignmentForm,
   createSaleForm,
+  createServiceConsumptionState,
   createThirdPartyForm,
 } from './utils/formStateFactory.js';
 import { LoginPanel } from './features/auth/LoginPanel.jsx';
@@ -82,6 +83,7 @@ export default function App() {
   const [issuerForm, setIssuerForm] = useState(createIssuerForm);
   const [resolutionForm, setResolutionForm] = useState(createResolutionForm);
   const [saleForm, setSaleForm] = useState(createSaleForm);
+  const [serviceConsumption, setServiceConsumption] = useState(createServiceConsumptionState);
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerOptions, setCustomerOptions] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -483,6 +485,7 @@ export default function App() {
     if (result?.id) {
       updateSaleItem(0, 'productId', result.id);
       updateSaleItem(0, 'productName', result.name || '');
+      updateSaleItem(0, 'itemType', result.itemType || '');
       updateSaleItem(0, 'unitPrice', String(result.salePrice || productForm.salePrice));
     }
     return result;
@@ -507,6 +510,7 @@ export default function App() {
       const nextLine = {
         productId: product.id,
         productName: product.name || product.sku || barcode,
+        itemType: product.itemType || '',
         quantity: '1',
         unitPrice: String(product.salePrice ?? '0'),
         discountAmount: '0',
@@ -586,6 +590,60 @@ export default function App() {
       method: 'POST',
       ...context,
       idempotencyKey: createIdempotencyKey('confirm-sale'),
+    });
+  }
+
+  async function loadServiceConsumptionSuggestions(serviceProductId) {
+    requireCompany();
+    if (!saleId) {
+      throw new Error('Primero crea la venta para asociar el consumo de insumos.');
+    }
+    const suggestions = await requestJson(
+      `/api/v1/products/${serviceProductId}/supply-consumption-suggestions`,
+      context,
+    );
+    setServiceConsumption({
+      serviceProductId,
+      sourceDocumentId: saleId,
+      reason: serviceConsumption.reason || 'Consumo real de insumos por servicio facturado',
+      suggestions: suggestions || [],
+      quantities: Object.fromEntries((suggestions || []).map((suggestion) => [suggestion.supplyProductId, ''])),
+    });
+    return suggestions;
+  }
+
+  function updateServiceConsumptionQuantity(supplyProductId, quantity) {
+    setServiceConsumption((current) => ({
+      ...current,
+      quantities: { ...current.quantities, [supplyProductId]: quantity },
+    }));
+  }
+
+  function updateServiceConsumptionReason(reason) {
+    setServiceConsumption((current) => ({ ...current, reason }));
+  }
+
+  async function confirmServiceSupplyConsumption() {
+    requireCompany();
+    const lines = serviceConsumption.suggestions
+      .map((suggestion) => ({
+        supplyProductId: suggestion.supplyProductId,
+        quantity: serviceConsumption.quantities[suggestion.supplyProductId],
+      }))
+      .filter((line) => Number(line.quantity) > 0);
+    if (lines.length === 0) {
+      throw new Error('Ingresa al menos una cantidad consumida.');
+    }
+    return requestJson('/api/v1/service-supply-consumptions', {
+      method: 'POST',
+      body: {
+        serviceProductId: serviceConsumption.serviceProductId,
+        sourceDocumentId: serviceConsumption.sourceDocumentId || saleId,
+        reason: serviceConsumption.reason,
+        lines,
+      },
+      ...context,
+      idempotencyKey: createIdempotencyKey('service-supply-consumption'),
     });
   }
 
@@ -808,7 +866,7 @@ export default function App() {
   function addSaleItem() {
     setSaleForm((current) => ({
       ...current,
-      items: [...current.items, { productId: '', productName: '', quantity: '1', unitPrice: '0', discountAmount: '0' }],
+      items: [...current.items, { productId: '', productName: '', itemType: '', quantity: '1', unitPrice: '0', discountAmount: '0' }],
     }));
   }
 
@@ -825,6 +883,7 @@ export default function App() {
     setCustomerOptions([]);
     setSelectedCustomer(null);
     setSaleId('');
+    setServiceConsumption(createServiceConsumptionState());
     setSaleForm((current) => ({ ...current, customerId: '' }));
     const selectedCompany = rootCompanies.find((company) => company.id === companyId || company.companyId === companyId);
     if (selectedCompany) {
@@ -890,7 +949,7 @@ export default function App() {
             </div>
           )}
           {currentStep === 'Venta POS' && (
-            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onCreate={() => execute(createSale)} onConfirm={() => execute(confirmSale)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Venta POS'])} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
+            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onCreate={() => execute(createSale)} onConfirm={() => execute(confirmSale)} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Venta POS'])} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
           )}
           {currentStep === 'Nomina' && (
             <PayrollPanel settingsForm={payrollSettingsForm} setSettingsForm={setPayrollSettingsForm} workerForm={payrollWorkerForm} setWorkerForm={setPayrollWorkerForm} paymentForm={dailyLaborPaymentForm} setPaymentForm={setDailyLaborPaymentForm} workers={payrollWorkers} payments={dailyLaborPayments} electronicDocuments={electronicPayrollDocuments} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} workerClassificationOptions={runtimeCatalogs.payrollWorkerClassificationOptions} paymentMethodOptions={runtimeCatalogs.paymentMethodOptions} onLoad={() => execute(loadPayrollData)} onSaveSettings={() => execute(savePayrollSettings)} onCreateWorker={() => execute(createPayrollWorker)} onCreateDailyPayment={() => execute(createDailyLaborPayment)} onIssueElectronicDocument={(paymentId) => execute(() => issueElectronicPayrollDocument(paymentId))} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Nomina)} />

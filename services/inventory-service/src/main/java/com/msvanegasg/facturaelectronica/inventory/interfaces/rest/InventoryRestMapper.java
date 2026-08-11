@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.UUID;
 import java.math.BigDecimal;
 
+import com.msvanegasg.facturaelectronica.inventory.application.dto.ConfirmServiceSupplyConsumptionCommand;
+import com.msvanegasg.facturaelectronica.inventory.application.dto.ConfirmedServiceSupplyConsumptionResult;
 import com.msvanegasg.facturaelectronica.inventory.application.dto.CreateProductCommand;
 import com.msvanegasg.facturaelectronica.inventory.application.dto.CreateServiceSupplyReferenceCommand;
 import com.msvanegasg.facturaelectronica.inventory.application.dto.CreatePurchaseCommand;
@@ -15,6 +17,9 @@ import com.msvanegasg.facturaelectronica.inventory.application.dto.PurchaseResul
 import com.msvanegasg.facturaelectronica.inventory.application.dto.RegisterInventoryMovementCommand;
 import com.msvanegasg.facturaelectronica.inventory.application.dto.ServiceSupplyReferenceResult;
 import com.msvanegasg.facturaelectronica.inventory.application.dto.StockAvailabilityResult;
+import com.msvanegasg.facturaelectronica.inventory.application.dto.SuggestedSupplyConsumptionResult;
+import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.ConfirmServiceSupplyConsumptionRequest;
+import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.ConfirmedServiceSupplyConsumptionResponse;
 import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.InventoryMovementRequest;
 import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.InventoryMovementResponse;
 import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.ProductRequest;
@@ -26,6 +31,7 @@ import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.PurchaseR
 import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.ServiceSupplyReferenceRequest;
 import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.ServiceSupplyReferenceResponse;
 import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.StockAvailabilityResponse;
+import com.msvanegasg.facturaelectronica.inventory.interfaces.rest.dto.SuggestedSupplyConsumptionResponse;
 
 final class InventoryRestMapper {
 
@@ -59,6 +65,13 @@ final class InventoryRestMapper {
     static CreateServiceSupplyReferenceCommand toCommand(UUID companyId, ServiceSupplyReferenceRequest request) {
         return new CreateServiceSupplyReferenceCommand(companyId, request.serviceProductId(),
                 request.supplyProductId(), request.notes());
+    }
+
+    static ConfirmServiceSupplyConsumptionCommand toCommand(UUID companyId,
+            ConfirmServiceSupplyConsumptionRequest request, UUID createdBy, String idempotencyKey) {
+        return new ConfirmServiceSupplyConsumptionCommand(companyId, request.serviceProductId(),
+                request.sourceDocumentId(), request.reason(), createdBy, idempotencyKey,
+                request.lines().stream().map(InventoryRestMapper::toLineCommand).toList());
     }
 
     static CreatePurchaseCommand toCommand(UUID companyId, PurchaseRequest request, UUID createdBy,
@@ -103,6 +116,21 @@ final class InventoryRestMapper {
         return results.stream().map(InventoryRestMapper::toResponse).toList();
     }
 
+    static SuggestedSupplyConsumptionResponse toResponse(SuggestedSupplyConsumptionResult result) {
+        return new SuggestedSupplyConsumptionResponse(result.serviceProductId(), result.supplyProductId(),
+                result.supplySku(), result.supplyName(), result.currentStock(), result.unitCost(), result.notes());
+    }
+
+    static List<SuggestedSupplyConsumptionResponse> toSuggestedConsumptionResponses(
+            List<SuggestedSupplyConsumptionResult> results) {
+        return results.stream().map(InventoryRestMapper::toResponse).toList();
+    }
+
+    static ConfirmedServiceSupplyConsumptionResponse toResponse(ConfirmedServiceSupplyConsumptionResult result) {
+        return new ConfirmedServiceSupplyConsumptionResponse(result.serviceProductId(), result.sourceDocumentId(),
+                toMovementResponses(result.movements()));
+    }
+
     static PurchaseResponse toResponse(PurchaseResult result) {
         return new PurchaseResponse(result.id(), result.companyId(), result.supplierId(), result.status(),
                 result.subtotal(), result.taxTotal(), result.total(), result.paymentCondition(), result.dueDate(),
@@ -113,6 +141,11 @@ final class InventoryRestMapper {
     private static PurchaseLineCommand toLineCommand(PurchaseLineRequest request) {
         return new PurchaseLineCommand(request.productId(), request.quantity(), request.unitCost(), request.subtotal(),
                 request.tax(), request.total());
+    }
+
+    private static ConfirmServiceSupplyConsumptionCommand.Line toLineCommand(
+            ConfirmServiceSupplyConsumptionRequest.Line request) {
+        return new ConfirmServiceSupplyConsumptionCommand.Line(request.supplyProductId(), request.quantity());
     }
 
     private static PurchaseLineResponse toLineResponse(PurchaseLineResult result) {

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Field, SelectField } from '../../components/forms.jsx';
 
-export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSearch, customerOptions, selectedCustomer, onSearchCustomers, onSelectCustomer, updateItem, addItem, removeItem, onCreate, onConfirm, onScanBarcode, busy, paymentOptions = [], walletOptions = [] }) {
+export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSearch, customerOptions, selectedCustomer, onSearchCustomers, onSelectCustomer, updateItem, addItem, removeItem, onCreate, onConfirm, onScanBarcode, serviceConsumption, onLoadServiceConsumption, onUpdateServiceConsumptionQuantity, onUpdateServiceConsumptionReason, onConfirmServiceConsumption, busy, paymentOptions = [], walletOptions = [] }) {
   const [barcodeScan, setBarcodeScan] = useState('');
   const barcodeRef = useRef(null);
+  const serviceLines = form.items.filter((item) => item.productId && item.itemType === 'SERVICE');
 
   useEffect(() => {
     let ignore = false;
@@ -133,5 +134,76 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
       ))}
     </div>
     <button className="primary" disabled={busy || !saleId} onClick={onConfirm} type="button">Confirmar POS</button>
+    {saleId && serviceLines.length > 0 && (
+      <section className="service-consumption-panel">
+        <header className="panel-header">
+          <div>
+            <h2>Consumo de insumos por servicio</h2>
+            <p className="hint">Carga los insumos asociados y confirma solo las cantidades reales usadas.</p>
+          </div>
+        </header>
+        <div className="button-row">
+          {serviceLines.map((item) => (
+            <button className="secondary" disabled={busy} key={item.productId} onClick={() => onLoadServiceConsumption(item.productId)} type="button">
+              Cargar insumos de {item.productName || item.productId}
+            </button>
+          ))}
+        </div>
+        {serviceConsumption?.suggestions?.length > 0 && (
+          <div className="service-consumption-editor">
+            <Field label="Motivo del consumo" value={serviceConsumption.reason} onChange={onUpdateServiceConsumptionReason} />
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Insumo</th>
+                    <th>Stock actual</th>
+                    <th>Costo</th>
+                    <th>Cantidad usada</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {serviceConsumption.suggestions.map((suggestion) => (
+                    <tr key={suggestion.supplyProductId}>
+                      <td>
+                        <b>{suggestion.supplyName}</b>
+                        <span className="muted-block">{suggestion.supplySku}</span>
+                        {suggestion.notes && <span className="muted-block">{suggestion.notes}</span>}
+                      </td>
+                      <td>{number(suggestion.currentStock)}</td>
+                      <td>{money(suggestion.unitCost)}</td>
+                      <td>
+                        <input
+                          min="0"
+                          step="0.01"
+                          type="number"
+                          value={serviceConsumption.quantities[suggestion.supplyProductId] || ''}
+                          onChange={(event) => onUpdateServiceConsumptionQuantity(suggestion.supplyProductId, event.target.value)}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <button className="primary" disabled={busy} onClick={onConfirmServiceConsumption} type="button">Confirmar consumo de insumos</button>
+          </div>
+        )}
+      </section>
+    )}
   </section>;
+}
+
+function number(value) {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+  return Number(value).toLocaleString('es-CO');
+}
+
+function money(value) {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+  return Number(value).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 2 });
 }
