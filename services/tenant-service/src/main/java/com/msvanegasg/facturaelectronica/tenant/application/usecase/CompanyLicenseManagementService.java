@@ -15,6 +15,7 @@ import com.msvanegasg.facturaelectronica.tenant.application.port.out.IdGenerator
 import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyLicense;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyLicenseStatus;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseAction;
+import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseModule;
 
 public class CompanyLicenseManagementService implements ManageCompanyLicenseUseCase {
 
@@ -22,6 +23,7 @@ public class CompanyLicenseManagementService implements ManageCompanyLicenseUseC
     private static final String LICENSE_SUSPENDED = "LICENSE_SUSPENDED";
     private static final String LICENSE_EXPIRED = "LICENSE_EXPIRED";
     private static final String LICENSE_CANCELLED = "LICENSE_CANCELLED";
+    private static final String LICENSE_MODULE_NOT_INCLUDED = "LICENSE_MODULE_NOT_INCLUDED";
 
     private final CompanyRepositoryPort companyRepository;
     private final CompanyLicenseRepositoryPort licenseRepository;
@@ -44,10 +46,10 @@ public class CompanyLicenseManagementService implements ManageCompanyLicenseUseC
         ensureCompanyExists(companyId);
         CompanyLicense license = licenseRepository.findByCompanyId(companyId)
                 .map(existing -> existing.update(command.planCode(), command.validFrom(), command.validTo(),
-                        command.maxUsers(), command.maxMonthlyDocuments(), clock.now()))
+                        command.maxUsers(), command.maxMonthlyDocuments(), command.enabledModules(), clock.now()))
                 .orElseGet(() -> CompanyLicense.create(idGenerator.nextId(), companyId, command.planCode(),
                         command.validFrom(), command.validTo(), command.maxUsers(), command.maxMonthlyDocuments(),
-                        clock.now()));
+                        command.enabledModules(), clock.now()));
         return CompanyLicenseResult.from(licenseRepository.save(license));
     }
 
@@ -70,19 +72,22 @@ public class CompanyLicenseManagementService implements ManageCompanyLicenseUseC
     }
 
     @Override
-    public CompanyLicenseValidationResult validate(UUID companyId, LicenseAction action) {
+    public CompanyLicenseValidationResult validate(UUID companyId, LicenseAction action, LicenseModule module) {
         ensureCompanyExists(companyId);
         CompanyLicense license = findLicense(companyId);
         LocalDate today = LocalDate.ofInstant(clock.now(), ZoneOffset.UTC);
         CompanyLicenseStatus effectiveStatus = license.effectiveStatus(today);
-        boolean allowed = license.allows(action, today);
+        boolean allowed = license.allows(action, module, today);
         return new CompanyLicenseValidationResult(
                 companyId,
                 action,
+                module,
                 allowed,
                 effectiveStatus,
-                reasonCode(effectiveStatus),
-                message(allowed, effectiveStatus));
+                license.maxUsers(),
+                license.maxMonthlyDocuments(),
+                reasonCode(effectiveStatus, module, allowed),
+                message(allowed, effectiveStatus, module));
     }
 
     private void ensureCompanyExists(UUID companyId) {
@@ -95,7 +100,10 @@ public class CompanyLicenseManagementService implements ManageCompanyLicenseUseC
                 .orElseThrow(() -> new CompanyLicenseNotFoundException(companyId));
     }
 
-    private static String reasonCode(CompanyLicenseStatus status) {
+    private static String reasonCode(CompanyLicenseStatus status, LicenseModule module, boolean allowed) {
+        if (!allowed && status == CompanyLicenseStatus.ACTIVE && module != null) {
+            return LICENSE_MODULE_NOT_INCLUDED;
+        }
         return switch (status) {
             case ACTIVE -> LICENSE_ACTIVE;
             case SUSPENDED -> LICENSE_SUSPENDED;
@@ -104,9 +112,12 @@ public class CompanyLicenseManagementService implements ManageCompanyLicenseUseC
         };
     }
 
-    private static String message(boolean allowed, CompanyLicenseStatus status) {
+    private static String message(boolean allowed, CompanyLicenseStatus status, LicenseModule module) {
         if (allowed) {
             return "La licencia permite ejecutar la accion solicitada.";
+        }
+        if (status == CompanyLicenseStatus.ACTIVE && module != null) {
+            return "La licencia de la empresa no incluye el modulo " + module + ".";
         }
         return switch (status) {
             case SUSPENDED -> "La licencia de la empresa esta suspendida.";

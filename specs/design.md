@@ -1042,3 +1042,57 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 - Topic consulted: ECS Fargate task definitions, environment variables, secrets and logging.
 - Relevant finding: Las definiciones de contenedor ECS/Fargate declaran `environment`, `secrets`, puertos y `awslogs`; Fargate opera con `awsvpc` y servicios privados pueden resolverse internamente.
 - Decision impact: `infra/aws` inyecta URLs internas Cloud Map al BFF, secretos RDS a servicios y registra `payroll-service` como artefacto ECS/Fargate privado.
+
+## TASK-114 a TASK-119 licenciamiento parametrizable
+
+### Decisiones
+
+- `tenant-service` sigue siendo el dueno de empresas y licencias.
+- La licencia empresarial es una capa comercial: define vigencia, estado, limites y modulos contratados.
+- RBAC sigue siendo una capa de seguridad operativa: define que usuario puede ejecutar acciones dentro de los modulos que la licencia habilita.
+- ROOT administra licencias desde un modulo de plataforma y no depende de licencia empresarial.
+- Los modulos licenciables se guardan como codigos tecnicos en ingles (`COMPANY`, `THIRDPARTY`, `INVENTORY`, `BILLING`, `ACCOUNTING`, `PAYROLL`, `REPORTS`, `CATALOGS`, `AUDIT`, `USERS`) y se muestran en espanol en la SPA.
+- El login empresarial valida licencia automaticamente; si no existe licencia configurada, muestra mensaje especifico de licencia pendiente y cierra la sesion.
+- Una licencia sin modulos habilitados no permite operacion empresarial, aunque este activa y vigente.
+- `maxUsers` y `maxMonthlyDocuments` no son solo metadatos comerciales: se aplican como cuotas operativas.
+- `tenant-service` devuelve los limites vigentes en la respuesta de validacion de licencia para evitar llamadas adicionales.
+- `identity-service` aplica `maxUsers` antes de crear un nuevo acceso empresarial por membresia legacy o asignacion RBAC modular.
+- `billing-service` aplica `maxMonthlyDocuments` antes de emitir un documento fiscal nuevo. El conteo mensual inicial incluye documentos generados desde ventas y notas fiscales del bounded context `billing`.
+- Si ROOT necesita ampliar cupos, debe actualizar la licencia; los servicios de negocio no deben ignorar cuotas configuradas.
+
+### Context7 evidence
+
+- Library/tool: Spring Boot 3.5 (`/spring-projects/spring-boot`).
+- Topic consulted: REST controllers with request body validation and JSON error handling.
+- Relevant finding: Spring Boot soporta `@Valid @RequestBody` para validar payloads JSON de endpoints administrativos y `@ControllerAdvice`/error JSON para respuestas controladas.
+- Decision impact: El modulo de licencias se expone con controladores REST delgados, DTOs validados y errores funcionales especificos para licencia no configurada o modulo no contratado.
+- Library/tool: React oficial (`/reactjs/react.dev`).
+- Topic consulted: controlled forms, conditional rendering and async state.
+- Relevant finding: React recomienda manejar formularios como inputs controlados, estados explicitos de envio/error y render condicional por estado.
+- Decision impact: La SPA tendra formulario ROOT de licencias con checkboxes controlados por modulo y mensajes especificos de licencia en login.
+- Library/tool: Spring Boot 3.5 (`/spring-projects/spring-boot`).
+- Topic consulted: request body validation and JSON business error handling.
+- Relevant finding: `@Valid @RequestBody` activa validacion Jakarta en controladores REST y los errores pueden estandarizarse con handlers JSON.
+- Decision impact: Los limites se exponen y consumen mediante contratos REST tipados; las violaciones de cuota se responden como regla de negocio, sin stack trace ni payload tecnico.
+
+## TASK-121 UX/RBAC de empresa y permisos
+
+### Decisiones
+
+- `CompanySessionPanel` renderiza dos experiencias:
+  - ROOT: selector de empresa, alcance plataforma y accion global.
+  - Usuario empresarial: empresa activa informativa con nombre visible; no hay selector ni UUID como etiqueta principal.
+- Al iniciar sesion empresarial, la SPA valida licencia, carga licencia y consulta `GET /api/v1/companies/{companyId}` para hidratar nombre/identificacion de la empresa activa.
+- `CompanyForm` usa accion contextual:
+  - ROOT crea empresas con `POST /api/v1/companies`.
+  - OWNER/ADMIN empresarial actualiza su empresa con `PUT /api/v1/companies/{activeCompanyId}`.
+- El boton `Crear empresa` no se renderiza para usuarios empresariales; para ellos se muestra `Actualizar empresa`.
+- Los permisos RBAC mantienen codigos internos en ingles, pero se traducen en UI mediante un helper de etiquetas. El payload de creacion de roles conserva `permissionCodes` originales.
+- La autorizacion real debe permanecer en backend/BFF; el frontend solo mejora experiencia y evita acciones incorrectas evidentes.
+
+### Context7 evidence
+
+- Library/tool: React oficial (`/reactjs/react.dev`).
+- Topic consulted: conditional rendering and controlled form inputs.
+- Relevant finding: React recomienda render condicional con estado y formularios controlados con `value`/`onChange`; el estado debe dirigir que componente se muestra.
+- Decision impact: La cabecera de empresa cambia entre selector ROOT y campo informativo empresarial sin duplicar estado; los formularios siguen controlados y las etiquetas visibles se derivan antes del render.

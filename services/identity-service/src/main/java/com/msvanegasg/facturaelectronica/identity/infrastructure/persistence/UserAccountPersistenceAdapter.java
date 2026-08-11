@@ -48,6 +48,11 @@ public class UserAccountPersistenceAdapter implements UserAccountRepositoryPort 
                 .toList();
     }
 
+    @Override
+    public long countByCompanyId(UUID companyId) {
+        return repository.countByCompanyId(companyId);
+    }
+
     private static UserAccountJpaEntity toEntity(UserAccount user) {
         UserAccountJpaEntity entity = new UserAccountJpaEntity();
         entity.setId(user.id());

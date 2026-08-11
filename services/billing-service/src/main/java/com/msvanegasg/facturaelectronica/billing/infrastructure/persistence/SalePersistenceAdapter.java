@@ -60,6 +60,12 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
         return repository.findByCompanyIdAndElectronicDocumentId(companyId, documentId)
                 .map(SalePersistenceAdapter::toDomain);
     }
+
+    @Override
+    public long countIssuedElectronicDocuments(UUID companyId, java.time.Instant fromInclusive,
+            java.time.Instant toExclusive) {
+        return repository.countIssuedElectronicDocuments(companyId, fromInclusive, toExclusive);
+    }
     @Override
     public Sale save(Sale sale) {
         return toDomain(repository.save(toEntity(sale)));

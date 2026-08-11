@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +27,7 @@ import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyLicense;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyLicenseStatus;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyStatus;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseAction;
+import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseModule;
 
 class CompanyLicenseManagementServiceTest {
 
@@ -55,6 +57,7 @@ class CompanyLicenseManagementServiceTest {
         assertThat(result.companyId()).isEqualTo(COMPANY_ID);
         assertThat(result.status()).isEqualTo(CompanyLicenseStatus.ACTIVE);
         assertThat(result.maxUsers()).isEqualTo(5);
+        assertThat(result.enabledModules()).containsExactlyInAnyOrder(LicenseModule.COMPANY, LicenseModule.BILLING);
     }
 
     @Test
@@ -72,7 +75,8 @@ class CompanyLicenseManagementServiceTest {
     void allowsBusinessActionWhenLicenseIsActiveAndCurrent() {
         service.save(COMPANY_ID, command("SMALL_BUSINESS", LocalDate.parse("2027-05-19")));
 
-        CompanyLicenseValidationResult result = service.validate(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT);
+        CompanyLicenseValidationResult result = service.validate(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT,
+                LicenseModule.BILLING);
 
         assertThat(result.allowed()).isTrue();
         assertThat(result.status()).isEqualTo(CompanyLicenseStatus.ACTIVE);
@@ -84,7 +88,8 @@ class CompanyLicenseManagementServiceTest {
         service.save(COMPANY_ID, command("SMALL_BUSINESS", LocalDate.parse("2027-05-19")));
         service.suspend(COMPANY_ID);
 
-        CompanyLicenseValidationResult result = service.validate(COMPANY_ID, LicenseAction.CREATE_TRANSACTION);
+        CompanyLicenseValidationResult result = service.validate(COMPANY_ID, LicenseAction.CREATE_TRANSACTION,
+                LicenseModule.BILLING);
 
         assertThat(result.allowed()).isFalse();
         assertThat(result.status()).isEqualTo(CompanyLicenseStatus.SUSPENDED);
@@ -95,7 +100,8 @@ class CompanyLicenseManagementServiceTest {
     void blocksBusinessActionWhenLicenseIsExpired() {
         service.save(COMPANY_ID, command("SMALL_BUSINESS", LocalDate.parse("2026-05-18")));
 
-        CompanyLicenseValidationResult result = service.validate(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT);
+        CompanyLicenseValidationResult result = service.validate(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT,
+                LicenseModule.BILLING);
 
         assertThat(result.allowed()).isFalse();
         assertThat(result.status()).isEqualTo(CompanyLicenseStatus.EXPIRED);
@@ -113,12 +119,25 @@ class CompanyLicenseManagementServiceTest {
 
     @Test
     void throwsWhenLicenseDoesNotExist() {
-        assertThatThrownBy(() -> service.validate(COMPANY_ID, LicenseAction.CREATE_USER))
+        assertThatThrownBy(() -> service.validate(COMPANY_ID, LicenseAction.CREATE_USER, LicenseModule.USERS))
                 .isInstanceOf(CompanyLicenseNotFoundException.class);
     }
 
+    @Test
+    void blocksModuleThatIsNotIncludedInActiveLicense() {
+        service.save(COMPANY_ID, command("SMALL_BUSINESS", LocalDate.parse("2027-05-19")));
+
+        CompanyLicenseValidationResult result = service.validate(COMPANY_ID, LicenseAction.CREATE_TRANSACTION,
+                LicenseModule.PAYROLL);
+
+        assertThat(result.allowed()).isFalse();
+        assertThat(result.status()).isEqualTo(CompanyLicenseStatus.ACTIVE);
+        assertThat(result.reasonCode()).isEqualTo("LICENSE_MODULE_NOT_INCLUDED");
+    }
+
     private static CompanyLicenseCommand command(String planCode, LocalDate validTo) {
-        return new CompanyLicenseCommand(planCode, LocalDate.parse("2026-05-01"), validTo, 5, 1000);
+        return new CompanyLicenseCommand(planCode, LocalDate.parse("2026-05-01"), validTo, 5, 1000,
+                Set.of(LicenseModule.COMPANY, LicenseModule.BILLING));
     }
 
     private static Company company() {

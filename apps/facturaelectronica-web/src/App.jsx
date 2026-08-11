@@ -10,6 +10,7 @@ import {
   createCompanyRoleForm,
   createDailyLaborPaymentForm,
   createIssuerForm,
+  createLicenseForm,
   createLoginForm,
   createManagedUserForm,
   createPayrollSettingsForm,
@@ -33,6 +34,7 @@ import { ResolutionForm } from './features/fiscal/ResolutionForm.jsx';
 import { IdentityAdminPanel, RoleAssignmentModal } from './features/identity/IdentityAdminPanel.jsx';
 import { ProductForm } from './features/inventory/ProductForm.jsx';
 import { PayrollPanel } from './features/payroll/PayrollPanel.jsx';
+import { LicenseAdminPanel } from './features/licenses/LicenseAdminPanel.jsx';
 import { ReportsForm } from './features/reports/ReportsForm.jsx';
 import { SaleForm } from './features/sales/SaleForm.jsx';
 import { ThirdPartyForm } from './features/thirdparties/ThirdPartyForm.jsx';
@@ -42,6 +44,7 @@ import {
   buildCompanyAdminPayload,
   buildCompanyPayload,
   buildIssuerPayload,
+  buildLicensePayload,
   buildProductPayload,
   buildResolutionPayload,
   buildSalePayload,
@@ -50,6 +53,7 @@ import {
 import { buildQuery } from './utils/query.js';
 import { emptyRuntimeCatalogs, loadRuntimeCatalogs } from './utils/runtimeCatalogs.js';
 import { clearStoredSession, loadStoredSession, saveStoredSession, SESSION_TIMEOUT_MS } from './utils/sessionStorage.js';
+import { stepLicenseModules } from './data/licenseModules.js';
 export default function App() {
   const [storedSnapshot] = useState(() => loadStoredSession());
   const [selectedStep, setSelectedStep] = useState(steps[0]);
@@ -59,6 +63,8 @@ export default function App() {
   const [activeCompanyId, setActiveCompanyId] = useState(storedSnapshot?.activeCompanyId || '');
   const [rootCompanies, setRootCompanies] = useState(storedSnapshot?.rootCompanies || []);
   const [license, setLicense] = useState(storedSnapshot?.license || null);
+  const [licenseForm, setLicenseForm] = useState(createLicenseForm);
+  const [managedLicense, setManagedLicense] = useState(null);
   const [runtimeCatalogs, setRuntimeCatalogs] = useState(() => globalThis.__FACTURA_RUNTIME_CATALOGS__ || emptyRuntimeCatalogs);
   const [lastActivityAt, setLastActivityAt] = useState(storedSnapshot?.lastActivityAt || Date.now());
   const lastActivityRef = useRef(lastActivityAt);
@@ -114,7 +120,15 @@ export default function App() {
   const canManageSecurity = canUse(stepPermissionRules['Usuarios y roles']);
   const canManageCatalogs = canUse(stepPermissionRules.Catalogos);
   const canViewAudit = isRoot || isCompanyAdmin || hasAnyPermission(activeAccess, stepPermissionRules.Logs);
-  const visibleSteps = steps.filter((step) => isRoot || isCompanyAdmin || hasAnyPermission(activeAccess, stepPermissionRules[step] || []));
+  const licensedModules = new Set(license?.enabledModules || []);
+  const licenseAllowsStep = (step) => {
+    if (isRoot || step === 'Licencias') {
+      return isRoot;
+    }
+    const moduleCode = stepLicenseModules[step];
+    return !moduleCode || licensedModules.has(moduleCode);
+  };
+  const visibleSteps = steps.filter((step) => licenseAllowsStep(step) && (isRoot || isCompanyAdmin || hasAnyPermission(activeAccess, stepPermissionRules[step] || [])));
   const currentStep = visibleSteps.includes(selectedStep) ? selectedStep : visibleSteps[0] || 'Empresa';
   const availableCompanyPermissions = companyScopedPermissions(permissionCatalog);
 
@@ -159,6 +173,18 @@ export default function App() {
       ignore = true;
     };
   }, [session, token, activeCompanyId]);
+
+  useEffect(() => {
+    if (!session || isRoot || !activeCompanyId || activeCompany) {
+      return;
+    }
+    requestJson(`/api/v1/companies/${activeCompanyId}`, { token, companyId: activeCompanyId })
+      .then((company) => {
+        storeKnownCompany(company);
+        hydrateCompanyForm(company);
+      })
+      .catch(() => undefined);
+  }, [session, isRoot, activeCompanyId, activeCompany, token]);
 
   useEffect(() => {
     if (currentStep !== 'Logs' || !activeCompanyId || !canViewAudit) {
@@ -207,7 +233,9 @@ export default function App() {
       const payload = caught.status === 403
         ? { status: 403, message: 'No tienes permisos para ejecutar esta accion.' }
         : caught.payload || { status: caught.status, message: caught.message };
-      const message = caught.status === 401 && options.authAction
+      const message = isLicenseNotConfiguredError(caught)
+        ? 'La empresa no tiene una licencia configurada. Contacta al administrador de la plataforma.'
+        : caught.status === 401 && options.authAction
         ? 'Credenciales invalidas. Verifica el correo y la contrasena.'
         : caught.status && caught.status >= 500
           ? 'Fallo interno en la aplicacion. Intenta nuevamente o revisa los logs.'
@@ -223,11 +251,38 @@ export default function App() {
     }
   }
 
+  function isLicenseNotConfiguredError(error) {
+    const message = String(error?.payload?.message || error?.message || '').toLowerCase();
+    return error?.status === 404 && message.includes('licencia') && message.includes('no existe');
+  }
+
   async function loadRootCompanies(tokenValue = token) {
     const companies = await requestJson('/api/v1/companies', { token: tokenValue });
     setRootCompanies(companies || []);
     return companies || [];
   }
+
+  function storeKnownCompany(company) {
+    if (!company?.id) {
+      return;
+    }
+    setRootCompanies((current) => [company, ...current.filter((item) => item.id !== company.id && item.companyId !== company.id)]);
+  }
+
+  function hydrateCompanyForm(company) {
+    if (!company) {
+      return;
+    }
+    setCompanyForm({
+      legalName: company.legalName || '',
+      tradeName: company.tradeName || '',
+      identificationTypeCode: company.identificationTypeCode || '',
+      identificationNumber: company.identificationNumber || '',
+      verificationDigit: company.verificationDigit || '',
+      email: company.email || '',
+    });
+  }
+
   async function login() {
     const loginResult = await requestJson('/api/v1/auth/login', {
       method: 'POST',
@@ -243,6 +298,8 @@ export default function App() {
       setSession(loginResult);
       setCompanyAccesses(firstCompany ? [{ companyId: firstCompany.id, roles: ['ROOT'], permissions: ['GLOBAL_COMPANIES_MANAGE'] }] : []);
       setActiveCompanyId(firstCompany?.id || '');
+      setLicenseForm((current) => ({ ...current, companyId: firstCompany?.id || '' }));
+      hydrateCompanyForm(firstCompany);
       setIssuerForm((current) => buildIssuerFromCompany(firstCompany, current));
       setLicense(null);
       setSelectedStep('Empresa');
@@ -257,15 +314,26 @@ export default function App() {
       return null;
     }
 
-    const validation = await requestJson(
-      `/api/v1/companies/${nextCompanyId}/license/validation?action=CREATE_TRANSACTION`,
-      { token: tokenValue, companyId: nextCompanyId },
-    );
+    let validation;
+    try {
+      validation = await requestJson(
+        `/api/v1/companies/${nextCompanyId}/license/validation?action=CREATE_TRANSACTION&module=COMPANY`,
+        { token: tokenValue, companyId: nextCompanyId },
+      );
+    } catch (error) {
+      if (isLicenseNotConfiguredError(error)) {
+        closeSessionWithModal('Licencia no configurada', 'La empresa no tiene una licencia configurada. Solicita a ROOT asignar una licencia antes de ingresar.');
+        return null;
+      }
+      throw error;
+    }
 
     if (!validation?.allowed) {
       closeSessionWithModal('Licencia no activa', validation?.message || 'La licencia de la empresa no esta activa. La sesion se cerro automaticamente.');
       return null;
     }
+    const currentLicense = await requestJson(`/api/v1/companies/${nextCompanyId}/license`, { token: tokenValue, companyId: nextCompanyId });
+    const activeCompanyResult = await requestJson(`/api/v1/companies/${nextCompanyId}`, { token: tokenValue, companyId: nextCompanyId });
 
     const now = Date.now();
     lastActivityRef.current = now;
@@ -273,26 +341,39 @@ export default function App() {
     setSession(loginResult);
     setCompanyAccesses(accesses);
     setActiveCompanyId(nextCompanyId);
-    setLicense(validation);
+    storeKnownCompany(activeCompanyResult);
+    hydrateCompanyForm(activeCompanyResult);
+    setIssuerForm((current) => buildIssuerFromCompany(activeCompanyResult, current));
+    setLicense({ ...currentLicense, validation });
     setLicenseModal(null);
-    return { login: loginResult, companies: accesses, license: validation };
+    return { login: loginResult, companies: accesses, license: currentLicense };
   }
 
   async function loadLicense(companyId = activeCompanyId, tokenValue = token) {
     if (!companyId) {
       return null;
     }
-    const validation = await requestJson(
-      `/api/v1/companies/${companyId}/license/validation?action=CREATE_TRANSACTION`,
-      { token: tokenValue, companyId },
-    );
+    let validation;
+    try {
+      validation = await requestJson(
+        `/api/v1/companies/${companyId}/license/validation?action=CREATE_TRANSACTION&module=COMPANY`,
+        { token: tokenValue, companyId },
+      );
+    } catch (error) {
+      if (isLicenseNotConfiguredError(error)) {
+        closeSessionWithModal('Licencia no configurada', 'La empresa no tiene una licencia configurada. Solicita a ROOT asignar una licencia antes de ingresar.');
+        return null;
+      }
+      throw error;
+    }
     if (!validation?.allowed) {
       closeSessionWithModal('Licencia no activa', validation?.message || 'La licencia de la empresa no esta activa. La sesion se cerro automaticamente.');
       return null;
     }
-    setLicense(validation);
+    const currentLicense = await requestJson(`/api/v1/companies/${companyId}/license`, { token: tokenValue, companyId });
+    setLicense({ ...currentLicense, validation });
     setLicenseModal(null);
-    return validation;
+    return currentLicense;
   }
 
   function clearSession() {
@@ -301,6 +382,8 @@ export default function App() {
     setCompanyAccesses([]);
     setActiveCompanyId('');
     setLicense(null);
+    setLicenseForm(createLicenseForm());
+    setManagedLicense(null);
     setPermissionCatalog([]);
     setCompanyRoles([]);
     setManagedUsers([]);
@@ -356,10 +439,134 @@ export default function App() {
     if (isRoot && created?.id) {
       setRootCompanies((current) => [created, ...current.filter((company) => company.id !== created.id)]);
       setActiveCompanyId(created.id);
+      hydrateCompanyForm(created);
+      setLicenseForm((current) => ({ ...current, companyId: created.id }));
+      setManagedLicense(null);
       setCompanyAccesses([{ companyId: created.id, roles: ['ROOT'], permissions: ['GLOBAL_COMPANIES_MANAGE'] }]);
       setIssuerForm((current) => buildIssuerFromCompany(created, current));
     }
     return created;
+  }
+
+  async function updateCompany() {
+    requireCompany();
+    const updated = await requestJson(`/api/v1/companies/${activeCompanyId}`, {
+      method: 'PUT',
+      body: buildCompanyPayload(companyForm),
+      ...context,
+      idempotencyKey: createIdempotencyKey('company-update'),
+    });
+    storeKnownCompany(updated);
+    hydrateCompanyForm(updated);
+    setIssuerForm((current) => buildIssuerFromCompany(updated, current));
+    return updated;
+  }
+
+  async function activateCompany() {
+    requireCompany();
+    const updated = await requestJson(`/api/v1/companies/${activeCompanyId}/activate`, {
+      method: 'PUT',
+      ...context,
+      idempotencyKey: createIdempotencyKey('company-activate'),
+    });
+    storeKnownCompany(updated);
+    hydrateCompanyForm(updated);
+    return updated;
+  }
+
+  async function suspendCompany() {
+    requireCompany();
+    const updated = await requestJson(`/api/v1/companies/${activeCompanyId}/suspend`, {
+      method: 'PUT',
+      ...context,
+      idempotencyKey: createIdempotencyKey('company-suspend'),
+    });
+    storeKnownCompany(updated);
+    hydrateCompanyForm(updated);
+    return updated;
+  }
+
+  function selectLicenseCompany(companyId) {
+    setLicenseForm((current) => ({ ...current, companyId }));
+    setManagedLicense(null);
+  }
+
+  function hydrateLicenseForm(licenseResult) {
+    if (!licenseResult) {
+      return;
+    }
+    setLicenseForm({
+      companyId: licenseResult.companyId || licenseForm.companyId,
+      planCode: licenseResult.planCode || 'CUSTOM',
+      validFrom: licenseResult.validFrom || '',
+      validTo: licenseResult.validTo || '',
+      maxUsers: licenseResult.maxUsers ?? '',
+      maxMonthlyDocuments: licenseResult.maxMonthlyDocuments ?? '',
+      enabledModules: licenseResult.enabledModules || [],
+    });
+  }
+
+  async function loadManagedLicense() {
+    const companyId = licenseForm.companyId || activeCompanyId;
+    if (!companyId) {
+      throw new Error('Selecciona una empresa para cargar la licencia.');
+    }
+    const result = await requestJson(`/api/v1/companies/${companyId}/license`, { token, companyId });
+    setManagedLicense(result);
+    hydrateLicenseForm(result);
+    return result;
+  }
+
+  async function saveManagedLicense() {
+    const companyId = licenseForm.companyId || activeCompanyId;
+    if (!companyId) {
+      throw new Error('Selecciona una empresa para guardar la licencia.');
+    }
+    const result = await requestJson(`/api/v1/companies/${companyId}/license`, {
+      method: 'POST',
+      body: buildLicensePayload(licenseForm),
+      token,
+      companyId,
+      idempotencyKey: createIdempotencyKey('company-license'),
+    });
+    setManagedLicense(result);
+    hydrateLicenseForm(result);
+    if (companyId === activeCompanyId) {
+      setLicense(result);
+    }
+    return result;
+  }
+
+  async function activateManagedLicense() {
+    const companyId = licenseForm.companyId || activeCompanyId;
+    if (!companyId) {
+      throw new Error('Selecciona una empresa para activar la licencia.');
+    }
+    const result = await requestJson(`/api/v1/companies/${companyId}/license/activate`, {
+      method: 'PUT',
+      token,
+      companyId,
+      idempotencyKey: createIdempotencyKey('company-license-activate'),
+    });
+    setManagedLicense(result);
+    hydrateLicenseForm(result);
+    return result;
+  }
+
+  async function suspendManagedLicense() {
+    const companyId = licenseForm.companyId || activeCompanyId;
+    if (!companyId) {
+      throw new Error('Selecciona una empresa para suspender la licencia.');
+    }
+    const result = await requestJson(`/api/v1/companies/${companyId}/license/suspend`, {
+      method: 'PUT',
+      token,
+      companyId,
+      idempotencyKey: createIdempotencyKey('company-license-suspend'),
+    });
+    setManagedLicense(result);
+    hydrateLicenseForm(result);
+    return result;
   }
 
   async function createInitialCompanyAdmin() {
@@ -879,6 +1086,8 @@ export default function App() {
 
   function changeCompany(companyId) {
     setActiveCompanyId(companyId);
+    setLicenseForm((current) => ({ ...current, companyId }));
+    setManagedLicense(null);
     setCustomerSearch('');
     setCustomerOptions([]);
     setSelectedCustomer(null);
@@ -887,6 +1096,7 @@ export default function App() {
     setSaleForm((current) => ({ ...current, customerId: '' }));
     const selectedCompany = rootCompanies.find((company) => company.id === companyId || company.companyId === companyId);
     if (selectedCompany) {
+      hydrateCompanyForm(selectedCompany);
       setIssuerForm((current) => buildIssuerFromCompany(selectedCompany, current));
       setCompanyAccesses([{ companyId, roles: ['ROOT'], permissions: ['GLOBAL_COMPANIES_MANAGE'] }]);
       return;
@@ -926,15 +1136,18 @@ export default function App() {
 
       <section className="workspace">
         <header className="topbar sessionbar">
-          <CompanySessionPanel accesses={companyAccesses} companies={rootCompanies} activeCompanyId={activeCompanyId} activeAccess={activeAccess} license={license} session={session} isRoot={isRoot} onCompanyChange={changeCompany} onLogout={logout} busy={busy} />
+          <CompanySessionPanel accesses={companyAccesses} companies={rootCompanies} activeCompanyId={activeCompanyId} activeCompany={activeCompany} activeAccess={activeAccess} license={license} session={session} isRoot={isRoot} onCompanyChange={changeCompany} onLogout={logout} busy={busy} />
         </header>
 
         <section className="panel-grid">
           {currentStep === 'Empresa' && (
-            <CompanyForm form={companyForm} setForm={setCompanyForm} companies={rootCompanies} activeCompanyId={activeCompanyId} activeCompany={activeCompany} isRoot={isRoot} onCompanyChange={changeCompany} onSubmit={() => execute(createCompany)} onOpenAdminModal={() => {
+            <CompanyForm form={companyForm} setForm={setCompanyForm} companies={rootCompanies} activeCompanyId={activeCompanyId} activeCompany={activeCompany} isRoot={isRoot} onCompanyChange={changeCompany} onSubmit={() => execute(isRoot ? createCompany : updateCompany)} onUpdate={() => execute(updateCompany)} onActivate={() => execute(activateCompany)} onSuspend={() => execute(suspendCompany)} onOpenAdminModal={() => {
               setActionStatus({ status: 'idle' });
               setAdminModalOpen(true);
             }} busy={busy} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} />
+          )}
+          {currentStep === 'Licencias' && (
+            <LicenseAdminPanel form={licenseForm} setForm={setLicenseForm} companies={rootCompanies} license={managedLicense} onCompanyChange={selectLicenseCompany} onLoad={() => execute(loadManagedLicense)} onSave={() => execute(saveManagedLicense)} onActivate={() => execute(activateManagedLicense)} onSuspend={() => execute(suspendManagedLicense)} busy={busy || !isRoot} />
           )}
           {currentStep === 'Terceros' && (
             <ThirdPartyForm form={thirdPartyForm} setForm={setThirdPartyForm} companyMunicipalityCode={companyMunicipalityCode} onSubmit={() => execute(createThirdParty)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Terceros)} documentTypeOptionsSource={runtimeCatalogs.dianDocumentTypes} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} taxRegimeOptionsSource={runtimeCatalogs.taxRegimeOptions} thirdPartyRoleCatalog={runtimeCatalogs.thirdPartyRoleCatalog} personTypeCatalog={runtimeCatalogs.personTypeCatalog} locations={runtimeCatalogs.locations} />

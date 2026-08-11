@@ -18,7 +18,8 @@ public final class CompanyLicenseRestMapper {
                 request.validFrom(),
                 request.validTo(),
                 request.maxUsers(),
-                request.maxMonthlyDocuments());
+                request.maxMonthlyDocuments(),
+                request.enabledModules());
     }
 
     public static CompanyLicenseResponse toResponse(CompanyLicenseResult result) {
@@ -31,6 +32,7 @@ public final class CompanyLicenseRestMapper {
                 result.validTo(),
                 result.maxUsers(),
                 result.maxMonthlyDocuments(),
+                result.enabledModules(),
                 result.createdAt(),
                 result.updatedAt());
     }
@@ -39,8 +41,11 @@ public final class CompanyLicenseRestMapper {
         return new CompanyLicenseValidationResponse(
                 result.companyId(),
                 result.action(),
+                result.module(),
                 result.allowed(),
                 result.status(),
+                result.maxUsers(),
+                result.maxMonthlyDocuments(),
                 result.reasonCode(),
                 result.message());
     }

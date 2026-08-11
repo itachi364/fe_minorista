@@ -21,6 +21,7 @@ import com.msvanegasg.facturaelectronica.identity.application.dto.AssignCompanyR
 import com.msvanegasg.facturaelectronica.identity.application.dto.AssignRolesCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CreateCompanyRoleCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CreateUserCommand;
+import com.msvanegasg.facturaelectronica.identity.application.dto.LicensePolicy;
 import com.msvanegasg.facturaelectronica.identity.application.dto.LoginCommand;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.AccessAuditRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.ClockPort;
@@ -172,6 +173,36 @@ class IdentityManagementServiceTest {
     }
 
     @Test
+    void blocksNewCompanyAccessWhenLicenseUserLimitIsReached() {
+        InMemoryCompanyRoles companyRoles = new InMemoryCompanyRoles();
+        LicenseValidationPort limitedLicense = new LicenseValidationPort() {
+            @Override
+            public void ensureAllowed(UUID companyId,
+                    com.msvanegasg.facturaelectronica.identity.domain.model.LicenseAction action) {
+            }
+
+            @Override
+            public LicensePolicy policy(UUID companyId,
+                    com.msvanegasg.facturaelectronica.identity.domain.model.LicenseAction action) {
+                return new LicensePolicy(1, null);
+            }
+        };
+        IdentityManagementService rbacService = serviceWithCompanyRoles(companyRoles, limitedLicense);
+        var owner = rbacService.createUser(new CreateUserCommand("owner@example.com", "Owner User", "secret123"));
+        rbacService.assignRoles(new AssignRolesCommand(COMPANY_ID, owner.id(), Set.of(RoleCode.OWNER), null));
+        users.companyUserCount = 1;
+        var login = rbacService.login(new LoginCommand("owner@example.com", "secret123"));
+        var cashier = rbacService.createUser(new CreateUserCommand("cashier@example.com", "Cashier User", "secret123"));
+        var role = rbacService.createCompanyRole(new CreateCompanyRoleCommand(COMPANY_ID, "Vendedor POS",
+                "Puede vender", Set.of(PermissionCode.SALES_CREATE), "Bearer " + login.accessToken()));
+
+        assertThatThrownBy(() -> rbacService.assignCompanyRoles(new AssignCompanyRolesCommand(COMPANY_ID,
+                cashier.id(), Set.of(role.id()), "Bearer " + login.accessToken())))
+                .isInstanceOf(LicenseBlockedException.class)
+                .hasMessageContaining("maximo 1 usuarios");
+    }
+
+    @Test
     void deniesCompanyRoleCreationWhenPermissionsAreEqualToActor() {
         InMemoryCompanyRoles companyRoles = new InMemoryCompanyRoles();
         IdentityManagementService rbacService = serviceWithCompanyRoles(companyRoles);
@@ -185,14 +216,20 @@ class IdentityManagementServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
     }
     private IdentityManagementService serviceWithCompanyRoles(InMemoryCompanyRoles companyRoles) {
+        return serviceWithCompanyRoles(companyRoles, (companyId, action) -> { });
+    }
+
+    private IdentityManagementService serviceWithCompanyRoles(InMemoryCompanyRoles companyRoles,
+            LicenseValidationPort licenseValidationPort) {
         return new IdentityManagementService(users, memberships, companyRoles, sessions, audit, new InMemoryGlobalRoles(),
-                (companyId, action) -> { }, new FixedPasswordHasher(), () -> "plain-token", token -> "hash-" + token,
+                licenseValidationPort, new FixedPasswordHasher(), () -> "plain-token", token -> "hash-" + token,
                 UUID::randomUUID, () -> NOW, Duration.ofHours(12));
     }
 
     private static final class InMemoryUsers implements UserAccountRepositoryPort {
         private final Map<UUID, UserAccount> byId = new HashMap<>();
         private final Map<String, UserAccount> byEmail = new HashMap<>();
+        private long companyUserCount;
 
         @Override
         public UserAccount save(UserAccount user) {
@@ -212,6 +249,8 @@ class IdentityManagementServiceTest {
                     .filter(user -> user.email().contains(normalizedEmail))
                     .toList();
         }
+        @Override
+        public long countByCompanyId(UUID companyId) { return companyUserCount; }
         @Override
         public boolean existsByEmail(String email) { return byEmail.containsKey(email); }
     }

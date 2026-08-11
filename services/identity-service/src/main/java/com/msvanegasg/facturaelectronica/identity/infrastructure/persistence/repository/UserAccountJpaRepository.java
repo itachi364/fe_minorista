@@ -33,4 +33,18 @@ public interface UserAccountJpaRepository extends JpaRepository<UserAccountJpaEn
             """)
     List<UserAccountJpaEntity> findByCompanyIdAndEmailContaining(@Param("companyId") UUID companyId,
             @Param("email") String email);
+
+    @Query("""
+            select count(distinct u.id)
+            from UserAccountJpaEntity u
+            where exists (
+                  select 1 from CompanyMembershipJpaEntity m
+                  where m.userId = u.id and m.companyId = :companyId and m.active = true
+                )
+                or exists (
+                  select 1 from CompanyUserRoleAssignmentJpaEntity a
+                  where a.userId = u.id and a.companyId = :companyId and a.revokedAt is null
+                )
+            """)
+    long countByCompanyId(@Param("companyId") UUID companyId);
 }

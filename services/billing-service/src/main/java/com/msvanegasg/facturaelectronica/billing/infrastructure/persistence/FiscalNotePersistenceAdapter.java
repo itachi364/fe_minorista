@@ -31,6 +31,12 @@ public class FiscalNotePersistenceAdapter implements FiscalNoteRepositoryPort {
     }
 
     @Override
+    public long countIssuedFiscalNotes(UUID companyId, java.time.Instant fromInclusive,
+            java.time.Instant toExclusive) {
+        return repository.countIssuedFiscalNotes(companyId, fromInclusive, toExclusive);
+    }
+
+    @Override
     public FiscalNote save(FiscalNote note) {
         return toDomain(repository.save(toEntity(note)));
     }

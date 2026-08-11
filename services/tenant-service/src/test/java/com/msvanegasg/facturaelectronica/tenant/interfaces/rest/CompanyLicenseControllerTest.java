@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +29,7 @@ import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompan
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyLicenseNotFoundException;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyLicenseStatus;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseAction;
+import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseModule;
 import com.msvanegasg.facturaelectronica.tenant.exception.TenantExceptionHandler;
 import com.msvanegasg.facturaelectronica.tenant.observability.CorrelationIdFilter;
 
@@ -61,7 +63,8 @@ class CompanyLicenseControllerTest {
                 .content(licenseJson()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.companyId").value(COMPANY_ID.toString()))
-                .andExpect(jsonPath("$.planCode").value("SMALL_BUSINESS"));
+                .andExpect(jsonPath("$.planCode").value("SMALL_BUSINESS"))
+                .andExpect(jsonPath("$.enabledModules").isArray());
     }
 
     @Test
@@ -75,15 +78,20 @@ class CompanyLicenseControllerTest {
 
     @Test
     void validatesBlockedLicense() throws Exception {
-        when(manageCompanyLicenseUseCase.validate(eq(COMPANY_ID), eq(LicenseAction.ISSUE_FISCAL_DOCUMENT)))
+        when(manageCompanyLicenseUseCase.validate(eq(COMPANY_ID), eq(LicenseAction.ISSUE_FISCAL_DOCUMENT),
+                eq(LicenseModule.BILLING)))
                 .thenReturn(new CompanyLicenseValidationResult(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT,
-                        false, CompanyLicenseStatus.SUSPENDED, "LICENSE_SUSPENDED",
+                        LicenseModule.BILLING, false, CompanyLicenseStatus.SUSPENDED, 5, 1000, "LICENSE_SUSPENDED",
                         "La licencia de la empresa esta suspendida."));
 
         mockMvc.perform(get("/api/v1/companies/{companyId}/license/validation", COMPANY_ID)
-                .queryParam("action", "ISSUE_FISCAL_DOCUMENT"))
+                .queryParam("action", "ISSUE_FISCAL_DOCUMENT")
+                .queryParam("module", "BILLING"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.module").value("BILLING"))
                 .andExpect(jsonPath("$.allowed").value(false))
+                .andExpect(jsonPath("$.maxUsers").value(5))
+                .andExpect(jsonPath("$.maxMonthlyDocuments").value(1000))
                 .andExpect(jsonPath("$.reasonCode").value("LICENSE_SUSPENDED"));
     }
 
@@ -108,7 +116,8 @@ class CompanyLicenseControllerTest {
 
     private static CompanyLicenseResult result(CompanyLicenseStatus status) {
         return new CompanyLicenseResult(LICENSE_ID, COMPANY_ID, "SMALL_BUSINESS", status,
-                LocalDate.parse("2026-05-01"), LocalDate.parse("2027-05-01"), 5, 1000, NOW, NOW);
+                LocalDate.parse("2026-05-01"), LocalDate.parse("2027-05-01"), 5, 1000,
+                Set.of(LicenseModule.BILLING, LicenseModule.COMPANY), NOW, NOW);
     }
 
     private static String licenseJson() {
@@ -118,7 +127,8 @@ class CompanyLicenseControllerTest {
                   "validFrom": "2026-05-01",
                   "validTo": "2027-05-01",
                   "maxUsers": 5,
-                  "maxMonthlyDocuments": 1000
+                  "maxMonthlyDocuments": 1000,
+                  "enabledModules": ["COMPANY", "BILLING"]
                 }
                 """;
     }

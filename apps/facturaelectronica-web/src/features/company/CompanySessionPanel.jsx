@@ -1,7 +1,10 @@
 import { StatusBadge } from '../../components/forms.jsx';
 import { companyLabel } from '../../utils/company.js';
 
-export function CompanySessionPanel({ accesses, companies, activeCompanyId, activeAccess, license, session, isRoot, onCompanyChange, onLogout, busy }) {
+export function CompanySessionPanel({ accesses, companies, activeCompanyId, activeCompany, activeAccess, license, session, isRoot, onCompanyChange, onLogout, busy }) {
+  const licenseAllowed = license?.validation?.allowed || license?.allowed;
+  const licenseStatus = license?.status || license?.validation?.status || 'SIN VALIDAR';
+
   if (isRoot) {
     return (
       <section className="top-panel app-header-panel root-header-panel">
@@ -33,12 +36,10 @@ export function CompanySessionPanel({ accesses, companies, activeCompanyId, acti
       </div>
       <label>
         Empresa del usuario
-        <select value={activeCompanyId} onChange={(event) => onCompanyChange(event.target.value)} disabled={!accesses.length || busy}>
-          {accesses.map((access) => <option key={access.companyId} value={access.companyId}>{access.companyId}</option>)}
-        </select>
+        <input value={companyLabel(activeCompany) || activeAccess?.companyName || 'Empresa sin cargar'} readOnly />
       </label>
       <div className="status-row">
-        <StatusBadge label="Licencia" value={license?.allowed ? 'ACTIVA' : license?.status || 'SIN VALIDAR'} tone={license?.allowed ? 'ok' : 'warn'} />
+        <StatusBadge label="Licencia" value={licenseAllowed ? 'ACTIVA' : licenseStatus} tone={licenseAllowed || licenseStatus === 'ACTIVE' ? 'ok' : 'warn'} />
         <StatusBadge label="Roles" value={activeAccess?.roles?.join(', ') || 'N/A'} />
       </div>
       <button className="secondary" onClick={onLogout} type="button">Cerrar sesion</button>

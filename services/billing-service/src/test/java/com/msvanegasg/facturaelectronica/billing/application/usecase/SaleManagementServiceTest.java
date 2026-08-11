@@ -26,6 +26,7 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.AuditResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalNumberResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.CreateSaleCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.InventoryProductSnapshot;
+import com.msvanegasg.facturaelectronica.billing.application.dto.LicensePolicy;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ProviderSubmissionResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineCommand;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AuditEventPort;
@@ -33,6 +34,7 @@ import com.msvanegasg.facturaelectronica.billing.application.port.in.AssignFisca
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AccountingEntryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ElectronicDocumentProviderPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalDocumentUsagePort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryAvailabilityPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryMovementPort;
@@ -182,6 +184,8 @@ class SaleManagementServiceTest {
     void confirmsSaleAndGeneratesValidatedDocument() {
         SaleManagementService service = service();
         when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
+        when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
+                .thenReturn(LicensePolicy.unlimited());
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
         when(providerPort.submit(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
                 org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_POS),
@@ -220,6 +224,8 @@ class SaleManagementServiceTest {
     void confirmPublishesDurableOutboxEvents() {
         SaleManagementService service = service(eventPublisher);
         when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
+        when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
+                .thenReturn(LicensePolicy.unlimited());
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
         when(providerPort.submit(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
                 org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_POS),
@@ -249,6 +255,8 @@ class SaleManagementServiceTest {
     void confirmPublishesProviderRetryEventWhenProviderFails() {
         SaleManagementService service = service(eventPublisher);
         when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
+        when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
+                .thenReturn(LicensePolicy.unlimited());
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
         when(providerPort.submit(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
                 org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_POS),
@@ -275,8 +283,8 @@ class SaleManagementServiceTest {
     @Test
     void blocksConfirmWhenLicenseIsNotAllowed() {
         when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
-        doThrow(new LicenseBlockedException("La licencia de la empresa esta suspendida."))
-                .when(licenseValidationPort).ensureAllowed(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT);
+        when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
+                .thenThrow(new LicenseBlockedException("La licencia de la empresa esta suspendida."));
 
         assertThatThrownBy(() -> service().confirm(COMPANY_ID, SALE_ID, "confirm-1"))
                 .isInstanceOf(LicenseBlockedException.class);
@@ -284,6 +292,28 @@ class SaleManagementServiceTest {
         verify(providerPort, never()).submit(any(), any(), any(), any());
         verify(saleRepository, never()).save(any());
     }
+
+    @Test
+    void blocksConfirmWhenMonthlyDocumentQuotaIsReached() {
+        FiscalDocumentUsagePort fiscalDocumentUsagePort = org.mockito.Mockito.mock(FiscalDocumentUsagePort.class);
+        SaleManagementService service = service(fiscalDocumentUsagePort);
+        when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
+        when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
+                .thenReturn(new LicensePolicy(null, 1));
+        when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
+        when(idGenerator.newId()).thenReturn(DOCUMENT_ID);
+        when(clock.now()).thenReturn(NOW);
+        when(fiscalDocumentUsagePort.countIssuedDocuments(org.mockito.ArgumentMatchers.eq(COMPANY_ID), any(), any()))
+                .thenReturn(1L);
+
+        assertThatThrownBy(() -> service.confirm(COMPANY_ID, SALE_ID, "confirm-1"))
+                .isInstanceOf(LicenseBlockedException.class)
+                .hasMessageContaining("maximo 1 documentos");
+
+        verify(providerPort, never()).submit(any(), any(), any(), any());
+        verify(saleRepository, never()).save(any());
+    }
+
     @Test
     void confirmRetriesPendingEffectsWithoutGeneratingAnotherDocument() {
         Sale confirmed = draftSale().confirm(validatedDocument(null, null), NOW);
@@ -323,6 +353,16 @@ class SaleManagementServiceTest {
     private SaleManagementService service(DomainEventPublisherPort publisher) {
         return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
                 accountingEntryPort, auditEventPort, licenseValidationPort, assignFiscalNumberUseCase, publisher,
+                idGenerator, clock);
+    }
+
+    private SaleManagementService service(FiscalDocumentUsagePort fiscalDocumentUsagePort) {
+        return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
+                accountingEntryPort, auditEventPort,
+                companyId -> Optional.of(new com.msvanegasg.facturaelectronica.billing.domain.model.FinalConsumerProfile(
+                        new UUID(0L, 222L), null, "FINAL_CONSUMER", 31, "222222222222", "Consumidor final",
+                        true, "TEST", "TEST", Instant.EPOCH)),
+                licenseValidationPort, fiscalDocumentUsagePort, assignFiscalNumberUseCase, eventPublisher,
                 idGenerator, clock);
     }
 

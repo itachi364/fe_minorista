@@ -48,6 +48,11 @@ public class CompanyController {
         return CompanyRestMapper.toResponse(manageCompanyUseCase.findById(companyId));
     }
 
+    @PutMapping("/{companyId}")
+    public CompanyResponse update(@PathVariable UUID companyId, @Valid @RequestBody CompanyRequest request) {
+        return CompanyRestMapper.toResponse(manageCompanyUseCase.update(companyId, CompanyRestMapper.toCommand(request)));
+    }
+
     @PutMapping("/{companyId}/activate")
     public CompanyResponse activate(@PathVariable UUID companyId) {
         return CompanyRestMapper.toResponse(manageCompanyUseCase.activate(companyId));

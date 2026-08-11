@@ -20,6 +20,7 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalArtifactR
 import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalEventResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalNumberResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.InventoryProductSnapshot;
+import com.msvanegasg.facturaelectronica.billing.application.dto.LicensePolicy;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ProviderSubmissionResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineCommand;
@@ -31,6 +32,7 @@ import com.msvanegasg.facturaelectronica.billing.application.port.out.AuditEvent
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ElectronicDocumentProviderPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FinalConsumerProfileRepositoryPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalDocumentUsagePort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryAvailabilityPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryMovementPort;
@@ -63,6 +65,7 @@ public class SaleManagementService implements ManageSaleUseCase {
     private final AuditEventPort auditEventPort;
     private final FinalConsumerProfileRepositoryPort finalConsumerProfileRepository;
     private final LicenseValidationPort licenseValidationPort;
+    private final FiscalDocumentUsagePort fiscalDocumentUsagePort;
     private final AssignFiscalNumberUseCase assignFiscalNumberUseCase;
     private final DomainEventPublisherPort eventPublisher;
     private final IdGeneratorPort idGenerator;
@@ -110,6 +113,18 @@ public class SaleManagementService implements ManageSaleUseCase {
             FinalConsumerProfileRepositoryPort finalConsumerProfileRepository,
             LicenseValidationPort licenseValidationPort, AssignFiscalNumberUseCase assignFiscalNumberUseCase,
             DomainEventPublisherPort eventPublisher, IdGeneratorPort idGenerator, ClockPort clock) {
+        this(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort, accountingEntryPort,
+                auditEventPort, finalConsumerProfileRepository, licenseValidationPort, FiscalDocumentUsagePort.noop(),
+                assignFiscalNumberUseCase, eventPublisher, idGenerator, clock);
+    }
+
+    public SaleManagementService(SaleRepositoryPort saleRepository, InventoryAvailabilityPort inventoryAvailability,
+            ElectronicDocumentProviderPort providerPort, InventoryMovementPort inventoryMovementPort,
+            AccountingEntryPort accountingEntryPort, AuditEventPort auditEventPort,
+            FinalConsumerProfileRepositoryPort finalConsumerProfileRepository,
+            LicenseValidationPort licenseValidationPort, FiscalDocumentUsagePort fiscalDocumentUsagePort,
+            AssignFiscalNumberUseCase assignFiscalNumberUseCase, DomainEventPublisherPort eventPublisher,
+            IdGeneratorPort idGenerator, ClockPort clock) {
         this.saleRepository = Objects.requireNonNull(saleRepository);
         this.inventoryAvailability = Objects.requireNonNull(inventoryAvailability);
         this.providerPort = Objects.requireNonNull(providerPort);
@@ -118,6 +133,7 @@ public class SaleManagementService implements ManageSaleUseCase {
         this.auditEventPort = Objects.requireNonNull(auditEventPort);
         this.finalConsumerProfileRepository = Objects.requireNonNull(finalConsumerProfileRepository);
         this.licenseValidationPort = Objects.requireNonNull(licenseValidationPort);
+        this.fiscalDocumentUsagePort = Objects.requireNonNull(fiscalDocumentUsagePort);
         this.assignFiscalNumberUseCase = Objects.requireNonNull(assignFiscalNumberUseCase);
         this.eventPublisher = Objects.requireNonNull(eventPublisher);
         this.idGenerator = Objects.requireNonNull(idGenerator);
@@ -142,10 +158,11 @@ public class SaleManagementService implements ManageSaleUseCase {
         if (sale.status() != SaleStatus.DRAFT) {
             return BillingResultMapper.toSaleResult(applyPostValidationEffects(sale));
         }
-        licenseValidationPort.ensureAllowed(companyId, LicenseAction.ISSUE_FISCAL_DOCUMENT);
+        LicensePolicy licensePolicy = licenseValidationPort.policy(companyId, LicenseAction.ISSUE_FISCAL_DOCUMENT);
         sale.lines().forEach(line -> ensureAvailable(sale.companyId(), line));
         UUID documentId = idGenerator.newId();
         Instant now = clock.now();
+        ensureMonthlyDocumentQuota(companyId, licensePolicy, now);
         ElectronicDocumentType documentType = sale.saleChannel() == SaleChannel.POS
                 ? ElectronicDocumentType.ELECTRONIC_POS
                 : ElectronicDocumentType.ELECTRONIC_INVOICE;
@@ -264,6 +281,21 @@ public class SaleManagementService implements ManageSaleUseCase {
         }
         if (!inventoryAvailability.isAvailable(companyId, line.productId(), line.quantity())) {
             throw new InsufficientStockException(line.productId());
+        }
+    }
+
+    private void ensureMonthlyDocumentQuota(UUID companyId, LicensePolicy policy, Instant issuedAt) {
+        Integer maxMonthlyDocuments = policy.maxMonthlyDocuments();
+        if (maxMonthlyDocuments == null) {
+            return;
+        }
+        LocalDate documentDate = LocalDate.ofInstant(issuedAt, ZoneOffset.UTC);
+        Instant from = documentDate.withDayOfMonth(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant to = documentDate.withDayOfMonth(1).plusMonths(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+        long issuedDocuments = fiscalDocumentUsagePort.countIssuedDocuments(companyId, from, to);
+        if (issuedDocuments >= maxMonthlyDocuments.longValue()) {
+            throw new LicenseBlockedException("La licencia permite maximo " + maxMonthlyDocuments
+                    + " documentos fiscales mensuales.");
         }
     }
 

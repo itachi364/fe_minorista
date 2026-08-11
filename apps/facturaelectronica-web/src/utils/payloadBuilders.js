@@ -40,6 +40,17 @@ export function buildCompanyAdminPayload(form) {
   });
 }
 
+export function buildLicensePayload(form) {
+  return compactObject({
+    planCode: form.planCode,
+    validFrom: form.validFrom,
+    validTo: form.validTo,
+    maxUsers: toNumber(form.maxUsers),
+    maxMonthlyDocuments: toNumber(form.maxMonthlyDocuments),
+    enabledModules: Array.isArray(form.enabledModules) ? form.enabledModules : [],
+  });
+}
+
 export function buildThirdPartyPayload(form, companyMunicipalityCode) {
   const normalizedForm = normalizeThirdPartyForm(form, companyMunicipalityCode);
   const simpleNaturalCustomer = isSimpleNaturalCustomer(normalizedForm);

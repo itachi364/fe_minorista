@@ -175,7 +175,7 @@ Password: RootDemo#2026!
 
 Estas credenciales se controlan con `IDENTITY_ROOT_USER_*` y no deben usarse en produccion.
 
-ROOT puede crear empresas contratantes desde la SPA. Al crear una empresa, el `companyId` retornado queda como empresa activa y permite crear el administrador inicial con email, nombre completo, password inicial y rol empresarial `OWNER`.
+ROOT puede crear, actualizar, activar e inactivar empresas contratantes desde la SPA. Al crear una empresa, el `companyId` retornado queda como empresa activa y permite crear el administrador inicial con email, nombre completo, password inicial y rol empresarial `OWNER`. Los usuarios empresariales ven su empresa por nombre como dato informativo y solo pueden actualizar los datos de su propia empresa autorizada; no pueden crear empresas nuevas.
 
 ## Frontend Y BFF
 
@@ -189,11 +189,11 @@ La SPA consume solamente el BFF por `/api/v1`. En desarrollo Vite usa proxy haci
 
 El flujo operativo actual inicia con login desde la UI. Sin sesion activa solo se muestra la pantalla de login; los menus y formularios no se renderizan. La SPA llama `POST /api/v1/auth/login`, consulta `GET /api/v1/me/companies`, selecciona una empresa autorizada y valida internamente su licencia con `GET /api/v1/companies/{companyId}/license/validation?action=CREATE_TRANSACTION`.
 
-Despues del login exitoso con licencia activa, la SPA muestra un shell operativo profesional con sidebar, panel superior de sesion/empresa y formularios de empresa, terceros, inventario, configuracion fiscal, venta POS/factura y reportes con campos editables. El JSON de request se arma al enviar cada formulario y se envia al BFF con `Authorization`, `X-Company-Id`, `X-User-Id`, `X-Correlation-Id` e `Idempotency-Key` cuando aplica. El campo `companyId` ya no se digita manualmente en la UI operativa; proviene de las empresas asociadas al usuario autenticado. Si la licencia no esta activa, la UI muestra un modal informativo, limpia la sesion automaticamente y vuelve al login. El encabezado autenticado incluye `Cerrar sesion`.
+Despues del login exitoso con licencia activa, la SPA muestra un shell operativo profesional con sidebar, panel superior de sesion/empresa y formularios de empresa, terceros, inventario, configuracion fiscal, venta POS/factura y reportes con campos editables. El JSON de request se arma al enviar cada formulario y se envia al BFF con `Authorization`, `X-Company-Id`, `X-User-Id`, `X-Correlation-Id` e `Idempotency-Key` cuando aplica. El campo `companyId` ya no se digita manualmente en la UI operativa; proviene de las empresas asociadas al usuario autenticado. ROOT selecciona empresas desde una lista; los usuarios empresariales ven el nombre de su empresa como informacion de solo lectura. Si la licencia no esta activa, la UI muestra un modal informativo, limpia la sesion automaticamente y vuelve al login. El encabezado autenticado incluye `Cerrar sesion`.
 
 El BFF endurece acceso para catálogos administrables, contabilidad, nomina y logs: `ROOT` conserva acceso global, las mutaciones de plataforma quedan reservadas a `ROOT` y las acciones empresariales validan permisos efectivos contra `identity-service`.
 
-La UI operativa no muestra paneles permanentes de JSON tecnico. Cada accion usa un modal de proceso/exito/error y los detalles de trazabilidad se consultan en el modulo `Logs`, visible para `ROOT`, administradores de empresa y usuarios con permiso de auditoria.
+La UI operativa no muestra paneles permanentes de JSON tecnico. Cada accion usa un modal de proceso/exito/error y los detalles de trazabilidad se consultan en el modulo `Logs`, visible para `ROOT`, administradores de empresa y usuarios con permiso de auditoria. Los permisos y modulos RBAC se presentan en espanol en la SPA aunque sus codigos internos sigan en ingles para mantener contratos estables.
 
 Ejecutar BFF fuera de Docker:
 
@@ -514,6 +514,7 @@ Idempotency-Key: <valor-unico>
 
 - `POST /api/v1/companies`
 - `GET /api/v1/companies/{companyId}`
+- `PUT /api/v1/companies/{companyId}`
 - `PUT /api/v1/companies/{companyId}/activate`
 - `PUT /api/v1/companies/{companyId}/suspend`
 

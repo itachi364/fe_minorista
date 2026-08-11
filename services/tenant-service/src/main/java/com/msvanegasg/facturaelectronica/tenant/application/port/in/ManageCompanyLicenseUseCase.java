@@ -6,6 +6,7 @@ import com.msvanegasg.facturaelectronica.tenant.application.dto.CompanyLicenseCo
 import com.msvanegasg.facturaelectronica.tenant.application.dto.CompanyLicenseResult;
 import com.msvanegasg.facturaelectronica.tenant.application.dto.CompanyLicenseValidationResult;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseAction;
+import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseModule;
 
 public interface ManageCompanyLicenseUseCase {
 
@@ -17,5 +18,5 @@ public interface ManageCompanyLicenseUseCase {
 
     CompanyLicenseResult suspend(UUID companyId);
 
-    CompanyLicenseValidationResult validate(UUID companyId, LicenseAction action);
+    CompanyLicenseValidationResult validate(UUID companyId, LicenseAction action, LicenseModule module);
 }

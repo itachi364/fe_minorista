@@ -145,10 +145,12 @@ $license = Invoke-Api -Method Post -Uri "$TenantUrl/api/v1/companies/$companyId/
     validTo = "2027-12-31"
     maxUsers = 5
     maxMonthlyDocuments = 1000
+    enabledModules = @("COMPANY", "THIRDPARTY", "INVENTORY", "BILLING", "ACCOUNTING", "PAYROLL", "REPORTS", "CATALOGS", "AUDIT", "USERS")
 }
 Assert-Equal $license.status "ACTIVE" "Company license must be active"
+Assert-Equal ($license.enabledModules -contains "BILLING") "True" "Company license must include billing module"
 
-$licenseValidation = Invoke-Api -Method Get -Uri "$TenantUrl/api/v1/companies/$companyId/license/validation?action=CREATE_TRANSACTION"
+$licenseValidation = Invoke-Api -Method Get -Uri "$TenantUrl/api/v1/companies/$companyId/license/validation?action=CREATE_TRANSACTION&module=BILLING"
 Assert-Equal $licenseValidation.allowed "True" "License must allow transactions"
 
 Write-Host "Creating owner user and company membership..."

@@ -18,6 +18,7 @@ import com.msvanegasg.facturaelectronica.identity.application.dto.CreateCompanyR
 import com.msvanegasg.facturaelectronica.identity.application.dto.CreateUserCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.LoginCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.LoginResult;
+import com.msvanegasg.facturaelectronica.identity.application.dto.LicensePolicy;
 import com.msvanegasg.facturaelectronica.identity.application.dto.MembershipResult;
 import com.msvanegasg.facturaelectronica.identity.application.dto.PermissionCatalogResult;
 import com.msvanegasg.facturaelectronica.identity.application.dto.RevokeCompanyRoleCommand;
@@ -190,10 +191,12 @@ public class IdentityManagementService implements ManageIdentityUseCase {
                 .orElseThrow(() -> new UserNotFoundException(command.userId()));
         UserAccount actor = authenticateIfPresent(command.authorizationHeader());
         boolean rootActor = isRoot(actor);
+        LicensePolicy licensePolicy = LicensePolicy.unlimited();
         if (!rootActor) {
-            licenseValidationPort.ensureAllowed(command.companyId(), LicenseAction.CREATE_USER);
+            licensePolicy = licenseValidationPort.policy(command.companyId(), LicenseAction.CREATE_USER);
         }
         ensureCanManageLegacyRoles(command.companyId(), command.authorizationHeader(), command.roles(), actor, rootActor);
+        ensureUserQuotaAvailable(command.companyId(), target.id(), licensePolicy, "ASSIGN_ROLES");
         CompanyMembership membership = membershipRepository.findByCompanyIdAndUserId(command.companyId(), target.id())
                 .map(existing -> existing.replaceRoles(command.roles(), clock.now()))
                 .orElseGet(() -> CompanyMembership.create(idGenerator.nextId(), command.companyId(), target.id(),
@@ -333,11 +336,13 @@ public class IdentityManagementService implements ManageIdentityUseCase {
         Set<PermissionCode> requestedPermissions = roles.stream()
                 .flatMap(role -> role.permissionCodes().stream())
                 .collect(Collectors.toUnmodifiableSet());
+        LicensePolicy licensePolicy = LicensePolicy.unlimited();
         if (!isRoot(actor)) {
-            licenseValidationPort.ensureAllowed(command.companyId(), LicenseAction.CREATE_USER);
+            licensePolicy = licenseValidationPort.policy(command.companyId(), LicenseAction.CREATE_USER);
             ensureCanDelegate(command.companyId(), actor, requestedPermissions, PermissionCode.COMPANY_ROLES_MANAGE,
                     "ASSIGN_COMPANY_ROLES");
         }
+        ensureUserQuotaAvailable(command.companyId(), target.id(), licensePolicy, "ASSIGN_COMPANY_ROLES");
         companyRoleRepository.replaceUserRoleAssignments(command.companyId(), target.id(), command.roleIds(), actor.id(),
                 clock.now());
         audit(command.companyId(), actor.id(), "ASSIGN_COMPANY_ROLES", "USER", target.id().toString(),
@@ -428,6 +433,30 @@ public class IdentityManagementService implements ManageIdentityUseCase {
                     "FORBIDDEN");
             throw new AccessDeniedException(companyId, permission);
         }
+    }
+
+    private void ensureUserQuotaAvailable(UUID companyId, UUID userId, LicensePolicy policy, String action) {
+        Integer maxUsers = policy.maxUsers();
+        if (maxUsers == null) {
+            return;
+        }
+        if (hasCompanyAccess(companyId, userId)) {
+            return;
+        }
+        long activeUsers = userRepository.countByCompanyId(companyId);
+        if (activeUsers >= maxUsers.longValue()) {
+            audit(companyId, userId, action, "LICENSE", companyId.toString(), AccessAuditResult.FAILURE,
+                    "MAX_USERS_EXCEEDED");
+            throw new LicenseBlockedException("La licencia permite maximo " + maxUsers
+                    + " usuarios activos para la empresa.");
+        }
+    }
+
+    private boolean hasCompanyAccess(UUID companyId, UUID userId) {
+        boolean hasMembership = membershipRepository.findByCompanyIdAndUserId(companyId, userId)
+                .filter(CompanyMembership::active)
+                .isPresent();
+        return hasMembership || companyRoleRepository.findAssignedCompanyIds(userId).contains(companyId);
     }
 
 

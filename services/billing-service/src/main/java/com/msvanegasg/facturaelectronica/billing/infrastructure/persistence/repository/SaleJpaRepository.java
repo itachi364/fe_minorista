@@ -58,4 +58,14 @@ public interface SaleJpaRepository extends JpaRepository<SaleJpaEntity, UUID> {
     @Query("select s from SaleJpaEntity s join s.electronicDocument d where s.companyId = :companyId and d.id = :documentId")
     Optional<SaleJpaEntity> findByCompanyIdAndElectronicDocumentId(@Param("companyId") UUID companyId,
             @Param("documentId") UUID documentId);
+
+    @Query("""
+            select count(d.id)
+            from SaleJpaEntity s join s.electronicDocument d
+            where s.companyId = :companyId
+              and d.issuedAt >= :from
+              and d.issuedAt < :to
+            """)
+    long countIssuedElectronicDocuments(@Param("companyId") UUID companyId, @Param("from") Instant from,
+            @Param("to") Instant to);
 }

@@ -45,6 +45,20 @@ public class CompanyManagementService implements ManageCompanyUseCase {
     }
 
     @Override
+    public CompanyResult update(UUID companyId, CreateCompanyCommand command) {
+        Company current = findCompany(companyId);
+        boolean identificationChanged = !current.identificationTypeCode().equals(command.identificationTypeCode())
+                || !current.identificationNumber().equals(command.identificationNumber());
+        if (identificationChanged
+                && companyRepository.existsByIdentification(command.identificationTypeCode(), command.identificationNumber())) {
+            throw new CompanyAlreadyExistsException(command.identificationNumber());
+        }
+        Company updated = current.update(command.legalName(), command.tradeName(), command.identificationTypeCode(),
+                command.identificationNumber(), command.verificationDigit(), command.email(), clock.now());
+        return CompanyResult.from(companyRepository.save(updated));
+    }
+
+    @Override
     public List<CompanyResult> list() {
         return companyRepository.findAll().stream()
                 .map(CompanyResult::from)

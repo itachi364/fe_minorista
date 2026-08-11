@@ -17,6 +17,21 @@ export function createCompanyAdminForm() {
   return { fullName: '', email: '', password: '', role: 'OWNER' };
 }
 
+export function createLicenseForm() {
+  const today = new Date();
+  const nextYear = new Date(today);
+  nextYear.setFullYear(today.getFullYear() + 1);
+  return {
+    companyId: '',
+    planCode: 'CUSTOM',
+    validFrom: toDateInputValue(today),
+    validTo: toDateInputValue(nextYear),
+    maxUsers: '',
+    maxMonthlyDocuments: '',
+    enabledModules: [],
+  };
+}
+
 export function createManagedUserForm() {
   return { fullName: '', email: '', password: '' };
 }

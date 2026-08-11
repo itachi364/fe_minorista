@@ -1,7 +1,10 @@
 package com.msvanegasg.facturaelectronica.billing.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -18,18 +21,22 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.msvanegasg.facturaelectronica.billing.application.dto.CreateFiscalNoteCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalNumberResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.LicensePolicy;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ProviderSubmissionResult;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.AssignFiscalNumberUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalDocumentUsagePort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalNoteProviderPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalNoteRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGeneratorPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.LicenseValidationPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.SaleRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalNote;
 import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalNoteType;
+import com.msvanegasg.facturaelectronica.billing.domain.model.LicenseAction;
 import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
@@ -84,6 +91,40 @@ class FiscalNoteManagementServiceTest {
         assertThat(result.prefix()).isEqualTo("NC");
         assertThat(result.documentNumber()).isEqualTo(10);
         assertThat(result.cufeCude()).isEqualTo("mock-cufe");
+    }
+
+    @Test
+    void blocksFiscalNoteWhenMonthlyDocumentQuotaIsReached() {
+        LicenseValidationPort licenseValidationPort = new LicenseValidationPort() {
+            @Override
+            public void ensureAllowed(UUID companyId, LicenseAction action) {
+            }
+
+            @Override
+            public LicensePolicy policy(UUID companyId, LicenseAction action) {
+                return new LicensePolicy(null, 1);
+            }
+        };
+        FiscalDocumentUsagePort fiscalDocumentUsagePort = org.mockito.Mockito.mock(FiscalDocumentUsagePort.class);
+        FiscalNoteManagementService quotaService = new FiscalNoteManagementService(noteRepository, saleRepository,
+                providerPort, licenseValidationPort, fiscalDocumentUsagePort, assignFiscalNumberUseCase, idGenerator,
+                clock);
+        when(noteRepository.findByCompanyIdAndIdempotencyKey(COMPANY_ID, "note-1")).thenReturn(Optional.empty());
+        when(saleRepository.findByCompanyIdAndElectronicDocumentId(COMPANY_ID, DOCUMENT_ID))
+                .thenReturn(Optional.of(sale(ElectronicDocumentType.ELECTRONIC_INVOICE)));
+        when(idGenerator.newId()).thenReturn(NOTE_ID);
+        when(clock.now()).thenReturn(NOW);
+        when(fiscalDocumentUsagePort.countIssuedDocuments(org.mockito.ArgumentMatchers.eq(COMPANY_ID), any(), any()))
+                .thenReturn(1L);
+
+        assertThatThrownBy(() -> quotaService.create(new CreateFiscalNoteCommand(COMPANY_ID, DOCUMENT_ID,
+                FiscalNoteType.CREDIT_NOTE, null, "Devolucion parcial", new BigDecimal("10000.00"),
+                new BigDecimal("1900.00"), new BigDecimal("11900.00"), "note-1")))
+                .isInstanceOf(LicenseBlockedException.class)
+                .hasMessageContaining("maximo 1 documentos");
+
+        verify(providerPort, never()).submit(any(), any(), any(), any(), any());
+        verify(noteRepository, never()).save(any());
     }
 
     private FiscalNoteManagementService service() {

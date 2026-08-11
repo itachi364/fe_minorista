@@ -16,5 +16,7 @@ public interface UserAccountRepositoryPort {
 
     List<UserAccount> findByCompanyIdAndEmailContaining(UUID companyId, String email);
 
+    long countByCompanyId(UUID companyId);
+
     boolean existsByEmail(String email);
 }

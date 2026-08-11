@@ -30,12 +30,30 @@ const COMPANY_ACCESS = [{
 }];
 const REPORT_ONLY_ACCESS = [{ companyId: COMPANY_ID, roles: ['REPORT_VIEWER'], permissions: ['REPORTS_VIEW'] }];
 const ACTIVE_LICENSE = {
+  id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
   companyId: COMPANY_ID,
   action: 'CREATE_TRANSACTION',
+  module: 'COMPANY',
   allowed: true,
   status: 'ACTIVE',
   reasonCode: null,
   message: 'Licencia activa.',
+  planCode: 'CUSTOM',
+  validFrom: '2026-01-01',
+  validTo: '2027-01-01',
+  maxUsers: 10,
+  maxMonthlyDocuments: 1000,
+  enabledModules: ['COMPANY', 'THIRDPARTY', 'INVENTORY', 'BILLING', 'ACCOUNTING', 'REPORTS', 'USERS'],
+};
+const ACTIVE_COMPANY = {
+  id: COMPANY_ID,
+  legalName: 'Empresa Demo SAS',
+  tradeName: 'Tienda Demo',
+  identificationTypeCode: 31,
+  identificationNumber: '900123456',
+  verificationDigit: '7',
+  email: 'admin@example.com',
+  status: 'ACTIVE',
 };
 const TEST_RUNTIME_CATALOGS = {
   thirdPartyRoleCatalog: [
@@ -129,18 +147,24 @@ test('login with active license hides login and shows operational shell', async 
   await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
   expect(screen.queryByRole('heading', { name: 'Iniciar sesion' })).not.toBeInTheDocument();
   expect(screen.getByText('Owner User - owner@example.com')).toBeInTheDocument();
-  expect(screen.getByDisplayValue(COMPANY_ID)).toBeInTheDocument();
+  expect(screen.getByDisplayValue('Empresa Demo SAS (900123456)')).toBeInTheDocument();
+  expect(screen.queryByDisplayValue(COMPANY_ID)).not.toBeInTheDocument();
   expect(screen.getByText('ACTIVA')).toBeInTheDocument();
   expect(screen.getByLabelText('Razon social')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Actualizar empresa' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Crear empresa' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Validar licencia' })).not.toBeInTheDocument();
   expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/auth/login', expect.objectContaining({ method: 'POST' }));
   expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/me/companies', expect.objectContaining({
     headers: expect.objectContaining({ Authorization: 'Bearer token-1' }),
   }));
   expect(fetchMock).toHaveBeenNthCalledWith(3,
-    `/api/v1/companies/${COMPANY_ID}/license/validation?action=CREATE_TRANSACTION`,
+    `/api/v1/companies/${COMPANY_ID}/license/validation?action=CREATE_TRANSACTION&module=COMPANY`,
     expect.objectContaining({ headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }) }),
   );
+  expect(fetchMock).toHaveBeenNthCalledWith(5, `/api/v1/companies/${COMPANY_ID}`, expect.objectContaining({
+    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
+  }));
 });
 
 test('restores active session after page reload simulation', async () => {
@@ -155,7 +179,7 @@ test('restores active session after page reload simulation', async () => {
 
   expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Iniciar sesion' })).not.toBeInTheDocument();
-  expect(fetchMock).toHaveBeenCalledTimes(3);
+  expect(fetchMock).toHaveBeenCalledTimes(5);
 });
 
 test('stored session expires after five minutes of inactivity', () => {
@@ -177,18 +201,62 @@ test('company user sees only modules allowed by effective permissions', async ()
   expect(screen.queryByRole('button', { name: 'Usuarios y roles' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Consultar' })).toBeInTheDocument();
 });
+
+test('company owner updates active company without create company action', async () => {
+  const updatedCompany = { ...ACTIVE_COMPANY, legalName: 'Empresa Actualizada SAS' };
+  const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
+    .mockResolvedValueOnce(jsonResponse(updatedCompany));
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Actualizar empresa' })).toBeInTheDocument());
+
+  expect(screen.queryByRole('button', { name: 'Crear empresa' })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Razon social'), { target: { value: 'Empresa Actualizada SAS' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Actualizar empresa' }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
+  expect(fetchMock).toHaveBeenNthCalledWith(6, `/api/v1/companies/${COMPANY_ID}`, expect.objectContaining({
+    method: 'PUT',
+    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(JSON.parse(fetchMock.mock.calls[5][1].body)).toMatchObject({
+    legalName: 'Empresa Actualizada SAS',
+  });
+});
+
 test('login with inactive license shows modal and keeps only login visible', async () => {
   mockLoginFlow({ ...ACTIVE_LICENSE, allowed: false, status: 'SUSPENDED', message: 'La licencia esta suspendida.' });
 
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
 
-  await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
-  expect(screen.getByText('Licencia no activa')).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByText('Licencia no activa')).toBeInTheDocument());
   expect(screen.getByText('La licencia esta suspendida.')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
   expect(screen.queryByRole('navigation', { name: 'Flujo principal' })).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Razon social')).not.toBeInTheDocument();
+});
+
+test('login with missing company license shows license configuration message', async () => {
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(jsonResponse(LOGIN_RESPONSE))
+    .mockResolvedValueOnce(jsonResponse(COMPANY_ACCESS))
+    .mockResolvedValueOnce(errorResponse(404, {
+      status: 404,
+      code: 'RESOURCE_NOT_FOUND',
+      message: `No existe licencia configurada para la empresa ${COMPANY_ID}.`,
+      correlationId: 'corr-license',
+    }));
+  vi.stubGlobal('fetch', fetchMock);
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+
+  await waitFor(() => expect(screen.getByText('Licencia no configurada')).toBeInTheDocument());
+  expect(screen.getByText('La empresa no tiene una licencia configurada. Solicita a ROOT asignar una licencia antes de ingresar.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
+  expect(screen.queryByRole('navigation', { name: 'Flujo principal' })).not.toBeInTheDocument();
 });
 
 
@@ -218,6 +286,47 @@ test('root login shows global panel without company or license validation', asyn
   expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/companies', expect.objectContaining({
     headers: expect.objectContaining({ Authorization: 'Bearer token-1' }),
   }));
+});
+
+test('root assigns configurable company license', async () => {
+  const createdCompany = { id: COMPANY_ID, legalName: 'Empresa Demo SAS', tradeName: 'Tienda Demo', identificationTypeCode: 31, identificationNumber: '900123456', verificationDigit: '7', email: 'admin@example.com', status: 'ACTIVE' };
+  const savedLicense = {
+    ...ACTIVE_LICENSE,
+    companyId: COMPANY_ID,
+    planCode: 'CUSTOM',
+    enabledModules: ['COMPANY', 'BILLING', 'USERS'],
+  };
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(jsonResponse({
+      ...LOGIN_RESPONSE,
+      email: 'root@example.com',
+      fullName: 'Root Platform User',
+      globalRoles: ['ROOT'],
+    }))
+    .mockResolvedValueOnce(jsonResponse([createdCompany]))
+    .mockResolvedValueOnce(jsonResponse(savedLicense));
+  vi.stubGlobal('fetch', fetchMock);
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByText('Panel global')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Licencias' }));
+  fireEvent.change(screen.getByLabelText('Empresa contratante'), { target: { value: COMPANY_ID } });
+  fireEvent.click(screen.getByLabelText('Empresa y configuracion'));
+  fireEvent.click(screen.getByLabelText('Venta POS y facturacion electronica'));
+  fireEvent.click(screen.getByLabelText('Usuarios, roles y permisos'));
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar licencia' }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+  expect(fetchMock).toHaveBeenNthCalledWith(3, `/api/v1/companies/${COMPANY_ID}/license`, expect.objectContaining({
+    method: 'POST',
+    headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toMatchObject({
+    planCode: 'CUSTOM',
+    enabledModules: ['COMPANY', 'BILLING', 'USERS'],
+  });
 });
 
 test('root creates company and initial administrator', async () => {
@@ -332,8 +441,8 @@ test('root manages company roles users and assignments', async () => {
 
   fireEvent.click(screen.getByRole('button', { name: 'Usuarios y roles' }));
   fireEvent.click(screen.getByRole('button', { name: 'Cargar permisos y roles' }));
-  await waitFor(() => expect(screen.getByText('SALES_CREATE')).toBeInTheDocument());
-  expect(screen.queryByText('GLOBAL_COMPANIES_MANAGE')).not.toBeInTheDocument();
+  await waitFor(() => expect(screen.getByText('Registrar ventas POS')).toBeInTheDocument());
+  expect(screen.queryByText('Gestionar empresas de la plataforma')).not.toBeInTheDocument();
 
   fillCompanyRoleForm();
   fireEvent.click(screen.getByRole('button', { name: 'Crear rol' }));
@@ -389,8 +498,8 @@ test('creates simple natural customer with automatic fiscal profile', async () =
   expect(screen.getByLabelText('Regimen tributario')).toHaveValue('No responsable de IVA');
   fireEvent.click(screen.getByRole('button', { name: 'Guardar tercero' }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
-  const thirdPartyPayload = JSON.parse(fetchMock.mock.calls[3][1].body);
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
+  const thirdPartyPayload = JSON.parse(fetchMock.mock.calls[5][1].body);
   expect(thirdPartyPayload.personType).toBe('NATURAL');
   expect(thirdPartyPayload.identificationTypeCode).toBe(13);
   expect(thirdPartyPayload.identificationNumber).toBe('1234567890');
@@ -401,7 +510,7 @@ test('creates simple natural customer with automatic fiscal profile', async () =
   expect(thirdPartyPayload.taxRegime).toBe('NO_RESPONSABLE_IVA');
   expect(thirdPartyPayload.roles).toEqual(['CUSTOMER']);
   expect(thirdPartyPayload.role).toBeUndefined();
-  expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/v1/third-parties', expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/v1/third-parties', expect.objectContaining({
     method: 'POST',
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
@@ -423,8 +532,8 @@ test('creates third party with municipality loaded from backend catalogs', async
   fireEvent.change(screen.getByLabelText('Municipio / ciudad'), { target: { value: '91001' } });
   fireEvent.click(screen.getByRole('button', { name: 'Guardar tercero' }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
-  const thirdPartyPayload = JSON.parse(fetchMock.mock.calls[3][1].body);
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
+  const thirdPartyPayload = JSON.parse(fetchMock.mock.calls[5][1].body);
   expect(thirdPartyPayload.municipalityCode).toBe('91001');
 });
 
@@ -442,11 +551,11 @@ test('creates POS sale with controlled virtual wallet payment method', async () 
   fireEvent.change(screen.getByLabelText('Billetera virtual'), { target: { value: 'NEQUI' } });
   fireEvent.click(screen.getByRole('button', { name: 'Crear venta' }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
   expect(screen.queryByLabelText('Venta creada')).not.toBeInTheDocument();
   expect(screen.getByText('Venta pendiente de confirmacion')).toBeInTheDocument();
   expect(screen.getByText('99999999-9999-9999-9999-999999999999')).toBeInTheDocument();
-  const salePayload = JSON.parse(fetchMock.mock.calls[3][1].body);
+  const salePayload = JSON.parse(fetchMock.mock.calls[5][1].body);
   expect(salePayload.paymentMethodCode).toBe('VIRTUAL_WALLET');
   expect(salePayload.virtualWalletCode).toBe('NEQUI');
   expect(salePayload.paymentMethodId).toBeUndefined();
@@ -472,11 +581,11 @@ test('searches customer by document and sends selected customer id in POS sale',
   await waitFor(() => expect(screen.getByText('Cliente seleccionado: Cliente Demo SAS (900123456)')).toBeInTheDocument());
   fireEvent.click(screen.getByRole('button', { name: 'Crear venta' }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
-  expect(fetchMock).toHaveBeenNthCalledWith(4, `/api/v1/customers?active=true&identificationNumberPrefix=900123456`, expect.objectContaining({
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(7));
+  expect(fetchMock).toHaveBeenNthCalledWith(6, `/api/v1/customers?active=true&identificationNumberPrefix=900123456`, expect.objectContaining({
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
-  const salePayload = JSON.parse(fetchMock.mock.calls[4][1].body);
+  const salePayload = JSON.parse(fetchMock.mock.calls[6][1].body);
   expect(salePayload.customerId).toBe(customer.id);
 });
 test('logout clears session and returns to login screen', async () => {
@@ -496,7 +605,9 @@ function mockLoginFlow(licensePayload, accesses = COMPANY_ACCESS) {
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(jsonResponse(LOGIN_RESPONSE))
     .mockResolvedValueOnce(jsonResponse(accesses))
-    .mockResolvedValueOnce(jsonResponse(licensePayload));
+    .mockResolvedValueOnce(jsonResponse(licensePayload))
+    .mockResolvedValueOnce(jsonResponse(licensePayload))
+    .mockResolvedValueOnce(jsonResponse(ACTIVE_COMPANY));
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
 }
@@ -505,6 +616,14 @@ function jsonResponse(payload) {
   return {
     ok: true,
     status: 200,
+    text: () => Promise.resolve(JSON.stringify(payload)),
+  };
+}
+
+function errorResponse(status, payload) {
+  return {
+    ok: false,
+    status,
     text: () => Promise.resolve(JSON.stringify(payload)),
   };
 }
@@ -526,9 +645,9 @@ function fillInitialAdminForm() {
 function fillCompanyRoleForm() {
   fireEvent.change(screen.getByLabelText('Nombre del rol'), { target: { value: 'VENDEDOR' } });
   fireEvent.change(screen.getByLabelText('Descripcion'), { target: { value: 'Puede registrar ventas POS y consultar inventario.' } });
-  fireEvent.click(screen.getByText('SALES_CREATE').closest('label').querySelector('input'));
-  fireEvent.click(screen.getByText('FISCAL_DOCUMENTS_ISSUE').closest('label').querySelector('input'));
-  fireEvent.click(screen.getByText('INVENTORY_VIEW').closest('label').querySelector('input'));
+  fireEvent.click(screen.getByText('Registrar ventas POS').closest('label').querySelector('input'));
+  fireEvent.click(screen.getByText('Emitir documentos fiscales').closest('label').querySelector('input'));
+  fireEvent.click(screen.getByText('Ver inventario').closest('label').querySelector('input'));
 }
 
 function fillManagedUserForm() {

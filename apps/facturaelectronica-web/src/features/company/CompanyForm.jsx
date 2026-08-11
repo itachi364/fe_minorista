@@ -2,7 +2,7 @@ import { Field, FormPanel, SelectField } from '../../components/forms.jsx';
 import { companyLabel } from '../../utils/company.js';
 import { calculateNitVerificationDigit, isNit, onlyDigits } from '../../utils/nit.js';
 
-export function CompanyForm({ form, setForm, companies, activeCompanyId, activeCompany, isRoot, onCompanyChange, onSubmit, onOpenAdminModal, busy, documentTypeOptions = [] }) {
+export function CompanyForm({ form, setForm, companies, activeCompanyId, activeCompany, isRoot, onCompanyChange, onSubmit, onUpdate, onActivate, onSuspend, onOpenAdminModal, busy, documentTypeOptions = [] }) {
   const nitDocument = isNit(form.identificationTypeCode);
   const verificationDigit = nitDocument ? calculateNitVerificationDigit(form.identificationNumber) : '';
 
@@ -17,8 +17,19 @@ export function CompanyForm({ form, setForm, companies, activeCompanyId, activeC
     setForm({ ...form, identificationNumber, verificationDigit: nitDocument ? calculateNitVerificationDigit(identificationNumber) : '' });
   }
 
+  const submitLabel = isRoot ? 'Crear empresa' : 'Actualizar empresa';
+  const canUpdateActiveCompany = Boolean(activeCompanyId);
+
   return <div className="stack">
-    <FormPanel title="Empresa contratante" submitLabel="Crear empresa" onSubmit={onSubmit} busy={busy}>
+    <FormPanel title="Empresa contratante" submitLabel={submitLabel} onSubmit={onSubmit} busy={busy || (!isRoot && !canUpdateActiveCompany)}>
+      {isRoot && activeCompany && (
+        <div className="button-row company-actions">
+          <button className="secondary" disabled={busy || !canUpdateActiveCompany} onClick={onUpdate} type="button">Actualizar empresa</button>
+          {activeCompany.status === 'SUSPENDED'
+            ? <button className="secondary" disabled={busy || !canUpdateActiveCompany} onClick={onActivate} type="button">Activar empresa</button>
+            : <button className="secondary" disabled={busy || !canUpdateActiveCompany} onClick={onSuspend} type="button">Inactivar empresa</button>}
+        </div>
+      )}
       <div className="form-grid">
         <Field label="Razon social" value={form.legalName} onChange={(value) => setForm({ ...form, legalName: value })} />
         <Field label="Nombre comercial" value={form.tradeName} onChange={(value) => setForm({ ...form, tradeName: value })} />

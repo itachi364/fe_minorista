@@ -245,6 +245,10 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RN-055: Un pago diario verbal no se debe tratar automaticamente como exento de obligaciones laborales; el sistema debe registrar clasificacion, advertencia y auditoria de la decision administrativa.
 - RN-056: Si el pago corresponde a contratista independiente, el costo debe integrarse como egreso/proveedor o gasto operativo, no como empleado de nomina formal.
 - RN-057: Todo registro de nomina, pago diario, liquidacion, activacion de nomina electronica y contabilizacion asociada debe generar auditoria segura.
+- RN-058: La ausencia de licencia configurada debe responder con codigo funcional `LICENSE_NOT_CONFIGURED` o mensaje equivalente en UI; no debe mostrarse como error generico de operacion.
+- RN-059: Una licencia parametrizable debe almacenar modulos habilitados; si no se especifican modulos, se interpreta como licencia sin acceso operativo salvo administracion ROOT.
+- RN-061: Los modulos licenciables son capacidades comerciales de alto nivel y se almacenan en ingles en backend/base de datos, pero la UI debe presentarlos en espanol.
+- RN-062: ROOT puede asignar o cambiar modulos licenciados para cualquier empresa; administradores empresariales solo pueden operar dentro de los modulos que ROOT habilito para su empresa.
 
 ## Supuestos
 
@@ -301,3 +305,12 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-038: ROOT debe poder administrar catalogos globales/regulatorios de la plataforma, incluyendo crear, actualizar, activar e inactivar registros, siempre dejando auditoria.
 - RF-039: La UI debe ofrecer un modulo de Logs/Auditoria visible solo para ROOT, administradores de empresa o roles con permiso `AUDIT_VIEW`.
 - RF-040: ROOT debe poder consultar auditoria de la empresa activa seleccionada y administradores de empresa solo auditoria de su empresa.
+- RF-041: ROOT debe poder crear, actualizar, activar y suspender licencias empresariales desde la SPA sin usar llamadas manuales.
+- RF-042: Una licencia empresarial debe definir vigencia, limites comerciales y modulos habilitados de forma parametrizable.
+- RF-043: El sistema debe validar licencia por modulo/accion antes de habilitar menus y antes de ejecutar operaciones criticas.
+- RF-044: Si una empresa no tiene licencia configurada, el login empresarial debe mostrar un mensaje claro de licencia no configurada, cerrar la sesion y no mostrar menus.
+- RF-045: El licenciamiento comercial no reemplaza RBAC; un usuario solo puede acceder a funcionalidades permitidas por la licencia de la empresa y por sus permisos efectivos.
+- RF-046: El sistema debe aplicar los limites comerciales de licencia: `maxUsers` limita la cantidad de usuarios activos con acceso a una empresa y `maxMonthlyDocuments` limita la cantidad de documentos fiscales emitidos por mes en `billing-service`.
+- RF-047: Cuando una empresa alcance un limite de licencia, el backend debe bloquear la operacion con mensaje funcional claro y la UI debe mostrarlo como error de regla de negocio.
+- RF-048: La administracion de empresa debe diferenciar alcance ROOT y alcance empresarial: ROOT puede crear, actualizar, activar e inactivar empresas; OWNER/ADMIN empresarial solo puede actualizar la empresa activa y no debe ver acciones de creacion de nuevas empresas.
+- RF-049: La UI debe mostrar nombres de empresa y etiquetas de permisos/modulos en espanol, sin exponer UUID como dato principal al usuario final; los codigos internos pueden permanecer en ingles en API, backend y base de datos.

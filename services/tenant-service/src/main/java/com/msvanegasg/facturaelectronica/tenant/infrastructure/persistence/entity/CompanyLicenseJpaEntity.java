@@ -4,6 +4,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyLicenseStatus;
 
 import jakarta.persistence.Column;
@@ -42,6 +45,10 @@ public class CompanyLicenseJpaEntity {
     @Column(name = "max_monthly_documents")
     private Integer maxMonthlyDocuments;
 
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "enabled_modules", nullable = false, columnDefinition = "text[]")
+    private String[] enabledModules = new String[0];
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -53,7 +60,7 @@ public class CompanyLicenseJpaEntity {
 
     public CompanyLicenseJpaEntity(UUID id, UUID companyId, String planCode, CompanyLicenseStatus status,
             LocalDate validFrom, LocalDate validTo, Integer maxUsers, Integer maxMonthlyDocuments,
-            Instant createdAt, Instant updatedAt) {
+            String[] enabledModules, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.companyId = companyId;
         this.planCode = planCode;
@@ -62,6 +69,7 @@ public class CompanyLicenseJpaEntity {
         this.validTo = validTo;
         this.maxUsers = maxUsers;
         this.maxMonthlyDocuments = maxMonthlyDocuments;
+        this.enabledModules = enabledModules == null ? new String[0] : enabledModules.clone();
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -96,6 +104,10 @@ public class CompanyLicenseJpaEntity {
 
     public Integer getMaxMonthlyDocuments() {
         return maxMonthlyDocuments;
+    }
+
+    public String[] getEnabledModules() {
+        return enabledModules == null ? new String[0] : enabledModules.clone();
     }
 
     public Instant getCreatedAt() {

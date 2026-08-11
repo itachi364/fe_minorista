@@ -1796,3 +1796,119 @@ Reglas:
 ### Municipios
 
 La UI debe mostrar departamento y municipio por nombre usando codigos DANE/DIVIPOLA. El backend recibe `municipalityCode` como string de 5 digitos. Ejemplo: `11001` para Bogota D.C.
+
+## tenant-service licencias parametrizables
+
+### Endpoints
+
+- `POST /api/v1/companies/{companyId}/license`
+- `GET /api/v1/companies/{companyId}/license`
+- `PUT /api/v1/companies/{companyId}/license/activate`
+- `PUT /api/v1/companies/{companyId}/license/suspend`
+- `GET /api/v1/companies/{companyId}/license/validation?action=&module=`
+
+### CompanyLicenseRequest
+
+```json
+{
+  "planCode": "CUSTOM",
+  "validFrom": "2026-08-11",
+  "validTo": "2027-08-11",
+  "maxUsers": 10,
+  "maxMonthlyDocuments": 1000,
+  "enabledModules": [
+    "COMPANY",
+    "THIRDPARTY",
+    "INVENTORY",
+    "BILLING",
+    "ACCOUNTING",
+    "REPORTS",
+    "USERS"
+  ]
+}
+```
+
+### CompanyLicenseResponse
+
+```json
+{
+  "id": "uuid",
+  "companyId": "uuid",
+  "planCode": "CUSTOM",
+  "status": "ACTIVE",
+  "validFrom": "2026-08-11",
+  "validTo": "2027-08-11",
+  "maxUsers": 10,
+  "maxMonthlyDocuments": 1000,
+  "enabledModules": [
+    "COMPANY",
+    "THIRDPARTY",
+    "INVENTORY",
+    "BILLING"
+  ],
+  "createdAt": "2026-08-11T20:00:00Z",
+  "updatedAt": "2026-08-11T20:00:00Z"
+}
+```
+
+### CompanyLicenseValidationResponse
+
+```json
+{
+  "companyId": "uuid",
+  "action": "CREATE_TRANSACTION",
+  "module": "BILLING",
+  "allowed": true,
+  "status": "ACTIVE",
+  "maxUsers": 10,
+  "maxMonthlyDocuments": 1000,
+  "reasonCode": "LICENSE_ACTIVE",
+  "message": "La licencia permite ejecutar la accion solicitada."
+}
+```
+
+Reglas:
+
+- `module` es opcional para compatibilidad; si se envia, debe estar dentro de `enabledModules`.
+- Si la empresa no tiene licencia, el backend responde `404 RESOURCE_NOT_FOUND` con mensaje funcional y la SPA lo traduce a `Licencia no configurada`.
+- ROOT puede crear o actualizar licencias. Usuarios empresariales no administran la licencia comercial de su empresa en esta fase.
+- La licencia define modulos contratados; RBAC define permisos por usuario dentro de esos modulos.
+- `maxUsers` y `maxMonthlyDocuments` pueden ser `null`; `null` significa sin limite comercial para esa cuota.
+- Si `identity-service` detecta que una nueva asignacion empresarial supera `maxUsers`, debe responder `400 BUSINESS_RULE_VIOLATION`.
+- Si `billing-service` detecta que una nueva emision supera `maxMonthlyDocuments`, debe responder `400 BUSINESS_RULE_VIOLATION`.
+
+## tenant-service administracion de empresas
+
+### Endpoints
+
+- `POST /api/v1/companies`: crea empresa contratante. Uso reservado para ROOT desde la SPA/BFF.
+- `PUT /api/v1/companies/{companyId}`: actualiza datos basicos de la empresa existente.
+- `PUT /api/v1/companies/{companyId}/activate`: activa empresa. Uso reservado para ROOT.
+- `PUT /api/v1/companies/{companyId}/suspend`: inactiva/suspende empresa. Uso reservado para ROOT.
+- `GET /api/v1/companies/{companyId}`: consulta datos de empresa para mostrar nombre, identificacion y estado.
+
+### CompanyRequest para actualizacion
+
+```json
+{
+  "legalName": "Empresa Demo SAS",
+  "tradeName": "Tienda Demo",
+  "identificationTypeCode": 31,
+  "identificationNumber": "900123456",
+  "verificationDigit": "7",
+  "email": "admin@example.com"
+}
+```
+
+Reglas UI/BFF:
+
+- ROOT ve selector de empresa y acciones de crear/actualizar/activar/inactivar.
+- OWNER/ADMIN empresarial ve la empresa activa como campo informativo por nombre, no como lista desplegable.
+- OWNER/ADMIN empresarial usa `PUT /api/v1/companies/{activeCompanyId}` para actualizar su empresa.
+- La UI no debe mostrar UUID como etiqueta principal de empresa; si el backend solo entrega `companyId` en `/me/companies`, la SPA consulta `GET /api/v1/companies/{companyId}` antes de renderizar el encabezado empresarial.
+
+## frontend etiquetas RBAC
+
+- Los codigos de permisos viajan y se guardan en ingles (`ACCOUNTING_VIEW`, `AUDIT_VIEW`, etc.).
+- La SPA traduce grupos, permisos y descripciones a espanol antes de renderizar el selector de permisos.
+- La traduccion visual no altera el payload `permissionCodes` enviado al backend.

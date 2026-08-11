@@ -87,6 +87,18 @@ class CompanyControllerTest {
     }
 
     @Test
+    void updatesCompany() throws Exception {
+        when(manageCompanyUseCase.update(eq(COMPANY_ID), any())).thenReturn(result(CompanyStatus.ACTIVE));
+
+        mockMvc.perform(put("/api/v1/companies/{companyId}", COMPANY_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(companyJson()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(COMPANY_ID.toString()))
+                .andExpect(jsonPath("$.legalName").value("Mi Empresa SAS"));
+    }
+
+    @Test
     void suspendsCompany() throws Exception {
         when(manageCompanyUseCase.suspend(eq(COMPANY_ID))).thenReturn(result(CompanyStatus.SUSPENDED));
 

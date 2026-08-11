@@ -110,3 +110,24 @@ No permitido:
 - Resoluciones demo.
 - Ventas demo.
 - Catalogos hardcodeados en frontend.
+
+## Licenciamiento
+
+Tabla existente:
+
+- `tenant.company_license`
+
+Campos principales:
+
+- `company_id`: empresa contratante.
+- `plan_code`: nombre comercial o plantilla base (`BASIC`, `POS`, `FULL`, `CUSTOM`).
+- `status`: `ACTIVE`, `SUSPENDED`, `EXPIRED`, `CANCELLED`.
+- `valid_from`, `valid_to`: vigencia comercial.
+- `max_users`, `max_monthly_documents`: limites opcionales.
+- `enabled_modules`: arreglo de codigos tecnicos de modulos contratados.
+
+Reglas:
+
+- `enabled_modules` usa codigos en ingles para contrato tecnico, pero la UI muestra etiquetas en espanol.
+- Licencias existentes sin `enabled_modules` deben migrarse a arreglo vacio o valor explicito segun migracion aprobada; una licencia sin modulos no habilita operacion empresarial.
+- ROOT no depende de `tenant.company_license`.

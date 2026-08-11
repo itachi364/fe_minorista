@@ -10,6 +10,8 @@ public interface ManageCompanyUseCase {
 
     CompanyResult create(CreateCompanyCommand command);
 
+    CompanyResult update(UUID companyId, CreateCompanyCommand command);
+
     List<CompanyResult> list();
 
     CompanyResult findById(UUID companyId);

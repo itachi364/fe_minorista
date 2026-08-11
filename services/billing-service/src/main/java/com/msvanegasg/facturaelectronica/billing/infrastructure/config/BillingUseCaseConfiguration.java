@@ -14,6 +14,7 @@ import com.msvanegasg.facturaelectronica.billing.application.port.out.AuditEvent
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ElectronicDocumentProviderPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FinalConsumerProfileRepositoryPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalDocumentUsagePort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalNoteProviderPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalNoteRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGeneratorPort;
@@ -40,12 +41,12 @@ public class BillingUseCaseConfiguration {
             InventoryAvailabilityPort inventoryAvailability, ElectronicDocumentProviderPort providerPort,
             InventoryMovementPort inventoryMovementPort, AccountingEntryPort accountingEntryPort,
             AuditEventPort auditEventPort, FinalConsumerProfileRepositoryPort finalConsumerProfileRepository,
-            LicenseValidationPort licenseValidationPort,
+            LicenseValidationPort licenseValidationPort, FiscalDocumentUsagePort fiscalDocumentUsagePort,
             AssignFiscalNumberUseCase assignFiscalNumberUseCase, DomainEventPublisherPort eventPublisher,
             IdGeneratorPort idGenerator, ClockPort clock) {
         return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
                 accountingEntryPort, auditEventPort, finalConsumerProfileRepository, licenseValidationPort,
-                assignFiscalNumberUseCase, eventPublisher, idGenerator, clock);
+                fiscalDocumentUsagePort, assignFiscalNumberUseCase, eventPublisher, idGenerator, clock);
     }
 
     @Bean
@@ -75,8 +76,9 @@ public class BillingUseCaseConfiguration {
     @Bean
     ManageFiscalNoteUseCase manageFiscalNoteUseCase(FiscalNoteRepositoryPort noteRepository,
             SaleRepositoryPort saleRepository, FiscalNoteProviderPort providerPort,
+            LicenseValidationPort licenseValidationPort, FiscalDocumentUsagePort fiscalDocumentUsagePort,
             AssignFiscalNumberUseCase assignFiscalNumberUseCase, IdGeneratorPort idGenerator, ClockPort clock) {
-        return new FiscalNoteManagementService(noteRepository, saleRepository, providerPort, assignFiscalNumberUseCase,
-                idGenerator, clock);
+        return new FiscalNoteManagementService(noteRepository, saleRepository, providerPort, licenseValidationPort,
+                fiscalDocumentUsagePort, assignFiscalNumberUseCase, idGenerator, clock);
     }
 }

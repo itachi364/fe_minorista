@@ -1,5 +1,6 @@
 import { ActionModal } from '../../components/Modal.jsx';
 import { Field, FormPanel, StatusBadge } from '../../components/forms.jsx';
+import { moduleLabel, permissionDescription, permissionLabel } from '../../utils/permissionLabels.js';
 
 export function IdentityAdminPanel({ permissions, roles, users, roleForm, setRoleForm, userForm, setUserForm, onLoad, onCreateRole, onCreateUser, onOpenAssignModal, onTogglePermission, busy }) {
   const groupedPermissions = permissions.reduce((groups, permission) => {
@@ -54,14 +55,14 @@ function PermissionPicker({ groupedPermissions, selected, onToggle }) {
   return <div className="permission-groups">
     {modules.map((module) => (
       <section className="permission-group" key={module}>
-        <h2>{module}</h2>
+        <h2>{moduleLabel(module)}</h2>
         <div className="permission-list">
           {groupedPermissions[module].map((permission) => (
             <label className="permission-option" key={permission.code}>
               <input checked={selected.includes(permission.code)} onChange={() => onToggle(permission.code)} type="checkbox" />
               <span>
-                <b>{permission.code}</b>
-                <small>{permission.description}</small>
+                <b>{permissionLabel(permission.code)}</b>
+                <small>{permissionDescription(permission)}</small>
               </span>
             </label>
           ))}

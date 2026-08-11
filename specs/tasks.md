@@ -3401,3 +3401,168 @@
     - `.\mvnw.cmd -pl services\bff-service -am test`: OK, 8 tests.
     - `npm test`: OK, 15 tests.
     - `npm run build`: OK.
+
+- [x] TASK-114: Corregir error de login por licencia no configurada
+  - Estado: DONE
+  - Requisitos: RF-044, RN-058.
+  - Acceptance criteria:
+    - El login empresarial con empresa sin licencia muestra modal `Licencia no configurada`.
+    - La sesion queda cerrada y no se renderizan menus operativos.
+    - Errores 401/403 de login siguen mostrando credenciales invalidas y errores 5xx siguen mostrando fallo interno.
+  - Archivos propuestos:
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/api/client.js`
+    - tests frontend.
+  - Tests requeridos:
+    - `npm test`
+    - `npm run build`
+  - Validacion:
+    - La SPA captura `404 RESOURCE_NOT_FOUND` de licencia durante login y muestra `Licencia no configurada`.
+    - `npm test`: OK, 17 tests.
+    - `npm run build`: OK.
+
+- [x] TASK-115: Extender licencias empresariales con modulos contratados
+  - Estado: DONE
+  - Requisitos: RF-041, RF-042, RF-043, RF-045, RN-059, RN-061, RN-062.
+  - Acceptance criteria:
+    - `tenant.company_license` persiste `enabled_modules`.
+    - `POST /api/v1/companies/{companyId}/license` crea o actualiza vigencia, limites y modulos habilitados.
+    - `GET /api/v1/companies/{companyId}/license` retorna modulos habilitados.
+    - `GET /api/v1/companies/{companyId}/license/validation?action=&module=` bloquea modulos no contratados.
+  - Archivos propuestos:
+    - `services/tenant-service/src/main/java/**`
+    - `services/tenant-service/src/main/resources/db/migration/**`
+    - `services/tenant-service/src/test/java/**`
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/tenant-service -am test`
+  - Validacion:
+    - Agregado `LicenseModule`, `enabledModules`, validacion por `module` y migracion `V004__add_license_enabled_modules.sql`.
+    - `.\mvnw.cmd -q -pl services\tenant-service -am test`: OK.
+
+- [x] TASK-116: Crear modulo ROOT para administrar licencias
+  - Estado: DONE
+  - Requisitos: RF-031, RF-041, RF-042.
+  - Acceptance criteria:
+    - ROOT ve modulo `Licencias`.
+    - ROOT selecciona una empresa creada, configura plan, fechas, limites y modulos contratados.
+    - La UI no exige llamadas manuales ni JSON crudo para asignar licencia.
+  - Archivos propuestos:
+    - `apps/facturaelectronica-web/src/data/navigation.js`
+    - `apps/facturaelectronica-web/src/features/licenses/**`
+    - `apps/facturaelectronica-web/src/App.jsx`
+  - Tests requeridos:
+    - `npm test`
+    - `npm run build`
+  - Validacion:
+    - Agregado modulo `Licencias` visible para ROOT con plan, fechas, limites y modulos contratados.
+    - `npm test`: OK, 17 tests.
+    - `npm run build`: OK.
+
+- [x] TASK-117: Aplicar licencia por modulo en menues y operaciones
+  - Estado: DONE
+  - Requisitos: RF-043, RF-045, RN-062.
+  - Acceptance criteria:
+    - Un usuario empresarial solo ve modulos incluidos en la licencia activa y permitidos por RBAC.
+    - ROOT conserva acceso global.
+    - Las validaciones backend siguen siendo la fuente real de autorizacion.
+  - Archivos propuestos:
+    - `apps/facturaelectronica-web/src/utils/authorization.js`
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `services/bff-service/src/main/java/**`
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/bff-service -am test`
+    - `npm test`
+  - Validacion:
+    - La SPA filtra menus empresariales por `enabledModules` + RBAC; ROOT conserva acceso global.
+    - `billing-service` valida `module=BILLING`.
+    - `identity-service` valida `module=USERS` para operaciones empresariales no ROOT.
+    - `.\mvnw.cmd -q -pl services\billing-service -am test`: OK.
+    - `.\mvnw.cmd -q -pl services\identity-service -am test`: OK.
+    - `npm test`: OK, 17 tests.
+
+- [x] TASK-118: Auditar administracion de licencias
+  - Estado: DONE
+  - Requisitos: RN-046, RN-047, RN-048.
+  - Acceptance criteria:
+    - Crear, actualizar, activar y suspender licencias deja auditoria via BFF para la empresa afectada.
+    - La auditoria no registra contrasenas, tokens ni payload completo sensible.
+  - Archivos propuestos:
+    - `services/bff-service/src/main/java/**`
+    - tests BFF.
+  - Tests requeridos:
+    - `./mvnw.cmd -pl services/bff-service -am test`
+  - Validacion:
+    - La administracion de licencias via BFF usa rutas mutables de `tenant-service` con `X-Company-Id`; el BFF ya registra auditoria best-effort para mutaciones, incluyendo `POST/PUT /api/v1/companies/{companyId}/license/**`.
+    - Sin cambios adicionales requeridos en BFF.
+
+- [x] TASK-119: E2E licencia parametrizable
+  - Estado: DONE
+  - Requisitos: RF-041, RF-042, RF-043, RF-044, RF-045.
+  - Acceptance criteria:
+    - Flujo desde cero: ROOT crea empresa, crea administrador, asigna licencia, administrador inicia sesion correctamente.
+    - Si no hay licencia, login empresarial muestra licencia no configurada.
+    - Si un modulo no esta contratado, no aparece en UI empresarial.
+  - Archivos propuestos:
+    - `scripts/e2e-from-zero.ps1`
+    - tests backend/frontend relacionados.
+  - Tests requeridos:
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`
+    - `./mvnw.cmd test`
+    - `npm test`
+    - `npm run build`
+  - Validacion:
+    - `.\mvnw.cmd -q test`: BUILD SUCCESS.
+    - `npm test`: 17 tests, 0 fallos.
+    - `npm run build`: BUILD SUCCESS.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1 -StartContainers`: flujo E2E desde cero exitoso con licencia parametrizable, venta POS, factura electronica mock, inventario, contabilidad, nomina mock, auditoria y aislamiento multiempresa.
+    - IDs de evidencia E2E: CompanyId `75326223-5efe-4dcd-bcfa-dd22f0d3099c`, ProductId `fe58ba28-3c79-4bde-abb3-c6d18c616d16`, SaleId `75168979-78e9-472b-bfae-79828ea943e4`, DocumentId `e41edde5-ab64-4349-98c6-bf091053dbe0`, ProviderTrackingId `mock-electronic_pos-e41edde5-ab64-4349-98c6-bf091053dbe0`, PayrollPaymentId `7ebd75f3-ffb6-4299-a1c9-c5641afe6ecd`, PayrollMockCune `MOCK-CUNE-75326223-7ebd75f3`.
+
+- [x] TASK-120: Aplicar cuotas comerciales de licencia
+  - Estado: DONE
+  - Requisitos: RF-042, RF-046, RF-047.
+  - Acceptance criteria:
+    - `tenant-service` incluye `maxUsers` y `maxMonthlyDocuments` en la validacion de licencia.
+    - `identity-service` bloquea nuevas asignaciones de acceso empresarial cuando la empresa ya alcanzo `maxUsers`.
+    - `billing-service` bloquea nuevas emisiones fiscales cuando la empresa ya alcanzo `maxMonthlyDocuments` en el mes calendario UTC.
+    - Actualizar roles o permisos de un usuario que ya tenia acceso empresarial no consume cupo adicional.
+    - Las cuotas `null` se interpretan como ilimitadas.
+  - Archivos propuestos:
+    - `services/tenant-service/**`
+    - `services/identity-service/**`
+    - `services/billing-service/**`
+    - `apps/facturaelectronica-web/**`
+    - `specs/**`
+  - Tests requeridos:
+    - `.\mvnw.cmd -q -pl services\tenant-service -am test`
+    - `.\mvnw.cmd -q -pl services\identity-service -am test`
+    - `.\mvnw.cmd -q -pl services\billing-service -am test`
+    - `npm test`
+  - Validacion:
+    - `.\mvnw.cmd -q -pl services\tenant-service,services\identity-service,services\billing-service -am test`: OK.
+    - `.\mvnw.cmd -q test`: OK.
+    - `npm test`: OK, 17 tests.
+    - `npm run build`: OK.
+
+- [x] TASK-121: Ajustar UX/RBAC de empresa y permisos
+  - Estado: DONE
+  - Requisitos: RF-031, RF-036, RF-037, RF-048, RF-049.
+  - Acceptance criteria:
+    - ROOT mantiene lista desplegable de empresas y puede crear, actualizar, activar e inactivar empresas.
+    - Usuario empresarial ve la empresa activa como informacion por nombre/identificacion, sin selector ni UUID como etiqueta principal.
+    - Usuario empresarial con permiso administrativo actualiza su empresa con `PUT /api/v1/companies/{companyId}` y no ve boton `Crear empresa`.
+    - El login empresarial carga datos de la empresa activa desde backend antes de renderizar la cabecera.
+    - El modulo `Usuarios y roles` muestra grupos, permisos y descripciones en espanol sin cambiar los codigos enviados al backend.
+  - Archivos propuestos:
+    - `services/tenant-service/src/main/java/**`
+    - `services/tenant-service/src/test/java/**`
+    - `apps/facturaelectronica-web/src/**`
+    - `specs/**`
+  - Tests requeridos:
+    - `.\mvnw.cmd -q -pl services\tenant-service -am test`
+    - `npm test`
+    - `npm run build`
+  - Validacion:
+    - `.\mvnw.cmd -q -pl services\tenant-service -am test`: OK.
+    - `.\mvnw.cmd -q test`: OK.
+    - `npm test`: OK, 18 tests.
+    - `npm run build`: OK.

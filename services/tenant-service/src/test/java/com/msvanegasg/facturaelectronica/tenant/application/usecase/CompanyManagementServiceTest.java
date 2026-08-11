@@ -61,6 +61,26 @@ class CompanyManagementServiceTest {
     }
 
     @Test
+    void updatesCompanyKeepingStatusAndCreatedAt() {
+        CompanyResult created = service.create(command("900123456"));
+
+        CompanyResult updated = service.update(created.id(), new CreateCompanyCommand(
+                "Mi Empresa Actualizada SAS",
+                "Tienda Actualizada",
+                IDENTIFICATION_TYPE_CODE,
+                "900123456",
+                "7",
+                "nuevo@example.com"));
+
+        assertThat(updated.legalName()).isEqualTo("Mi Empresa Actualizada SAS");
+        assertThat(updated.tradeName()).isEqualTo("Tienda Actualizada");
+        assertThat(updated.email()).isEqualTo("nuevo@example.com");
+        assertThat(updated.status()).isEqualTo(CompanyStatus.ACTIVE);
+        assertThat(updated.createdAt()).isEqualTo(NOW);
+        assertThat(updated.updatedAt()).isEqualTo(NOW);
+    }
+
+    @Test
     void throwsWhenCompanyDoesNotExist() {
         assertThatThrownBy(() -> service.findById(COMPANY_ID))
                 .isInstanceOf(CompanyNotFoundException.class);

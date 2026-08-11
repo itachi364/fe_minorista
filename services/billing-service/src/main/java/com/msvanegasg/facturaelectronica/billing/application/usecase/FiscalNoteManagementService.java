@@ -10,13 +10,16 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.AssignFiscalNum
 import com.msvanegasg.facturaelectronica.billing.application.dto.CreateFiscalNoteCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalNoteResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalNumberResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.LicensePolicy;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ProviderSubmissionResult;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.AssignFiscalNumberUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageFiscalNoteUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalDocumentUsagePort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalNoteProviderPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalNoteRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGeneratorPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.LicenseValidationPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.SaleRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.domain.model.CudeGenerator;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
@@ -25,6 +28,7 @@ import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument
 import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalEnvironment;
 import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalNote;
 import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalNoteType;
+import com.msvanegasg.facturaelectronica.billing.domain.model.LicenseAction;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 
@@ -33,6 +37,8 @@ public class FiscalNoteManagementService implements ManageFiscalNoteUseCase {
     private final FiscalNoteRepositoryPort noteRepository;
     private final SaleRepositoryPort saleRepository;
     private final FiscalNoteProviderPort providerPort;
+    private final LicenseValidationPort licenseValidationPort;
+    private final FiscalDocumentUsagePort fiscalDocumentUsagePort;
     private final AssignFiscalNumberUseCase assignFiscalNumberUseCase;
     private final IdGeneratorPort idGenerator;
     private final ClockPort clock;
@@ -40,9 +46,19 @@ public class FiscalNoteManagementService implements ManageFiscalNoteUseCase {
     public FiscalNoteManagementService(FiscalNoteRepositoryPort noteRepository, SaleRepositoryPort saleRepository,
             FiscalNoteProviderPort providerPort, AssignFiscalNumberUseCase assignFiscalNumberUseCase,
             IdGeneratorPort idGenerator, ClockPort clock) {
+        this(noteRepository, saleRepository, providerPort, (companyId, action) -> {
+        }, FiscalDocumentUsagePort.noop(), assignFiscalNumberUseCase, idGenerator, clock);
+    }
+
+    public FiscalNoteManagementService(FiscalNoteRepositoryPort noteRepository, SaleRepositoryPort saleRepository,
+            FiscalNoteProviderPort providerPort, LicenseValidationPort licenseValidationPort,
+            FiscalDocumentUsagePort fiscalDocumentUsagePort, AssignFiscalNumberUseCase assignFiscalNumberUseCase,
+            IdGeneratorPort idGenerator, ClockPort clock) {
         this.noteRepository = Objects.requireNonNull(noteRepository);
         this.saleRepository = Objects.requireNonNull(saleRepository);
         this.providerPort = Objects.requireNonNull(providerPort);
+        this.licenseValidationPort = Objects.requireNonNull(licenseValidationPort);
+        this.fiscalDocumentUsagePort = Objects.requireNonNull(fiscalDocumentUsagePort);
         this.assignFiscalNumberUseCase = Objects.requireNonNull(assignFiscalNumberUseCase);
         this.idGenerator = Objects.requireNonNull(idGenerator);
         this.clock = Objects.requireNonNull(clock);
@@ -69,6 +85,9 @@ public class FiscalNoteManagementService implements ManageFiscalNoteUseCase {
         validateOriginal(command, original);
         UUID noteId = idGenerator.newId();
         var now = clock.now();
+        LicensePolicy licensePolicy = licenseValidationPort.policy(command.companyId(),
+                LicenseAction.ISSUE_FISCAL_DOCUMENT);
+        ensureMonthlyDocumentQuota(command.companyId(), licensePolicy, now);
         ElectronicDocumentType documentType = documentType(command.noteType());
         FiscalNumberResult number = assignFiscalNumberUseCase.assign(new AssignFiscalNumberCommand(command.companyId(),
                 documentType, LocalDate.ofInstant(now, ZoneOffset.UTC), FiscalEnvironment.TEST));
@@ -124,6 +143,21 @@ public class FiscalNoteManagementService implements ManageFiscalNoteUseCase {
             case DEBIT_NOTE -> ElectronicDocumentType.DEBIT_NOTE;
             case POS_ADJUSTMENT_NOTE -> ElectronicDocumentType.POS_ADJUSTMENT_NOTE;
         };
+    }
+
+    private void ensureMonthlyDocumentQuota(UUID companyId, LicensePolicy policy, java.time.Instant issuedAt) {
+        Integer maxMonthlyDocuments = policy.maxMonthlyDocuments();
+        if (maxMonthlyDocuments == null) {
+            return;
+        }
+        LocalDate documentDate = LocalDate.ofInstant(issuedAt, ZoneOffset.UTC);
+        java.time.Instant from = documentDate.withDayOfMonth(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+        java.time.Instant to = documentDate.withDayOfMonth(1).plusMonths(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+        long issuedDocuments = fiscalDocumentUsagePort.countIssuedDocuments(companyId, from, to);
+        if (issuedDocuments >= maxMonthlyDocuments.longValue()) {
+            throw new LicenseBlockedException("La licencia permite maximo " + maxMonthlyDocuments
+                    + " documentos fiscales mensuales.");
+        }
     }
 
     private static void validate(CreateFiscalNoteCommand command) {

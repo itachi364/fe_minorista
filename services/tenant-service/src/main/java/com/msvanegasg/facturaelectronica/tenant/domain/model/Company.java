@@ -55,6 +55,24 @@ public record Company(
                 email, CompanyStatus.SUSPENDED, createdAt, now);
     }
 
+    public Company update(
+            String legalName,
+            String tradeName,
+            Integer identificationTypeCode,
+            String identificationNumber,
+            String verificationDigit,
+            String email,
+            Instant now) {
+        validateText(legalName, "legalName");
+        DianIdentificationTypeCode.validate(identificationTypeCode);
+        validateText(identificationNumber, "identificationNumber");
+        validateText(email, "email");
+        validateRequired(now, "now");
+        return new Company(id, legalName.trim(), normalizeNullable(tradeName), identificationTypeCode,
+                identificationNumber.trim(), normalizeNullable(verificationDigit), email.trim(), status, createdAt,
+                now);
+    }
+
     private static void validateText(String value, String field) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(field + " is required");

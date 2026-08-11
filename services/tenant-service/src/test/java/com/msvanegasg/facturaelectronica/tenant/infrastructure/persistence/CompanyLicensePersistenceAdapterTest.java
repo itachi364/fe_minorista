@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Set;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyLicense;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyLicenseStatus;
+import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseModule;
 import com.msvanegasg.facturaelectronica.tenant.infrastructure.persistence.entity.CompanyLicenseJpaEntity;
 import com.msvanegasg.facturaelectronica.tenant.infrastructure.persistence.repository.CompanyLicenseJpaRepository;
 
@@ -39,6 +41,7 @@ class CompanyLicensePersistenceAdapterTest {
         assertThat(saved.id()).isEqualTo(LICENSE_ID);
         assertThat(saved.companyId()).isEqualTo(COMPANY_ID);
         assertThat(saved.status()).isEqualTo(CompanyLicenseStatus.ACTIVE);
+        assertThat(saved.enabledModules()).containsExactlyInAnyOrder(LicenseModule.COMPANY, LicenseModule.BILLING);
     }
 
     @Test
@@ -50,15 +53,19 @@ class CompanyLicensePersistenceAdapterTest {
 
         assertThat(result).isPresent();
         assertThat(result.orElseThrow().planCode()).isEqualTo("SMALL_BUSINESS");
+        assertThat(result.orElseThrow().enabledModules()).containsExactlyInAnyOrder(LicenseModule.COMPANY,
+                LicenseModule.BILLING);
     }
 
     private static CompanyLicense license() {
         return new CompanyLicense(LICENSE_ID, COMPANY_ID, "SMALL_BUSINESS", CompanyLicenseStatus.ACTIVE,
-                LocalDate.parse("2026-05-01"), LocalDate.parse("2027-05-01"), 5, 1000, NOW, NOW);
+                LocalDate.parse("2026-05-01"), LocalDate.parse("2027-05-01"), 5, 1000,
+                Set.of(LicenseModule.COMPANY, LicenseModule.BILLING), NOW, NOW);
     }
 
     private static CompanyLicenseJpaEntity entity() {
         return new CompanyLicenseJpaEntity(LICENSE_ID, COMPANY_ID, "SMALL_BUSINESS", CompanyLicenseStatus.ACTIVE,
-                LocalDate.parse("2026-05-01"), LocalDate.parse("2027-05-01"), 5, 1000, NOW, NOW);
+                LocalDate.parse("2026-05-01"), LocalDate.parse("2027-05-01"), 5, 1000,
+                new String[] { "COMPANY", "BILLING" }, NOW, NOW);
     }
 }
