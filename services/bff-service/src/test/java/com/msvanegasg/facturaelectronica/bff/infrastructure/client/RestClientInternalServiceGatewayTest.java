@@ -32,6 +32,8 @@ class RestClientInternalServiceGatewayTest {
     private HttpServer identityServer;
     private HttpServer payrollServer;
     private HttpServer billingServer;
+    private HttpServer inventoryServer;
+    private HttpServer auditServer;
 
     @AfterEach
     void tearDown() {
@@ -43,6 +45,12 @@ class RestClientInternalServiceGatewayTest {
         }
         if (billingServer != null) {
             billingServer.stop(0);
+        }
+        if (inventoryServer != null) {
+            inventoryServer.stop(0);
+        }
+        if (auditServer != null) {
+            auditServer.stop(0);
         }
     }
 
@@ -96,12 +104,46 @@ class RestClientInternalServiceGatewayTest {
         assertThat(billingHandler.requestBody).isNull();
     }
 
+    @Test
+    void rejectsPurchaseMutationWhenSalesUserDoesNotHaveInventoryManagePermission() throws IOException {
+        startIdentityServer("[\"SALES_CREATE\"]");
+        CapturingHandler inventoryHandler = startInventoryServer("/api/v1/purchases");
+        RestClientInternalServiceGateway gateway = gateway();
+
+        assertThatThrownBy(() -> gateway.exchange(new ProxyRequest(TargetService.INVENTORY, HttpMethod.POST,
+                URI.create("/api/v1/purchases"), headers(), "{}".getBytes(StandardCharsets.UTF_8))))
+                .isInstanceOf(BffAccessDeniedException.class);
+        assertThat(inventoryHandler.requestBody).isNull();
+    }
+
+    @Test
+    void writesAuditEventForSuccessfulMutationWithoutSensitiveHeaders() throws IOException {
+        startIdentityServer("[\"SALES_CREATE\"]");
+        CapturingHandler billingHandler = startBillingServer("/api/v1/sales");
+        CapturingHandler auditHandler = startAuditServer();
+        RestClientInternalServiceGateway gateway = gateway();
+
+        ProxyResponse response = gateway.exchange(new ProxyRequest(TargetService.BILLING, HttpMethod.POST,
+                URI.create("/api/v1/sales/" + SALE_ID + "/confirm"), headers(), new byte[0]));
+
+        assertThat(response.status()).isEqualTo(HttpStatus.CREATED);
+        assertThat(billingHandler.requestPath).isEqualTo("/api/v1/sales/" + SALE_ID + "/confirm");
+        assertThat(auditHandler.companyId).isEqualTo(COMPANY_ID);
+        assertThat(auditHandler.requestBody).contains("\"eventType\":\"BFF_MUTATION\"");
+        assertThat(auditHandler.requestBody).contains("\"resourceType\":\"BILLING\"");
+        assertThat(auditHandler.requestBody).contains("\"result\":\"SUCCESS\"");
+        assertThat(auditHandler.requestBody).contains("corr-bff-rbac");
+        assertThat(auditHandler.requestBody).doesNotContain("token");
+    }
+
     private RestClientInternalServiceGateway gateway() {
         String identityUrl = "http://localhost:" + identityServer.getAddress().getPort();
         String payrollUrl = serverUrl(payrollServer, "http://payroll");
         String billingUrl = serverUrl(billingServer, "http://billing");
+        String inventoryUrl = serverUrl(inventoryServer, "http://inventory");
+        String auditUrl = serverUrl(auditServer, "http://audit");
         BffProperties properties = new BffProperties("http://tenant", identityUrl, "http://catalog", "http://thirdparty",
-                "http://inventory", billingUrl, "http://accounting", payrollUrl, "http://audit");
+                inventoryUrl, billingUrl, "http://accounting", payrollUrl, auditUrl);
         return new RestClientInternalServiceGateway(RestClient.builder(), properties, new ObjectMapper());
     }
 
@@ -152,6 +194,22 @@ class RestClientInternalServiceGatewayTest {
         return handler;
     }
 
+    private CapturingHandler startInventoryServer(String path) throws IOException {
+        inventoryServer = HttpServer.create(new InetSocketAddress(0), 0);
+        CapturingHandler handler = new CapturingHandler();
+        inventoryServer.createContext(path, handler::handle);
+        inventoryServer.start();
+        return handler;
+    }
+
+    private CapturingHandler startAuditServer() throws IOException {
+        auditServer = HttpServer.create(new InetSocketAddress(0), 0);
+        CapturingHandler handler = new CapturingHandler();
+        auditServer.createContext("/api/v1/audit-events", handler::handle);
+        auditServer.start();
+        return handler;
+    }
+
     private static HttpHeaders headers() {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth("token");
@@ -164,9 +222,11 @@ class RestClientInternalServiceGatewayTest {
     private static final class CapturingHandler {
         private String requestBody;
         private String requestPath;
+        private String companyId;
 
         private void handle(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
             requestPath = exchange.getRequestURI().getPath();
+            companyId = exchange.getRequestHeaders().getFirst("X-Company-Id");
             requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             byte[] body = "{\"id\":\"payment-1\"}".getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(201, body.length);

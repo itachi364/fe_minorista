@@ -6,10 +6,10 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
 
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.PurchaseAccountingPort;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.PaymentCondition;
@@ -40,9 +40,9 @@ public class PurchaseAccountingHttpAdapter implements PurchaseAccountingPort {
                 postAccountsPayable(purchase);
             }
         } catch (RuntimeException exception) {
-            // Accounting is intentionally best-effort until the asynchronous outbox/inbox flow is enabled.
             LOGGER.warn("Could not apply purchase accounting for company {} purchase {}", purchase.companyId(),
                     purchase.id(), exception);
+            throw exception;
         }
     }
 
@@ -51,7 +51,7 @@ public class PurchaseAccountingHttpAdapter implements PurchaseAccountingPort {
                 .uri(accountingBaseUrl + "/api/v1/accounting-entries")
                 .header("X-Company-Id", purchase.companyId().toString())
                 .body(new AccountingEntryRequest("PURCHASE_CONFIRMED", "PURCHASE", purchase.id(),
-                        entryDate(purchase), "Compra de inventario", purchase.supplierId(), purchase.subtotal(),
+                        entryDate(purchase).toString(), "Compra de inventario", purchase.supplierId(), purchase.subtotal(),
                         purchase.taxTotal(), purchase.total()))
                 .retrieve()
                 .toBodilessEntity();
@@ -62,7 +62,7 @@ public class PurchaseAccountingHttpAdapter implements PurchaseAccountingPort {
                 .uri(accountingBaseUrl + "/api/v1/accounts-payable")
                 .header("X-Company-Id", purchase.companyId().toString())
                 .body(new AccountsPayableRequest(purchase.supplierId(), "PURCHASE", purchase.id(),
-                        entryDate(purchase), purchase.dueDate(), purchase.total()))
+                        entryDate(purchase).toString(), purchase.dueDate().toString(), purchase.total()))
                 .retrieve()
                 .toBodilessEntity();
     }
@@ -72,11 +72,11 @@ public class PurchaseAccountingHttpAdapter implements PurchaseAccountingPort {
                 : purchase.confirmedAt().atZone(ZoneOffset.UTC).toLocalDate();
     }
 
-    private record AccountingEntryRequest(String eventType, String sourceType, UUID sourceId, LocalDate entryDate,
+    private record AccountingEntryRequest(String eventType, String sourceType, UUID sourceId, String entryDate,
             String description, UUID thirdpartyId, BigDecimal subtotal, BigDecimal taxTotal, BigDecimal total) {
     }
 
-    private record AccountsPayableRequest(UUID supplierId, String sourceType, UUID sourceId, LocalDate issueDate,
-            LocalDate dueDate, BigDecimal totalAmount) {
+    private record AccountsPayableRequest(UUID supplierId, String sourceType, UUID sourceId, String issueDate,
+            String dueDate, BigDecimal totalAmount) {
     }
 }

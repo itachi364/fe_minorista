@@ -92,6 +92,19 @@ class ProductControllerTest {
     }
 
     @Test
+    void listsProductsByActiveState() throws Exception {
+        when(productUseCase.findStock(COMPANY_ID, true)).thenReturn(List.of(product()));
+
+        mockMvc.perform(get("/api/v1/products")
+                .header("X-Company-Id", COMPANY_ID)
+                .param("active", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(PRODUCT_ID.toString()))
+                .andExpect(jsonPath("$[0].name").value("Cafe"))
+                .andExpect(jsonPath("$[0].currentStock").value(10));
+    }
+
+    @Test
     void returnsKardex() throws Exception {
         when(movementUseCase.kardex(any(InventoryMovementQuery.class))).thenReturn(List.of(movement()));
 

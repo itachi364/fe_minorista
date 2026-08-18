@@ -3664,22 +3664,22 @@
   - Validacion:
     - `.\scripts\e2e-from-zero.ps1`: OK; creo empresa, licencia, OWNER, tercero, proveedor, emisor, resolucion POS, setup contable, producto, venta, documento mock, movimiento de inventario, asiento contable, nomina mock, auditoria y aislamiento multiempresa.
 
-- [ ] TASK-130: Completar compras y entradas de inventario con contabilidad
-  - Estado: IN_PROGRESS
+- [x] TASK-130: Completar compras y entradas de inventario con contabilidad
+  - Estado: DONE
   - Requisitos: RF-064, RF-071, RF-072.
   - Acceptance criteria: AC-153, AC-160, AC-161.
   - Alcance:
     - Crear o completar endpoints de compra/entrada.
     - Confirmar compra incrementando stock y generando asiento/cuenta por pagar o egreso.
     - Auditar acciones mutables.
-  - Validacion parcial:
+  - Resultado local:
+    - `PurchaseAccountingHttpAdapter` ahora serializa fechas como ISO `yyyy-MM-dd` para `accounting-service` y propaga fallos HTTP de contabilidad en vez de ocultarlos.
+    - Se agrego prueba de contrato HTTP para confirmar que una compra a credito publica asiento `PURCHASE_CONFIRMED` y cuenta por pagar.
+  - Validacion:
     - `.\mvnw.cmd -q -pl services\inventory-service -am test`: OK.
     - `.\mvnw.cmd -q test`: OK.
-    - `.\scripts\e2e-from-zero.ps1`: falla al verificar asiento contable de compra; la compra se confirma y el stock sube, pero el contenedor activo no registra el asiento/cuenta por pagar.
-    - `docker compose up -d --build`: timeout despues de 10 minutos.
-    - `docker compose ps`: timeout.
-    - `docker restart facturaelectronica-inventory-service`: timeout.
-    - Health HTTP: `inventory-service`, `accounting-service`, `billing-service`, `identity-service` y `bff-service` responden `UP`; el bloqueo esta en la administracion Docker/recarga de contenedores desde esta instancia.
+    - `docker compose up -d --build inventory-service bff-service frontend`: OK; recreo `inventory-service`.
+    - `.\scripts\e2e-from-zero.ps1`: OK; compra confirmada incremento stock y genero asiento contable de compra y cuenta por pagar.
 
 - [x] TASK-131: Completar servicios facturables con consumo manual de insumos
   - Estado: DONE
@@ -3693,20 +3693,34 @@
     - `.\mvnw.cmd -q -pl services\inventory-service -am test`: OK; cubre referencias servicio-insumo, sugerencias, consumo manual `CONSUMPTION_OUT`, idempotencia por movimiento y asociacion a documento origen.
 
 - [ ] TASK-132: Crear listados operativos profesionales
-  - Estado: APPROVED
+  - Estado: IN_PROGRESS
   - Requisitos: RF-066.
   - Acceptance criteria: AC-155.
   - Alcance:
     - Listados con busqueda, paginacion, estado y acciones para ventas, documentos, terceros, productos, compras, movimientos, usuarios, roles, licencias y logs.
     - Mantener etiquetas en espanol y contratos tecnicos estables.
+  - Resultado parcial:
+    - `inventory-service` expone `GET /api/v1/products?active=...` para listado operativo de productos.
+    - `inventory-service` expone `GET /api/v1/purchases?status=...&supplierId=...&from=...&to=...` para listado operativo de compras.
+  - Validacion parcial:
+    - `ProductControllerTest.listsProductsByActiveState`: OK.
+    - `PurchaseControllerTest.listsPurchasesWithFilters`: OK.
+    - Pendiente: completar tablas/acciones de UI para todos los listados del alcance.
 
-- [ ] TASK-133: Endurecer validacion backend de RBAC y licencias
-  - Estado: APPROVED
+- [x] TASK-133: Endurecer validacion backend de RBAC y licencias
+  - Estado: DONE
   - Requisitos: RF-067.
   - Acceptance criteria: AC-156.
   - Alcance:
     - Auditar rutas criticas del BFF y microservicios.
     - Agregar pruebas negativas por permiso, modulo licenciado y empresa activa.
+  - Validacion:
+    - `RestClientInternalServiceGatewayTest` valida que un usuario con solo `SALES_CREATE` puede confirmar ventas POS.
+    - `RestClientInternalServiceGatewayTest` valida que un usuario con solo `SALES_CREATE` no puede mutar configuracion fiscal.
+    - `RestClientInternalServiceGatewayTest` valida que un usuario con solo `SALES_CREATE` no puede crear compras de inventario.
+    - `IdentityManagementServiceTest`, `CompanyLicenseControllerTest` y `LicenseUsageControllerTest` cubren reglas de licencia, cuotas y acceso ROOT.
+    - `.\mvnw.cmd -q -pl services\bff-service -am test`: OK.
+    - `.\mvnw.cmd -q test`: OK.
 
 - [x] TASK-134: Tablero ROOT de uso de licencias
   - Estado: DONE
@@ -3722,22 +3736,31 @@
     - `.\mvnw.cmd -q -pl services\bff-service -am test`: OK.
     - `npm test -- --run`: OK, 19 tests.
 
-- [ ] TASK-135: Auditoria transversal verificable
-  - Estado: APPROVED
+- [x] TASK-135: Auditoria transversal verificable
+  - Estado: DONE
   - Requisitos: RF-069.
   - Acceptance criteria: AC-158.
   - Alcance:
     - Completar auditoria en acciones mutables faltantes.
     - Evitar secretos, tokens y datos sensibles en eventos.
+  - Validacion:
+    - `RestClientInternalServiceGatewayTest.writesAuditEventForSuccessfulMutationWithoutSensitiveHeaders`: OK.
+    - La prueba verifica evento `BFF_MUTATION`, recurso, resultado, correlation ID y ausencia del bearer token en el payload de auditoria.
+    - `.\mvnw.cmd -q -pl services\bff-service -am test`: OK.
+    - `.\mvnw.cmd -q test`: OK.
 
-- [ ] TASK-136: Robustecer sesion, expiracion y restauracion
-  - Estado: APPROVED
+- [x] TASK-136: Robustecer sesion, expiracion y restauracion
+  - Estado: DONE
   - Requisitos: RF-070.
   - Acceptance criteria: AC-159.
   - Alcance:
     - Restaurar sesion vigente tras refresh.
     - Cerrar por 5 minutos de inactividad.
     - Preparar contrato para renovacion segura.
+  - Validacion:
+    - `App.test.jsx` valida que la sesion se restaura despues de simular refresh.
+    - `sessionStorage.test`/`App.test.jsx` validan expiracion local tras 5 minutos de inactividad.
+    - `npm test -- --run`: OK, 19 tests.
 
 - [x] TASK-137: Parametrizar reglas contables PUC por evento
   - Estado: DONE
@@ -3794,13 +3817,16 @@
     - `BffRouteResolverTest` cubre reportes contables nuevos.
     - `.\mvnw.cmd -q -pl services\bff-service -am test`: OK.
 
-- [ ] TASK-141: E2E de aislamiento multiempresa
-  - Estado: APPROVED
+- [x] TASK-141: E2E de aislamiento multiempresa
+  - Estado: DONE
   - Requisitos: RF-075.
   - Acceptance criteria: AC-164.
   - Alcance:
     - Crear dos empresas con datos equivalentes.
     - Verificar que consultas y mutaciones no crucen informacion.
+  - Validacion:
+    - El script `.\scripts\e2e-from-zero.ps1` incluye creacion de segunda empresa y validacion de aislamiento.
+    - `.\scripts\e2e-from-zero.ps1`: OK; verifico que consultas/mutaciones no crucen informacion entre empresas.
 
 - [x] TASK-142: Completar Terraform AWS productivo
   - Estado: DONE
