@@ -3692,20 +3692,25 @@
   - Validacion:
     - `.\mvnw.cmd -q -pl services\inventory-service -am test`: OK; cubre referencias servicio-insumo, sugerencias, consumo manual `CONSUMPTION_OUT`, idempotencia por movimiento y asociacion a documento origen.
 
-- [ ] TASK-132: Crear listados operativos profesionales
-  - Estado: IN_PROGRESS
+- [x] TASK-132: Crear listados operativos profesionales
+  - Estado: DONE
   - Requisitos: RF-066.
   - Acceptance criteria: AC-155.
   - Alcance:
     - Listados con busqueda, paginacion, estado y acciones para ventas, documentos, terceros, productos, compras, movimientos, usuarios, roles, licencias y logs.
     - Mantener etiquetas en espanol y contratos tecnicos estables.
-  - Resultado parcial:
+  - Resultado:
     - `inventory-service` expone `GET /api/v1/products?active=...` para listado operativo de productos.
     - `inventory-service` expone `GET /api/v1/purchases?status=...&supplierId=...&from=...&to=...` para listado operativo de compras.
-  - Validacion parcial:
+    - La SPA agrega listados embebidos para terceros, productos, compras y ventas usando datos del backend y filtros por estado/fecha cuando aplica.
+    - `DataTable` centralizado agrega busqueda y paginacion cliente para listados operativos, logs, licencias, reportes, nomina y tablas reutilizables.
+    - Roles, usuarios, licencias, catalogos y empresas mantienen acciones de actualizar/activar/inactivar en sus pantallas dedicadas.
+    - Documentos fiscales y movimientos de inventario quedan consultables desde reportes/kardex existentes con tablas reutilizables.
+  - Validacion:
     - `ProductControllerTest.listsProductsByActiveState`: OK.
     - `PurchaseControllerTest.listsPurchasesWithFilters`: OK.
-    - Pendiente: completar tablas/acciones de UI para todos los listados del alcance.
+    - `npm test -- --run`: OK, 20 tests.
+    - `npm run build`: OK.
 
 - [x] TASK-133: Endurecer validacion backend de RBAC y licencias
   - Estado: DONE

@@ -1,3 +1,4 @@
+import { DataTable } from '../../components/DataTable.jsx';
 import { DualListField, Field, FormPanel, SelectField } from '../../components/forms.jsx';
 import { MunicipalityFields } from '../../components/MunicipalityFields.jsx';
 import { calculateNitVerificationDigit, isNit, onlyDigits } from '../../utils/nit.js';
@@ -20,6 +21,10 @@ export function ThirdPartyForm({
   thirdPartyRoleCatalog = [],
   personTypeCatalog = [],
   locations,
+  listFilters,
+  setListFilters,
+  thirdParties = [],
+  onLoadThirdParties,
 }) {
   const normalizedForm = normalizeThirdPartyForm(form, companyMunicipalityCode);
   const simpleNaturalCustomer = isSimpleNaturalCustomer(normalizedForm);
@@ -57,30 +62,68 @@ export function ThirdPartyForm({
     update({ ...normalizedForm, taxResponsibilities: nextValues });
   }
 
-  return <FormPanel title="Cliente / proveedor" submitLabel="Guardar tercero" onSubmit={onSubmit} busy={busy}>
-    <div className="form-grid">
-      <SelectField label="Tipo de tercero" value={normalizedForm.thirdPartyType} onChange={(value) => update({ ...normalizedForm, thirdPartyType: value })} options={thirdPartyRoleCatalog} />
-      <SelectField label="Tipo de persona" value={normalizedForm.personType} onChange={(value) => update({ ...normalizedForm, personType: value })} options={personTypeCatalog} />
-      <SelectField label="Tipo de documento" value={normalizedForm.identificationTypeCode} onChange={updateIdentificationType} options={documentTypeOptions} />
-      <Field label="Numero de documento" value={normalizedForm.identificationNumber} onChange={updateIdentificationNumber} />
-      <Field label="Digito de verificacion" value={verificationDigit} onChange={() => {}} readOnly />
-      <Field label="Nombre completo" value={normalizedForm.fullName} onChange={(value) => update({ ...normalizedForm, fullName: value })} />
-      {!simpleNaturalCustomer && <Field label="Razon social" value={normalizedForm.businessName} onChange={(value) => update({ ...normalizedForm, businessName: value })} />}
-      {!simpleNaturalCustomer && <Field label="Nombre comercial" value={normalizedForm.tradeName} onChange={(value) => update({ ...normalizedForm, tradeName: value })} />}
-      <Field label="Correo electronico" value={normalizedForm.email} onChange={(value) => update({ ...normalizedForm, email: value })} type="email" />
-      <Field label="Telefono" value={normalizedForm.phone} onChange={(value) => update({ ...normalizedForm, phone: value })} />
-      <Field label="Direccion" value={normalizedForm.address} onChange={updateAddress} />
-      <MunicipalityFields municipalityCode={normalizedForm.municipalityCode} onChange={(value) => update({ ...normalizedForm, municipalityCode: value })} disabled={simpleNaturalCustomer && !naturalCustomerHasAddress} locations={locations} />
-      {simpleNaturalCustomer
-        ? <Field label="Responsabilidades fiscales" value={fiscalResponsibilityLabel} onChange={() => {}} readOnly />
-        : <DualListField label="Responsabilidades fiscales" value={normalizedForm.taxResponsibilities} onChange={updateTaxResponsibilities} options={taxResponsibilityOptionsSource} exclusiveValues={['R-99-PN']} />}
-      {simpleNaturalCustomer
-        ? <Field label="Regimen tributario" value={taxRegimeLabel} onChange={() => {}} readOnly />
-        : <SelectField label="Regimen tributario" value={normalizedForm.taxRegime} onChange={(value) => update({ ...normalizedForm, taxRegime: value })} options={taxRegimeOptionsSource} />}
-    </div>
-  </FormPanel>;
+  const listTypeOptions = thirdPartyRoleCatalog.filter((option) => ['CUSTOMER', 'SUPPLIER'].includes(option.value));
+
+  return <div className="stack">
+    <FormPanel title="Cliente / proveedor" submitLabel="Guardar tercero" onSubmit={onSubmit} busy={busy}>
+      <div className="form-grid">
+        <SelectField label="Tipo de tercero" value={normalizedForm.thirdPartyType} onChange={(value) => update({ ...normalizedForm, thirdPartyType: value })} options={thirdPartyRoleCatalog} />
+        <SelectField label="Tipo de persona" value={normalizedForm.personType} onChange={(value) => update({ ...normalizedForm, personType: value })} options={personTypeCatalog} />
+        <SelectField label="Tipo de documento" value={normalizedForm.identificationTypeCode} onChange={updateIdentificationType} options={documentTypeOptions} />
+        <Field label="Numero de documento" value={normalizedForm.identificationNumber} onChange={updateIdentificationNumber} />
+        <Field label="Digito de verificacion" value={verificationDigit} onChange={() => {}} readOnly />
+        <Field label="Nombre completo" value={normalizedForm.fullName} onChange={(value) => update({ ...normalizedForm, fullName: value })} />
+        {!simpleNaturalCustomer && <Field label="Razon social" value={normalizedForm.businessName} onChange={(value) => update({ ...normalizedForm, businessName: value })} />}
+        {!simpleNaturalCustomer && <Field label="Nombre comercial" value={normalizedForm.tradeName} onChange={(value) => update({ ...normalizedForm, tradeName: value })} />}
+        <Field label="Correo electronico" value={normalizedForm.email} onChange={(value) => update({ ...normalizedForm, email: value })} type="email" />
+        <Field label="Telefono" value={normalizedForm.phone} onChange={(value) => update({ ...normalizedForm, phone: value })} />
+        <Field label="Direccion" value={normalizedForm.address} onChange={updateAddress} />
+        <MunicipalityFields municipalityCode={normalizedForm.municipalityCode} onChange={(value) => update({ ...normalizedForm, municipalityCode: value })} disabled={simpleNaturalCustomer && !naturalCustomerHasAddress} locations={locations} />
+        {simpleNaturalCustomer
+          ? <Field label="Responsabilidades fiscales" value={fiscalResponsibilityLabel} onChange={() => {}} readOnly />
+          : <DualListField label="Responsabilidades fiscales" value={normalizedForm.taxResponsibilities} onChange={updateTaxResponsibilities} options={taxResponsibilityOptionsSource} exclusiveValues={['R-99-PN']} />}
+        {simpleNaturalCustomer
+          ? <Field label="Regimen tributario" value={taxRegimeLabel} onChange={() => {}} readOnly />
+          : <SelectField label="Regimen tributario" value={normalizedForm.taxRegime} onChange={(value) => update({ ...normalizedForm, taxRegime: value })} options={taxRegimeOptionsSource} />}
+      </div>
+    </FormPanel>
+    <section className="tool-panel">
+      <header className="panel-header">
+        <div>
+          <h1>Terceros registrados</h1>
+          <p className="hint">Consulta clientes y proveedores activos de la empresa.</p>
+        </div>
+        <button className="secondary" disabled={busy} onClick={onLoadThirdParties} type="button">Consultar terceros</button>
+      </header>
+      <div className="form-grid compact">
+        <SelectField label="Tipo de tercero" value={listFilters.thirdPartyType} onChange={(value) => setListFilters({ ...listFilters, thirdPartyType: value || 'CUSTOMER' })} options={listTypeOptions} />
+        <SelectField label="Estado" value={listFilters.thirdPartyActive} onChange={(value) => setListFilters({ ...listFilters, thirdPartyActive: value })} options={[
+          { value: 'true', label: 'Activos' },
+          { value: 'false', label: 'Inactivos' },
+        ]} placeholder="Todos" />
+      </div>
+      <DataTable
+        columns={['Documento', 'Nombre', 'Tipo persona', 'Correo', 'Telefono', 'Estado']}
+        rows={thirdParties.map(thirdPartyRow)}
+        rowKey={(_row, index) => thirdParties[index]?.id || index}
+        emptyMessage="Sin terceros consultados."
+        sectionClassName="embedded-table"
+      />
+    </section>
+  </div>;
 }
 
 function optionLabel(options, value) {
   return options.find((option) => option.value === value)?.label || value;
+}
+
+function thirdPartyRow(thirdParty) {
+  return [
+    `${thirdParty.identificationNumber || ''}${thirdParty.verificationDigit !== null && thirdParty.verificationDigit !== undefined ? `-${thirdParty.verificationDigit}` : ''}`,
+    thirdParty.businessName || thirdParty.fullName || thirdParty.tradeName || '',
+    thirdParty.personType === 'JURIDICA' ? 'Juridica' : 'Natural',
+    thirdParty.email || '',
+    thirdParty.phone || '',
+    thirdParty.active === false ? 'Inactivo' : 'Activo',
+  ];
 }

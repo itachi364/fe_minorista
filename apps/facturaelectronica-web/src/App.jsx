@@ -89,6 +89,11 @@ export default function App() {
   const [resolutionForm, setResolutionForm] = useState(createResolutionForm);
   const [saleForm, setSaleForm] = useState(createSaleForm);
   const [serviceConsumption, setServiceConsumption] = useState(createServiceConsumptionState);
+  const [operationalListFilters, setOperationalListFilters] = useState(createOperationalListFilters);
+  const [thirdPartyList, setThirdPartyList] = useState([]);
+  const [productList, setProductList] = useState([]);
+  const [purchaseList, setPurchaseList] = useState([]);
+  const [salesList, setSalesList] = useState([]);
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerOptions, setCustomerOptions] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -427,6 +432,11 @@ export default function App() {
     setCustomerSearch('');
     setCustomerOptions([]);
     setSelectedCustomer(null);
+    setThirdPartyList([]);
+    setProductList([]);
+    setPurchaseList([]);
+    setSalesList([]);
+    setOperationalListFilters(createOperationalListFilters());
     setAuditEvents([]);
     setAuditResourceTypes([]);
     setAuditFilters(todayAuditFilters());
@@ -778,12 +788,14 @@ export default function App() {
 
   async function createThirdParty() {
     requireCompany();
-    return requestJson('/api/v1/third-parties', {
+    const result = await requestJson('/api/v1/third-parties', {
       method: 'POST',
       body: buildThirdPartyPayload(thirdPartyForm, companyMunicipalityCode),
       ...context,
       idempotencyKey: createIdempotencyKey('third-party'),
     });
+    setThirdPartyList((current) => [result, ...current.filter((item) => item.id !== result.id)]);
+    return result;
   }
 
   async function createProduct() {
@@ -795,6 +807,7 @@ export default function App() {
       idempotencyKey: createIdempotencyKey('product'),
     });
     if (result?.id) {
+      setProductList((current) => [result, ...current.filter((item) => item.id !== result.id)]);
       updateSaleItem(0, 'productId', result.id);
       updateSaleItem(0, 'productName', result.name || '');
       updateSaleItem(0, 'itemType', result.itemType || '');
@@ -867,6 +880,7 @@ export default function App() {
     });
     if (result?.id) {
       setSaleId(result.id);
+      setSalesList((current) => [result, ...current.filter((item) => item.id !== result.id)]);
     }
     return result;
   }
@@ -898,11 +912,50 @@ export default function App() {
 
   async function confirmSale() {
     requireCompany();
-    return requestJson(`/api/v1/sales/${saleId}/confirm`, {
+    const result = await requestJson(`/api/v1/sales/${saleId}/confirm`, {
       method: 'POST',
       ...context,
       idempotencyKey: createIdempotencyKey('confirm-sale'),
     });
+    setSalesList((current) => [result, ...current.filter((item) => item.id !== result.id)]);
+    return result;
+  }
+
+  async function loadThirdPartyList() {
+    requireCompany();
+    const type = operationalListFilters.thirdPartyType === 'SUPPLIER' ? 'suppliers' : 'customers';
+    const items = await requestJson(`/api/v1/${type}${buildQuery({ active: optionalBoolean(operationalListFilters.thirdPartyActive) })}`, context);
+    setThirdPartyList(items || []);
+    return items || [];
+  }
+
+  async function loadProductList() {
+    requireCompany();
+    const items = await requestJson(`/api/v1/products${buildQuery({ active: optionalBoolean(operationalListFilters.productActive) })}`, context);
+    setProductList(items || []);
+    return items || [];
+  }
+
+  async function loadPurchaseList() {
+    requireCompany();
+    const items = await requestJson(`/api/v1/purchases${buildQuery({
+      status: operationalListFilters.purchaseStatus,
+      from: operationalListFilters.purchaseFrom,
+      to: operationalListFilters.purchaseTo,
+    })}`, context);
+    setPurchaseList(items || []);
+    return items || [];
+  }
+
+  async function loadSalesList() {
+    requireCompany();
+    const items = await requestJson(`/api/v1/sales${buildQuery({
+      status: operationalListFilters.saleStatus,
+      from: operationalListFilters.saleFrom,
+      to: operationalListFilters.saleTo,
+    })}`, context);
+    setSalesList(items || []);
+    return items || [];
   }
 
   async function loadServiceConsumptionSuggestions(serviceProductId) {
@@ -1273,10 +1326,10 @@ export default function App() {
             <LicenseAdminPanel form={licenseForm} setForm={setLicenseForm} companies={rootCompanies} license={managedLicense} usage={licenseUsage} onCompanyChange={selectLicenseCompany} onLoad={() => execute(loadManagedLicense)} onSave={() => execute(saveManagedLicense)} onActivate={() => execute(activateManagedLicense)} onSuspend={() => execute(suspendManagedLicense)} busy={busy || !isRoot} />
           )}
           {currentStep === 'Terceros' && (
-            <ThirdPartyForm form={thirdPartyForm} setForm={setThirdPartyForm} companyMunicipalityCode={companyMunicipalityCode} onSubmit={() => execute(createThirdParty)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Terceros)} documentTypeOptionsSource={runtimeCatalogs.dianDocumentTypes} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} taxRegimeOptionsSource={runtimeCatalogs.taxRegimeOptions} thirdPartyRoleCatalog={runtimeCatalogs.thirdPartyRoleCatalog} personTypeCatalog={runtimeCatalogs.personTypeCatalog} locations={runtimeCatalogs.locations} />
+            <ThirdPartyForm form={thirdPartyForm} setForm={setThirdPartyForm} companyMunicipalityCode={companyMunicipalityCode} onSubmit={() => execute(createThirdParty)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Terceros)} documentTypeOptionsSource={runtimeCatalogs.dianDocumentTypes} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} taxRegimeOptionsSource={runtimeCatalogs.taxRegimeOptions} thirdPartyRoleCatalog={runtimeCatalogs.thirdPartyRoleCatalog} personTypeCatalog={runtimeCatalogs.personTypeCatalog} locations={runtimeCatalogs.locations} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} thirdParties={thirdPartyList} onLoadThirdParties={() => execute(loadThirdPartyList)} />
           )}
           {currentStep === 'Inventario' && (
-            <ProductForm form={productForm} setForm={setProductForm} onSubmit={() => execute(createProduct)} busy={busy || !activeCompanyId || !canUse(['INVENTORY_MANAGE'])} taxOptions={runtimeCatalogs.salesTaxOptions} itemTypeCatalog={runtimeCatalogs.itemTypeCatalog} />
+            <ProductForm form={productForm} setForm={setProductForm} onSubmit={() => execute(createProduct)} busy={busy || !activeCompanyId || !canUse(['INVENTORY_MANAGE'])} taxOptions={runtimeCatalogs.salesTaxOptions} itemTypeCatalog={runtimeCatalogs.itemTypeCatalog} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} products={productList} purchases={purchaseList} onLoadProducts={() => execute(loadProductList)} onLoadPurchases={() => execute(loadPurchaseList)} />
           )}
           {currentStep === 'Fiscal' && (
             <div className="split">
@@ -1285,7 +1338,7 @@ export default function App() {
             </div>
           )}
           {currentStep === 'Ventas' && (
-            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onCreate={() => execute(createSale)} onConfirm={() => execute(confirmSale)} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
+            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onCreate={() => execute(createSale)} onConfirm={() => execute(confirmSale)} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} sales={salesList} onLoadSales={() => execute(loadSalesList)} />
           )}
           {currentStep === 'Nomina' && (
             <PayrollPanel settingsForm={payrollSettingsForm} setSettingsForm={setPayrollSettingsForm} workerForm={payrollWorkerForm} setWorkerForm={setPayrollWorkerForm} paymentForm={dailyLaborPaymentForm} setPaymentForm={setDailyLaborPaymentForm} workers={payrollWorkers} payments={dailyLaborPayments} electronicDocuments={electronicPayrollDocuments} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} workerClassificationOptions={runtimeCatalogs.payrollWorkerClassificationOptions} paymentMethodOptions={runtimeCatalogs.paymentMethodOptions} onLoad={() => execute(loadPayrollData)} onSaveSettings={() => execute(savePayrollSettings)} onCreateWorker={() => execute(createPayrollWorker)} onCreateDailyPayment={() => execute(createDailyLaborPayment)} onIssueElectronicDocument={(paymentId) => execute(() => issueElectronicPayrollDocument(paymentId))} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Nomina)} />
@@ -1331,6 +1384,30 @@ function todayAuditFilters(now = new Date()) {
     from: toDateTimeLocalValue(start),
     to: toDateTimeLocalValue(end),
   };
+}
+
+function createOperationalListFilters() {
+  return {
+    thirdPartyType: 'CUSTOMER',
+    thirdPartyActive: 'true',
+    productActive: 'true',
+    purchaseStatus: '',
+    purchaseFrom: '',
+    purchaseTo: '',
+    saleStatus: '',
+    saleFrom: '',
+    saleTo: '',
+  };
+}
+
+function optionalBoolean(value) {
+  if (value === 'true') {
+    return true;
+  }
+  if (value === 'false') {
+    return false;
+  }
+  return '';
 }
 
 function toDateTimeLocalValue(date) {

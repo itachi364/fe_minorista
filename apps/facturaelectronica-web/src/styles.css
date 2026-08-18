@@ -224,6 +224,12 @@ nav {
   padding: 16px;
 }
 
+.embedded-table {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
 .app-header-panel {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) minmax(300px, 1.2fr) minmax(220px, auto) auto;
@@ -527,6 +533,15 @@ textarea:hover {
   border-radius: 8px;
 }
 
+.table-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.table-toolbar label {
+  width: min(320px, 100%);
+}
+
 .data-table {
   width: 100%;
   min-width: 860px;
@@ -555,6 +570,19 @@ textarea:hover {
   font-family: "Cascadia Mono", Consolas, monospace;
   font-size: 12px;
   overflow-wrap: anywhere;
+}
+
+.table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.table-pagination span {
+  color: #42576a;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .reports-grid {

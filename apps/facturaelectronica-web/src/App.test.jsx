@@ -576,12 +576,90 @@ test('creates POS sale with controlled virtual wallet payment method', async () 
 
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
   expect(screen.queryByLabelText('Venta creada')).not.toBeInTheDocument();
-  expect(screen.getByText('Venta pendiente de confirmacion')).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByText('Venta pendiente de confirmacion')).toBeInTheDocument());
   expect(screen.getByText('99999999-9999-9999-9999-999999999999')).toBeInTheDocument();
   const salePayload = JSON.parse(fetchMock.mock.calls[5][1].body);
   expect(salePayload.paymentMethodCode).toBe('VIRTUAL_WALLET');
   expect(salePayload.virtualWalletCode).toBe('NEQUI');
   expect(salePayload.paymentMethodId).toBeUndefined();
+});
+
+test('loads operational lists for sales third parties products and purchases', async () => {
+  const customer = {
+    id: '33333333-3333-3333-3333-333333333333',
+    identificationNumber: '1234567890',
+    fullName: 'Cliente Operativo',
+    personType: 'NATURAL',
+    email: 'cliente@example.com',
+    phone: '3000000000',
+    active: true,
+  };
+  const product = {
+    id: '44444444-4444-4444-4444-444444444444',
+    sku: 'SKU-001',
+    name: 'Cafe 500g',
+    itemType: 'PHYSICAL_GOOD',
+    currentStock: 12,
+    unitCost: 9000,
+    salePrice: 15000,
+    active: true,
+  };
+  const purchase = {
+    id: '55555555-5555-5555-5555-555555555555',
+    createdAt: '2026-08-18T10:00:00Z',
+    status: 'CONFIRMED',
+    supplierId: '66666666-6666-6666-6666-666666666666',
+    subtotal: 90000,
+    taxTotal: 17100,
+    total: 107100,
+    dueDate: '2026-09-18',
+  };
+  const sale = {
+    id: '77777777-7777-7777-7777-777777777777',
+    saleDate: '2026-08-18',
+    status: 'CONFIRMED',
+    customerId: customer.id,
+    paymentMethodCode: 'CASH',
+    subtotal: 15000,
+    taxTotal: 2850,
+    total: 17850,
+  };
+  const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
+    .mockResolvedValueOnce(jsonResponse([customer]))
+    .mockResolvedValueOnce(jsonResponse([product]))
+    .mockResolvedValueOnce(jsonResponse([purchase]))
+    .mockResolvedValueOnce(jsonResponse([sale]));
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Terceros' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Consultar terceros' }));
+  await waitFor(() => expect(screen.getByText('Cliente Operativo')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Inventario' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Consultar productos' }));
+  await waitFor(() => expect(screen.getByText('Cafe 500g')).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: 'Consultar compras' }));
+  await waitFor(() => expect(screen.getByText('66666666-6666-6666-6666-666666666666')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Consultar ventas' }));
+  await waitFor(() => expect(screen.getByText('33333333-3333-3333-3333-333333333333')).toBeInTheDocument());
+
+  expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/v1/customers?active=true', expect.objectContaining({
+    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(fetchMock).toHaveBeenNthCalledWith(7, '/api/v1/products?active=true', expect.objectContaining({
+    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(fetchMock).toHaveBeenNthCalledWith(8, '/api/v1/purchases', expect.objectContaining({
+    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(fetchMock).toHaveBeenNthCalledWith(9, '/api/v1/sales', expect.objectContaining({
+    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
+  }));
 });
 
 test('searches customer by document and sends selected customer id in POS sale', async () => {
@@ -680,7 +758,7 @@ function fillManagedUserForm() {
 }
 
 function fillSimpleNaturalCustomerForm() {
-  fireEvent.change(screen.getByLabelText('Tipo de tercero'), { target: { value: 'CUSTOMER' } });
+  fireEvent.change(screen.getAllByLabelText('Tipo de tercero')[0], { target: { value: 'CUSTOMER' } });
   fireEvent.change(screen.getByLabelText('Tipo de persona'), { target: { value: 'NATURAL' } });
   fireEvent.change(screen.getByLabelText('Tipo de documento'), { target: { value: '13' } });
   fireEvent.change(screen.getByLabelText('Numero de documento'), { target: { value: '1234567890' } });
