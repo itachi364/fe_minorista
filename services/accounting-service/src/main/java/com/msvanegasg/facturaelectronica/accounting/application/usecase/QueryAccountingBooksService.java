@@ -14,6 +14,8 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.JournalBookE
 import com.msvanegasg.facturaelectronica.accounting.application.dto.JournalBookLineResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.JournalBookQuery;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.JournalBookResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.FinancialStatementGroupResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.FinancialStatementResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.LedgerAccountSummaryResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.LedgerBookQuery;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.LedgerBookResult;
@@ -76,6 +78,36 @@ public class QueryAccountingBooksService implements QueryAccountingBooksUseCase 
                         .toList());
     }
 
+    @Override
+    public FinancialStatementResult incomeStatement(LedgerBookQuery query) {
+        LedgerBookResult ledger = ledgerBook(query);
+        List<FinancialStatementGroupResult> groups = List.of(
+                group("4", "Ingresos operacionales", ledger),
+                group("6", "Costos de venta", ledger),
+                group("5", "Gastos operacionales", ledger),
+                group("7", "Costos de produccion o prestacion de servicios", ledger));
+        BigDecimal total = amountFor("4", ledger)
+                .subtract(amountFor("6", ledger))
+                .subtract(amountFor("5", ledger))
+                .subtract(amountFor("7", ledger));
+        return new FinancialStatementResult(query.companyId(), query.fromDate(), query.toDate(),
+                "INCOME_STATEMENT", groups, total);
+    }
+
+    @Override
+    public FinancialStatementResult balanceSheet(LedgerBookQuery query) {
+        LedgerBookResult ledger = ledgerBook(query);
+        List<FinancialStatementGroupResult> groups = List.of(
+                group("1", "Activos", ledger),
+                group("2", "Pasivos", ledger),
+                group("3", "Patrimonio", ledger));
+        BigDecimal total = amountFor("1", ledger)
+                .subtract(amountFor("2", ledger))
+                .subtract(amountFor("3", ledger));
+        return new FinancialStatementResult(query.companyId(), query.fromDate(), query.toDate(),
+                "BASIC_BALANCE_SHEET", groups, total);
+    }
+
     private List<AccountingEntry> findPostedEntries(UUID companyId, LocalDate fromDate, LocalDate toDate) {
         return entryRepository.findPostedByCompanyIdAndEntryDateBetween(companyId, fromDate, toDate).stream()
                 .sorted(Comparator.comparing(AccountingEntry::entryDate)
@@ -123,6 +155,17 @@ public class QueryAccountingBooksService implements QueryAccountingBooksUseCase 
     private static BigDecimal totalCredit(List<AccountingEntry> entries) {
         return entries.stream()
                 .map(AccountingEntry::creditTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private static FinancialStatementGroupResult group(String prefix, String label, LedgerBookResult ledger) {
+        return new FinancialStatementGroupResult(prefix, label, amountFor(prefix, ledger));
+    }
+
+    private static BigDecimal amountFor(String prefix, LedgerBookResult ledger) {
+        return ledger.accounts().stream()
+                .filter(account -> account.accountCode().startsWith(prefix))
+                .map(LedgerAccountSummaryResult::balance)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 

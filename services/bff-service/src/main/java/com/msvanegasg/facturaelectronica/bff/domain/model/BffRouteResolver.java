@@ -71,7 +71,7 @@ public final class BffRouteResolver {
             return TargetService.INVENTORY;
         }
         if (matchesAny(normalized, "reports/expenses", "reports/journal", "reports/ledger", "reports/trial-balance",
-                "reports/accounts-receivable")) {
+                "reports/accounts-receivable", "reports/income-statement", "reports/balance-sheet")) {
             return TargetService.ACCOUNTING;
         }
         throw new UnsupportedBffRouteException("/api/v1/" + normalized);

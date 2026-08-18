@@ -116,6 +116,35 @@ class QueryAccountingBooksServiceTest {
     }
 
     @Test
+    void incomeStatementSummarizesRevenueCostsAndExpenses() {
+        TestContext context = TestContext.withDefaultAccounts();
+        context.entries.save(saleEntry(COMPANY_ID, LocalDate.of(2026, 5, 15), "Venta POS 1"));
+        context.entries.save(expenseEntry(COMPANY_ID, LocalDate.of(2026, 5, 20), "Gasto caja"));
+
+        var result = context.service().incomeStatement(new LedgerBookQuery(COMPANY_ID, FROM_DATE, TO_DATE));
+
+        assertThat(result.statementType()).isEqualTo("INCOME_STATEMENT");
+        assertThat(result.groups()).extracting("code").containsExactly("4", "6", "5", "7");
+        assertThat(result.groups().get(0).total()).isEqualByComparingTo("100.00");
+        assertThat(result.groups().get(2).total()).isEqualByComparingTo("50.00");
+        assertThat(result.total()).isEqualByComparingTo("50.00");
+    }
+
+    @Test
+    void balanceSheetSummarizesAssetsLiabilitiesAndEquity() {
+        TestContext context = TestContext.withDefaultAccounts();
+        context.entries.save(saleEntry(COMPANY_ID, LocalDate.of(2026, 5, 15), "Venta POS 1"));
+
+        var result = context.service().balanceSheet(new LedgerBookQuery(COMPANY_ID, FROM_DATE, TO_DATE));
+
+        assertThat(result.statementType()).isEqualTo("BASIC_BALANCE_SHEET");
+        assertThat(result.groups()).extracting("code").containsExactly("1", "2", "3");
+        assertThat(result.groups().get(0).total()).isEqualByComparingTo("119.00");
+        assertThat(result.groups().get(1).total()).isEqualByComparingTo("19.00");
+        assertThat(result.total()).isEqualByComparingTo("100.00");
+    }
+
+    @Test
     void ledgerBookRejectsMissingAccountForSummary() {
         TestContext context = TestContext.withDefaultAccounts();
         context.entries.save(AccountingEntry.post(
@@ -227,6 +256,8 @@ class QueryAccountingBooksServiceTest {
             save(Account.create(UUID.randomUUID(), companyId, "2408", "Impuesto sobre las ventas por pagar", null));
             save(Account.create(UUID.randomUUID(), companyId, "4135", "Comercio al por mayor y al por menor", null));
             save(Account.create(UUID.randomUUID(), companyId, "5135", "Servicios", null));
+            save(Account.create(UUID.randomUUID(), companyId, "6", "Costos de venta", null));
+            save(Account.create(UUID.randomUUID(), companyId, "7", "Costos de produccion", null));
         }
 
         @Override

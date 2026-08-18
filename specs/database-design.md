@@ -131,3 +131,50 @@ Reglas:
 - `enabled_modules` usa codigos en ingles para contrato tecnico, pero la UI muestra etiquetas en espanol.
 - Licencias existentes sin `enabled_modules` deben migrarse a arreglo vacio o valor explicito segun migracion aprobada; una licencia sin modulos no habilita operacion empresarial.
 - ROOT no depende de `tenant.company_license`.
+
+## Productizacion operativa
+
+### Datos requeridos por el E2E
+
+La prueba desde cero debe crear datos en las tablas activas de cada bounded context:
+
+- `tenant.company` y `tenant.company_license`.
+- `identity.user_account`, roles, permisos y membresias empresariales.
+- `catalog.catalog_definition`, `catalog.catalog_item`, `catalog.department`, `catalog.municipality`.
+- `thirdparty.third_party`.
+- `inventory.product`, `inventory.inventory_movement` y tablas de compra/entrada cuando existan.
+- `billing.sale`, lineas de venta, documento fiscal, submission mock y configuracion de consumidor final.
+- `accounting.account`, reglas contables y asientos/comprobantes.
+- `audit.audit_event`.
+
+### Compras e inventario
+
+Si el flujo de compra no esta completamente modelado, se debe introducir o completar un modelo transaccional con:
+
+- Cabecera de compra por empresa y proveedor.
+- Lineas de compra con producto/insumo, cantidad, costo unitario, impuesto y subtotal.
+- Estado de compra (`DRAFT`, `CONFIRMED`, `CANCELLED`).
+- Movimiento de inventario idempotente al confirmar.
+- Cuenta por pagar o egreso segun medio de pago/configuracion.
+- Asiento contable balanceado segun regla PUC empresarial.
+
+### Servicios con insumos
+
+- `inventory.service_supply_reference` conserva referencias sugeridas entre servicio e insumos.
+- El consumo real queda en `inventory.inventory_movement` con `CONSUMPTION_OUT`, `source_document_id`, `source_document_type`, `reason`, `idempotency_key` y usuario.
+- No se deben crear descuentos automaticos por receta sin confirmacion explicita.
+
+### Reportes y licencias
+
+- Los reportes se calculan desde tablas activas de contabilidad, inventario, billing e identidad.
+- El uso de licencia mensual se calcula desde documentos fiscales emitidos en `billing` y usuarios activos vinculados en `identity`.
+- Las proyecciones event-driven futuras deben poder reconstruirse desde los datos canonicos persistidos.
+
+### Depuracion futura
+
+Ninguna tabla legacy debe eliminarse hasta que:
+
+- Exista flujo equivalente activo.
+- La tabla no tenga referencias en JPA, repositorios, SQL, migraciones posteriores o scripts.
+- Los datos esten vacios o migrados/respaldados.
+- Flyway valide sobre base limpia y base local actual.

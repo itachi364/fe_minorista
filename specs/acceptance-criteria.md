@@ -186,3 +186,21 @@
 - AC-149: Dada una empresa con nomina electronica activada, cuando cierre un periodo de nomina, entonces debe poder generar documento soporte de nomina electronica mock y registrar estado.
 - AC-150: Dado un pago clasificado como contratista independiente, cuando se contabilice, entonces debe registrarse como egreso/proveedor o gasto operativo y no como empleado de nomina formal.
 - AC-151: Dada la suite E2E actualizada, cuando se ejecute desde cero, entonces debe crear empresa, administrador, catalogos requeridos, tercero, inventario, venta, factura mock, contabilidad, logs y un flujo minimo de nomina/pago diario sin depender de datos demo del frontend.
+
+## Productizacion operativa y cierre funcional
+
+- AC-152: Dado un entorno local limpio con solo ROOT semilla, cuando se ejecute el E2E desde cero, entonces debe crear empresa, licencia, OWNER, tercero, producto, stock, venta POS, factura electronica mock, descuento de inventario, asiento contable y auditoria.
+- AC-153: Dada una compra confirmada, entonces debe incrementar stock, conservar costo, registrar proveedor, generar egreso/cuenta por pagar segun configuracion y crear asiento contable balanceado.
+- AC-154: Dado un servicio facturable con insumos sugeridos, cuando se confirme consumo manual, entonces debe crear movimientos `CONSUMPTION_OUT` idempotentes, auditados y asociados al documento origen.
+- AC-155: Dado cualquier listado operativo, cuando se abra, entonces debe cargar datos paginados de la empresa activa, permitir busqueda/estado y no mostrar datos de otra empresa.
+- AC-156: Dado un usuario sin permiso o sin modulo licenciado, cuando invoque una accion protegida directamente por API, entonces backend/BFF debe rechazarla aunque la SPA no muestre la accion.
+- AC-157: Dado ROOT, cuando consulte uso de licencia, entonces debe ver usuarios activos, documentos del mes, modulos, estado y vigencia por empresa.
+- AC-158: Dada una accion mutable exitosa o fallida, entonces debe existir evento de auditoria sin secretos ni payload sensible.
+- AC-159: Dada una sesion vigente, cuando se refresque la pagina, entonces se restaura; dada una sesion inactiva por 5 minutos o expirada, entonces se cierra y vuelve a login.
+- AC-160: Dada una regla contable PUC ausente para un evento confirmado, entonces el proceso debe fallar con error funcional y auditoria sin crear asiento desbalanceado.
+- AC-161: Dado un asiento generado automaticamente, entonces la suma de debitos debe ser igual a la suma de creditos y debe estar asociado a empresa, evento y documento origen.
+- AC-162: Dado el modulo de reportes, entonces debe consultar estado de resultados, balance basico, libro diario, cuentas por cobrar/pagar, inventario valorizado y uso de licencia con aislamiento empresarial.
+- AC-163: Dadas las rutas criticas del BFF, entonces las pruebas de contrato deben validar metodo, ruta, headers, payload y preservacion de errores funcionales.
+- AC-164: Dado el E2E multiempresa, cuando dos empresas creen datos similares, entonces ninguna consulta o accion empresarial debe cruzar datos.
+- AC-165: Dado Terraform AWS, cuando se ejecute `terraform fmt`, `terraform init -backend=false` y `terraform validate`, entonces no debe fallar.
+- AC-166: Dado un evento asincrono productivo, cuando se procese por Lambda, entonces debe ser idempotente, tener DLQ/reintento y no bloquear el microservicio productor.

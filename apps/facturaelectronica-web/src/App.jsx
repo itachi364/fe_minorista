@@ -64,6 +64,7 @@ export default function App() {
   const [license, setLicense] = useState(storedSnapshot?.license || null);
   const [licenseForm, setLicenseForm] = useState(createLicenseForm);
   const [managedLicense, setManagedLicense] = useState(null);
+  const [licenseUsage, setLicenseUsage] = useState(null);
   const [runtimeCatalogs, setRuntimeCatalogs] = useState(() => globalThis.__FACTURA_RUNTIME_CATALOGS__ || emptyRuntimeCatalogs);
   const [lastActivityAt, setLastActivityAt] = useState(storedSnapshot?.lastActivityAt || Date.now());
   const lastActivityRef = useRef(lastActivityAt);
@@ -518,6 +519,7 @@ export default function App() {
   function selectLicenseCompany(companyId) {
     setLicenseForm((current) => ({ ...current, companyId }));
     setManagedLicense(null);
+    setLicenseUsage(null);
   }
 
   function hydrateLicenseForm(licenseResult) {
@@ -543,6 +545,17 @@ export default function App() {
     const result = await requestJson(`/api/v1/companies/${companyId}/license`, { token, companyId });
     setManagedLicense(result);
     hydrateLicenseForm(result);
+    await loadLicenseUsage(companyId);
+    return result;
+  }
+
+  async function loadLicenseUsage(companyId = licenseForm.companyId || activeCompanyId) {
+    if (!companyId || !isRoot) {
+      setLicenseUsage(null);
+      return null;
+    }
+    const result = await requestJson(`/api/v1/platform/licenses/usage${buildQuery({ companyId })}`, { token });
+    setLicenseUsage(result);
     return result;
   }
 
@@ -560,6 +573,7 @@ export default function App() {
     });
     setManagedLicense(result);
     hydrateLicenseForm(result);
+    await loadLicenseUsage(companyId);
     if (companyId === activeCompanyId) {
       setLicense(result);
     }
@@ -579,6 +593,7 @@ export default function App() {
     });
     setManagedLicense(result);
     hydrateLicenseForm(result);
+    await loadLicenseUsage(companyId);
     return result;
   }
 
@@ -595,6 +610,7 @@ export default function App() {
     });
     setManagedLicense(result);
     hydrateLicenseForm(result);
+    await loadLicenseUsage(companyId);
     return result;
   }
 
@@ -945,16 +961,18 @@ export default function App() {
 
   async function loadReports() {
     requireCompany();
-    const [sales, stock, journal, ledger, expenses, accountsReceivable, accountsPayable] = await Promise.all([
+    const [sales, stock, journal, ledger, incomeStatement, balanceSheet, expenses, accountsReceivable, accountsPayable] = await Promise.all([
       requestJson(`/api/v1/reports/sales${buildQuery({ status: reportsForm.status, from: reportsForm.from, to: reportsForm.to })}`, context),
       requestJson(`/api/v1/reports/inventory-stock${buildQuery({ active: true })}`, context),
       requestJson(`/api/v1/reports/journal${buildQuery({ from: reportsForm.from, to: reportsForm.to })}`, context),
       requestJson(`/api/v1/reports/ledger${buildQuery({ from: reportsForm.from, to: reportsForm.to, accountCode: reportsForm.accountCode })}`, context),
+      requestJson(`/api/v1/reports/income-statement${buildQuery({ from: reportsForm.from, to: reportsForm.to })}`, context),
+      requestJson(`/api/v1/reports/balance-sheet${buildQuery({ from: reportsForm.from, to: reportsForm.to })}`, context),
       requestJson(`/api/v1/reports/expenses${buildQuery({ status: reportsForm.status, from: reportsForm.from, to: reportsForm.to })}`, context),
       requestJson(`/api/v1/reports/accounts-receivable${buildQuery({ status: reportsForm.status, from: reportsForm.from, to: reportsForm.to })}`, context),
       requestJson(`/api/v1/accounts-payable${buildQuery({ status: reportsForm.status, from: reportsForm.from, to: reportsForm.to })}`, context),
     ]);
-    const result = { sales, stock, journal, ledger, expenses, accountsReceivable, accountsPayable };
+    const result = { sales, stock, journal, ledger, incomeStatement, balanceSheet, expenses, accountsReceivable, accountsPayable };
     setReportsData(result);
     return result;
   }
@@ -1252,7 +1270,7 @@ export default function App() {
             }} busy={busy} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} />
           )}
           {currentStep === 'Licencias' && (
-            <LicenseAdminPanel form={licenseForm} setForm={setLicenseForm} companies={rootCompanies} license={managedLicense} onCompanyChange={selectLicenseCompany} onLoad={() => execute(loadManagedLicense)} onSave={() => execute(saveManagedLicense)} onActivate={() => execute(activateManagedLicense)} onSuspend={() => execute(suspendManagedLicense)} busy={busy || !isRoot} />
+            <LicenseAdminPanel form={licenseForm} setForm={setLicenseForm} companies={rootCompanies} license={managedLicense} usage={licenseUsage} onCompanyChange={selectLicenseCompany} onLoad={() => execute(loadManagedLicense)} onSave={() => execute(saveManagedLicense)} onActivate={() => execute(activateManagedLicense)} onSuspend={() => execute(suspendManagedLicense)} busy={busy || !isRoot} />
           )}
           {currentStep === 'Terceros' && (
             <ThirdPartyForm form={thirdPartyForm} setForm={setThirdPartyForm} companyMunicipalityCode={companyMunicipalityCode} onSubmit={() => execute(createThirdParty)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Terceros)} documentTypeOptionsSource={runtimeCatalogs.dianDocumentTypes} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} taxRegimeOptionsSource={runtimeCatalogs.taxRegimeOptions} thirdPartyRoleCatalog={runtimeCatalogs.thirdPartyRoleCatalog} personTypeCatalog={runtimeCatalogs.personTypeCatalog} locations={runtimeCatalogs.locations} />

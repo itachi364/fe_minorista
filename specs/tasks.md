@@ -3649,3 +3649,180 @@
     - `identity-service` permite activar/inactivar usuario asociado a una empresa.
     - Usuario inactivo no puede iniciar sesion.
     - UI permite editar y activar/inactivar usuarios desde `Usuarios`.
+
+- [x] TASK-129: Implementar E2E operativo desde cero para venta POS electronica
+  - Estado: DONE
+  - Requisitos: RF-063, RF-067, RF-069, RF-071, RF-072.
+  - Acceptance criteria: AC-152, AC-156, AC-158, AC-160, AC-161.
+  - Alcance:
+    - Crear script/prueba E2E que use APIs reales y datos generados en ejecucion.
+    - Verificar empresa, licencia, OWNER, tercero, producto, stock, venta, factura mock, inventario, contabilidad y auditoria.
+    - No depender de datos demo, `initialState` ni catalogos frontend.
+  - Tests requeridos:
+    - Suite Maven del subconjunto impactado.
+    - E2E local Docker desde cero.
+  - Validacion:
+    - `.\scripts\e2e-from-zero.ps1`: OK; creo empresa, licencia, OWNER, tercero, proveedor, emisor, resolucion POS, setup contable, producto, venta, documento mock, movimiento de inventario, asiento contable, nomina mock, auditoria y aislamiento multiempresa.
+
+- [ ] TASK-130: Completar compras y entradas de inventario con contabilidad
+  - Estado: IN_PROGRESS
+  - Requisitos: RF-064, RF-071, RF-072.
+  - Acceptance criteria: AC-153, AC-160, AC-161.
+  - Alcance:
+    - Crear o completar endpoints de compra/entrada.
+    - Confirmar compra incrementando stock y generando asiento/cuenta por pagar o egreso.
+    - Auditar acciones mutables.
+  - Validacion parcial:
+    - `.\mvnw.cmd -q -pl services\inventory-service -am test`: OK.
+    - `.\mvnw.cmd -q test`: OK.
+    - `.\scripts\e2e-from-zero.ps1`: falla al verificar asiento contable de compra; la compra se confirma y el stock sube, pero el contenedor activo no registra el asiento/cuenta por pagar.
+    - `docker compose up -d --build`: timeout despues de 10 minutos.
+    - `docker compose ps`: timeout.
+    - `docker restart facturaelectronica-inventory-service`: timeout.
+    - Health HTTP: `inventory-service`, `accounting-service`, `billing-service`, `identity-service` y `bff-service` responden `UP`; el bloqueo esta en la administracion Docker/recarga de contenedores desde esta instancia.
+
+- [x] TASK-131: Completar servicios facturables con consumo manual de insumos
+  - Estado: DONE
+  - Requisitos: RF-065, RF-069.
+  - Acceptance criteria: AC-154, AC-158.
+  - Alcance:
+    - Mantener referencias sugeridas servicio-insumo.
+    - Confirmar consumos reales por usuario con idempotencia y auditoria.
+    - Asociar consumo a venta/documento origen cuando aplique.
+  - Validacion:
+    - `.\mvnw.cmd -q -pl services\inventory-service -am test`: OK; cubre referencias servicio-insumo, sugerencias, consumo manual `CONSUMPTION_OUT`, idempotencia por movimiento y asociacion a documento origen.
+
+- [ ] TASK-132: Crear listados operativos profesionales
+  - Estado: APPROVED
+  - Requisitos: RF-066.
+  - Acceptance criteria: AC-155.
+  - Alcance:
+    - Listados con busqueda, paginacion, estado y acciones para ventas, documentos, terceros, productos, compras, movimientos, usuarios, roles, licencias y logs.
+    - Mantener etiquetas en espanol y contratos tecnicos estables.
+
+- [ ] TASK-133: Endurecer validacion backend de RBAC y licencias
+  - Estado: APPROVED
+  - Requisitos: RF-067.
+  - Acceptance criteria: AC-156.
+  - Alcance:
+    - Auditar rutas criticas del BFF y microservicios.
+    - Agregar pruebas negativas por permiso, modulo licenciado y empresa activa.
+
+- [x] TASK-134: Tablero ROOT de uso de licencias
+  - Estado: DONE
+  - Requisitos: RF-068.
+  - Acceptance criteria: AC-157.
+  - Alcance:
+    - Exponer consulta de uso por empresa.
+    - Mostrar usuarios activos, documentos mensuales, modulos, vigencia y estado.
+  - Validacion:
+    - `bff-service` expone `GET /api/v1/platform/licenses/usage?companyId=...` para ROOT.
+    - El endpoint agrega empresa/licencia desde `tenant-service`, usuarios activos desde `identity-service` y documentos electronicos del mes desde `billing-service`.
+    - `LicenseAdminPanel` muestra usuarios activos y documentos del mes contra cuotas configuradas.
+    - `.\mvnw.cmd -q -pl services\bff-service -am test`: OK.
+    - `npm test -- --run`: OK, 19 tests.
+
+- [ ] TASK-135: Auditoria transversal verificable
+  - Estado: APPROVED
+  - Requisitos: RF-069.
+  - Acceptance criteria: AC-158.
+  - Alcance:
+    - Completar auditoria en acciones mutables faltantes.
+    - Evitar secretos, tokens y datos sensibles en eventos.
+
+- [ ] TASK-136: Robustecer sesion, expiracion y restauracion
+  - Estado: APPROVED
+  - Requisitos: RF-070.
+  - Acceptance criteria: AC-159.
+  - Alcance:
+    - Restaurar sesion vigente tras refresh.
+    - Cerrar por 5 minutos de inactividad.
+    - Preparar contrato para renovacion segura.
+
+- [x] TASK-137: Parametrizar reglas contables PUC por evento
+  - Estado: DONE
+  - Requisitos: RF-071.
+  - Acceptance criteria: AC-160.
+  - Alcance:
+    - Definir eventos contables configurables por empresa.
+    - Validar cuentas PUC antes de contabilizar.
+  - Validacion:
+    - `accounting-service` administra reglas contables por empresa y evento (`SALE_CONFIRMED`, `PURCHASE_CONFIRMED`, `EXPENSE_CONFIRMED`, pagos de CxP/CxC y pago diario de nomina).
+    - `BasicAccountingSetupService` crea plantillas PUC base por empresa.
+    - `GenerateAccountingEntryService` valida existencia de cuentas PUC y reglas activas antes de contabilizar.
+    - `.\mvnw.cmd -q test`: OK.
+
+- [x] TASK-138: Generar comprobantes/asientos automaticos
+  - Estado: DONE
+  - Requisitos: RF-072.
+  - Acceptance criteria: AC-161.
+  - Alcance:
+    - Ventas, compras, gastos, nomina/pagos diarios y consumos relevantes.
+    - Garantizar asientos balanceados e idempotentes.
+  - Validacion:
+    - Ventas POS generan asiento automatico desde `billing-service`.
+    - Compras confirmadas generan cuenta por pagar y entrada de inventario desde `inventory-service`.
+    - Gastos, pagos de CxP/CxC y pagos diarios de nomina tienen regla contable y prueba de generacion.
+    - `AccountingEntry` rechaza asientos descuadrados.
+    - `.\mvnw.cmd -q test`: OK.
+
+- [x] TASK-139: Implementar reportes minimos contables y operativos
+  - Estado: DONE
+  - Requisitos: RF-073.
+  - Acceptance criteria: AC-162.
+  - Alcance:
+    - Estado de resultados, balance basico, libro diario, cartera, cuentas por pagar, inventario valorizado y uso de licencia.
+  - Validacion:
+    - `accounting-service` expone `GET /api/v1/reports/income-statement` y `GET /api/v1/reports/balance-sheet`.
+    - Los reportes agrupan saldos por prefijos PUC y reutilizan el libro mayor.
+    - La SPA consulta y muestra ventas, inventario, gastos, cartera, cuentas por pagar, libro mayor, libro diario, estado de resultados y balance basico.
+    - Uso de licencia queda cubierto por TASK-134.
+    - `.\mvnw.cmd -q -pl services\accounting-service -am test`: OK.
+    - `.\mvnw.cmd -q -pl services\bff-service -am test`: OK.
+    - `npm test -- --run`: OK, 19 tests.
+
+- [x] TASK-140: Pruebas de contrato BFF/microservicios
+  - Estado: DONE
+  - Requisitos: RF-074.
+  - Acceptance criteria: AC-163.
+  - Alcance:
+    - Cubrir rutas criticas y propagacion de headers/errores.
+  - Validacion:
+    - `BffProxyControllerTest` valida resolucion de rutas, headers, cuerpo y errores de rutas no expuestas.
+    - `RestClientInternalServiceGatewayTest` valida permisos negativos/positivos para ventas, fiscal y nomina.
+    - `LicenseUsageControllerTest` valida agregacion ROOT y rechazo de usuario no ROOT.
+    - `BffRouteResolverTest` cubre reportes contables nuevos.
+    - `.\mvnw.cmd -q -pl services\bff-service -am test`: OK.
+
+- [ ] TASK-141: E2E de aislamiento multiempresa
+  - Estado: APPROVED
+  - Requisitos: RF-075.
+  - Acceptance criteria: AC-164.
+  - Alcance:
+    - Crear dos empresas con datos equivalentes.
+    - Verificar que consultas y mutaciones no crucen informacion.
+
+- [x] TASK-142: Completar Terraform AWS productivo
+  - Estado: DONE
+  - Requisitos: RF-076.
+  - Acceptance criteria: AC-165.
+  - Alcance:
+    - ECS Fargate, RDS, Secrets Manager, CloudWatch, S3/CloudFront, BFF/API publico y microservicios privados.
+    - Validar `terraform fmt`, `init -backend=false` y `validate`.
+  - Validacion:
+    - `infra/aws` contiene modulos de red, RDS PostgreSQL, Secrets Manager, ECS Fargate, API Gateway/BFF, S3/CloudFront, CloudWatch y event consumers.
+    - `terraform -chdir=infra\aws\envs\dev fmt -check`: OK.
+    - `terraform -chdir=infra\aws\envs\dev init -backend=false`: OK.
+    - `terraform -chdir=infra\aws\envs\dev validate`: OK.
+
+- [x] TASK-143: Completar eventos productivos AWS
+  - Estado: DONE
+  - Requisitos: RF-077.
+  - Acceptance criteria: AC-166.
+  - Alcance:
+    - EventBridge/SQS, DLQ, Lambdas, Outbox/Inbox, idempotencia y reintentos.
+  - Validacion:
+    - `infra/aws/modules/messaging` define EventBridge, SQS y DLQ.
+    - `infra/aws/modules/event_consumers` define Lambdas para auditoria, inventario, contabilidad, reintentos de proveedor y proyecciones de reportes.
+    - `services/platform-eventing` conserva outbox con reintentos y tests.
+    - `.\mvnw.cmd -q test`: OK.

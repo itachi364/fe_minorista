@@ -1,6 +1,7 @@
 import { CheckField, Field, FormPanel, SelectField, StatusBadge } from '../../components/forms.jsx';
 import { companyLabel } from '../../utils/company.js';
 import { licenseModuleLabel, licenseModuleOptions } from '../../data/licenseModules.js';
+import { DataTable } from '../../components/DataTable.jsx';
 
 const planOptions = [
   { value: 'BASIC', label: 'Basico' },
@@ -14,6 +15,7 @@ export function LicenseAdminPanel({
   setForm,
   companies,
   license,
+  usage,
   onCompanyChange,
   onLoad,
   onSave,
@@ -78,8 +80,26 @@ export function LicenseAdminPanel({
           <p><b>Vigencia:</b> {license?.validFrom || 'Sin configurar'} - {license?.validTo || 'Sin configurar'}</p>
           <p><b>Plan:</b> {license?.planCode || 'Sin configurar'}</p>
           <p><b>Modulos:</b> {(license?.enabledModules || []).map(licenseModuleLabel).join(', ') || 'Sin modulos contratados'}</p>
+          <p><b>Usuarios activos:</b> {quota(usage?.activeUsers, usage?.maxUsers)}</p>
+          <p><b>Documentos del mes:</b> {quota(usage?.monthlyDocuments, usage?.maxMonthlyDocuments)}</p>
         </div>
       </section>
+      <DataTable
+        title="Uso comercial"
+        description="Consumo actual de la licencia seleccionada."
+        columns={['Indicador', 'Uso', 'Limite']}
+        rows={[
+          ['Usuarios activos', usage?.activeUsers ?? 'Sin consultar', usage?.maxUsers ?? 'Ilimitado'],
+          ['Documentos emitidos del mes', usage?.monthlyDocuments ?? 'Sin consultar', usage?.maxMonthlyDocuments ?? 'Ilimitado'],
+        ]}
+      />
     </div>
   );
+}
+
+function quota(value, max) {
+  if (value === undefined || value === null) {
+    return 'Sin consultar';
+  }
+  return `${value} / ${max ?? 'Ilimitado'}`;
 }

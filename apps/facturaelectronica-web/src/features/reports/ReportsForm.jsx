@@ -40,6 +40,8 @@ function ReportResults({ data }) {
     <ReportCard title="Gastos" rows={toExpenseRows(data.expenses)} columns={['Fecha', 'Estado', 'Concepto', 'Subtotal', 'Total']} />
     <ReportCard title="Cuentas por cobrar" rows={toReceivableRows(data.accountsReceivable)} columns={['Fecha', 'Estado', 'Cliente', 'Total', 'Saldo']} />
     <ReportCard title="Cuentas por pagar" rows={toPayableRows(data.accountsPayable)} columns={['Fecha', 'Estado', 'Proveedor', 'Total', 'Saldo']} />
+    <ReportCard title="Estado de resultados" rows={toStatementRows(data.incomeStatement)} columns={['Grupo', 'Concepto', 'Total']} />
+    <ReportCard title="Balance general basico" rows={toStatementRows(data.balanceSheet)} columns={['Grupo', 'Concepto', 'Total']} />
     <ReportCard title="Libro mayor" rows={toLedgerRows(data.ledger)} columns={['Cuenta', 'Nombre', 'Debitos', 'Creditos', 'Saldo']} />
     <ReportCard title="Libro diario" rows={toJournalRows(data.journal)} columns={['Fecha', 'Origen', 'Descripcion', 'Debitos', 'Creditos']} />
   </div>;
@@ -115,6 +117,18 @@ function toLedgerRows(ledger = {}) {
     money(account.creditTotal),
     money(account.balance),
   ]);
+}
+
+function toStatementRows(statement = {}) {
+  const rows = (statement.groups || []).map((group) => [
+    group.code || '',
+    group.label || '',
+    money(group.total),
+  ]);
+  if (statement.statementType) {
+    rows.push(['', 'Resultado', money(statement.total)]);
+  }
+  return rows;
 }
 
 function toJournalRows(journal = {}) {

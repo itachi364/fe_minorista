@@ -1935,3 +1935,106 @@ Reglas UI/BFF:
 - Los codigos de permisos viajan y se guardan en ingles (`ACCOUNTING_VIEW`, `AUDIT_VIEW`, etc.).
 - La SPA traduce grupos, permisos y descripciones a espanol antes de renderizar el selector de permisos.
 - La traduccion visual no altera el payload `permissionCodes` enviado al backend.
+
+## Contratos fase productizacion operativa
+
+### Flujo E2E desde cero
+
+El script/prueba E2E debe operar solo mediante API publicas del BFF o microservicios expuestos localmente:
+
+- `POST /api/v1/auth/login`: autentica ROOT y administrador empresarial.
+- `POST /api/v1/companies`: crea empresa contratante.
+- `POST /api/v1/companies/{companyId}/license`: crea licencia parametrizable.
+- `POST /api/v1/platform/companies/{companyId}/owner`: crea administrador inicial OWNER cuando aplique.
+- `GET /api/v1/catalogs/{catalogCode}/items`: obtiene catalogos persistidos requeridos.
+- `POST /api/v1/third-parties`: crea cliente/proveedor.
+- `POST /api/v1/products`: crea producto, servicio o insumo.
+- `POST /api/v1/inventory/movements` o flujo de compra equivalente: registra entrada de stock.
+- `POST /api/v1/sales`: crea venta POS.
+- `POST /api/v1/sales/{saleId}/confirm-pos`: confirma POS y emite documento electronico mock.
+- `GET /api/v1/audit/events`: consulta auditoria autorizada.
+
+### Listados operativos
+
+Los modulos nuevos deben exponer consultas consistentes:
+
+```http
+GET /api/v1/{resource}?page=0&size=20&query=texto&status=ACTIVE
+```
+
+Respuesta minima esperada:
+
+```json
+{
+  "content": [],
+  "page": 0,
+  "size": 20,
+  "totalElements": 0,
+  "totalPages": 0
+}
+```
+
+Reglas:
+
+- `companyId` se obtiene del contexto autenticado o del selector ROOT autorizado; no debe ser texto libre para usuarios empresariales.
+- Los filtros de `status` y `query` son opcionales.
+- Las respuestas deben incluir identificador tecnico, etiqueta visible, estado y fechas de creacion/actualizacion cuando aplique.
+
+### Uso de licencia
+
+```http
+GET /api/v1/platform/licenses/usage?companyId={companyId}
+```
+
+```json
+{
+  "companyId": "uuid",
+  "companyName": "Empresa Demo SAS",
+  "licenseStatus": "ACTIVE",
+  "validFrom": "2026-08-18",
+  "validTo": "2027-08-18",
+  "enabledModules": ["BILLING", "INVENTORY", "ACCOUNTING"],
+  "activeUsers": 3,
+  "maxUsers": 10,
+  "monthlyDocuments": 25,
+  "maxMonthlyDocuments": 1000
+}
+```
+
+### Pruebas de contrato BFF
+
+- El BFF debe reenviar `Authorization`, `X-Company-Id`, `X-Correlation-Id` e `Idempotency-Key` cuando aplique.
+- El BFF debe preservar codigos funcionales de error (`LICENSE_NOT_CONFIGURED`, `BUSINESS_RULE_VIOLATION`, `RESOURCE_NOT_FOUND`, `UNAUTHORIZED`) para que la SPA muestre mensajes especificos.
+- Los endpoints criticos deben tener prueba que valide ruta, metodo, payload y mapeo de respuesta/error.
+
+### Reportes financieros minimos
+
+```http
+GET /api/v1/reports/income-statement?from=2026-08-01&to=2026-08-31
+GET /api/v1/reports/balance-sheet?from=2026-08-01&to=2026-08-31
+X-Company-Id: {companyId}
+```
+
+Respuesta:
+
+```json
+{
+  "companyId": "uuid",
+  "fromDate": "2026-08-01",
+  "toDate": "2026-08-31",
+  "statementType": "INCOME_STATEMENT",
+  "groups": [
+    {"code": "4", "label": "Ingresos operacionales", "total": 1000000.00},
+    {"code": "6", "label": "Costos de venta", "total": 400000.00},
+    {"code": "5", "label": "Gastos operacionales", "total": 250000.00},
+    {"code": "7", "label": "Costos de produccion o prestacion de servicios", "total": 0.00}
+  ],
+  "total": 350000.00
+}
+```
+
+Reglas:
+
+- `income-statement` agrupa PUC por prefijos `4`, `6`, `5` y `7`.
+- `balance-sheet` agrupa PUC por prefijos `1`, `2` y `3`.
+- El BFF enruta ambos endpoints a `accounting-service` y exige permisos de consulta contable/reportes.

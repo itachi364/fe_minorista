@@ -276,6 +276,55 @@ $product = Invoke-Api -Method Post -Uri "$InventoryUrl/api/v1/products" -Headers
 Assert-DecimalEqual $product.currentStock 10.00 "Initial stock must be 10"
 $productId = $product.id
 
+Write-Host "Creating and confirming inventory purchase..."
+$purchase = Invoke-Api -Method Post -Uri "$InventoryUrl/api/v1/purchases" -Headers ($companyHeaders + @{ "Idempotency-Key" = "purchase-$suffix" }) -Body @{
+    supplierId = $supplier.id
+    subtotal = 45000.00
+    taxTotal = 8550.00
+    total = 53550.00
+    paymentCondition = "CREDIT"
+    dueDate = "2026-12-31"
+    evidenceUrl = $null
+    lines = @(
+        @{
+            productId = $productId
+            quantity = 5.00
+            unitCost = 9000.00
+            subtotal = 45000.00
+            tax = 8550.00
+            total = 53550.00
+        }
+    )
+}
+Assert-Equal $purchase.status "PENDING" "Purchase must start as PENDING"
+$purchaseId = $purchase.id
+
+$confirmedPurchase = Invoke-Api -Method Post -Uri "$InventoryUrl/api/v1/purchases/$purchaseId/confirm" -Headers $companyHeaders
+Assert-Equal $confirmedPurchase.status "CONFIRMED" "Purchase must be confirmed"
+Assert-NotEmpty $confirmedPurchase.confirmedAt "Purchase confirmation timestamp is required"
+
+$productAfterPurchase = Invoke-Api -Method Get -Uri "$InventoryUrl/api/v1/products/$productId" -Headers $companyHeaders
+Assert-DecimalEqual $productAfterPurchase.currentStock 15.00 "Stock must be 15 after purchase"
+
+Write-Host "Verifying purchase accounting and payable..."
+$purchaseEntryDate = ([DateTimeOffset]::Parse($confirmedPurchase.confirmedAt)).UtcDateTime.ToString("yyyy-MM-dd")
+$purchaseJournal = Invoke-Api -Method Get -Uri "$AccountingUrl/api/v1/reports/journal?from=$purchaseEntryDate&to=$purchaseEntryDate" -Headers $accountHeaders
+$purchaseEntries = @($purchaseJournal.entries | Where-Object {
+    $_.sourceType -eq "PURCHASE" -and "$($_.sourceId)" -eq "$purchaseId"
+})
+if ($purchaseEntries.Count -ne 1) {
+    throw "Expected one purchase accounting entry for $purchaseId, got $($purchaseEntries.Count)."
+}
+Assert-DecimalEqual $purchaseEntries[0].debitTotal 53550.00 "Purchase entry debit total must be 53550.00"
+Assert-DecimalEqual $purchaseEntries[0].creditTotal 53550.00 "Purchase entry credit total must be 53550.00"
+
+$payables = @(Invoke-Api -Method Get -Uri "$AccountingUrl/api/v1/accounts-payable?supplierId=$($supplier.id)" -Headers $accountHeaders)
+$purchasePayable = @($payables | Where-Object { "$($_.sourceId)" -eq "$purchaseId" -and $_.sourceType -eq "PURCHASE" })
+if ($purchasePayable.Count -ne 1) {
+    throw "Expected one accounts payable record for purchase $purchaseId, got $($purchasePayable.Count)."
+}
+Assert-DecimalEqual $purchasePayable[0].balance 53550.00 "Purchase payable balance must be 53550.00"
+
 Write-Host "Creating and confirming POS sale..."
 $sale = Invoke-Api -Method Post -Uri "$BillingUrl/api/v1/sales" -Headers ($companyHeaders + @{ "Idempotency-Key" = "sale-$suffix" }) -Body @{
     buyerIdentificationMode = "FINAL_CONSUMER"
@@ -304,14 +353,19 @@ Assert-NotEmpty $confirmedSale.electronicDocument.accountingAppliedAt "Accountin
 
 Write-Host "Verifying inventory..."
 $updatedProduct = Invoke-Api -Method Get -Uri "$InventoryUrl/api/v1/products/$productId" -Headers $companyHeaders
-Assert-DecimalEqual $updatedProduct.currentStock 8.00 "Final stock must be 8 after sale"
+Assert-DecimalEqual $updatedProduct.currentStock 13.00 "Final stock must be 13 after purchase and sale"
 
 $kardex = Invoke-Api -Method Get -Uri "$InventoryUrl/api/v1/products/$productId/kardex" -Headers $companyHeaders
 $saleOut = @($kardex | Where-Object { $_.movementType -eq "SALE_OUT" })
 if ($saleOut.Count -ne 1) {
     throw "Expected exactly one SALE_OUT movement, got $($saleOut.Count)."
 }
-Assert-DecimalEqual $saleOut[0].resultingStock 8.00 "SALE_OUT resulting stock must be 8"
+$purchaseIn = @($kardex | Where-Object { $_.movementType -eq "PURCHASE_IN" -and "$($_.sourceDocumentId)" -eq "$purchaseId" })
+if ($purchaseIn.Count -ne 1) {
+    throw "Expected exactly one PURCHASE_IN movement for purchase $purchaseId, got $($purchaseIn.Count)."
+}
+Assert-DecimalEqual $purchaseIn[0].resultingStock 15.00 "PURCHASE_IN resulting stock must be 15"
+Assert-DecimalEqual $saleOut[0].resultingStock 13.00 "SALE_OUT resulting stock must be 13"
 
 Write-Host "Verifying DIAN provider submission..."
 $trackingId = $confirmedSale.electronicDocument.providerTrackingId
@@ -322,8 +376,8 @@ Assert-Equal $submission.documentId $confirmedSale.electronicDocument.id "Provid
 Write-Host "Verifying accounting journal..."
 $entryDate = ([DateTimeOffset]::Parse($confirmedSale.confirmedAt)).UtcDateTime.ToString("yyyy-MM-dd")
 $journal = Invoke-Api -Method Get -Uri "$AccountingUrl/api/v1/reports/journal?from=$entryDate&to=$entryDate" -Headers $accountHeaders
-Assert-DecimalEqual $journal.debitTotal 35700.00 "Journal debit total must be 35700.00"
-Assert-DecimalEqual $journal.creditTotal 35700.00 "Journal credit total must be 35700.00"
+Assert-DecimalEqual $journal.debitTotal 89250.00 "Journal debit total must include purchase and sale"
+Assert-DecimalEqual $journal.creditTotal 89250.00 "Journal credit total must include purchase and sale"
 if (@($journal.entries).Count -lt 1) {
     throw "Expected at least one accounting entry in journal."
 }
@@ -369,7 +423,7 @@ do {
     $journalWithPayroll = Invoke-Api -Method Get -Uri "$AccountingUrl/api/v1/reports/journal?from=$entryDate&to=$entryDate" -Headers $accountHeaders
     $debitTotal = [decimal]::Parse("$($journalWithPayroll.debitTotal)", [System.Globalization.CultureInfo]::InvariantCulture)
     $creditTotal = [decimal]::Parse("$($journalWithPayroll.creditTotal)", [System.Globalization.CultureInfo]::InvariantCulture)
-    if ($debitTotal -eq 115700.00 -and $creditTotal -eq 115700.00) {
+    if ($debitTotal -eq 169250.00 -and $creditTotal -eq 169250.00) {
         break
     }
     Start-Sleep -Seconds 1
@@ -382,8 +436,8 @@ if ($payrollEntries.Count -lt 1) {
     throw "Expected payroll accounting entry generated by payroll-service for payment $($dailyPayment.id)."
 }
 
-Assert-DecimalEqual $journalWithPayroll.debitTotal 115700.00 "Journal debit total must include payroll daily payment"
-Assert-DecimalEqual $journalWithPayroll.creditTotal 115700.00 "Journal credit total must include payroll daily payment"
+Assert-DecimalEqual $journalWithPayroll.debitTotal 169250.00 "Journal debit total must include purchase, sale and payroll daily payment"
+Assert-DecimalEqual $journalWithPayroll.creditTotal 169250.00 "Journal credit total must include purchase, sale and payroll daily payment"
 
 Write-Host "Verifying audit event..."
 $auditEvents = @(Invoke-Api -Method Get -Uri "$AuditUrl/api/v1/audit-events?resourceType=SALE&resourceId=$saleId" -Headers $companyHeaders)
@@ -445,6 +499,7 @@ Write-Host ""
 Write-Host "E2E flow completed successfully."
 Write-Host "CompanyId: $companyId"
 Write-Host "ProductId: $productId"
+Write-Host "PurchaseId: $purchaseId"
 Write-Host "SaleId: $saleId"
 Write-Host "DocumentId: $($confirmedSale.electronicDocument.id)"
 Write-Host "ProviderTrackingId: $trackingId"

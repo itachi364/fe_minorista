@@ -8,6 +8,8 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.msvanegasg.facturaelectronica.inventory.application.port.out.PurchaseAccountingPort;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.PaymentCondition;
@@ -15,6 +17,8 @@ import com.msvanegasg.facturaelectronica.inventory.domain.model.Purchase;
 
 @Component
 public class PurchaseAccountingHttpAdapter implements PurchaseAccountingPort {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PurchaseAccountingHttpAdapter.class);
 
     private final RestClient restClient;
     private final String accountingBaseUrl;
@@ -35,8 +39,10 @@ public class PurchaseAccountingHttpAdapter implements PurchaseAccountingPort {
             if (purchase.paymentCondition() == PaymentCondition.CREDIT) {
                 postAccountsPayable(purchase);
             }
-        } catch (RuntimeException ignored) {
-            // Accounting is intentionally best-effort until the NATS outbox/inbox flow is implemented.
+        } catch (RuntimeException exception) {
+            // Accounting is intentionally best-effort until the asynchronous outbox/inbox flow is enabled.
+            LOGGER.warn("Could not apply purchase accounting for company {} purchase {}", purchase.companyId(),
+                    purchase.id(), exception);
         }
     }
 

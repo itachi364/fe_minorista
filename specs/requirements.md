@@ -321,3 +321,21 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-047: Cuando una empresa alcance un limite de licencia, el backend debe bloquear la operacion con mensaje funcional claro y la UI debe mostrarlo como error de regla de negocio.
 - RF-048: La administracion de empresa debe diferenciar alcance ROOT y alcance empresarial: ROOT puede crear, actualizar, activar e inactivar empresas; OWNER/ADMIN empresarial solo puede actualizar la empresa activa y no debe ver acciones de creacion de nuevas empresas.
 - RF-049: La UI debe mostrar nombres de empresa y etiquetas de permisos/modulos en espanol, sin exponer UUID como dato principal al usuario final; los codigos internos pueden permanecer en ingles en API, backend y base de datos.
+
+## Requisitos fase productizacion operativa
+
+- RF-063: El sistema debe contar con una prueba E2E desde cero que cree empresa, licencia, administrador, catalogos requeridos, tercero, inventario, venta POS, factura electronica mock, efecto de inventario, asiento contable y auditoria.
+- RF-064: El sistema debe soportar compras/entradas de inventario con proveedor, costo, medio de pago, cuentas por pagar cuando aplique y asiento contable parametrizable.
+- RF-065: El sistema debe soportar servicios facturables que consumen insumos controlados mediante confirmacion manual/asistida posterior o asociada a la venta, sin recetas automaticas obligatorias.
+- RF-066: La SPA debe ofrecer listados profesionales con busqueda, paginacion, estado y accion contextual para ventas, documentos fiscales, terceros, productos, compras, servicios, movimientos, usuarios, roles, licencias y logs.
+- RF-067: BFF y microservicios deben validar RBAC y licencia en endpoints criticos; el frontend nunca sera el control de seguridad principal.
+- RF-068: ROOT debe ver un tablero de uso de licencia por empresa con usuarios activos, documentos emitidos en el mes, modulos habilitados, vigencia, estado y proximidad de vencimiento.
+- RF-069: Toda accion mutable debe generar auditoria segura verificable, incluyendo intentos fallidos por permiso, licencia, regla de negocio o validacion.
+- RF-070: La sesion debe soportar expiracion por inactividad, restauracion controlada y renovacion segura segun contrato backend; refrescar la pagina no debe cerrar sesion si sigue vigente.
+- RF-071: Las reglas contables deben ser parametrizables por empresa y evento de negocio usando cuentas PUC validas.
+- RF-072: Ventas, compras, gastos, pagos de nomina/pagos diarios y consumos relevantes deben generar comprobantes/asientos balanceados o fallar con error funcional si falta parametrizacion contable.
+- RF-073: La plataforma debe exponer reportes minimos de estado de resultados, balance basico, libro diario, cuentas por cobrar, cuentas por pagar, inventario valorizado y uso de licencia.
+- RF-074: El BFF debe tener pruebas de contrato contra los microservicios para rutas criticas de login, empresa, licencia, terceros, inventario, ventas, auditoria, usuarios y roles.
+- RF-075: Debe existir prueba E2E de aislamiento multiempresa que demuestre que una empresa no ve ni modifica datos de otra.
+- RF-076: La infraestructura AWS objetivo debe quedar definida con Terraform para SPA en S3/CloudFront, BFF/API en ECS Fargate, microservicios privados, RDS PostgreSQL, Secrets Manager, CloudWatch, SQS/EventBridge y Lambdas event-driven.
+- RF-077: Los eventos asincronos productivos deben usar servicios administrados AWS, con Outbox/Inbox, idempotencia, reintentos y DLQ; no se usaran brokers self-hosted en produccion.

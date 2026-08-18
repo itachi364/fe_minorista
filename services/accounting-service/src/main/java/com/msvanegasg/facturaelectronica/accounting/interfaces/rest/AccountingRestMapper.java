@@ -20,6 +20,8 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccoun
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountingRuleLineCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateExpenseCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.ExpenseResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.FinancialStatementGroupResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.FinancialStatementResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.GenerateAccountingEntryCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.JournalBookEntryResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.JournalBookLineResult;
@@ -46,6 +48,8 @@ import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.Accounti
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingSetupResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.ExpenseRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.ExpenseResponse;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.FinancialStatementGroupResponse;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.FinancialStatementResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.JournalBookEntryResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.JournalBookLineResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.JournalBookResponse;
@@ -218,6 +222,16 @@ public final class AccountingRestMapper {
                 accounts.stream().map(AccountingRestMapper::toResponse).toList());
     }
 
+    public static FinancialStatementResponse toResponse(FinancialStatementResult result) {
+        return new FinancialStatementResponse(
+                result.companyId(),
+                result.fromDate(),
+                result.toDate(),
+                result.statementType(),
+                result.groups().stream().map(AccountingRestMapper::toResponse).toList(),
+                result.total());
+    }
+
     private static CreateAccountingRuleLineCommand toCommand(AccountingRuleLineRequest request) {
         return new CreateAccountingRuleLineCommand(
                 request.accountCode(),
@@ -279,5 +293,9 @@ public final class AccountingRestMapper {
                 result.debitTotal(),
                 result.creditTotal(),
                 result.balance());
+    }
+
+    private static FinancialStatementGroupResponse toResponse(FinancialStatementGroupResult result) {
+        return new FinancialStatementGroupResponse(result.code(), result.label(), result.total());
     }
 }

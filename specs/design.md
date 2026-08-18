@@ -1133,3 +1133,47 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 - Topic consulted: controlled forms, list rendering, conditional UI and timer cleanup.
 - Relevant finding: React recomienda formularios controlados, listas con `map()` y `key`, UI por estado y efectos/temporizadores con cleanup.
 - Decision impact: Las pantallas `Roles` y `Usuarios` usan estado controlado, render de tablas derivado de arrays y `ActionStatusModal` conserva cleanup del temporizador.
+
+## TASK-129 a TASK-143 productizacion operativa
+
+### Decisiones
+
+- La siguiente fase se ejecuta desde el flujo de negocio completo y no desde infraestructura adicional: primero se prueba crear datos reales por API, vender, facturar con proveedor DIAN mock, afectar inventario, contabilizar y auditar.
+- El E2E no depende de datos demo del frontend ni de seeds empresariales. Solo se permite el usuario `ROOT` local para iniciar el flujo de pruebas.
+- Las compras y entradas de inventario se modelan como flujo operativo independiente de ventas, con proveedor, costo, stock, medio de pago y regla contable.
+- Los servicios facturables pueden sugerir insumos, pero el descuento de insumos queda como accion confirmada por usuario. Esto respeta negocios pequenos donde el consumo real es variable.
+- Las pantallas operativas deben evolucionar de formularios sueltos a modulos con listado, busqueda, paginacion, estado, acciones y formularios de creacion/edicion.
+- BFF y microservicios seguiran validando permisos y licencia. La visibilidad de menus en SPA solo mejora experiencia, no reemplaza autorizacion.
+- El tablero ROOT de licencias calcula uso comercial con datos persistidos: usuarios activos por empresa y documentos fiscales emitidos del mes.
+- Las reglas contables PUC se parametrizan por empresa y evento para no quemar cuentas ni asumir una unica operacion contable para todos los negocios.
+- La infraestructura productiva queda orientada 100% AWS cloud: SPA en S3/CloudFront, BFF y microservicios en ECS Fargate, PostgreSQL en RDS, secretos en Secrets Manager y eventos en EventBridge/SQS + Lambda.
+- `bff-service` agrega `GET /api/v1/platform/licenses/usage` para ROOT y consulta `tenant-service`, `identity-service` y `billing-service` sin acoplar esos microservicios entre si.
+- `accounting-service` expone reportes financieros minimos desde el libro mayor: estado de resultados y balance general basico por prefijos PUC.
+
+### Flujo E2E objetivo desde cero
+
+1. ROOT inicia sesion.
+2. ROOT crea empresa contratante.
+3. ROOT crea licencia activa con modulos y limites.
+4. ROOT crea administrador inicial OWNER.
+5. El administrador inicia sesion y opera dentro de su empresa.
+6. Se crean parametros minimos: catalogos requeridos, emisor/resolucion fiscal mock y reglas contables PUC.
+7. Se crea cliente/proveedor y producto vendible con impuesto desde catalogo.
+8. Se registra entrada/stock inicial o compra.
+9. Se registra venta POS; si no hay comprador nominativo se usa consumidor final parametrizado.
+10. `billing-service` confirma POS, emite documento electronico mock y publica o registra efectos.
+11. Inventario descuenta stock, contabilidad genera asiento balanceado y auditoria registra trazabilidad.
+12. Reportes/listados muestran los datos creados y no exponen informacion de otra empresa.
+
+### Context7 evidence
+
+- Library/tool: React oficial (`/reactjs/react.dev`).
+- Topic consulted: controlled forms, list rendering, conditional rendering and component state for admin dashboards.
+- Relevant finding: React recomienda dividir interfaces en jerarquias de componentes, mantener estado minimo, usar formularios controlados, renderizar listas con `map()`/`key` y modelar estados asincronos de envio/exito/error.
+- Decision impact: Las nuevas pantallas operativas se construiran como features separadas con componentes de formulario, tabla/listado, filtros y modales, evitando volver a concentrar flujo en un unico archivo.
+
+### Validaciones agregadas
+
+- `services/accounting-service` cubre calculo de estado de resultados y balance basico desde cuentas PUC.
+- `services/bff-service` cubre agregacion ROOT de uso de licencias y ruteo de nuevos reportes contables.
+- La SPA muestra uso comercial en `Licencias` y consume los reportes financieros desde backend.

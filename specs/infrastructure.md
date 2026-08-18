@@ -135,3 +135,14 @@ La capacidad final del pool por servicio debe dimensionarse con metricas reales:
 Docker Compose agrega `bff-service` en el puerto `BFF_SERVICE_PORT` y `frontend` en `FRONTEND_PORT`. `bff-service` no declara `depends_on` hacia microservicios de negocio; sus dependencias REST son de runtime. El servicio `frontend` usa Node 20 y proxy Vite hacia `bff-service` dentro de la red Compose.
 
 La arquitectura productiva se mantiene alineada con el target AWS: SPA estatica en S3/CloudFront, API Gateway hacia BFF en ECS Fargate y microservicios internos privados.
+
+## TASK-142 a TASK-143 infraestructura productiva objetivo
+
+- Terraform es la fuente de verdad para infraestructura cloud.
+- La SPA se publica como artefacto estatico en S3 privado con distribucion CloudFront y OAC.
+- API Gateway o ALB publico enruta unicamente hacia el BFF; los microservicios permanecen privados dentro de la VPC.
+- BFF y microservicios de negocio se despliegan en ECS Fargate con logs en CloudWatch, secretos desde Secrets Manager y discovery interno.
+- PostgreSQL productivo vive en RDS privado, preferiblemente con RDS Proxy para proteger conexiones de ECS/Lambda.
+- Procesos event-driven transversales usan EventBridge/SQS + Lambda con DLQ, reintentos e idempotencia.
+- No se incorpora NATS, RabbitMQ ni broker self-hosted para produccion.
+- Las tareas locales Docker Compose siguen existiendo solo como entorno de desarrollo y E2E, no como arquitectura productiva.

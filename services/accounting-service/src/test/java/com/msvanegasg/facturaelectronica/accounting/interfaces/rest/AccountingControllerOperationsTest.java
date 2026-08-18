@@ -33,6 +33,8 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsRece
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsReceivableResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.ExpenseQuery;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.ExpenseResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.FinancialStatementGroupResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.FinancialStatementResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.LedgerAccountSummaryResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.LedgerBookResult;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.GenerateAccountingEntryUseCase;
@@ -277,6 +279,36 @@ class AccountingControllerOperationsTest {
                         """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.amount").value(40000));
+    }
+
+    @Test
+    void reportsFinancialStatements() throws Exception {
+        when(accountingBooksUseCase.incomeStatement(any())).thenReturn(new FinancialStatementResult(COMPANY_ID,
+                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31), "INCOME_STATEMENT",
+                List.of(new FinancialStatementGroupResult("4", "Ingresos operacionales", money("100000.00"))),
+                money("100000.00")));
+        when(accountingBooksUseCase.balanceSheet(any())).thenReturn(new FinancialStatementResult(COMPANY_ID,
+                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31), "BASIC_BALANCE_SHEET",
+                List.of(new FinancialStatementGroupResult("1", "Activos", money("100000.00"))),
+                money("100000.00")));
+
+        mockMvc.perform(get("/api/v1/reports/income-statement")
+                .header("X-Company-Id", COMPANY_ID)
+                .param("from", "2026-05-01")
+                .param("to", "2026-05-31"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statementType").value("INCOME_STATEMENT"))
+                .andExpect(jsonPath("$.groups[0].label").value("Ingresos operacionales"))
+                .andExpect(jsonPath("$.total").value(100000));
+
+        mockMvc.perform(get("/api/v1/reports/balance-sheet")
+                .header("X-Company-Id", COMPANY_ID)
+                .param("from", "2026-05-01")
+                .param("to", "2026-05-31"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statementType").value("BASIC_BALANCE_SHEET"))
+                .andExpect(jsonPath("$.groups[0].label").value("Activos"))
+                .andExpect(jsonPath("$.total").value(100000));
     }
     private static AccountResult account(String code) {
         return new AccountResult(UUID.randomUUID(), COMPANY_ID, code, "Cuenta " + code, AccountCategory.ASSET,

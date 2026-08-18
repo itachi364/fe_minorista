@@ -46,6 +46,7 @@ import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.Accounti
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingSetupResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.ExpenseRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.ExpenseResponse;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.FinancialStatementResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.JournalBookResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.LedgerBookResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.PayablePaymentRequest;
@@ -295,5 +296,23 @@ public class AccountingController {
         return ResponseEntity.ok(AccountingRestMapper.toResponse(
                 queryAccountingBooksUseCase.ledgerBook(new LedgerBookQuery(companyId, from, to)),
                 accountCode));
+    }
+
+    @GetMapping("/reports/income-statement")
+    public ResponseEntity<FinancialStatementResponse> incomeStatement(
+            @RequestHeader(COMPANY_HEADER) UUID companyId,
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to) {
+        return ResponseEntity.ok(AccountingRestMapper.toResponse(
+                queryAccountingBooksUseCase.incomeStatement(new LedgerBookQuery(companyId, from, to))));
+    }
+
+    @GetMapping("/reports/balance-sheet")
+    public ResponseEntity<FinancialStatementResponse> balanceSheet(
+            @RequestHeader(COMPANY_HEADER) UUID companyId,
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to) {
+        return ResponseEntity.ok(AccountingRestMapper.toResponse(
+                queryAccountingBooksUseCase.balanceSheet(new LedgerBookQuery(companyId, from, to))));
     }
 }
