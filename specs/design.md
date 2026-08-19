@@ -6,16 +6,37 @@ Se usara Clean Architecture dentro de una estrategia basada en microservicios. C
 
 La unidad de despliegue aprobada es el microservicio por bounded context. No se creara un artefacto o contenedor por endpoint individual. Cada endpoint debe pertenecer al microservicio que representa su capacidad de negocio.
 
-## Microservicios propuestos
+## Estado actual versus objetivo
 
+Estado implementado y desplegable localmente:
+
+- Microservicios Spring Boot: `bff-service`, `tenant-service`, `identity-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `audit-service` y `payroll-service`.
+- Lambdas Java implementadas como artefactos Maven: `audit-event-writer-lambda`, `inventory-sale-effect-lambda`, `accounting-sale-entry-lambda`, `provider-submission-retry-lambda` y `reporting-projection-lambda`.
+- Autenticacion local/transitoria: `POST /api/v1/auth/login` con token opaco Bearer, limitada a desarrollo/E2E.
+- DIAN local/transitorio: `dian-provider-service` en modo mock.
+- Reportes actuales: endpoints de reportes en servicios duenos de datos y proyecciones asincronas en `reporting-projection-lambda`.
+
+Objetivo pendiente:
+
+- Cognito Hosted UI + PKCE, sesiones BFF server-side, cookies `HttpOnly`, CSRF, MFA y bloqueo productivo del login dummy: TASK-153 a TASK-163.
+- Configuracion DIAN real por empresa, secretos/certificados en gestor seguro, prueba de conexion y flujo tecnico basado en anexos DIAN: TASK-145 a TASK-152.
+- `reporting-service` fisico solo si una tarea futura lo justifica; no forma parte del runtime actual.
+- OpenAPI versionado por servicio/BFF como artefacto controlado; Springdoc solo habilita documentacion runtime.
+
+## Microservicios implementados y objetivo
+
+- `bff-service`: frontera publica de la SPA, autorizacion de borde, normalizacion de errores y ruteo.
+- `tenant-service`: empresas, licencias y estado del tenant.
 - `identity-service`: usuarios, roles, autenticacion, autorizacion y auditoria base.
 - `thirdparty-service`: clientes, proveedores, tipos de documento y validaciones de identificacion.
 - `catalog-service`: paises, impuestos, metodos de pago, parametros fiscales y catalogos DIAN.
 - `inventory-service`: productos, categorias, stock, kardex y movimientos.
 - `billing-service`: factura electronica, POS electronico, notas, resoluciones, numeracion, CUFE/CUDE, estados fiscales.
-- `dian-provider-service`: adaptador hacia proveedor tecnologico DIAN, firma delegada si aplica, envio, consulta, reintentos y normalizacion de respuestas.
+- `dian-provider-service`: conector DIAN interno, mock local y futura conexion configurable por empresa; no representa una oferta de proveedor tecnologico DIAN de la plataforma.
 - `accounting-service`: plan de cuentas, comprobantes, asientos, libro diario y libro mayor.
-- `reporting-service`: consultas operativas, fiscales y contables.
+- `audit-service`: auditoria fiscal, tecnica y consultas de logs.
+- `payroll-service`: trabajadores, pagos diarios verbales y nomina electronica mock opcional.
+- `reporting-projection-lambda`: proyecciones reconstruibles desde eventos canonicos.
 
 ## Estructura Clean Architecture por microservicio
 
@@ -50,7 +71,7 @@ La unidad de despliegue aprobada es el microservicio por bounded context. No se 
 - Gestiona resoluciones de numeracion.
 - Crea documentos fiscales.
 - Calcula totales e impuestos.
-- Orquesta inventario, contabilidad y proveedor tecnologico.
+- Orquesta inventario, contabilidad y conexion DIAN.
 - Mantiene estados del ciclo fiscal.
 
 Estado TASK-041:
@@ -59,7 +80,7 @@ Estado TASK-041:
 - `POST /api/v1/issuers` y `GET /api/v1/issuers/current` gestionan el emisor fiscal activo por empresa.
 - `POST /api/v1/numbering-resolutions` y `GET /api/v1/numbering-resolutions` gestionan resoluciones por empresa, tipo de documento, ambiente, rango y vigencia.
 - `POST /api/v1/sales` calcula totales por linea y valida stock contra `inventory-service`.
-- `POST /api/v1/sales/{saleId}/confirm` exige emisor activo, asigna numeracion desde resolucion vigente, genera documento electronico POS y envia la solicitud por HTTP a `dian-provider-service`.
+- `POST /api/v1/sales/{saleId}/confirm` exige emisor activo, configuracion DIAN empresarial activa, asigna numeracion desde resolucion vigente, genera documento electronico POS y envia la solicitud por HTTP a `dian-provider-service`.
 - TASK-037 agrego efectos automaticos posteriores a validacion: `SALE_OUT` contra `inventory-service` y asiento `SALE_CONFIRMED` contra `accounting-service`.
 - `electronic_document.inventory_applied_at` y `electronic_document.accounting_applied_at` registran aplicacion idempotente de efectos posteriores.
 
@@ -70,14 +91,16 @@ Estado TASK-041:
 - Los descuentos se aplican antes del impuesto.
 - Todos los valores monetarios se redondean a 2 decimales con `HALF_UP`.
 - El subtotal, impuestos, descuentos y total del documento corresponden a la suma de los valores ya calculados por linea.
-- Los ajustes especificos que exija el anexo tecnico DIAN o un proveedor tecnologico seleccionado deberan documentarse antes de modificar esta politica.
+- Los ajustes especificos que exija el anexo tecnico DIAN o el modo de operacion configurado por la empresa deberan documentarse antes de modificar esta politica.
 
 ### dian-provider-service
 
 - Expone un contrato interno estable para emitir documentos.
-- Encapsula detalles del proveedor tecnologico DIAN.
+- Encapsula detalles tecnicos de la conexion DIAN por empresa.
 - Normaliza respuestas tecnicas.
 - Maneja timeouts, reintentos, idempotencia y errores externos.
+- No presta ni comercializa servicio de proveedor tecnologico DIAN; es un componente tecnico del software parametrizable.
+- En modo real debe resolver configuracion por `companyId`, validar que la empresa haya configurado certificado/credenciales/resoluciones requeridas y evitar cualquier certificado global compartido.
 
 Estado TASK-036:
 
@@ -86,6 +109,18 @@ Estado TASK-036:
 - En modo local solo soporta `DIAN_PROVIDER_MODE=mock`; cualquier modo distinto falla de forma explicita.
 - Persiste los envios mock en `dian_provider.provider_submission` sin credenciales ni secretos reales.
 - `billing-service` consume el mock por HTTP mediante `DIAN_PROVIDER_SERVICE_URL`.
+
+### Politica de configuracion DIAN por empresa
+
+- Cada empresa facturadora es responsable de registrarse, habilitarse y certificarse ante DIAN segun el modo de operacion que declare.
+- La plataforma se presenta como software parametrizable para conexion DIAN por empresa, no como proveedor tecnologico DIAN.
+- La configuracion DIAN pertenece a una sola empresa y queda aislada por `company_id`.
+- La configuracion debe soportar al menos `MOCK` para desarrollo/E2E y `SOFTWARE_PROPIO_CLIENTE` para el modo objetivo donde la empresa opera su propio software parametrizado.
+- La UI debe mostrar una declaracion clara antes de activar modo real: la empresa es responsable de su proceso DIAN, certificado, software ID/PIN, resoluciones, rangos y cumplimiento normativo.
+- Certificados, PIN tecnico, claves, tokens y credenciales se almacenan fuera de base de datos como secretos cifrados o referencias seguras. La DB solo guarda alias, huella, vencimiento, estado, referencias y metadata no sensible.
+- Toda carga, actualizacion, prueba, activacion, inactivacion y uso de configuracion DIAN registra auditoria segura sin exponer secretos ni payloads completos.
+- El modo real debe bloquear emision cuando la configuracion este incompleta, vencida, inactiva, no probada o no habilitada.
+- La integracion productiva final debe validar XML UBL, firma, CUFE/CUDE, QR, AttachedDocument, ApplicationResponse y reglas XSD/Schematron vigentes antes de salir a produccion.
 
 ### inventory-service
 
@@ -109,7 +144,7 @@ Estado TASK-036:
 - Persiste eventos en `audit.audit_event` aislados por `company_id`.
 - Registra `event_type`, `resource_type`, `resource_id`, `action`, `result`, `user_id`, `detail` seguro y `occurred_at`.
 - TASK-043 conecta `billing-service` como primer productor automatico mediante REST sincrono best-effort para `ELECTRONIC_DOCUMENT`/`SALE`/`CONFIRM_SALE`.
-- La integracion automatica desde `inventory-service` y `accounting-service` se hara por lotes posteriores mediante REST sincrono o eventos aprobados.
+- La integracion automatica con inventario, contabilidad, auditoria, reintentos y reportes ya tiene contratos event-driven con Outbox/Inbox y destino productivo EventBridge/SQS + Lambda; en local puede operar de forma sincronica/idempotente o con dispatcher deshabilitado segun configuracion.
 
 ## Comunicacion inicial entre microservicios
 
@@ -127,6 +162,34 @@ Estado TASK-036:
 - Las relaciones REST entre microservicios son dependencias de runtime de casos de uso especificos, no dependencias de arranque del contenedor.
 - Si un microservicio par no esta disponible, el servicio llamador debe mantenerse iniciado y responder con error controlado cuando se invoque el caso de uso que requiere esa integracion.
 - La prueba E2E y los scripts operativos son responsables de esperar la salud de cada servicio requerido antes de ejecutar el flujo completo.
+
+## Autenticacion y sesion productiva
+
+La arquitectura productiva aprobada elimina contrasenas y tokens reutilizables del navegador. La SPA no debe manejar directamente passwords, `accessToken`, `refreshToken`, `idToken` ni bearer tokens internos.
+
+Flujo objetivo:
+
+1. La SPA solicita al BFF una URL de login: `GET /api/v1/auth/login-url`.
+2. El BFF genera `state`, `nonce` y PKCE `code_verifier`/`code_challenge`, conserva el verificador server-side temporalmente y devuelve/redirige a Cognito Hosted UI.
+3. El usuario ingresa credenciales y MFA en Cognito Hosted UI o proveedor de identidad aprobado.
+4. Cognito redirige al BFF en `/api/v1/auth/callback?code=&state=`.
+5. El BFF valida `state`, intercambia el codigo por tokens, cifra los tokens server-side y crea una sesion opaca.
+6. El BFF responde con cookie `HttpOnly`, `Secure`, `SameSite=Lax` o `Strict`, expiracion corta y token CSRF no sensible cuando aplique.
+7. La SPA consulta `GET /api/v1/auth/session` para conocer usuario, empresas, permisos resumidos, licencia y expiracion funcional sin recibir tokens.
+8. En cada request, el BFF resuelve la cookie opaca contra su sesion server-side, valida CSRF para mutaciones y propaga identidad interna hacia microservicios.
+9. Logout ejecuta `POST /api/v1/auth/logout`, invalida sesion server-side, limpia cookie y revoca tokens Cognito cuando aplique.
+
+Reglas:
+
+- En produccion, el login propio `POST /api/v1/auth/login` queda deshabilitado o no expuesto publicamente; solo puede mantenerse para desarrollo local controlado.
+- El almacenamiento server-side de sesion puede implementarse inicialmente en PostgreSQL bajo un schema de BFF o en un store administrado equivalente. Los tokens deben cifrarse con KMS o envelope encryption antes de persistir.
+- El navegador solo conserva estado no sensible de UI; no se guardan tokens ni passwords en `sessionStorage`, `localStorage`, IndexedDB o variables globales.
+- La cookie de sesion no es legible por JavaScript por `HttpOnly`.
+- Los endpoints mutables con cookie requieren proteccion CSRF.
+- ROOT y administradores empresariales requieren MFA en produccion.
+- El BFF debe registrar auditoria segura de login, callback, logout, refresh, acceso denegado, CSRF invalido y cambios de sesion sin registrar tokens ni cookies.
+- CloudFront/BFF deben aplicar HSTS, CSP, `X-Content-Type-Options`, proteccion anti-frame y `Referrer-Policy`.
+- Las builds productivas no deben publicar sourcemaps sin control ni contener logs de depuracion sensibles.
 
 ## Mensajeria asincrona objetivo
 
@@ -149,8 +212,8 @@ Estado TASK-036:
 6. `inventory-service` crea productos con costo y registra compra o ajuste inicial de stock.
 7. `billing-service` crea venta POS/factura para productos existentes.
 8. `billing-service` consulta disponibilidad en `inventory-service`.
-9. `billing-service` asigna prefijo/consecutivo desde resolucion vigente, emite el documento electronico y lo envia a `dian-provider-service`.
-10. `dian-provider-service` responde mediante mock local deterministico.
+9. `billing-service` asigna prefijo/consecutivo desde resolucion vigente, valida la configuracion DIAN empresarial, emite el documento electronico y lo envia a `dian-provider-service`.
+10. `dian-provider-service` responde mediante mock local deterministico en desarrollo o mediante la conexion DIAN configurada por empresa cuando el modo real este aprobado.
 11. Si el documento queda aceptado, `billing-service` solicita a `inventory-service` registrar `SALE_OUT`.
 12. `billing-service` solicita a `accounting-service` generar asiento contable desde la regla aprobada.
 13. `billing-service` registra en `audit-service` la trazabilidad fiscal/tecnica de la confirmacion de venta y documento electronico.
@@ -170,7 +233,7 @@ Estado TASK-036:
 3. `billing-service` calcula totales e impuestos.
 4. `billing-service` reserva o asigna numeracion.
 5. `billing-service` solicita emision a `dian-provider-service`.
-6. `dian-provider-service` envia al proveedor tecnologico DIAN.
+6. `dian-provider-service` envia a la conexion DIAN configurada para la empresa facturadora.
 7. `billing-service` registra estado y artefactos: CUFE, QR, XML, PDF o representacion grafica.
 8. `inventory-service` descuenta stock cuando el documento alcance el estado aprobado.
 9. `accounting-service` registra asiento contable.
@@ -180,7 +243,7 @@ Estado TASK-036:
 1. Punto de venta solicita emision POS.
 2. `billing-service` valida caja, resolucion POS, productos y adquirente si aplica.
 3. `billing-service` calcula totales, impuestos y CUDE usando prefijo/consecutivo autorizado.
-4. `billing-service` envia el documento equivalente electronico al proveedor tecnologico.
+4. `billing-service` envia el documento equivalente electronico a la conexion DIAN configurada para la empresa.
 5. Se registran estado, CUDE, QR, XML y representacion.
 6. Inventario y contabilidad se actualizan segun politica transaccional aprobada.
 
@@ -201,9 +264,9 @@ Estado TASK-036:
 
 - `DRAFT` -> `CALCULATED`: documento calculado.
 - `CALCULATED` -> `NUMBER_ASSIGNED`: numeracion fiscal asignada.
-- `NUMBER_ASSIGNED` -> `SENT_TO_PROVIDER`: documento enviado al proveedor tecnologico.
-- `SENT_TO_PROVIDER` -> `VALIDATED`: proveedor acepta o valida el documento; se registran CUFE/CUDE, QR, XML y representacion grafica cuando existan.
-- `SENT_TO_PROVIDER` -> `REJECTED`: proveedor rechaza el documento; se conservan codigo y mensaje seguro de rechazo.
+- `NUMBER_ASSIGNED` -> `SENT_TO_PROVIDER`: documento enviado al conector DIAN configurado.
+- `SENT_TO_PROVIDER` -> `VALIDATED`: DIAN o el modo configurado acepta o valida el documento; se registran CUFE/CUDE, QR, XML y representacion grafica cuando existan.
+- `SENT_TO_PROVIDER` -> `REJECTED`: DIAN o el modo configurado rechaza el documento; se conservan codigo y mensaje seguro de rechazo.
 - `SENT_TO_PROVIDER` -> `FAILED`: fallo tecnico de envio o respuesta no procesable.
 - `FAILED` -> `CONTINGENCY`: la operacion entra en manejo de contingencia aprobado.
 - `VALIDATED` -> `CANCELLED_BY_NOTE`: anulacion mediante nota permitida.
@@ -227,19 +290,19 @@ Toda transicion fiscal debe registrar evento de trazabilidad con estado anterior
 - Debe calcular totales con la politica fiscal definida para documentos electronicos.
 - Debe permitir datos de adquirente cuando el comprador requiera soporte fiscal.
 - El CUDE inicial se genera como hash deterministico de los datos fiscales principales del documento para pruebas internas.
-- La generacion final de CUDE debe ajustarse al Anexo Tecnico de Documento Equivalente Electronico vigente y a la respuesta del proveedor tecnologico cuando se implemente el adaptador real.
-- El documento POS nace en `NUMBER_ASSIGNED`; el envio al proveedor y la validacion pasan por las tareas de proveedor y trazabilidad.
+- La generacion final de CUDE debe ajustarse al Anexo Tecnico de Documento Equivalente Electronico vigente y a la respuesta DIAN/modo configurado cuando se implemente el adaptador real.
+- El documento POS nace en `NUMBER_ASSIGNED`; el envio al conector DIAN y la validacion pasan por las tareas de conexion DIAN y trazabilidad.
 
 ### Politica de prueba end-to-end local de facturacion
 
-- Para habilitar pruebas locales completas, el backend debe exponer endpoints REST y persistencia PostgreSQL para configurar emisor, configurar resoluciones, emitir POS electronico, enviar el documento a un proveedor DIAN mock y consultar el resultado.
-- El proveedor DIAN mock debe ser deterministico, no debe hacer llamadas externas y no debe requerir credenciales reales.
+- Para habilitar pruebas locales completas, el backend debe exponer endpoints REST y persistencia PostgreSQL para configurar emisor, configurar resoluciones, emitir POS electronico, enviar el documento a un conector DIAN mock y consultar el resultado.
+- El conector DIAN mock debe ser deterministico, no debe hacer llamadas externas y no debe requerir credenciales reales.
 - En modo local, el mock puede devolver respuestas simuladas `ACCEPTED` o `REJECTED` usando parametros de request o configuracion local segura.
 - El modo local se configura con `DIAN_PROVIDER_MODE=mock`. En esta version no existe adaptador real; cualquier valor distinto de `mock` debe fallar explicitamente para evitar una falsa integracion productiva.
 - El resultado simulado se configura con `DIAN_MOCK_DEFAULT_STATUS`, usando `ACCEPTED` por defecto y permitiendo `REJECTED` o `FAILED` para pruebas negativas.
 - Los errores simulados pueden configurarse con `DIAN_MOCK_ERROR_CODE` y `DIAN_MOCK_ERROR_MESSAGE`; cuando no se definan, el mock debe usar mensajes seguros predeterminados sin secretos.
 - Una respuesta `ACCEPTED` del mock debe registrar tracking ID, CUFE/CUDE simulado, QR simulado y artefactos dummy para permitir validar el flujo de persistencia y consulta.
-- Esta politica no sustituye la integracion real con proveedor tecnologico DIAN ni valida cumplimiento tecnico final del anexo DIAN; solo habilita pruebas funcionales internas hasta seleccionar proveedor y certificados.
+- Esta politica no sustituye la integracion real con DIAN ni valida cumplimiento tecnico final del anexo DIAN; solo habilita pruebas funcionales internas hasta configurar certificado, software ID/PIN, credenciales, resoluciones y proceso de habilitacion por empresa.
 - Los endpoints locales deben requerir `X-Company-Id` para mantener aislamiento multiempresa desde la primera prueba.
 
 ### Politica inicial de nota de ajuste POS
@@ -301,7 +364,7 @@ Toda transicion fiscal debe registrar evento de trazabilidad con estado anterior
 - Reportes contables minimos: libro diario, libro mayor, balance de comprobacion simple y saldos por cuenta.
 - Los reportes deben consultar tablas del modelo Clean Architecture activo; no deben depender de tablas legacy pendientes de depuracion.
 - La implementacion inicial expone endpoints de lectura en `billing-service`, `inventory-service` y `accounting-service`, porque esos servicios son duenos del dato.
-- El `reporting-service` fisico queda diferido hasta la implementacion de Outbox/Inbox, eventos AWS y proyecciones de lectura consolidadas.
+- El `reporting-service` fisico queda diferido hasta que exista una necesidad aprobada de consultas consolidadas separadas. La proyeccion asincrona inicial ya vive en `reporting-projection-lambda`.
 
 ### Politica objetivo de identidad, permisos y licenciamiento
 
@@ -367,31 +430,55 @@ Toda transicion fiscal debe registrar evento de trazabilidad con estado anterior
 - Las consultas de libros deben aislar siempre por `company_id`.
 - La persistencia JPA y los endpoints REST de libro diario/mayor estan implementados para pruebas locales; exportaciones, saldos iniciales y periodos cerrados quedan para tareas posteriores.
 
-## Modelo de datos faltante
+## Modelo de datos vigente
 
-- `issuer_profile`
-- `tax_responsibility`
-- `numbering_resolution`
-- `number_sequence`
-- `electronic_document`
-- `electronic_document_line`
-- `electronic_document_tax`
-- `electronic_document_artifact`
-- `provider_submission`
-- `provider_response`
-- `credit_note`
-- `debit_note`
-- `pos_adjustment_note`
-- `inventory_movement`
-- `stock_balance`
-- `account`
-- `accounting_entry`
-- `accounting_entry_line`
-- `audit_event`
+El modelo de datos vigente se documenta de forma detallada en `specs/database-design.md` y `specs/data-dictionary.md`. Esta seccion resume los agregados por bounded context y reemplaza la lista historica de tablas faltantes.
+
+- `tenant-service`:
+  - `tenant.company`: empresa contratante, identificacion DIAN numerica, estado y datos administrativos.
+  - `tenant.company_license`: licencia parametrizable por vigencia, modulos, limites de usuarios y documentos.
+- `identity-service`:
+  - `identity.user_account`: usuario autenticable local/transitorio y puente hacia Cognito productivo.
+  - `identity.company_role`, `identity.role_permission`, `identity.user_company`, `identity.user_company_role`: RBAC empresarial modular.
+  - `identity.global_user_role`: rol global `ROOT`.
+- `catalog-service`:
+  - `catalog.catalog_definition`, `catalog.catalog_item`, `catalog.company_catalog_item_setting`: catalogos regulatorios/operativos DB-only.
+  - `catalog.department`, `catalog.municipality`: DIVIPOLA relacional por departamento/municipio.
+- `thirdparty-service`:
+  - `thirdparty.third_party`: clientes/proveedores fiscales por empresa, tipo de persona, tipo de documento DIAN, DV calculado, responsabilidades y regimen.
+- `inventory-service`:
+  - `inventory.product`: bienes fisicos, servicios/intangibles e insumos, con impuesto de venta configurado desde catalogo.
+  - `inventory.stock_balance`, `inventory.inventory_movement`: stock simple, kardex y movimientos idempotentes.
+  - `inventory.purchase`, `inventory.purchase_line`: compras/entradas con proveedor, costo, medio de pago y contabilidad.
+  - `inventory.service_supply_reference`: relacion sugerida servicio-insumo sin descuento automatico.
+- `billing-service`:
+  - `billing.issuer_profile`, `billing.numbering_resolution`, `billing.number_sequence`: emisor fiscal, resoluciones y numeracion.
+  - `billing.sale`, `billing.sale_line`: venta POS con snapshot de producto, precio, impuesto y adquirente.
+  - `billing.electronic_document`, `billing.electronic_document_line`, `billing.electronic_document_tax`, `billing.electronic_document_artifact`, `billing.electronic_document_trace_event`: documento electronico/POS, totales, impuestos, artefactos y trazabilidad.
+  - `billing.final_consumer_profile`: consumidor final parametrizado, no quemado en frontend ni creado como tercero.
+  - `billing.fiscal_adjustment_note`, `billing.pos_adjustment_note`: notas fiscales y ajustes POS.
+- `dian-provider-service`:
+  - `dian_provider.provider_configuration`: configuracion DIAN aislada por empresa con referencias seguras a secretos.
+  - `dian_provider.provider_submission`, `dian_provider.provider_response`: envios/respuestas normalizadas sin secretos.
+- `accounting-service`:
+  - `accounting.accounting_account`, `accounting.accounting_rule`, `accounting.accounting_rule_line`: PUC y reglas por empresa/evento.
+  - `accounting.accounting_entry`, `accounting.accounting_entry_line`: asientos balanceados y libros.
+  - `accounting.accounts_receivable`, `accounting.accounts_payable`, pagos y saldos derivados: cartera/cuentas por pagar operativas.
+- `audit-service`:
+  - `audit.audit_event`: auditoria fiscal, tecnica y de seguridad sin secretos ni payload sensible.
+- `payroll-service`:
+  - `payroll.payroll_settings`, `payroll.worker`, `payroll.contract`, `payroll.daily_labor_payment`, `payroll.electronic_payroll_document`: nomina opcional, pagos diarios verbales y documento soporte mock.
+- `bff-service`:
+  - `bff.oauth_login_attempt`, `bff.web_session`: estado OAuth/PKCE y sesiones productivas server-side cifradas.
+- Eventing/reporting:
+  - `*.outbox_event`, `*.inbox_event`: publicacion/consumo idempotente.
+  - `reporting.reporting_event_projection`: proyecciones reconstruibles desde eventos canonicos.
+
+Regla SDD: si una tabla aparece en codigo o Flyway y no esta descrita en `database-design.md`/`data-dictionary.md`, debe documentarse antes de evolucionar el flujo. Si una tabla se conserva solo por historia o migracion, debe quedar clasificada en `specs/legacy-cleanup-audit.md` o en la matriz de reemplazo vigente.
 
 ## Contratos externos
 
-El proveedor tecnologico DIAN debe integrarse mediante puerto de salida:
+La conexion DIAN debe integrarse mediante puerto de salida:
 
 ```java
 interface ElectronicDocumentProviderPort {
@@ -402,7 +489,7 @@ interface ElectronicDocumentProviderPort {
 }
 ```
 
-La implementacion concreta dependera del proveedor seleccionado.
+La implementacion concreta dependera del modo DIAN configurado por cada empresa y de los contratos tecnicos vigentes de DIAN. La plataforma no debe asumir ni comunicar que actua como proveedor tecnologico DIAN.
 
 ## Seguridad
 
@@ -430,7 +517,7 @@ La implementacion concreta dependera del proveedor seleccionado.
 - Duplicados deben mapearse a `DUPLICATE_RESOURCE`.
 - Reglas de negocio deben mapearse a `BUSINESS_RULE_VIOLATION`.
 - Errores no controlados deben mapearse a `INTERNAL_ERROR` con mensaje seguro sin stack trace, secretos ni detalles internos.
-- Los errores del proveedor tecnologico DIAN deben mapearse a `EXTERNAL_PROVIDER_ERROR` cuando existan endpoints o adaptadores HTTP que los expongan.
+- Los errores de la conexion DIAN deben mapearse a `EXTERNAL_PROVIDER_ERROR` cuando existan endpoints o adaptadores HTTP que los expongan.
 
 ## Observabilidad
 
@@ -444,7 +531,7 @@ La implementacion concreta dependera del proveedor seleccionado.
 ## Estrategia de pruebas
 
 - Unit tests de dominio y casos de uso.
-- Tests de adaptadores con mocks del proveedor tecnologico.
+- Tests de adaptadores con mocks de la conexion DIAN.
 - Tests de controladores REST.
 - Tests de persistencia para repositorios criticos.
 - Tests de integracion para flujos factura/POS/inventario/contabilidad.
@@ -499,14 +586,15 @@ El lote 2 de TASK-059 retira el codigo runtime legacy de terceros (`/api/cliente
 - El frontend objetivo sera una SPA servida desde Amazon S3 privado mediante CloudFront.
 - El navegador no consumira microservicios internos directamente.
 - API Gateway expone la entrada publica hacia un `bff-service`.
-- El `bff-service` vive en ECS Fargate y agrega respuestas, normaliza errores, propaga `Authorization`, `X-Company-Id`, `X-Correlation-Id` e `Idempotency-Key`, y protege al frontend de contratos internos inestables.
+- El `bff-service` vive en ECS Fargate y agrega respuestas, normaliza errores, administra sesion segura, propaga identidad interna, `X-Company-Id`, `X-User-Id`, `X-Correlation-Id` e `Idempotency-Key`, y protege al frontend de contratos internos inestables.
 
 ### Computo backend
 
-- Los microservicios Spring Boot de larga vida se despliegan en ECS Fargate: `tenant-service`, `identity-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `audit-service` y `reporting-service` cuando se materialice.
-- Los procesos event-driven cortos se implementan como Lambdas: auditoria asincrona, efectos de inventario/contabilidad derivados de documentos, proyecciones de reportes, reintentos de estado del proveedor, notificaciones y tareas programadas de licencias.
+- Los microservicios Spring Boot de larga vida se despliegan en ECS Fargate: `bff-service`, `tenant-service`, `identity-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `audit-service`, `payroll-service` y `reporting-service` solo si se materializa en una tarea futura.
+- Los procesos event-driven cortos se implementan como Lambdas: auditoria asincrona, efectos de inventario/contabilidad derivados de documentos, proyecciones de reportes, reintentos de estado de conexion DIAN, notificaciones y tareas programadas de licencias.
 - La base de datos productiva objetivo sera RDS/Aurora PostgreSQL, separando datos por servicio mediante base o esquema segun la fase.
 - Los secretos, certificados y credenciales se resuelven desde Secrets Manager o Parameter Store en runtime.
+- Amazon Cognito User Pool/App Client es el proveedor de identidad productivo para login, MFA, revocacion y politicas de autenticacion. El BFF intercambia codigos OAuth y conserva tokens cifrados server-side.
 
 ### Event-driven target
 
@@ -531,7 +619,38 @@ El lote 2 de TASK-059 retira el codigo runtime legacy de terceros (`/api/cliente
 
 ## Consumidor Lambda de reintento proveedor
 
-`provider-submission-retry-lambda` consume la cola `provider-retries` y procesa `ProviderSubmissionFailed`/`ProviderSubmissionPending`. El consumidor carga el documento y snapshot de venta desde `billing`, ignora documentos ya `VALIDATED` o `REJECTED`, reenvia al `dian-provider-service` con la misma clave de idempotencia y actualiza `billing.electronic_document`. Si el proveedor acepta, publica `SaleConfirmed` y `ElectronicDocumentValidated` en `billing.outbox_event` para que inventario, contabilidad y reportes avancen por el canal asincrono. Si el proveedor sigue fallando, reporta el `messageId` en `SQSBatchResponse` para reintento y DLQ; si rechaza, marca `REJECTED` sin retry automatico.
+`provider-submission-retry-lambda` consume la cola `provider-retries` y procesa `ProviderSubmissionFailed`/`ProviderSubmissionPending`. El consumidor carga el documento y snapshot de venta desde `billing`, ignora documentos ya `VALIDATED` o `REJECTED`, reenvia al `dian-provider-service` con la misma clave de idempotencia y actualiza `billing.electronic_document`. Si la conexion DIAN acepta, publica `SaleConfirmed` y `ElectronicDocumentValidated` en `billing.outbox_event` para que inventario, contabilidad y reportes avancen por el canal asincrono. Si la conexion sigue fallando, reporta el `messageId` en `SQSBatchResponse` para reintento y DLQ; si rechaza, marca `REJECTED` sin retry automatico.
+
+## Context7/Web evidence - decision DIAN por empresa
+
+- Library/tool: DIAN official website.
+- Topic consulted: opciones para facturar electronicamente, proveedor tecnologico, desarrollo propio/software propio y certificado digital.
+- Relevant finding: DIAN publica alternativas de facturacion: servicio gratuito, desarrollo/software propio y proveedor tecnologico autorizado. Para software propio o proveedor tecnologico se requiere certificado digital y proceso de habilitacion del facturador.
+- Decision impact: El producto se documenta como software parametrizable por empresa; cada empresa configura y asume su proceso DIAN. La plataforma no se presenta como proveedor tecnologico DIAN ni usa certificado global compartido.
+
+## Context7 evidence - autenticacion productiva y proteccion navegador
+
+- Library/tool: AWS Documentation via Context7 (`/websites/aws_amazon`).
+- Topic consulted: Cognito Authorization Code Grant + PKCE.
+- Relevant finding: Cognito Hosted UI soporta Authorization Code Grant y PKCE; el code flow con PKCE evita exponer tokens directamente en el navegador cuando el intercambio lo realiza el backend/BFF.
+- Decision impact: La autenticacion productiva se movera a Cognito Hosted UI + PKCE con callback en BFF.
+
+- Library/tool: AWS Documentation via Context7 (`/websites/aws_amazon`).
+- Topic consulted: Cognito App Client, token revocation and prevent user existence errors.
+- Relevant finding: Cognito App Clients pueden configurarse con OAuth code flow, revocacion de tokens, expiraciones y prevencion de enumeracion de usuarios.
+- Decision impact: Terraform debe crear App Client productivo con code flow, revocacion y politicas de seguridad; ROOT/admin requieren MFA.
+
+- Library/tool: AWS Documentation via Context7 (`/websites/aws_amazon`).
+- Topic consulted: CloudFront security headers and TLS.
+- Relevant finding: CloudFront puede agregar HSTS, CSP, `X-Content-Type-Options`, `X-Frame-Options` y `Referrer-Policy`; AWS documenta TLS/HTTPS para cifrado en transito.
+- Decision impact: La proteccion no se basa en cifrado JavaScript casero, sino en TLS, Hosted UI, cookies HttpOnly, CSP, CSRF y no exposicion de tokens al navegador.
+
+## Context7 evidence - OpenAPI
+
+- Library/tool: Springdoc OpenAPI (`/springdoc/springdoc-openapi`).
+- Topic consulted: exposicion de OpenAPI JSON/YAML y Swagger UI en Spring Boot WebMVC.
+- Relevant finding: Springdoc expone documentacion runtime en `/v3/api-docs`, `/v3/api-docs.yaml` y Swagger UI cuando el servicio esta levantado.
+- Decision impact: La dependencia Springdoc habilita exploracion runtime, pero la plataforma aun debe generar y versionar artefactos OpenAPI por servicio/BFF para cumplir contratos formales.
 
 ## Consumidor Lambda de reportes
 
@@ -606,7 +725,7 @@ El primer UI permite operar el flujo funcional por pasos: empresa, terceros, inv
 - Decision impact: `bff-service` incluye Actuator `health,info` como los demas microservicios.
 ## TASK-065 login y formularios frontend
 
-La SPA deja de capturar manualmente `Authorization` y `X-Company-Id`. El flujo de sesion aprobado es:
+La SPA deja de capturar manualmente `Authorization` y `X-Company-Id`. El flujo de sesion inicial local aprobado fue:
 
 1. El usuario ingresa email y password.
 2. La SPA llama `POST /api/v1/auth/login` por medio del BFF.
@@ -617,6 +736,8 @@ La SPA deja de capturar manualmente `Authorization` y `X-Company-Id`. El flujo d
 7. Los comandos de negocio posteriores envian `Authorization`, `X-Company-Id`, `X-Correlation-Id` e `Idempotency-Key` desde el estado de sesion.
 
 Los formularios operativos son React controlled inputs. Cada campo que antes existia en el JSON editable queda representado por un input, select, checkbox o linea editable. El payload JSON se construye al enviar el formulario; la UI puede mostrar la respuesta del backend, pero el usuario no edita JSON crudo.
+
+Estado objetivo productivo: TASK-153 a TASK-160 reemplazan este flujo local por Cognito Hosted UI + PKCE y sesion server-side en BFF con cookie segura. El contrato local con bearer token queda limitado a desarrollo/E2E y no debe exponerse al publico.
 
 Context7 evidence:
 
@@ -766,7 +887,9 @@ El BFF enruta los nuevos contratos `/platform/*`, `/companies/{companyId}/roles`
 
 La SPA usa una doble lista para responsabilidades fiscales en terceros y emisor fiscal. La lista izquierda muestra responsabilidades disponibles con codigo y significado; la lista derecha contiene las seleccionadas. Los botones `Agregar` y `Quitar` evitan escritura manual. La responsabilidad `R-99-PN` conserva la regla excluyente: si se agrega, reemplaza cualquier otra responsabilidad, y si se agrega una responsabilidad ordinaria mientras `R-99-PN` esta seleccionada, esta se remueve.
 
-La sesion autenticada se persiste en `sessionStorage` para tolerar recarga de pagina antes del timeout de inactividad. El snapshot contiene datos de sesion, empresa activa, accesos, licencia y empresas disponibles para `ROOT`. La sesion se restaura solo si la ultima actividad registrada ocurrio hace menos de 5 minutos. La actividad se reinicia con eventos del usuario (`click`, `keydown`, `mousemove`, `scroll`, `touchstart`). Al superar 5 minutos sin actividad se limpia la sesion y se muestra login con modal informativo.
+La sesion autenticada local se persiste en `sessionStorage` para tolerar recarga de pagina antes del timeout de inactividad. El snapshot contiene datos de sesion, empresa activa, accesos, licencia y empresas disponibles para `ROOT`. La sesion se restaura solo si la ultima actividad registrada ocurrio hace menos de 5 minutos. La actividad se reinicia con eventos del usuario (`click`, `keydown`, `mousemove`, `scroll`, `touchstart`). Al superar 5 minutos sin actividad se limpia la sesion y se muestra login con modal informativo.
+
+Esta politica de `sessionStorage` queda marcada como modo local/transitorio. En produccion no se permite guardar tokens ni bearer tokens en storage del navegador; la restauracion de sesion se resuelve con cookie `HttpOnly` y `GET /api/v1/auth/session`.
 
 El login no contiene credenciales dummy precargadas; usa placeholders y campos controlados. En venta POS, el identificador retornado al crear venta se muestra como estado no editable para habilitar la confirmacion; la fecha de venta se mantiene como responsabilidad del backend mediante `createdAt` y `confirmedAt`.
 
@@ -1008,7 +1131,8 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 
 - El frontend oculta modulos segun permisos efectivos, pero la autorizacion real para catálogos administrables, contabilidad, nomina y logs se valida en `bff-service` contra `identity-service`.
 - `ROOT` se valida con `/api/v1/platform/permissions` y conserva acceso global.
-- Los usuarios empresariales deben enviar `Authorization`, `X-Company-Id` y `X-User-Id`; el BFF confirma que `X-User-Id` coincide con `/api/v1/me` antes de evaluar permisos efectivos de empresa.
+- En el modo local actual, los usuarios empresariales envian `Authorization`, `X-Company-Id` y `X-User-Id`; el BFF confirma que `X-User-Id` coincide con `/api/v1/me` antes de evaluar permisos efectivos de empresa.
+- En el modo productivo TASK-153/TASK-163, la SPA no envia `Authorization`; el BFF resuelve la cookie segura, deriva `X-User-Id` y propaga identidad interna.
 - Las mutaciones de plataforma en `tenant-service` quedan reservadas para `ROOT`.
 
 ### Cloud productivo
@@ -1138,7 +1262,7 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 
 ### Decisiones
 
-- La siguiente fase se ejecuta desde el flujo de negocio completo y no desde infraestructura adicional: primero se prueba crear datos reales por API, vender, facturar con proveedor DIAN mock, afectar inventario, contabilizar y auditar.
+- La siguiente fase se ejecuta desde el flujo de negocio completo y no desde infraestructura adicional: primero se prueba crear datos reales por API, vender, facturar con conector DIAN mock, afectar inventario, contabilizar y auditar.
 - El E2E no depende de datos demo del frontend ni de seeds empresariales. Solo se permite el usuario `ROOT` local para iniciar el flujo de pruebas.
 - Las compras y entradas de inventario se modelan como flujo operativo independiente de ventas, con proveedor, costo, stock, medio de pago y regla contable.
 - Los servicios facturables pueden sugerir insumos, pero el descuento de insumos queda como accion confirmada por usuario. Esto respeta negocios pequenos donde el consumo real es variable.

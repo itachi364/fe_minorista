@@ -1,36 +1,60 @@
 flowchart TB
-  Browser[Frontend SPA]
-  CloudFront[CloudFront]
-  S3[S3 private static assets]
-  ApiGateway[API Gateway]
-  Bff[bff-service - ECS Fargate]
+  Browser[Browser / SPA]
 
-  Tenant[tenant-service - ECS Fargate]
-  Identity[identity-service - ECS Fargate]
-  Catalog[catalog-service - ECS Fargate]
-  ThirdParty[thirdparty-service - ECS Fargate]
-  Inventory[inventory-service - ECS Fargate]
-  Billing[billing-service - ECS Fargate]
-  DianProvider[dian-provider-service - ECS Fargate]
-  Accounting[accounting-service - ECS Fargate]
-  Audit[audit-service - ECS Fargate]
-  Reporting[reporting-service - ECS Fargate]
+  subgraph PublicEdge["Public edge"]
+    CloudFront[CloudFront + security headers]
+    S3[S3 private SPA assets]
+    Cognito[Cognito Hosted UI + PKCE]
+    ApiGateway[API Gateway / public ALB]
+  end
 
-  Outbox[(Service Outbox tables)]
-  EventBus[EventBridge / SQS]
-  AuditLambda[audit-event-writer - Lambda]
-  InventoryLambda[inventory-sale-effect - Lambda]
-  AccountingLambda[accounting-effect - Lambda]
-  ReportingLambda[reporting-projection-updater - Lambda]
-  ProviderRetryLambda[provider-status-retry - Lambda]
+  subgraph PrivateCompute["Private ECS Fargate services"]
+    Bff[bff-service]
+    Tenant[tenant-service]
+    Identity[identity-service]
+    Catalog[catalog-service]
+    ThirdParty[thirdparty-service]
+    Inventory[inventory-service]
+    Billing[billing-service]
+    DianProvider[dian-provider-service / DIAN connector]
+    Accounting[accounting-service]
+    Audit[audit-service]
+    Payroll[payroll-service]
+  end
 
-  Rds[(RDS/Aurora PostgreSQL)]
-  Secrets[Secrets Manager / Parameter Store]
-  TechProvider[Proveedor tecnologico DIAN]
+  subgraph DataPlane["Private data plane"]
+    RdsProxy[RDS Proxy]
+    Rds[(RDS / Aurora PostgreSQL)]
+    Secrets[Secrets Manager]
+    Kms[KMS]
+  end
+
+  subgraph Eventing["AWS managed eventing"]
+    Outbox[(Service Outbox tables)]
+    EventBus[EventBridge custom bus]
+    AuditQueue[SQS audit-events + DLQ]
+    InventoryQueue[SQS inventory-effects + DLQ]
+    AccountingQueue[SQS accounting-effects + DLQ]
+    ProviderQueue[SQS provider-retries + DLQ]
+    ReportingQueue[SQS reporting-projections + DLQ]
+    AuditLambda[audit-event-writer Lambda]
+    InventoryLambda[inventory-sale-effect Lambda]
+    AccountingLambda[accounting-effect Lambda]
+    ProviderRetryLambda[provider-submission-retry Lambda]
+    ReportingLambda[reporting-projection Lambda]
+    Inbox[(Consumer Inbox tables)]
+  end
+
+  subgraph ExternalDian["External DIAN responsibility"]
+    CompanyCertificate[Company DIAN certificate / credentials]
+    DianPlatform[DIAN services configured by company]
+  end
 
   Browser --> CloudFront
   CloudFront --> S3
   CloudFront --> ApiGateway
+  Browser --> Cognito
+  Cognito --> ApiGateway
   ApiGateway --> Bff
 
   Bff --> Tenant
@@ -40,39 +64,53 @@ flowchart TB
   Bff --> Inventory
   Bff --> Billing
   Bff --> Accounting
-  Bff --> Reporting
+  Bff --> Audit
+  Bff --> Payroll
 
   Billing --> DianProvider
-  DianProvider --> TechProvider
+  DianProvider --> Secrets
+  DianProvider --> CompanyCertificate
+  DianProvider --> DianPlatform
 
-  Tenant --> Rds
-  Identity --> Rds
-  Catalog --> Rds
-  ThirdParty --> Rds
-  Inventory --> Rds
-  Billing --> Rds
-  DianProvider --> Rds
-  Accounting --> Rds
-  Audit --> Rds
-  Reporting --> Rds
-
+  Bff --> Secrets
   Tenant --> Secrets
   Identity --> Secrets
   Billing --> Secrets
-  DianProvider --> Secrets
+  Secrets --> Kms
+
+  Tenant --> RdsProxy
+  Identity --> RdsProxy
+  Catalog --> RdsProxy
+  ThirdParty --> RdsProxy
+  Inventory --> RdsProxy
+  Billing --> RdsProxy
+  DianProvider --> RdsProxy
+  Accounting --> RdsProxy
+  Audit --> RdsProxy
+  Payroll --> RdsProxy
+  RdsProxy --> Rds
 
   Billing --> Outbox
   Inventory --> Outbox
   Accounting --> Outbox
+  Audit --> Outbox
+  Payroll --> Outbox
   Outbox --> EventBus
-  EventBus --> AuditLambda
-  EventBus --> InventoryLambda
-  EventBus --> AccountingLambda
-  EventBus --> ReportingLambda
-  EventBus --> ProviderRetryLambda
+
+  EventBus --> AuditQueue --> AuditLambda
+  EventBus --> InventoryQueue --> InventoryLambda
+  EventBus --> AccountingQueue --> AccountingLambda
+  EventBus --> ProviderQueue --> ProviderRetryLambda
+  EventBus --> ReportingQueue --> ReportingLambda
+
+  AuditLambda --> Inbox
+  InventoryLambda --> Inbox
+  AccountingLambda --> Inbox
+  ProviderRetryLambda --> Inbox
+  ReportingLambda --> Inbox
 
   AuditLambda --> Audit
   InventoryLambda --> Inventory
   AccountingLambda --> Accounting
-  ReportingLambda --> Reporting
   ProviderRetryLambda --> DianProvider
+  ReportingLambda --> RdsProxy

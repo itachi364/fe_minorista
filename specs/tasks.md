@@ -28,12 +28,12 @@
     - `POSTGRES_USER`
     - `POSTGRES_PASSWORD`
     - `POSTGRES_HOST_PORT`
-  - Variables placeholder para proveedor tecnologico DIAN:
+  - Variables placeholder para conexion/configuracion DIAN:
     - `DIAN_PROVIDER_BASE_URL`
     - `DIAN_PROVIDER_API_KEY`
     - `DIAN_CERTIFICATE_PATH`
     - `DIAN_CERTIFICATE_PASSWORD`
-  - Regla: Las variables DIAN deben quedar documentadas como placeholders no obligatorios hasta seleccionar proveedor tecnologico y obtener certificados.
+  - Regla: Las variables DIAN deben quedar documentadas como placeholders no obligatorios hasta configurar modo DIAN real por empresa y obtener certificados propios de cada empresa.
   - Permisos/lectura en Docker: Docker Compose debe inyectar las variables al contenedor mediante `env_file` o `environment`; los permisos de archivos solo aplicaran cuando se monten certificados reales por volumen o Docker secrets.
   - Despliegue PostgreSQL en Docker:
     - Crear servicio `postgres` en `docker-compose.yml`.
@@ -127,7 +127,7 @@
   - Tests requeridos: prueba de carga de contexto con Flyway y validacion Hibernate.
   - Resultado local: se agrego Flyway, se creo la migracion versionada inicial para el esquema publico legado, se aplico contra PostgreSQL local en Docker y `contextLoads` valida el esquema con `spring.jpa.hibernate.ddl-auto=validate`.
 
-## Fase 2: Facturacion electronica y proveedor tecnologico
+## Fase 2: Facturacion electronica y conector DIAN
 
 - [x] TASK-008: Implementar configuracion de emisor y resoluciones
   - Estado: DONE
@@ -167,7 +167,7 @@
   - Tests requeridos: unit tests de totales, impuestos, redondeos y descuentos.
   - Resultado local: se documento e implemento la politica confirmada de calculo por linea, descuento antes de impuesto, redondeo `HALF_UP` a 2 decimales y totales como suma de lineas calculadas. Se agregaron pruebas unitarias para totales, redondeo, descuentos invalidos, lineas vacias y tasa negativa.
 
-- [x] TASK-010: Implementar puerto y adaptador de proveedor tecnologico DIAN
+- [x] TASK-010: Implementar puerto y adaptador de conexion DIAN
   - Estado: DONE
   - Archivos:
     - `src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/ProviderSubmissionRecord.java`
@@ -727,7 +727,7 @@
     - Requerir `X-Company-Id` en endpoints de negocio.
     - Mantener DTOs de API separados de dominio y de entidades JPA.
   - Fuera de alcance:
-    - Integracion real con proveedor tecnologico DIAN.
+    - Conexion DIAN real parametrizable por empresa.
     - Firma digital real, XML UBL real, representacion grafica real o QR oficial.
     - Descuento automatico de inventario y asiento contable automatico dentro de la misma transaccion.
   - Completion criteria:
@@ -1317,7 +1317,7 @@
     - Sustituir la secuencia local en memoria del POS por asignacion desde resolucion activa.
     - Actualizar E2E para configurar emisor y resolucion antes de confirmar venta.
   - Fuera de alcance:
-    - Integracion real con proveedor tecnologico DIAN.
+    - Conexion DIAN real parametrizable por empresa.
     - Firma digital, XML UBL final, ApplicationResponse y representacion grafica oficial.
     - Borrado de tablas legacy `billing_issuer_profile` y `billing_numbering_resolution`.
   - Archivos propuestos:
@@ -2342,7 +2342,7 @@
 
 - [x] TASK-068: Disenar RBAC modular con ROOT global y roles por empresa
   - Estado: DONE
-  - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
+  - Requisitos: RF-105, RF-106, RF-107, RF-108, RF-109, RF-110, RF-111, RF-112, RNF-019, RNF-020.
   - Acceptance criteria: AC-059, AC-060, AC-061, AC-062, AC-063, AC-064.
   - Descripcion: Reemplazar el modelo de roles fijos por RBAC configurable: `ROOT` global sin empresa y roles personalizados aislados por empresa, con permisos modulares y regla de delegacion estrictamente menor.
   - Dependencias:
@@ -2368,7 +2368,7 @@
     - Evidencia Context7 vigente: Spring Security 6.5 soporta authorities/permisos, jerarquias de rol y `AuthorizationManager` custom para autorizacion dinamica.
 - [x] TASK-069: Implementar RBAC modular en identity-service
   - Estado: DONE
-  - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
+  - Requisitos: RF-105, RF-106, RF-107, RF-108, RF-109, RF-110, RF-112, RNF-019, RNF-020.
   - Acceptance criteria: AC-059, AC-060, AC-061, AC-062, AC-063, AC-064.
   - Descripcion: Implementar persistencia, dominio, casos de uso y endpoints para usuario `ROOT`, roles por empresa, permisos configurables, asignacion de roles y validacion de delegacion estrictamente menor.
   - Dependencias:
@@ -2395,7 +2395,7 @@
     - Pendiente entorno: la suite completa de `identity-service` no pudo ejecutar `IdentityServiceApplicationTests` porque PostgreSQL local `localhost:15432` rechazo conexion.
 - [x] TASK-070: Implementar UI de administracion de usuarios, roles y permisos
   - Estado: DONE
-  - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
+  - Requisitos: RF-105, RF-106, RF-108, RF-109, RF-111, RF-112, RNF-019, RNF-020.
   - Acceptance criteria: AC-059, AC-060, AC-061, AC-062, AC-063, AC-064, AC-065.
   - Descripcion: Crear pantallas para que `ROOT` administre empresas y administradores iniciales, y para que administradores empresariales creen usuarios, roles y permisos dentro de su empresa.
   - Dependencias:
@@ -2422,7 +2422,7 @@
     - `npm run build`: exitoso.
 - [x] TASK-071: Aplicar navegacion y acciones frontend basadas en permisos efectivos
   - Estado: DONE
-  - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
+  - Requisitos: RF-111, RF-112, RNF-019, RNF-020.
   - Acceptance criteria: AC-048, AC-059, AC-060, AC-061, AC-062, AC-063, AC-064, AC-065.
   - Descripcion: Usar los permisos efectivos entregados por identity-service para mostrar/ocultar modulos, bloquear acciones no autorizadas en la UI y mantener el backend como fuente real de autorizacion.
   - Dependencias:
@@ -2447,7 +2447,7 @@
     - `npm run build`: exitoso.
 - [x] TASK-072: Implementar bootstrap ROOT minimo para pruebas locales
   - Estado: DONE
-  - Requisitos: RF-010, RF-026, RF-027, RF-029, RNF-019, RNF-020.
+  - Requisitos: RF-105, RF-111, RNF-019, RNF-020.
   - Acceptance criteria: AC-059, AC-066.
   - Descripcion: Habilitar un usuario `ROOT` global dummy para pruebas locales mientras se implementa el RBAC modular completo de TASK-069.
   - Dependencias:
@@ -2553,7 +2553,7 @@
     - `./mvnw.cmd test`: reactor completo 17 modulos, 0 fallos.
 - [x] TASK-076: Ajustar experiencia funcional colombiana y RBAC operativo
   - Estado: DONE
-  - Requisitos: RF-001, RF-016, RF-026, RF-030, RF-031, RF-032, RF-033, RF-034, RF-036, RF-037, RN-018, RN-019, RN-026.
+  - Requisitos: RF-001, RF-016, RF-026, RF-030, RF-031, RF-032, RF-105, RF-106, RF-111, RF-112, RN-018, RN-019, RN-026.
   - Acceptance criteria: AC-075, AC-076, AC-077, AC-078, AC-079, AC-080.
   - Descripcion: Ajustar la SPA y los contratos minimos para que la operacion refleje conceptos colombianos de facturacion: terceros como cliente/proveedor, municipios por nombre agrupados por departamento, emisor fiscal derivado de la empresa activa, ROOT con selector de empresas creadas y RBAC con asignacion de roles mediante modal usando busqueda por correo.
   - Alcance:
@@ -2990,7 +2990,7 @@
 
 - [x] TASK-091: Permitir administracion ROOT auditada de catalogos globales
   - Estado: DONE
-  - Requisitos: RF-038, RN-046, RN-047, RN-048.
+  - Requisitos: RF-038, RF-113, RN-046, RN-047, RN-048.
   - Acceptance criteria: AC-124, AC-125, AC-126.
   - Descripcion: Permitir que ROOT administre catalogos regulatorios/globales, manteniendo restriccion para usuarios no ROOT y registrando auditoria por cada cambio.
   - Alcance:
@@ -3018,7 +3018,7 @@
 
 - [x] TASK-093: Modulo Logs/Auditoria para ROOT y administradores
   - Estado: DONE
-  - Requisitos: RF-039, RF-040.
+  - Requisitos: RF-114, RF-115.
   - Acceptance criteria: AC-130, AC-131.
   - Descripcion: Agregar modulo UI para consultar eventos de auditoria por empresa desde `audit-service`.
   - Alcance:
@@ -3373,7 +3373,7 @@
 
 - [x] TASK-113: Implementar consumo asistido de insumos por servicios facturados
   - Estado: DONE
-  - Requisitos: RF-020, RF-021, RF-022, RF-056, RN-021, RN-022, RN-023, RN-060.
+  - Requisitos: RF-020, RF-021, RF-022, RF-032, RN-021, RN-022, RN-023, RN-060.
   - Acceptance criteria: AC-041, AC-042.
   - Archivos:
     - `services/inventory-service/src/main/java/**`
@@ -3404,7 +3404,7 @@
 
 - [x] TASK-114: Corregir error de login por licencia no configurada
   - Estado: DONE
-  - Requisitos: RF-044, RN-058.
+  - Requisitos: RF-119, RN-058.
   - Acceptance criteria:
     - El login empresarial con empresa sin licencia muestra modal `Licencia no configurada`.
     - La sesion queda cerrada y no se renderizan menus operativos.
@@ -3423,7 +3423,7 @@
 
 - [x] TASK-115: Extender licencias empresariales con modulos contratados
   - Estado: DONE
-  - Requisitos: RF-041, RF-042, RF-043, RF-045, RN-059, RN-061, RN-062.
+  - Requisitos: RF-116, RF-117, RF-118, RF-120, RN-059, RN-061, RN-062.
   - Acceptance criteria:
     - `tenant.company_license` persiste `enabled_modules`.
     - `POST /api/v1/companies/{companyId}/license` crea o actualiza vigencia, limites y modulos habilitados.
@@ -3441,7 +3441,7 @@
 
 - [x] TASK-116: Crear modulo ROOT para administrar licencias
   - Estado: DONE
-  - Requisitos: RF-031, RF-041, RF-042.
+  - Requisitos: RF-106, RF-116, RF-117.
   - Acceptance criteria:
     - ROOT ve modulo `Licencias`.
     - ROOT selecciona una empresa creada, configura plan, fechas, limites y modulos contratados.
@@ -3460,7 +3460,7 @@
 
 - [x] TASK-117: Aplicar licencia por modulo en menues y operaciones
   - Estado: DONE
-  - Requisitos: RF-043, RF-045, RN-062.
+  - Requisitos: RF-118, RF-120, RN-062.
   - Acceptance criteria:
     - Un usuario empresarial solo ve modulos incluidos en la licencia activa y permitidos por RBAC.
     - ROOT conserva acceso global.
@@ -3497,7 +3497,7 @@
 
 - [x] TASK-119: E2E licencia parametrizable
   - Estado: DONE
-  - Requisitos: RF-041, RF-042, RF-043, RF-044, RF-045.
+  - Requisitos: RF-116, RF-117, RF-118, RF-119, RF-120.
   - Acceptance criteria:
     - Flujo desde cero: ROOT crea empresa, crea administrador, asigna licencia, administrador inicia sesion correctamente.
     - Si no hay licencia, login empresarial muestra licencia no configurada.
@@ -3519,7 +3519,7 @@
 
 - [x] TASK-120: Aplicar cuotas comerciales de licencia
   - Estado: DONE
-  - Requisitos: RF-042, RF-046, RF-047.
+  - Requisitos: RF-117, RF-121, RF-122.
   - Acceptance criteria:
     - `tenant-service` incluye `maxUsers` y `maxMonthlyDocuments` en la validacion de licencia.
     - `identity-service` bloquea nuevas asignaciones de acceso empresarial cuando la empresa ya alcanzo `maxUsers`.
@@ -3545,7 +3545,7 @@
 
 - [x] TASK-121: Ajustar UX/RBAC de empresa y permisos
   - Estado: DONE
-  - Requisitos: RF-031, RF-036, RF-037, RF-048, RF-049.
+  - Requisitos: RF-106, RF-111, RF-112, RF-123, RF-124.
   - Acceptance criteria:
     - ROOT mantiene lista desplegable de empresas y puede crear, actualizar, activar e inactivar empresas.
     - Usuario empresarial ve la empresa activa como informacion por nombre/identificacion, sin selector ni UUID como etiqueta principal.
@@ -3569,7 +3569,7 @@
 
 - [x] TASK-122: Unificar permiso de Venta POS e internacionalizar permisos
   - Estado: DONE
-  - Requisitos: RF-037, RF-056, RF-057, RNF-024.
+  - Requisitos: RF-112, RF-125, RF-126, RNF-024.
   - Acceptance criteria:
     - Un usuario con `SALES_CREATE` y sin `FISCAL_DOCUMENTS_ISSUE` puede acceder al modulo `Venta POS` en la SPA.
     - `POST /api/v1/sales/**` y la emision POS derivada quedan autorizadas por BFF con `SALES_CREATE`.
@@ -3599,7 +3599,7 @@
 
 - [x] TASK-123: Redisenar navegacion principal con submenus
   - Estado: DONE
-  - Requisitos: RF-058.
+  - Requisitos: RF-127.
   - Acceptance criteria:
     - `Ventas` es el modulo inicial despues del login cuando el usuario tiene permiso/licencia.
     - `Configuracion` agrupa Empresa, Licencias, Catalogos, Logs, Usuarios y Roles.
@@ -3609,7 +3609,7 @@
 
 - [x] TASK-124: Crear pantalla exclusiva de Roles
   - Estado: DONE
-  - Requisitos: RF-059.
+  - Requisitos: RF-128.
   - Acceptance criteria:
     - Al entrar a `Roles` se cargan permisos y roles sin boton manual.
     - Se puede crear rol con permisos seleccionados y se refleja inmediatamente en la tabla.
@@ -3618,7 +3618,7 @@
 
 - [x] TASK-125: Crear pantalla exclusiva de Usuarios
   - Estado: DONE
-  - Requisitos: RF-060.
+  - Requisitos: RF-129.
   - Acceptance criteria:
     - Al entrar a `Usuarios` se cargan usuarios y roles sin boton manual.
     - Crear usuario exige seleccionar rol inicial y ejecuta creacion + asignacion.
@@ -3627,7 +3627,7 @@
 
 - [x] TASK-126: Reducir autocierre de modales exitosos
   - Estado: DONE
-  - Requisitos: RF-061.
+  - Requisitos: RF-130.
   - Acceptance criteria:
     - Modal de exito se cierra en maximo 1 segundo.
     - Modal de error queda abierto hasta cierre manual.
@@ -3635,7 +3635,7 @@
 
 - [x] TASK-127: Endurecer contratos backend de roles
   - Estado: DONE
-  - Requisitos: RF-059.
+  - Requisitos: RF-128.
   - Acceptance criteria:
     - `identity-service` expone actualizar, activar e inactivar rol empresarial.
     - La delegacion de permisos sigue impidiendo permisos superiores/no poseidos.
@@ -3643,7 +3643,7 @@
 
 - [x] TASK-128: Actualizar e inactivar usuarios empresariales
   - Estado: DONE
-  - Requisitos: RF-060.
+  - Requisitos: RF-129.
   - Acceptance criteria:
     - `identity-service` permite actualizar nombre/correo de usuario asociado a una empresa.
     - `identity-service` permite activar/inactivar usuario asociado a una empresa.
@@ -3652,7 +3652,7 @@
 
 - [x] TASK-129: Implementar E2E operativo desde cero para venta POS electronica
   - Estado: DONE
-  - Requisitos: RF-063, RF-067, RF-069, RF-071, RF-072.
+  - Requisitos: RF-089, RF-093, RF-095, RF-097, RF-098.
   - Acceptance criteria: AC-152, AC-156, AC-158, AC-160, AC-161.
   - Alcance:
     - Crear script/prueba E2E que use APIs reales y datos generados en ejecucion.
@@ -3666,7 +3666,7 @@
 
 - [x] TASK-130: Completar compras y entradas de inventario con contabilidad
   - Estado: DONE
-  - Requisitos: RF-064, RF-071, RF-072.
+  - Requisitos: RF-090, RF-097, RF-098.
   - Acceptance criteria: AC-153, AC-160, AC-161.
   - Alcance:
     - Crear o completar endpoints de compra/entrada.
@@ -3683,7 +3683,7 @@
 
 - [x] TASK-131: Completar servicios facturables con consumo manual de insumos
   - Estado: DONE
-  - Requisitos: RF-065, RF-069.
+  - Requisitos: RF-091, RF-095.
   - Acceptance criteria: AC-154, AC-158.
   - Alcance:
     - Mantener referencias sugeridas servicio-insumo.
@@ -3694,7 +3694,7 @@
 
 - [x] TASK-132: Crear listados operativos profesionales
   - Estado: DONE
-  - Requisitos: RF-066.
+  - Requisitos: RF-092.
   - Acceptance criteria: AC-155.
   - Alcance:
     - Listados con busqueda, paginacion, estado y acciones para ventas, documentos, terceros, productos, compras, movimientos, usuarios, roles, licencias y logs.
@@ -3714,7 +3714,7 @@
 
 - [x] TASK-133: Endurecer validacion backend de RBAC y licencias
   - Estado: DONE
-  - Requisitos: RF-067.
+  - Requisitos: RF-093.
   - Acceptance criteria: AC-156.
   - Alcance:
     - Auditar rutas criticas del BFF y microservicios.
@@ -3729,7 +3729,7 @@
 
 - [x] TASK-134: Tablero ROOT de uso de licencias
   - Estado: DONE
-  - Requisitos: RF-068.
+  - Requisitos: RF-094.
   - Acceptance criteria: AC-157.
   - Alcance:
     - Exponer consulta de uso por empresa.
@@ -3743,7 +3743,7 @@
 
 - [x] TASK-135: Auditoria transversal verificable
   - Estado: DONE
-  - Requisitos: RF-069.
+  - Requisitos: RF-095.
   - Acceptance criteria: AC-158.
   - Alcance:
     - Completar auditoria en acciones mutables faltantes.
@@ -3756,7 +3756,7 @@
 
 - [x] TASK-136: Robustecer sesion, expiracion y restauracion
   - Estado: DONE
-  - Requisitos: RF-070.
+  - Requisitos: RF-096.
   - Acceptance criteria: AC-159.
   - Alcance:
     - Restaurar sesion vigente tras refresh.
@@ -3769,7 +3769,7 @@
 
 - [x] TASK-137: Parametrizar reglas contables PUC por evento
   - Estado: DONE
-  - Requisitos: RF-071.
+  - Requisitos: RF-097.
   - Acceptance criteria: AC-160.
   - Alcance:
     - Definir eventos contables configurables por empresa.
@@ -3782,7 +3782,7 @@
 
 - [x] TASK-138: Generar comprobantes/asientos automaticos
   - Estado: DONE
-  - Requisitos: RF-072.
+  - Requisitos: RF-098.
   - Acceptance criteria: AC-161.
   - Alcance:
     - Ventas, compras, gastos, nomina/pagos diarios y consumos relevantes.
@@ -3796,7 +3796,7 @@
 
 - [x] TASK-139: Implementar reportes minimos contables y operativos
   - Estado: DONE
-  - Requisitos: RF-073.
+  - Requisitos: RF-099.
   - Acceptance criteria: AC-162.
   - Alcance:
     - Estado de resultados, balance basico, libro diario, cartera, cuentas por pagar, inventario valorizado y uso de licencia.
@@ -3811,7 +3811,7 @@
 
 - [x] TASK-140: Pruebas de contrato BFF/microservicios
   - Estado: DONE
-  - Requisitos: RF-074.
+  - Requisitos: RF-100.
   - Acceptance criteria: AC-163.
   - Alcance:
     - Cubrir rutas criticas y propagacion de headers/errores.
@@ -3824,7 +3824,7 @@
 
 - [x] TASK-141: E2E de aislamiento multiempresa
   - Estado: DONE
-  - Requisitos: RF-075.
+  - Requisitos: RF-101.
   - Acceptance criteria: AC-164.
   - Alcance:
     - Crear dos empresas con datos equivalentes.
@@ -3835,7 +3835,7 @@
 
 - [x] TASK-142: Completar Terraform AWS productivo
   - Estado: DONE
-  - Requisitos: RF-076.
+  - Requisitos: RF-102.
   - Acceptance criteria: AC-165.
   - Alcance:
     - ECS Fargate, RDS, Secrets Manager, CloudWatch, S3/CloudFront, BFF/API publico y microservicios privados.
@@ -3848,7 +3848,7 @@
 
 - [x] TASK-143: Completar eventos productivos AWS
   - Estado: DONE
-  - Requisitos: RF-077.
+  - Requisitos: RF-103.
   - Acceptance criteria: AC-166.
   - Alcance:
     - EventBridge/SQS, DLQ, Lambdas, Outbox/Inbox, idempotencia y reintentos.
@@ -3860,7 +3860,7 @@
 
 - [x] TASK-144: Mejorar tablas administrativas de usuarios y roles
   - Estado: DONE
-  - Requisitos: RF-059, RF-060, RF-066.
+  - Requisitos: RF-128, RF-129, RF-092.
   - Acceptance criteria: AC-167.
   - Alcance:
     - Migrar las tablas de `Roles` y `Usuarios` al patron visual reutilizable de listados operativos.
@@ -3876,3 +3876,402 @@
     - Las tablas de Roles y Usuarios muestran nombre/detalle, badges de estado, permisos como chips y acciones compactas.
     - `npm test -- --run`: OK, 20 tests.
     - `npm run build`: OK.
+
+- [ ] TASK-145: Replantear alcance DIAN como software parametrizable por empresa
+  - Estado: TODO
+  - Requisitos: RF-062, RF-065, RNF-026, RN-063, RN-064, RN-068.
+  - Acceptance criteria: AC-168, AC-173.
+  - Descripcion: Ajustar lenguaje funcional, tecnico y comercial para que la plataforma no se presente como proveedor tecnologico DIAN, sino como software configurable por empresa facturadora.
+  - Archivos:
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `README.md`
+  - Criterios:
+    - La documentacion debe declarar que cada empresa es responsable de habilitacion/certificacion DIAN.
+    - El producto no debe usar certificado global ni ofrecer servicio de proveedor tecnologico DIAN.
+    - El modo `MOCK` queda limitado a pruebas internas/E2E.
+  - Validacion:
+    - Revision documental por `rg "proveedor tecnologico"` para ubicar textos que requieran precision semantica.
+
+- [ ] TASK-146: Disenar modulo de configuracion DIAN por empresa
+  - Estado: TODO
+  - Requisitos: RF-062, RF-063, RF-064, RF-066.
+  - Acceptance criteria: AC-169, AC-170, AC-171, AC-172, AC-174.
+  - Descripcion: Definir modelo funcional y tecnico para configurar modo DIAN, ambiente, software ID/PIN, clave tecnica, certificado, URLs, estado de prueba y aceptacion de responsabilidad por empresa.
+  - Archivos:
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+    - `specs/data-dictionary.md`
+  - Criterios:
+    - `company_id` obligatorio y sin comparticion entre empresas.
+    - Secretos y certificado solo como referencias seguras.
+    - Activacion real exige configuracion completa y prueba/estado habilitado.
+    - Toda accion mutable genera auditoria segura.
+  - Validacion:
+    - Pruebas de dominio para configuracion completa/incompleta.
+    - Pruebas de controlador para creacion, actualizacion, activacion, inactivacion y prueba.
+
+- [ ] TASK-147: Persistencia segura de certificados y secretos DIAN por empresa
+  - Estado: TODO
+  - Requisitos: RF-063, RNF-025, RN-064, RN-065, RN-066.
+  - Acceptance criteria: AC-170, AC-171.
+  - Descripcion: Implementar o preparar persistencia de metadata DIAN en PostgreSQL y referencias a Secrets Manager/gestor equivalente, sin almacenar secretos reales en tablas, logs o auditoria.
+  - Archivos:
+    - `services/dian-provider-service/**`
+    - `infra/aws/**`
+    - `docker-compose.yml`
+    - `.env.example`
+  - Criterios:
+    - DB guarda alias, huella, vencimiento, estado y referencias.
+    - La carga de certificado no deja el binario ni passwords en logs/respuestas.
+    - IaC define patron de secretos por empresa.
+  - Validacion:
+    - Tests de sanitizacion de respuesta/auditoria.
+    - Revision de `rg` para evitar `password`, `pin`, `certificate` expuestos en logs o fixtures reales.
+
+- [ ] TASK-148: Ajustar contratos API para configuracion DIAN y prueba de conexion
+  - Estado: TODO
+  - Requisitos: RF-062, RF-063, RF-064, RF-066.
+  - Acceptance criteria: AC-169, AC-172, AC-174.
+  - Descripcion: Implementar endpoints BFF/backend para consultar, crear, actualizar, activar, inactivar y probar configuracion DIAN por empresa.
+  - Archivos:
+    - `services/bff-service/**`
+    - `services/dian-provider-service/**`
+    - `apps/facturaelectronica-web/**`
+  - Criterios:
+    - ROOT puede administrar cualquier empresa; administrador empresarial solo su empresa.
+    - Respuestas retornan banderas de configuracion y metadata no sensible.
+    - Errores diferencian configuracion incompleta, certificado vencido, prueba fallida y modo no soportado.
+  - Validacion:
+    - Tests BFF de ruteo/permisos.
+    - Tests REST de configuracion y prueba.
+
+- [ ] TASK-149: Actualizar infraestructura AWS para secretos DIAN por empresa
+  - Estado: TODO
+  - Requisitos: RNF-019, RNF-025, RN-064, RN-066.
+  - Acceptance criteria: AC-170.
+  - Descripcion: Ajustar Terraform para documentar/soportar Secrets Manager por empresa, KMS, IAM minimo y acceso runtime desde servicios autorizados.
+  - Archivos:
+    - `infra/aws/modules/secrets/**`
+    - `infra/aws/modules/ecs/**`
+    - `infra/aws/envs/dev/**`
+    - `specs/infrastructure.md`
+  - Criterios:
+    - No hay secretos versionados.
+    - IAM permite leer solo referencias necesarias por servicio.
+    - Rutas de secreto incluyen ambiente y `companyId`.
+  - Validacion:
+    - `terraform fmt`, `terraform init -backend=false`, `terraform validate`.
+
+- [ ] TASK-150: Renombrar lenguaje funcional de proveedor a conector DIAN
+  - Estado: TODO
+  - Requisitos: RF-065, RNF-026.
+  - Acceptance criteria: AC-168.
+  - Descripcion: Revisar textos visibles, README, specs, UI y nombres funcionales para que usen "Configuracion DIAN" o "Conector DIAN" cuando corresponda, manteniendo nombres tecnicos existentes solo si cambiarlos rompe compatibilidad.
+  - Archivos:
+    - `README.md`
+    - `specs/**`
+    - `apps/facturaelectronica-web/**`
+  - Criterios:
+    - UI no presenta la plataforma como proveedor tecnologico.
+    - Contratos internos pueden mantener `provider` como termino tecnico legacy si queda documentado como "conexion DIAN".
+  - Validacion:
+    - `rg "proveedor tecnologico|Provider|provider"` revisado y clasificado.
+
+- [ ] TASK-151: Preparar flujo tecnico DIAN real segun caja de herramientas
+  - Estado: TODO
+  - Requisitos: RF-064, RF-066.
+  - Acceptance criteria: AC-175.
+  - Descripcion: Disenar e implementar progresivamente generacion XML UBL 2.1, firma XMLDSig/XAdES, CUFE/CUDE, QR, validacion XSD/Schematron, AttachedDocument, ApplicationResponse y set de pruebas, usando la configuracion de cada empresa.
+  - Archivos:
+    - `services/billing-service/**`
+    - `services/dian-provider-service/**`
+    - `Caja_de_herramientas_Factura_Electronica_Validacion_Previa/**` como referencia local no versionada completa.
+  - Criterios:
+    - No subir artefactos duplicados, `__MACOSX`, `.DS_Store` ni jars innecesarios de la caja.
+    - Importar solo recursos necesarios y documentar fuente/version.
+    - Validaciones tecnicas fallan antes de envio real si XML/firma no cumplen.
+  - Validacion:
+    - Tests unitarios de CUFE/CUDE/firma/validacion.
+    - Tests contra XML de ejemplo sanitizados.
+
+- [ ] TASK-152: Implementar UI de Configuracion DIAN por empresa
+  - Estado: TODO
+  - Requisitos: RF-062, RF-063, RF-064, RF-065, RF-066.
+  - Acceptance criteria: AC-169, AC-170, AC-171, AC-172, AC-174.
+  - Descripcion: Crear pantalla profesional de configuracion DIAN dentro de `Configuracion`, con estado de modo, ambiente, certificado, pruebas, vigencia, resoluciones relacionadas y declaracion de responsabilidad empresarial.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/features/**`
+    - `apps/facturaelectronica-web/src/i18n/**`
+    - `apps/facturaelectronica-web/src/App.jsx`
+  - Criterios:
+    - ROOT selecciona empresa; administrador empresarial ve solo su empresa.
+    - La UI nunca muestra secreto real, PIN, clave, token ni certificado.
+    - Activar modo real exige confirmacion explicita de responsabilidad.
+    - Acciones exitosas usan modal de progreso/exito y auditoria; errores quedan visibles con correlacion.
+  - Validacion:
+    - Tests frontend de render, permisos, estado incompleto y confirmacion de responsabilidad.
+    - `npm test -- --run` y `npm run build`.
+
+- [ ] TASK-153: Disenar autenticacion productiva con Cognito Hosted UI y PKCE
+  - Estado: TODO
+  - Requisitos: RF-078, RF-079, RF-088, RNF-027, RN-069, RN-070.
+  - Acceptance criteria: AC-176, AC-177, AC-187.
+  - Descripcion: Definir e implementar el flujo productivo de login usando Amazon Cognito Hosted UI, Authorization Code Grant y PKCE, dejando el login dummy solo para desarrollo local.
+  - Archivos:
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `services/bff-service/**`
+    - `infra/aws/**`
+  - Criterios:
+    - La SPA productiva no captura password.
+    - El BFF genera `state`, `nonce`, PKCE y maneja callback.
+    - `POST /api/v1/auth/login` no queda expuesto en produccion.
+  - Validacion:
+    - Tests de BFF para login-url, callback valido, state invalido y modo dummy bloqueado en profile productivo.
+
+- [ ] TASK-154: Reemplazar tokens en SPA por sesion BFF con cookie segura
+  - Estado: TODO
+  - Requisitos: RF-080, RF-081, RF-082, RNF-029, RN-070, RN-071, RN-072.
+  - Acceptance criteria: AC-178, AC-179, AC-180, AC-181.
+  - Descripcion: Cambiar el modelo de sesion para que el navegador reciba solo cookie opaca `HttpOnly/Secure/SameSite` y la SPA consulte `/api/v1/auth/session`.
+  - Archivos:
+    - `services/bff-service/**`
+    - `apps/facturaelectronica-web/**`
+    - `specs/api-contract.md`
+  - Criterios:
+    - No hay `accessToken`/`refreshToken` en storage ni estado serializado.
+    - BFF propaga identidad interna a microservicios.
+    - Logout limpia cookie y sesion server-side.
+  - Validacion:
+    - Tests frontend verifican ausencia de tokens en `sessionStorage`/`localStorage`.
+    - Tests BFF verifican atributos de cookie y logout.
+
+- [ ] TASK-155: Crear almacenamiento server-side de sesion cifrada
+  - Estado: TODO
+  - Requisitos: RF-080, RF-081, RNF-028, RNF-029, RN-072.
+  - Acceptance criteria: AC-177, AC-178, AC-188.
+  - Descripcion: Implementar persistencia de intentos OAuth y sesiones web con tokens Cognito cifrados server-side y hashes para cookie/CSRF.
+  - Archivos:
+    - `services/bff-service/**`
+    - `services/bff-service/src/main/resources/db/migration/**`
+    - `specs/database-design.md`
+    - `specs/data-dictionary.md`
+  - Criterios:
+    - `session_token_hash` y `csrf_token_hash`, nunca tokens en claro.
+    - Tokens Cognito cifrados o referenciados en secreto seguro.
+    - Sesiones revocables y con expiracion.
+  - Validacion:
+    - Tests de persistencia y sanitizacion.
+    - `rg` para asegurar que respuestas DTO no exponen tokens.
+
+- [ ] TASK-156: Implementar logout seguro y revocacion
+  - Estado: TODO
+  - Requisitos: RF-082, RNF-031.
+  - Acceptance criteria: AC-181.
+  - Descripcion: Implementar logout productivo que invalide sesion local, limpie cookie, revoque tokens Cognito cuando aplique y registre auditoria segura.
+  - Archivos:
+    - `services/bff-service/**`
+    - `services/audit-service/**` si se requiere contrato adicional.
+  - Criterios:
+    - Logout idempotente.
+    - Cookie expira inmediatamente.
+    - Auditoria sin tokens/cookies.
+  - Validacion:
+    - Tests BFF de logout repetido, cookie expirada y auditoria.
+
+- [ ] TASK-157: Hardening frontend contra exposicion de datos sensibles
+  - Estado: TODO
+  - Requisitos: RF-079, RF-084, RNF-030, RN-071, RN-076.
+  - Acceptance criteria: AC-179, AC-184, AC-188.
+  - Descripcion: Eliminar almacenamiento/logging de tokens, passwords, headers sensibles y payloads completos; ajustar build productiva para no publicar sourcemaps sin control.
+  - Archivos:
+    - `apps/facturaelectronica-web/**`
+    - `apps/facturaelectronica-web/vite.config.*`
+  - Criterios:
+    - Sin `console.log`/`console.debug` sensibles.
+    - Sin tokens en storage.
+    - Source maps productivos deshabilitados o protegidos.
+  - Validacion:
+    - Tests frontend y busquedas `rg "console.log|accessToken|refreshToken|sessionStorage"`.
+    - `npm run build`.
+
+- [ ] TASK-158: Agregar security headers CloudFront/BFF
+  - Estado: TODO
+  - Requisitos: RF-086, RNF-027, RNF-030.
+  - Acceptance criteria: AC-185.
+  - Descripcion: Configurar HSTS, CSP, `X-Content-Type-Options`, proteccion anti-frame y `Referrer-Policy` en CloudFront y/o BFF.
+  - Archivos:
+    - `infra/aws/modules/frontend/**`
+    - `infra/aws/modules/api/**`
+    - `services/bff-service/**`
+  - Criterios:
+    - CSP estricta compatible con SPA y Cognito.
+    - HTTPS obligatorio.
+    - Sin headers que expongan servidor innecesariamente.
+  - Validacion:
+    - `terraform fmt/init/validate`.
+    - Test BFF o verificacion HTTP de headers locales cuando aplique.
+
+- [ ] TASK-159: Implementar proteccion CSRF para sesiones por cookie
+  - Estado: TODO
+  - Requisitos: RF-085, RN-073.
+  - Acceptance criteria: AC-183.
+  - Descripcion: Agregar token CSRF asociado a sesion y validacion obligatoria en mutaciones `POST`, `PUT`, `PATCH`, `DELETE`.
+  - Archivos:
+    - `services/bff-service/**`
+    - `apps/facturaelectronica-web/**`
+  - Criterios:
+    - `GET /api/v1/auth/session` entrega token CSRF no autenticante.
+    - Mutaciones sin CSRF o con CSRF invalido fallan.
+    - El error es seguro y auditable.
+  - Validacion:
+    - Tests BFF positivos/negativos.
+    - Tests frontend propagan CSRF en mutaciones.
+
+- [ ] TASK-160: MFA obligatorio para ROOT, administradores y acciones criticas
+  - Estado: TODO
+  - Requisitos: RF-083, RN-074.
+  - Acceptance criteria: AC-182.
+  - Descripcion: Diseñar e implementar politica de MFA productiva para ROOT, administradores empresariales y acciones criticas como licencias, roles, secretos y configuracion DIAN.
+  - Archivos:
+    - `infra/aws/modules/auth/**`
+    - `services/bff-service/**`
+    - `services/identity-service/**`
+  - Criterios:
+    - Cognito exige MFA segun grupo/rol/politica.
+    - BFF valida claim/estado MFA antes de acciones criticas.
+    - Auditoria de denegaciones por MFA.
+  - Validacion:
+    - Tests de permisos criticos sin MFA.
+    - Terraform validate de Cognito/MFA.
+
+- [ ] TASK-161: Provisionamiento runtime de secretos AWS por empresa
+  - Estado: TODO
+  - Requisitos: RF-087, RNF-025, RN-075.
+  - Acceptance criteria: AC-186.
+  - Descripcion: Permitir que el backend cree secretos por empresa al crear tenant o configurar DIAN, usando AWS SDK, rutas deterministicas, IAM minimo, KMS e idempotencia.
+  - Archivos:
+    - `services/tenant-service/**`
+    - `services/dian-provider-service/**`
+    - `infra/aws/modules/secrets/**`
+    - `infra/aws/modules/ecs/**`
+  - Criterios:
+    - Terraform crea KMS/IAM base, no secretos por empresa.
+    - Runtime crea secretos bajo `/facturaelectronica/{env}/companies/{companyId}/...`.
+    - Auditoria sin valores secretos.
+  - Validacion:
+    - Tests con fake/stub de Secrets Manager.
+    - Terraform validate.
+
+- [ ] TASK-162: Auditoria de seguridad transversal
+  - Estado: TODO
+  - Requisitos: RF-082, RF-087, RNF-031, RN-076.
+  - Acceptance criteria: AC-181, AC-186, AC-188.
+  - Descripcion: Extender auditoria para login, callback OAuth, refresh, logout, CSRF invalido, acceso denegado, MFA faltante, creacion de secretos y cambios de roles/licencias.
+  - Archivos:
+    - `services/bff-service/**`
+    - `services/audit-service/**`
+    - `specs/api-contract.md`
+  - Criterios:
+    - Eventos seguros con correlation ID.
+    - Sin tokens, cookies, secrets ni payload sensible.
+    - Falla de auditoria no expone secretos.
+  - Validacion:
+    - Tests de auditoria y sanitizacion.
+
+- [ ] TASK-163: Modo transicion local y bloqueo productivo de auth dummy
+  - Estado: TODO
+  - Requisitos: RF-088, RN-069, RN-070.
+  - Acceptance criteria: AC-176, AC-187.
+  - Descripcion: Mantener el login dummy/opaco para desarrollo local y E2E mientras se implementa Cognito, pero bloquearlo por perfil/configuracion en produccion.
+  - Archivos:
+    - `services/bff-service/**`
+    - `services/identity-service/**`
+    - `docker-compose.yml`
+    - `.env.example`
+    - `README.md`
+  - Criterios:
+    - Variable explicita `AUTH_MODE=local|cognito`.
+    - `AUTH_MODE=local` permitido solo en entorno local/test.
+    - Produccion falla cerrado si no esta configurado Cognito.
+  - Validacion:
+    - Tests de perfiles/configuracion.
+    - E2E local sigue funcionando con modo dummy aprobado.
+
+- [x] TASK-164: Cerrar consistencia documental SDD antes de nueva implementacion
+  - Estado: DONE
+  - Requisitos: RF-104.
+  - Acceptance criteria: AC-189.
+  - Descripcion: Corregir huecos documentales detectados antes de continuar con codigo: IDs de requisitos duplicados, infraestructura productiva vacia, modelo de datos obsoleto, arquitectura desactualizada y contratos con decisiones antiguas.
+  - Archivos:
+    - `specs/requirements.md`
+    - `specs/acceptance-criteria.md`
+    - `specs/design.md`
+    - `specs/architecture.md`
+    - `specs/infrastructure.md`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+    - `specs/data-model.md`
+    - `specs/tasks.md`
+    - `README.md`
+  - Criterios:
+    - `RF-062` a `RF-066` quedan dedicados a DIAN parametrizable por empresa.
+    - `RF-089` a `RF-103` quedan dedicados a productizacion operativa.
+    - `RF-104` define consistencia documental SDD.
+    - `TASK-142` y `TASK-143` tienen decisiones de infraestructura y eventos productivos completas en `specs/infrastructure.md`.
+    - `specs/design.md` reemplaza la lista historica de "Modelo de datos faltante" por modelo vigente por bounded context.
+    - `specs/data-model.md` queda marcado como historico/transitorio frente a `database-design.md` y `data-dictionary.md`.
+  - Validacion:
+    - `rg` para verificar trazabilidad de `RF-089` a `RF-104`, `AC-189` y `TASK-164`.
+    - `rg` para detectar secciones vacias o referencias obsoletas que contradigan decisiones vigentes.
+    - `git diff --check`.
+
+- [x] TASK-165: Actualizar diagramas Mermaid a la arquitectura y modelo vigentes
+  - Estado: DONE
+  - Requisitos: RF-104.
+  - Acceptance criteria: AC-190.
+  - Descripcion: Actualizar `architecture.mmd` y `entity-relationship.mmd` para reflejar el estado real documentado: AWS cloud target, BFF, Cognito, servicios ECS privados, RDS/RDS Proxy, Secrets/KMS, eventos EventBridge/SQS/Lambda, DIAN parametrizable por empresa y modelo de datos vigente por bounded context.
+  - Archivos:
+    - `specs/diagrams/architecture.mmd`
+    - `specs/diagrams/entity-relationship.mmd`
+    - `specs/acceptance-criteria.md`
+    - `specs/tasks.md`
+  - Criterios:
+    - El diagrama de arquitectura no debe mostrar la plataforma como proveedor tecnologico DIAN.
+    - El diagrama de arquitectura debe mostrar solo BFF/API como borde publico y microservicios privados.
+    - El ER debe usar `THIRD_PARTY` consolidado, RBAC modular, licencias, catalogos DB-only, BFF sessions, DIAN configuration, payroll, Outbox/Inbox y reporting projections.
+    - Los diagramas deben usar sintaxis Mermaid simple compatible con `flowchart` y `erDiagram`.
+  - Validacion:
+    - Context7 Mermaid consultado para sintaxis `flowchart`, `subgraph` y `erDiagram`.
+    - `rg` confirma que `architecture.mmd` no contiene `Proveedor tecnologico DIAN`.
+    - `rg` confirma presencia de `Cognito`, `KMS`, `RDS Proxy`, `THIRD_PARTY`, `WEB_SESSION`, `PROVIDER_CONFIGURATION`, `OUTBOX_EVENT` e `INBOX_EVENT`.
+
+- [x] TASK-166: Cerrar brechas documentales de estado actual versus objetivo
+  - Estado: DONE
+  - Requisitos: RF-104.
+  - Acceptance criteria: AC-189, AC-191.
+  - Descripcion: Auditar el repositorio contra la documentacion SDD para separar claramente lo implementado hoy de lo objetivo/pendiente, limpiar referencias legacy obsoletas y registrar brechas productivas antes de continuar con nuevas implementaciones.
+  - Archivos:
+    - `specs/acceptance-criteria.md`
+    - `specs/tasks.md`
+    - `specs/infrastructure.md`
+    - `specs/architecture.md`
+    - `specs/api-contract.md`
+    - `specs/design.md`
+    - `specs/database-design.md`
+    - `README.md`
+    - `docs/legacy-cleanup-inventory.md`
+    - `scripts/legacy-data-audit.sql`
+  - Criterios:
+    - Cognito, BFF session persistente, CSRF, MFA y modulo Terraform `auth` quedan identificados como objetivo pendiente de TASK-153 a TASK-163.
+    - DIAN real, secretos/certificados por empresa y prueba de conexion quedan identificados como objetivo pendiente de TASK-145 a TASK-152.
+    - `reporting-service` no se presenta como microservicio fisico implementado; el estado vigente usa `reporting-projection-lambda`.
+    - OpenAPI queda documentado como dependencia Springdoc disponible, pero pendiente como artefacto versionado por servicio.
+    - Documentos y scripts legacy no deben indicar como pendientes componentes ya migrados ni como activas tablas/rutas retiradas.
+  - Validacion:
+    - Context7 Springdoc consultado para confirmar exposicion runtime de `/v3/api-docs` y diferencia con contratos versionados.
+    - `rg` sobre referencias a `reporting-service`, `modules/auth`, `legacy-monolith`, rutas legacy y pendientes.
+    - `git diff --check`.

@@ -4,6 +4,8 @@
 
 Este documento se actualiza para TASK-059. Su proposito es registrar que codigo legacy fue removido, que endpoints/tablas siguen protegidos por compatibilidad o datos historicos, y que elementos requieren migracion/respaldo antes de cualquier eliminacion destructiva.
 
+Estado documental: este archivo es historico de TASK-059 y no debe usarse como fuente vigente unica. La fuente actual de limpieza aplicada es `specs/legacy-cleanup-audit.md`; la fuente vigente de contratos es `specs/api-contract.md`.
+
 TASK-059 lote 1 elimina el modulo `services/legacy-monolith` del repositorio activo. No elimina tablas ni datos `public.*`; cualquier depuracion de base de datos queda bloqueada hasta plan de migracion/respaldo aprobado.
 
 ## Evidencia revisada
@@ -24,7 +26,7 @@ Resultado estructural:
 | Componente | Estado actual | Java main |
 | --- | --- | ---: |
 | `services/tenant-service` | Microservicio fisico activo | 28 |
-| `services/catalog-service` | Microservicio fisico activo con rutas legacy compatibles | 137 |
+| `services/catalog-service` | Microservicio fisico activo con contratos canonicos `/api/v1` | 137 |
 | `services/thirdparty-service` | Microservicio fisico activo solo con contratos canonicos `/api/v1` | 72 |
 | `services/inventory-service` | Microservicio fisico activo | 70 |
 | `services/billing-service` | Microservicio fisico activo para venta POS, configuracion fiscal y orquestacion | 87 |
@@ -41,7 +43,7 @@ La prueba `scripts/e2e-from-zero.ps1` valida el flujo local desde empresa nueva 
 | --- | --- | --- |
 | `tenant-service` | Si | Crea empresa, licencia activa y valida acciones licenciadas. |
 | `identity-service` | Si | Crea usuario owner, login y membresia por empresa. |
-| `catalog-service` | Salud validada; no invoca endpoints legacy en el flujo principal | Conserva rutas compatibles pendientes de depuracion. |
+| `catalog-service` | Salud validada; no invoca endpoints legacy en el flujo principal | Contratos activos `/api/v1/catalog-*`; rutas legacy retiradas por limpieza posterior. |
 | `thirdparty-service` | Si | Crea cliente y proveedor por `/api/v1/customers` y `/api/v1/suppliers`. |
 | `inventory-service` | Si | Crea producto, stock inicial, kardex y `SALE_OUT`. |
 | `billing-service` | Si | Configura emisor/resolucion, crea venta, confirma POS y orquesta efectos posteriores. |
@@ -54,14 +56,14 @@ La prueba `scripts/e2e-from-zero.ps1` valida el flujo local desde empresa nueva 
 
 | Area | Endpoint legacy | Reemplazo actual | Estado |
 | --- | --- | --- | --- |
-| Catalogos | `/api/categorias` | `catalog-service` mantiene ruta compatible | Mantener temporal hasta crear contrato `/api/v1`. |
-| Catalogos | `/api/paises` | `catalog-service` mantiene ruta compatible | Mantener temporal. |
-| Catalogos | `/api/tipos-documento` | `catalog-service` mantiene ruta compatible | Mantener temporal. |
-| Catalogos | `/api/metodopago` | `catalog-service` mantiene ruta compatible | Mantener temporal. |
-| Catalogos | `/api/tipogasto` | `catalog-service` mantiene ruta compatible | Mantener temporal. |
-| Catalogos | `/api/impuesto` | `catalog-service` mantiene ruta compatible | Mantener temporal. |
-| Catalogos | `/api/parametros` | `catalog-service` mantiene ruta compatible | Mantener temporal. |
-| Catalogos | `/api/productos` | `catalog-service` compatible e `inventory-service /api/v1/products` para stock real | Migracion parcial: producto inventariable ya vive en inventario; catalogo conserva compatibilidad. |
+| Catalogos | `/api/categorias` | `catalog-service /api/v1/catalogs/*` o `inventory-service /api/v1/products` segun caso | Retirado como contrato legacy activo. |
+| Catalogos | `/api/paises` | `catalog-service /api/v1/catalogs/*` | Retirado como contrato legacy activo. |
+| Catalogos | `/api/tipos-documento` | `catalog-service /api/v1/catalogs/DIAN_DOCUMENT_TYPE/items` | Retirado como contrato legacy activo. |
+| Catalogos | `/api/metodopago` | `catalog-service /api/v1/catalogs/PAYMENT_METHOD/items` | Retirado como contrato legacy activo. |
+| Catalogos | `/api/tipogasto` | `catalog-service /api/v1/catalogs/*` y `accounting-service /api/v1/expenses` | Retirado como contrato legacy activo. |
+| Catalogos | `/api/impuesto` | `catalog-service /api/v1/catalogs/SALES_TAX/items` | Retirado como contrato legacy activo. |
+| Catalogos | `/api/parametros` | `catalog-service /api/v1/catalogs/*` o configuracion del servicio dueno | Retirado como contrato legacy activo. |
+| Catalogos | `/api/productos` | `inventory-service /api/v1/products` para item vendible/comprable/inventariable | Retirado como contrato legacy activo. |
 | Terceros | `/api/clientes` | `thirdparty-service /api/v1/customers` y `/api/v1/third-parties` | Codigo y endpoint retirados en TASK-059 lote 2; tablas historicas preservadas. |
 | Terceros | `/api/proveedores` | `thirdparty-service /api/v1/suppliers` y `/api/v1/third-parties` | Codigo y endpoint retirados en TASK-059 lote 2; tablas historicas preservadas. |
 | Inventario | `/api/compras` | `inventory-service /api/v1/purchases` y `/api/v1/inventory-movements` | Reemplazado funcionalmente para flujo nuevo. |
@@ -82,9 +84,9 @@ La prueba `scripts/e2e-from-zero.ps1` valida el flujo local desde empresa nueva 
 | `usuarios` | `identity.user_account`, `identity.company_membership`, `identity.user_session` | Reemplazado funcionalmente para usuarios nuevos | Mantener hasta migrar/respaldar datos legacy. |
 | `auditoria` | `audit.audit_event` | Reemplazado funcionalmente para auditoria generica | Mantener hasta migrar/respaldar datos legacy. |
 | `registro_accesos` | `identity.identity_access_audit` y `audit.audit_event` segun tipo de evento | Reemplazado funcionalmente para accesos nuevos | Mantener hasta migrar/respaldar historicos. |
-| `tipodocumento` | `catalog.tipodocumento` | Reemplazado por catalogo fisico | Eliminar solo despues de migrar/respaldar datos requeridos. |
-| `cliente` | `thirdparty.third_party` y `thirdparty.third_party_role` | Codigo/endpoints legacy retirados en TASK-059 lote 2 | Tabla `thirdparty.cliente` se conserva solo para migracion/respaldo. |
-| `proveedor` | `thirdparty.third_party` y `thirdparty.third_party_role` | Codigo/endpoints legacy retirados en TASK-059 lote 2 | Tabla `thirdparty.proveedor` se conserva solo para migracion/respaldo. |
+| `tipodocumento` | `catalog.catalog_item` con `DIAN_DOCUMENT_TYPE` | Reemplazado y eliminado por limpieza posterior | Ver `specs/legacy-cleanup-audit.md`. |
+| `cliente` | `thirdparty.third_party` y `thirdparty.third_party_role` | Codigo/endpoints legacy retirados en TASK-059 lote 2 | Tabla eliminada por TASK-088 con salvaguarda Flyway. |
+| `proveedor` | `thirdparty.third_party` y `thirdparty.third_party_role` | Codigo/endpoints legacy retirados en TASK-059 lote 2 | Tabla eliminada por TASK-088 con salvaguarda Flyway. |
 | `categoria` | `catalog.categoria` | Reemplazado funcionalmente | Eliminar despues de validar dependencia de productos/catalogo. |
 | `producto` | `inventory.product`, `inventory.stock_balance`; `catalog.producto` temporal | Reemplazado para inventario nuevo, compatibilidad parcial en catalogo | Migrar datos utiles y eliminar duplicidad de ownership. |
 | `metodo_pago` | `catalog.metodo_pago` | Reemplazado funcionalmente | Eliminar despues de migrar datos requeridos. |
@@ -141,7 +143,7 @@ Estado de eliminacion de codigo:
 
 | Ruta | Estado | Condicion antes de eliminar |
 | --- | --- | --- |
-| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/catalog/**` | Eliminado en TASK-059 lote 1 | Reemplazado por `catalog-service`; rutas compatibles activas permanecen en `catalog-service`. |
+| `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/catalog/**` | Eliminado en TASK-059 lote 1 | Reemplazado por `catalog-service`; contratos activos actuales viven en `/api/v1/catalogs*`. |
 | `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/thirdparty/**` | Eliminado en TASK-059 lote 1 | Reemplazado por `thirdparty-service`; E2E usa `/api/v1/customers` y `/api/v1/suppliers`. |
 | `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/inventory/**` | Eliminado en TASK-059 lote 1 | Reemplazado por `inventory-service`; historicos `public.compra`/`public.detalle_compra` se preservan. |
 | `services/legacy-monolith/src/main/java/com/msvanegasg/facturaelectronica/accounting/**` | Eliminado en TASK-059 lote 1 | Reemplazado por `accounting-service`; datos public contables se preservan. |
@@ -153,7 +155,7 @@ Estado de eliminacion de codigo:
 
 ## Codigo que no debe eliminarse todavia
 
-- `catalog-service` mantiene controladores con rutas legacy compatibles. `thirdparty-service` retiro `/api/clientes` y `/api/proveedores` en TASK-059 lote 2; conserva `ThirdPartyController` con `/api/v1`.
+- `catalog-service` ya expone contratos canonicos `/api/v1/catalogs*`. `thirdparty-service` retiro `/api/clientes` y `/api/proveedores` en TASK-059 lote 2; conserva `ThirdPartyController` con `/api/v1`.
 - `services/audit-service` ya es microservicio activo; `billing-service` publica confirmaciones fiscales, pero aun falta integrar productores de inventario y contabilidad.
 - `services/legacy-monolith` fue eliminado como codigo en TASK-059 lote 1; las brechas de datos historicos se gestionan sobre tablas `public.*`, no reactivando el monolito.
 - Las migraciones legacy no deben borrarse sin una estrategia de datos. En Flyway, retirar migraciones ya aplicadas puede romper ambientes existentes.
@@ -162,9 +164,9 @@ Estado de eliminacion de codigo:
 
 1. Gastos nuevos estan en `accounting-service`; falta auditoria/migracion de datos historicos legacy antes de eliminar tablas/clases antiguas.
 2. `audit-service` ya recibe eventos de `billing-service`; faltan productores de inventario y contabilidad.
-3. Algunas rutas compatibles de catalogo siguen existiendo por compatibilidad; terceros legacy `/api/clientes` y `/api/proveedores` fueron retirados en TASK-059 lote 2.
+3. Las rutas legacy de catalogo y terceros ya no deben considerarse contratos activos; las pruebas nuevas deben usar BFF y `/api/v1`.
 4. Existen tablas duplicadas entre public legacy y esquemas de microservicio; se requiere plan de migracion/respaldo antes de eliminarlas.
-5. El codigo `legacy-monolith` y el codigo legacy de terceros ya fueron retirados; queda pendiente plan de migracion/respaldo de datos historicos `public.*` y `thirdparty.cliente/proveedor`.
+5. El codigo `legacy-monolith`, el codigo legacy de terceros y las tablas `thirdparty.cliente/proveedor` ya fueron retirados; para datos historicos restantes `public.*` se requiere plan de migracion, respaldo o eliminacion aprobado.
 
 ## Recomendacion posterior a TASK-059 lote 1
 

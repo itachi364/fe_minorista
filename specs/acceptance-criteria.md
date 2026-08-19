@@ -4,10 +4,10 @@
 
 - AC-001: Dado un emisor configurado con resolucion vigente, cuando se cree una factura valida, entonces el sistema debe asignar prefijo y numero autorizado sin duplicados.
 - AC-002: Dada una factura con productos, cantidades, impuestos y descuentos, cuando se calcule el documento, entonces subtotal, impuestos, descuentos, cargos y total deben cuadrar exactamente.
-- AC-003: Dada una factura lista para emitir, cuando se envie al proveedor tecnologico, entonces el sistema debe registrar solicitud, respuesta, identificadores, estado y errores si existen.
-- AC-004: Dada una respuesta exitosa del proveedor tecnologico, entonces el sistema debe almacenar CUFE, QR, XML, representacion grafica y estado validado o equivalente.
+- AC-003: Dada una factura lista para emitir, cuando se envie mediante la conexion DIAN configurada para la empresa, entonces el sistema debe registrar solicitud, respuesta, identificadores, estado y errores si existen.
+- AC-004: Dada una respuesta exitosa de la conexion DIAN configurada, entonces el sistema debe almacenar CUFE/CUDE cuando aplique, QR, XML, representacion grafica y estado validado o equivalente.
 - AC-005: Dada una factura validada, cuando el usuario intente editar valores fiscales, entonces el sistema debe rechazar la modificacion y exigir nota credito/debito.
-- AC-006: Dada una factura rechazada por proveedor tecnologico, entonces el sistema debe conservar el rechazo, permitir correccion segun estado y registrar auditoria.
+- AC-006: Dada una factura rechazada por la conexion DIAN configurada, entonces el sistema debe conservar el rechazo, permitir correccion segun estado y registrar auditoria.
 
 ## POS electronico
 
@@ -39,7 +39,7 @@
 
 - AC-021: Cada caso de uso nuevo debe tener pruebas unitarias.
 - AC-022: Cada controlador nuevo debe tener prueba HTTP o de capa web.
-- AC-023: Cada adaptador externo al proveedor tecnologico debe probarse con mocks o test doubles.
+- AC-023: Cada adaptador externo de conexion DIAN debe probarse con mocks o test doubles.
 - AC-024: Los criterios de aceptacion criticos deben quedar cubiertos por pruebas automatizadas o checklist operacional documentado.
 
 ## Refactorizacion arquitectonica
@@ -96,8 +96,15 @@
 - AC-063: Dado cualquier rol empresarial, cuando se configure permisos, entonces el sistema debe rechazar permisos globales `GLOBAL_*` y registrar auditoria segura del intento.
 - AC-064: Dado un usuario con permisos efectivos, cuando acceda a un modulo o ejecute una accion, entonces backend y frontend deben permitirla o rechazarla segun permisos persistidos, no segun nombres de roles hardcodeados.
 - AC-065: Dada la SPA, cuando se use en escritorio o movil, entonces login, shell, navegacion, formularios, modales y paneles de respuesta deben mantener una presentacion profesional, consistente, responsive y sin solapamientos visuales.
-- AC-066: Dado el entorno local Docker, cuando `IDENTITY_ROOT_USER_SEED_ENABLED=true`, entonces `identity-service` debe crear o asegurar un usuario `ROOT` dummy activo, retornar `globalRoles` en login y permitir entrada al panel global sin empresa ni licencia.- AC-067: Dado un usuario `ROOT` autenticado, cuando ingrese a la SPA, entonces debe ver todos los modulos disponibles y operar configuraciones usando una empresa activa creada o seleccionada.
-- AC-068: Dado un usuario `ROOT` autenticado y una empresa contratante creada, cuando registre el administrador inicial con email, nombre y contraseña, entonces el sistema debe crear el usuario y asignarle rol empresarial `OWNER` para esa empresa.
+- AC-066: Dado el entorno local Docker, cuando `IDENTITY_ROOT_USER_SEED_ENABLED=true`, entonces `identity-service` debe crear o asegurar un usuario `ROOT` dummy activo, retornar `globalRoles` en login y permitir entrada al panel global sin empresa ni licencia.
+- AC-067: Dado un usuario `ROOT` autenticado, cuando ingrese a la SPA, entonces debe ver todos los modulos disponibles y operar configuraciones usando una empresa activa creada o seleccionada.
+- AC-068: Dado un usuario `ROOT` autenticado y una empresa contratante creada, cuando registre el administrador inicial con email, nombre y contrasena, entonces el sistema debe crear el usuario y asignarle rol empresarial `OWNER` para esa empresa.
+- AC-069: Dado el flujo de creacion de empresa, cuando se envie el request, entonces debe contener `identificationTypeCode` numerico DIAN y no debe contener `identificationTypeId` UUID.
+- AC-070: Dado un codigo de tipo de documento, cuando no pertenezca a la tabla DIAN soportada, entonces el backend debe rechazarlo con error funcional claro.
+- AC-071: Dada la tabla `tenant.company`, cuando persista identificacion de empresa, entonces debe guardar `identification_type_code` entero con restriccion de codigos permitidos.
+- AC-072: Dado el frontend de empresa, cuando el usuario seleccione tipo de documento, entonces debe mostrar nombres de tipos DIAN y enviar el codigo numerico seleccionado.
+- AC-073: Dado `thirdparty-service`, cuando reciba, devuelva o persista tipos de documento, entonces debe usar `identificationTypeCode` entero DIAN.
+- AC-074: Dado cualquier formulario de identificacion en frontend, entonces no debe permitir aliases textuales o UUID para tipos de documento; debe mostrar etiquetas en espanol y enviar codigos numericos.
 - AC-075: Dado el formulario de terceros, cuando el usuario seleccione cliente/proveedor, entonces la UI debe mostrar `Tipo de tercero` en espanol y el request debe enviar `roles` con valores tecnicos `CUSTOMER`, `SUPPLIER` o ambos.
 - AC-076: Dado un campo de municipio en terceros o emisor fiscal, cuando el usuario lo edite, entonces debe seleccionar departamento y municipio por nombre en orden alfabetico, mientras el backend recibe y persiste `municipalityCode` DANE/DIVIPOLA.
 - AC-077: Dado un usuario `ROOT`, cuando cree o seleccione una empresa, entonces la SPA debe mostrar las empresas disponibles en una lista desplegable y usar el `companyId` seleccionado para operar configuraciones empresariales.
@@ -120,7 +127,7 @@
 - AC-092: `virtualWalletCode` debe ser obligatorio solo cuando `paymentMethodCode = VIRTUAL_WALLET`; para otros medios debe estar ausente o nulo.
 - AC-093: La SPA debe mostrar responsabilidades fiscales en doble lista `Disponibles`/`Seleccionadas`, permitiendo mover codigos sin escritura manual.
 - AC-094: La responsabilidad `R-99-PN` debe mantenerse excluyente en la doble lista: al seleccionarla limpia las demas y al seleccionar otra responsabilidad reemplaza `R-99-PN`.
-- AC-095: Dada una sesion autenticada, cuando el usuario refresque la pagina antes de 5 minutos de inactividad, entonces la SPA debe restaurar la sesion desde `sessionStorage` sin volver a login.
+- AC-095: Dada una sesion autenticada en modo local/transitorio, cuando el usuario refresque la pagina antes de 5 minutos de inactividad, entonces la SPA debe restaurar la sesion desde `sessionStorage` sin volver a login. En produccion este criterio queda reemplazado por sesion BFF con cookie `HttpOnly`.
 - AC-096: Dada una sesion autenticada, cuando pasen 5 minutos sin actividad de usuario, entonces la SPA debe cerrar la sesion, limpiar el almacenamiento local de sesion y mostrar solo login con modal informativo.
 - AC-097: Dado el formulario de login, entonces email y contrasena deben iniciar vacios, con placeholders, sin credenciales dummy precargadas.
 - AC-098: Dada una venta POS creada, entonces el identificador tecnico de venta debe mostrarse como estado no editable y solo debe habilitar la confirmacion POS; la fecha de venta la asigna el backend.
@@ -204,3 +211,34 @@
 - AC-164: Dado el E2E multiempresa, cuando dos empresas creen datos similares, entonces ninguna consulta o accion empresarial debe cruzar datos.
 - AC-165: Dado Terraform AWS, cuando se ejecute `terraform fmt`, `terraform init -backend=false` y `terraform validate`, entonces no debe fallar.
 - AC-166: Dado un evento asincrono productivo, cuando se procese por Lambda, entonces debe ser idempotente, tener DLQ/reintento y no bloquear el microservicio productor.
+- AC-167: Dado el modulo administrativo de usuarios y roles, cuando se listen registros, entonces las tablas deben mostrar datos principales, estado, permisos y acciones con presentacion profesional, busqueda estable y textos visibles en espanol.
+
+## Configuracion DIAN parametrizable por empresa
+
+- AC-168: Dada la documentacion del producto, cuando describa la emision electronica, entonces debe indicar que la plataforma es software parametrizable por empresa y no presta servicio de proveedor tecnologico DIAN.
+- AC-169: Dada una empresa, cuando configure conexion DIAN, entonces la configuracion debe quedar aislada por `company_id` y no debe poder usarse desde otra empresa.
+- AC-170: Dado un certificado, PIN tecnico, clave tecnica o credencial DIAN, cuando se configure, entonces el sistema debe almacenar solo una referencia segura y nunca retornar ni auditar el valor secreto.
+- AC-171: Dado un usuario ROOT o administrador empresarial autorizado, cuando cree, actualice, pruebe, active o inactive configuracion DIAN, entonces debe generarse auditoria segura sin secretos.
+- AC-172: Dada una empresa con configuracion DIAN incompleta, vencida, inactiva o no probada, cuando intente emitir en modo real, entonces el backend debe rechazar la emision con error funcional claro.
+- AC-173: Dado el modo `MOCK`, cuando se ejecute E2E local, entonces debe permitir pruebas internas sin llamadas externas y sin afirmar cumplimiento tecnico DIAN productivo.
+- AC-174: Dada la UI de Configuracion DIAN, cuando se active modo real, entonces debe mostrar declaracion de responsabilidad de la empresa facturadora y exigir confirmacion explicita.
+- AC-175: Dado el flujo futuro de integracion real, cuando se implemente, entonces debe validar XML UBL, firma, CUFE/CUDE, QR, XSD/Schematron y respuesta DIAN segun anexo vigente antes de habilitar produccion.
+
+## Autenticacion productiva, sesion segura y proteccion del navegador
+
+- AC-176: Dado un ambiente productivo, cuando el usuario inicie sesion, entonces debe ser redirigido a Cognito Hosted UI con Authorization Code Grant + PKCE, no a un formulario de password propio de la SPA.
+- AC-177: Dado el callback OAuth, cuando Cognito devuelva `code` y `state`, entonces el BFF debe validar `state`, intercambiar el codigo por tokens y crear una sesion server-side sin retornar tokens al navegador.
+- AC-178: Dada una sesion productiva creada, entonces la respuesta del BFF debe establecer cookie `HttpOnly`, `Secure`, `SameSite=Lax` o `Strict`, con expiracion controlada.
+- AC-179: Dada la SPA productiva autenticada, entonces `localStorage`, `sessionStorage`, IndexedDB y estado serializado no deben contener `accessToken`, `refreshToken`, `idToken`, bearer token, password ni cookie de sesion.
+- AC-180: Dado cualquier request de la SPA hacia `/api/v1/**`, entonces la autorizacion debe derivarse de la cookie segura y de la sesion server-side; la SPA no debe enviar header `Authorization` construido en JavaScript.
+- AC-181: Dado un logout, entonces el BFF debe invalidar la sesion server-side, limpiar la cookie y revocar tokens Cognito cuando aplique.
+- AC-182: Dado un usuario ROOT o administrador en produccion, cuando intente iniciar sesion u operar acciones criticas sin MFA, entonces el sistema debe bloquear la operacion.
+- AC-183: Dado un endpoint mutable autenticado por cookie, cuando falte o sea invalido el token CSRF, entonces el BFF debe rechazar la solicitud con error seguro.
+- AC-184: Dada la build productiva de la SPA, entonces no debe contener `console.log`/`console.debug` con payloads, credenciales, tokens, headers sensibles o respuestas completas.
+- AC-185: Dado CloudFront/BFF productivo, entonces las respuestas deben incluir HSTS, CSP, `X-Content-Type-Options`, proteccion de frame y `Referrer-Policy`.
+- AC-186: Dado el alta de una empresa por ROOT, cuando se creen secretos AWS por empresa, entonces la operacion debe usar prefijo controlado por ambiente/empresa, KMS/IAM minimo, idempotencia y auditoria sin exponer valores.
+- AC-187: Dado un ambiente productivo, cuando `POST /api/v1/auth/login` dummy sea invocado desde la SPA, entonces debe estar deshabilitado o no expuesto publicamente.
+- AC-188: Dado un analisis automatico o manual de seguridad, entonces no deben encontrarse passwords, tokens, certificados, PIN ni claves en logs, auditoria, errores publicos, storage del navegador ni sourcemaps publicos.
+- AC-189: Dado el flujo SDD vigente, cuando se revise la documentacion, entonces no deben existir IDs de requisitos duplicados, secciones vacias de tareas DONE ni decisiones vigentes sin reflejo en requisitos, diseno, arquitectura, infraestructura, contratos API, modelo/diccionario de datos, tareas y README cuando aplique.
+- AC-190: Dados los diagramas Mermaid en `specs/diagrams`, cuando se comparen con la arquitectura y el modelo vigente, entonces deben representar BFF, Cognito, microservicios privados, AWS administrado, EventBridge/SQS/Lambda con DLQ, RDS/RDS Proxy, Secrets/KMS, DIAN parametrizable por empresa, RBAC, licencias, catalogos DB-only, terceros consolidados, inventario, billing, contabilidad, nomina, auditoria, sesiones BFF y Outbox/Inbox.
+- AC-191: Dada la documentacion SDD, cuando una capacidad aparezca como objetivo productivo o backlog, entonces debe estar marcada explicitamente como `objetivo`, `pendiente` o `transitorio`, sin confundirse con componentes implementados y desplegables actualmente.

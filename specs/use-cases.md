@@ -31,7 +31,7 @@ Flujo principal:
 2. El sistema valida datos y stock.
 3. El sistema calcula totales.
 4. El sistema asigna numeracion.
-5. El sistema envia al proveedor tecnologico DIAN.
+5. El sistema envia mediante la conexion DIAN configurada de la empresa.
 6. El sistema registra CUFE, QR, artefactos y estado.
 7. El sistema actualiza inventario y contabilidad.
 
@@ -45,7 +45,7 @@ Flujo principal:
 1. El cajero registra productos y pago.
 2. El sistema valida disponibilidad y datos minimos.
 3. El sistema genera documento equivalente electronico POS.
-4. El sistema envia al proveedor tecnologico.
+4. El sistema envia mediante la conexion DIAN configurada.
 5. El sistema registra CUDE, QR, artefactos y estado.
 6. El sistema actualiza inventario y contabilidad.
 
@@ -59,7 +59,7 @@ Flujo principal:
 1. El actor selecciona factura validada.
 2. El sistema valida que el ajuste sea permitido.
 3. El sistema calcula valores de la nota.
-4. El sistema envia la nota al proveedor tecnologico.
+4. El sistema envia la nota mediante la conexion DIAN configurada.
 5. El sistema registra estado y afecta inventario/contabilidad si corresponde.
 
 Acceptance criteria: AC-005, AC-013, AC-014.
@@ -72,7 +72,7 @@ Flujo principal:
 1. El actor selecciona POS electronico.
 2. El sistema valida motivo de anulacion o correccion.
 3. El sistema genera nota de ajuste.
-4. El sistema envia la nota al proveedor tecnologico.
+4. El sistema envia la nota mediante la conexion DIAN configurada.
 5. El sistema registra estado y trazabilidad.
 
 Acceptance criteria: AC-008.
@@ -369,3 +369,56 @@ Flujo principal:
 7. El sistema emite documento equivalente electronico POS mock, descuenta inventario y contabiliza efectos aprobados.
 
 Acceptance criteria: AC-117, AC-118, AC-119, AC-121, AC-122, AC-033.
+
+## UC-027: Iniciar sesion productiva sin exponer tokens al navegador
+
+Actor: Usuario ROOT, administrador empresarial o usuario operativo.
+
+Precondiciones:
+- El ambiente productivo tiene Cognito configurado.
+- El BFF tiene dominio/callback OAuth autorizado.
+- El usuario existe en Cognito y esta vinculado a identidad local.
+
+Flujo principal:
+1. El usuario abre la SPA.
+2. La SPA solicita al BFF la URL de login productiva.
+3. El BFF genera `state`, `nonce` y PKCE, y redirige a Cognito Hosted UI.
+4. El usuario ingresa credenciales y completa MFA cuando aplique.
+5. Cognito redirige al callback del BFF con `code` y `state`.
+6. El BFF valida `state`, intercambia el codigo por tokens y crea sesion server-side cifrada.
+7. El BFF emite cookie opaca `HttpOnly`, `Secure`, `SameSite`.
+8. La SPA consulta `/api/v1/auth/session` y recibe usuario, empresas, permisos y CSRF, sin tokens.
+9. Las solicitudes posteriores usan la cookie segura y el BFF propaga identidad interna a microservicios.
+
+Flujos alternos:
+- Si `state` no coincide o expiro, el BFF rechaza el callback y registra auditoria.
+- Si el usuario ROOT/admin no completa MFA, el BFF bloquea acciones criticas.
+- Si la sesion expira, el BFF limpia cookie y la SPA vuelve a login.
+
+Reglas:
+- La SPA productiva no captura password ni conserva tokens en storage.
+- El BFF es responsable de refresh, logout, revocacion y auditoria.
+
+Acceptance criteria: AC-176, AC-177, AC-178, AC-179, AC-180, AC-181, AC-182.
+
+## UC-028: Crear secretos AWS por empresa al crear tenant
+
+Actor: Usuario ROOT.
+
+Precondiciones:
+- `ROOT` esta autenticado con MFA.
+- El rol IAM del backend permite crear secretos solo bajo el prefijo del ambiente y empresa.
+
+Flujo principal:
+1. `ROOT` crea una empresa contratante.
+2. `tenant-service` registra la empresa y emite evento/solicitud de provisionamiento seguro.
+3. El backend autorizado crea secretos deterministas por empresa para configuraciones sensibles futuras.
+4. El sistema etiqueta los secretos con ambiente, `companyId` y proposito.
+5. La base de datos guarda solo referencias no sensibles.
+6. Auditoria registra resultado sin valores secretos.
+
+Flujos alternos:
+- Si el secreto ya existe, el proceso es idempotente y retorna la referencia existente.
+- Si AWS Secrets Manager falla, la empresa puede quedar creada con estado de provisionamiento pendiente y reintento auditable.
+
+Acceptance criteria: AC-170, AC-171, AC-186, AC-188.

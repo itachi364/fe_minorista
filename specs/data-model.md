@@ -1,5 +1,7 @@
 # Data Model: Multiempresa, facturacion/POS, inventario y contabilidad
 
+> Estado SDD: documento historico/transitorio. La fuente vigente para persistencia es `specs/database-design.md` y `specs/data-dictionary.md`. Este archivo se conserva como contexto de evolucion y matriz legacy, pero cualquier diferencia con esos documentos debe resolverse a favor de `database-design.md`/`data-dictionary.md`.
+
 ## Motor recomendado
 
 PostgreSQL se mantiene como motor principal.
@@ -9,7 +11,7 @@ Razones:
 - Soporte ACID para numeracion fiscal, inventario y contabilidad.
 - Integridad referencial mediante llaves foraneas y constraints.
 - Indices compuestos para aislamiento multiempresa.
-- `jsonb` para respuestas del proveedor tecnologico DIAN, trazas tecnicas y payloads normalizados.
+- `jsonb` para respuestas de la conexion DIAN configurada por empresa, trazas tecnicas y payloads normalizados.
 - Buen soporte para migraciones versionadas.
 - Consultas relacionales necesarias para libro diario, libro mayor, kardex, ventas y reportes fiscales.
 
@@ -480,7 +482,7 @@ Campos minimos adicionales para orquestacion:
 - `billing.sale_line.item_type`.
 - `billing.sale_line.stock_tracked`.
 
-### Proveedor tecnologico DIAN
+### Conector DIAN parametrizable por empresa
 
 - `dian_provider.provider_configuration`
 - `dian_provider.provider_submission`
@@ -491,7 +493,7 @@ Estado TASK-036:
 - `dian-provider-service` fisico crea `dian_provider.provider_submission`.
 - La tabla registra empresa, documento, tipo de documento, clave de idempotencia, tracking ID, estado mock, CUFE/CUDE, QR, error seguro, fecha, request y response seguros.
 - `unique(company_id, document_id, document_type, idempotency_key)` evita duplicar envios por reintento.
-- La configuracion del proveedor real, certificados, credenciales y respuestas oficiales quedan pendientes hasta seleccionar proveedor tecnologico.
+- La configuracion DIAN real, certificados, credenciales y respuestas oficiales quedan documentadas como configuracion parametrizable por empresa. Cada empresa es responsable de su habilitacion/certificacion DIAN; la plataforma no presta servicio de proveedor tecnologico.
 
 ### Contabilidad
 
@@ -509,7 +511,7 @@ Antes de eliminar tablas publicas legacy se debe construir una matriz de reempla
 
 | Tabla legacy | Bounded context destino | Tabla destino | Estado |
 |---|---|---|---|
-| `roles`, `usuarios` | `identity-service` futuro | pendiente | mantener; autenticacion/autorizacion no esta migrada |
+| `roles`, `usuarios` | `identity-service` | reemplazado por RBAC modular | conservar solo datos migrados o respaldados; no usar tablas legacy para login/RBAC nuevo |
 | `auditoria`, `registro_accesos` | `audit-service` e `identity-service` | `audit.audit_event`, tablas identity futuras | `audit.audit_event` migrado en TASK-042; mantener legacy hasta migrar/respaldar datos |
 | `tipodocumento`, `pais`, `impuesto`, `metodo_pago`, `parametros`, `categoria`, `tipo_gasto` | `catalog-service` | `catalog.catalog_definition`, `catalog.catalog_item`, `catalog.department`, `catalog.municipality` | runtime legacy retirado y tablas eliminadas en TASK-088; `tipodocumento` migrado a `DIAN_DOCUMENT_TYPE` |
 | `producto` | `inventory-service` | `inventory.product`, `inventory.stock_balance` | runtime legacy retirado y tabla `catalog.producto` eliminada en TASK-088 |
@@ -521,7 +523,7 @@ Antes de eliminar tablas publicas legacy se debe construir una matriz de reempla
 | `billing_issuer_profile`, `billing_numbering_resolution` | `billing-service` | `billing.issuer_profile`, `billing.numbering_resolution` | migrado funcionalmente en TASK-041; mantener tablas legacy hasta migrar/respaldar datos |
 | `billing_electronic_pos_document`, `billing_electronic_pos_document_line` | `billing-service` | `billing.sale`, `billing.sale_line`, `billing.electronic_document` | parcial; mantener hasta cerrar POS directo y numeracion real |
 | `billing_provider_submission` | `dian-provider-service` y `billing-service` | `dian_provider.provider_submission`, `billing.electronic_document` | reemplazado para mock; migrar trazas utiles antes de eliminar |
-| `billing_electronic_document_trace_event`, `billing_fiscal_audit_event` | `billing-service`/`audit-service` | `audit.audit_event` | mantener; falta integrar productores y migrar/respaldar datos historicos |
+| `billing_electronic_document_trace_event`, `billing_fiscal_audit_event` | `billing-service`/`audit-service` | `audit.audit_event`, `billing.outbox_event` | reemplazado para eventos nuevos; migrar/respaldar datos historicos si existen antes de eliminar |
 | `accounting_account`, `accounting_rule`, `accounting_rule_line`, `accounting_entry`, `accounting_entry_line` public legacy | `accounting-service` | `accounting.accounting_account`, `accounting.accounting_rule`, `accounting.accounting_rule_line`, `accounting.accounting_entry`, `accounting.accounting_entry_line` | reemplazado funcionalmente; eliminar duplicados solo despues de confirmar datos |
 
 ## Relaciones principales
@@ -548,7 +550,7 @@ Antes de eliminar tablas publicas legacy se debe construir una matriz de reempla
 - Las tablas de documentos electronicos deben guardar identificadores fiscales: prefijo, numero, CUFE/CUDE, QR, estado proveedor, ambiente y tipo de documento.
 - Los totales monetarios deben usar `numeric(19, 2)` salvo que el anexo tecnico o calculos tributarios exijan mayor precision.
 - Porcentajes deben usar `numeric(7, 4)` o superior.
-- Campos libres del proveedor tecnologico deben usar `jsonb`, manteniendo tambien columnas normalizadas para busqueda.
+- Campos libres de la conexion DIAN deben usar `jsonb`, manteniendo tambien columnas normalizadas para busqueda.
 
 ## Constraints e indices recomendados
 
@@ -581,7 +583,7 @@ Venta POS/factura:
 1. Crear venta.
 2. Validar stock.
 3. Crear documento fiscal.
-4. Emitir mediante proveedor tecnologico.
+4. Emitir mediante la configuracion/conexion DIAN activa de la empresa.
 5. Si el estado fiscal es aceptado/validado o confirmado segun politica definida:
    - Descontar inventario.
    - Registrar asiento contable.
@@ -595,7 +597,7 @@ Compra:
 
 ## Preguntas abiertas
 
-- Proveedor tecnologico DIAN especifico.
+- Detalle final del modo tecnico DIAN real que configurara cada empresa facturadora.
 - Politica final de afectacion de inventario: al crear venta, al emitir, al validar proveedor o al recibir pago.
 - Bodegas multiples o unica bodega inicial.
 - Manejo de caja y cierres POS.

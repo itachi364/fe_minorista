@@ -1,5 +1,6 @@
 HELP.md
 target/
+Caja_de_herramientas_Factura_Electronica_Validacion_Previa/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

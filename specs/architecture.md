@@ -6,10 +6,10 @@ Clean Architecture basada en microservicios.
 
 ## Principios
 
-- Dominio independiente de Spring, JPA, HTTP y proveedor tecnologico.
+- Dominio independiente de Spring, JPA, HTTP, cloud SDKs y conexion DIAN concreta.
 - Casos de uso como centro de la aplicacion.
 - Puertos de entrada para comandos y consultas.
-- Puertos de salida para persistencia, proveedor tecnologico, mensajeria y otros servicios.
+- Puertos de salida para persistencia, conexion DIAN parametrizable, mensajeria y otros servicios.
 - Adaptadores intercambiables.
 - Contratos API versionados.
 - Secretos fuera del repositorio.
@@ -22,7 +22,7 @@ Clean Architecture basada en microservicios.
 - Inventario.
 - Compras, gastos y cuentas por pagar, inicialmente dentro de inventario/contabilidad hasta justificar un bounded context independiente.
 - Facturacion electronica y POS.
-- Integracion proveedor tecnologico DIAN.
+- Configuracion/conector DIAN parametrizable por empresa.
 - Contabilidad.
 - Reportes.
 - Licenciamiento por empresa.
@@ -35,16 +35,17 @@ Fase inicial:
 - Idempotencia en operaciones fiscales.
 - Correlation ID propagado.
 
-Fase posterior:
+Target productivo aprobado:
 
-- Outbox/Inbox en productores y consumidores, con EventBridge/SQS + Lambdas para produccion AWS despues de cerrar la logica backend core, migrar legacy pendiente y aprobar depuracion.
+- Outbox/Inbox en productores y consumidores, con EventBridge/SQS + Lambdas para produccion AWS.
 - Eventos para `SaleConfirmed`, `ElectronicDocumentValidated`, `InventoryMovementRegistered`, `AccountingEntryPosted` y `AuditEventRequested`.
 - Consumidores idempotentes por empresa, evento y documento origen.
 
 ## Persistencia
 
-- Base de datos por microservicio cuando se extraigan fisicamente.
-- En fase transitoria, esquemas separados o modulos separados dentro del backend actual.
+- Base de datos/esquema por microservicio fisico.
+- En local se permite PostgreSQL compartido con esquemas separados por servicio.
+- En produccion se usa RDS/Aurora PostgreSQL privado; la separacion puede evolucionar de esquemas a bases/instancias por servicio si el volumen o cumplimiento lo exige.
 - Migraciones versionadas obligatorias.
 
 ## Despliegue sugerido
@@ -60,10 +61,12 @@ Fase posterior:
 - Frontend SPA en Amazon S3 privado servido por CloudFront.
 - Entrada publica por API Gateway hacia un BFF.
 - `bff-service` en ECS Fargate como fachada publica del frontend.
-- `billing-service`, `inventory-service`, `accounting-service`, `dian-provider-service`, `thirdparty-service`, `catalog-service`, `identity-service`, `tenant-service`, `audit-service` y `reporting-service` en ECS Fargate.
+- `billing-service`, `inventory-service`, `accounting-service`, `dian-provider-service`, `thirdparty-service`, `catalog-service`, `identity-service`, `tenant-service`, `audit-service`, `payroll-service` y BFF en ECS Fargate.
 - Procesos event-driven transversales en Lambda disparados por EventBridge/SQS.
 - Persistencia en RDS/Aurora PostgreSQL por base o esquema de servicio, segun fase de madurez.
 - Secretos y certificados en AWS Secrets Manager o Parameter Store, nunca en imagenes ni repositorio.
+
+Estado de materializacion: `reporting-service` no existe como artefacto fisico. Los reportes minimos se sirven desde los microservicios duenos de datos y las proyecciones asincronas se materializan con `reporting-projection-lambda`. Un `reporting-service` futuro requiere tarea, contrato y criterios propios antes de agregarse a ECS.
 
 ## Decision de extraccion fisica
 
@@ -90,14 +93,14 @@ La primera version fisica usara Docker Compose:
 - Red interna Docker para comunicacion entre servicios.
 - Puertos publicados solo para servicios que deban probarse desde el host.
 
-La estrategia inicial de comunicacion sera REST sincrona con `X-Correlation-Id`, `X-Company-Id` e `Idempotency-Key` en comandos criticos. Los eventos definidos en `specs/api-contract.md` se mantendran como contrato conceptual y podran implementarse despues mediante broker.
+La comunicacion operacional usa REST sincrono para comandos/consultas inmediatas y eventos Outbox/Inbox para efectos posteriores, auditoria, proyecciones y reintentos. No se usaran brokers self-hosted; el destino productivo aprobado es AWS EventBridge/SQS + Lambda.
 
 ## Orden recomendado de extraccion fisica
 
 1. `tenant-service`, porque crea la frontera real de empresa.
 2. `catalog-service` y `thirdparty-service`, porque reducen dependencias legacy y alimentan ventas/compras.
 3. `inventory-service`, porque debe controlar stock, costos y kardex. Implementado en TASK-034.
-4. `dian-provider-service`, porque aisla el mock y prepara el adaptador real.
+4. `dian-provider-service`, porque aisla el mock y prepara la conexion DIAN configurable por empresa.
 5. `accounting-service`, porque ya tiene dominio avanzado y puede exponerse como servicio independiente.
 6. `billing-service`, porque orquesta venta, documento fiscal, proveedor, inventario y contabilidad.
 7. `audit-service`, para consultas y consolidacion de auditoria fiscal/tecnica.
@@ -116,15 +119,15 @@ Ningun paquete legacy ni tabla legacy debe eliminarse por intuicion. La depuraci
 
 ## Regla de orden para backend core, depuracion y eventos cloud
 
-El orden aprobado para las proximas fases es:
+El orden aprobado y documentado de la fase actual es:
 
 1. Completar logica de negocio backend: clientes/adquirentes fiscales, proveedores, NIT con digito de verificacion automatico, bienes, servicios, insumos, movimientos manuales, compras, gastos, cuentas por pagar, reportes, usuarios/roles y licencias.
 2. Migrar el legacy pendiente al modelo Clean Architecture y microservicios existentes, manteniendo compatibilidad hasta aprobar ruptura.
 3. Eliminar codigo, endpoints y tablas legacy solo despues de matriz de reemplazo, E2E aprobado y verificacion de referencias.
-4. Definir la arquitectura cloud AWS objetivo: Frontend CloudFront/S3, API Gateway/BFF, microservicios ECS Fargate, eventos EventBridge/SQS y Lambdas.
-5. Implementar Outbox/Inbox y consumidores Lambda para desacoplar efectos posteriores, auditoria, reportes y reintentos.
+4. Definir y validar la arquitectura cloud AWS objetivo: Frontend CloudFront/S3, API Gateway/BFF, microservicios ECS Fargate, eventos EventBridge/SQS y Lambdas. Cerrado por TASK-142.
+5. Implementar Outbox/Inbox y consumidores Lambda para desacoplar efectos posteriores, auditoria, reportes y reintentos. Cerrado por TASK-143.
 
-La infraestructura event-driven no debe introducirse en runtime antes de que el flujo de negocio funcione completamente por API, persistencia PostgreSQL y pruebas locales desde cero. No se usaran brokers self-hosted; el destino productivo aprobado es AWS administrado con EventBridge/SQS + Lambda.
+La infraestructura event-driven no reemplaza las validaciones sincronicas criticas. Ventas, stock, licencia, RBAC y reglas fiscales se validan antes de confirmar comandos; los eventos materializan efectos posteriores, reportes, auditoria y reintentos con idempotencia.
 
 
 ## Clasificacion AWS de workloads
@@ -144,6 +147,7 @@ Usar ECS Fargate para servicios HTTP de larga vida que deben mantener healthchec
 - `accounting-service`
 - `audit-service`
 - `reporting-service` cuando se materialice como servicio fisico
+- `payroll-service`
 
 ### Lambda
 
@@ -158,7 +162,18 @@ Usar Lambda para procesos cortos, idempotentes y disparados por eventos:
 - `license-expiration-check`
 - `notification-dispatcher`
 
-Cada Lambda debe consumir eventos con `eventId`, `companyId`, `correlationId`, `source`, `type`, `payloadVersion` e `idempotencyKey`, y registrar Inbox/estado de procesamiento cuando escriba datos propios.
+Cada Lambda debe consumir eventos con `eventId`, `companyId`, `correlationId`, `source`, `type`, `payloadVersion` e `idempotencyKey`, y registrar Inbox/estado de procesamiento cuando escriba datos propios. Los payloads no deben contener secretos, certificados, PIN, claves DIAN, passwords, cookies ni tokens.
+
+## Seguridad productiva
+
+- Amazon Cognito Hosted UI + Authorization Code Grant + PKCE es el target productivo de autenticacion.
+- La SPA productiva no captura passwords ni almacena access/refresh/id tokens.
+- El BFF intercambia codigo OAuth, crea sesion server-side cifrada y entrega cookie opaca `HttpOnly`, `Secure`, `SameSite`.
+- Mutaciones autenticadas por cookie requieren CSRF.
+- ROOT y administradores requieren MFA en produccion.
+- CloudFront/BFF deben emitir HSTS, CSP, `X-Content-Type-Options`, proteccion anti-frame y `Referrer-Policy`.
+- Secrets Manager/KMS administran secretos de aplicacion y secretos DIAN por empresa.
+- Las empresas clientes son responsables de su habilitacion/certificacion DIAN y de configurar sus parametros; la plataforma no opera como proveedor tecnologico DIAN.
 
 ## Recomendacion de migracion incremental
 
@@ -167,7 +182,7 @@ Cada Lambda debe consumir eventos con `eventId`, `companyId`, `correlationId`, `
 3. Implementar `billing` como modulo nuevo sin romper CRUD existente.
 4. Refactorizar modulos CRUD existentes de forma incremental hacia la misma estructura usada por `billing`.
 5. Usar `Categoria` como piloto de refactor por ser un modulo pequeno y de bajo riesgo.
-6. Separar `dian-provider` como servicio o modulo independiente.
+6. Separar `dian-provider` como servicio tecnico de conexion DIAN/mock configurable por empresa.
 7. Extraer inventario y contabilidad cuando contratos esten estables.
 8. Mantener pruebas de contrato durante la extraccion.
 9. Ejecutar flujo end-to-end desde cero antes de eliminar cualquier elemento legacy.
@@ -181,7 +196,7 @@ Orden recomendado:
 1. `catalog`: `Categoria`, `Producto`, `Impuesto`, `Pais`, `MetodoPago`, `TipoDocumento`, `TipoGasto`.
 2. `thirdparty`: `Cliente`, `Proveedor`.
 3. `inventory`: stock, compras, productos inventariables y movimientos.
-4. `billing`: facturas, POS, numeracion, proveedor DIAN y documentos electronicos.
+4. `billing`: facturas, POS, numeracion, configuracion/conexion DIAN y documentos electronicos.
 5. `accounting`: PUC, asientos, libro diario y libro mayor.
 6. `audit`: auditoria y registro de accesos.
 
@@ -196,6 +211,6 @@ Reglas de migracion:
 ## Riesgos arquitectonicos
 
 - Microservicios prematuros pueden aumentar complejidad operacional.
-- La integracion con proveedor tecnologico depende de contrato comercial y documentacion especifica.
+- La conexion DIAN real depende de configuracion, habilitacion/certificacion y certificados de cada empresa cliente.
 - La normatividad cambia y requiere mantenimiento continuo.
 - El modelo contable debe ser validado por contador.

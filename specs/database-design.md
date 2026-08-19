@@ -1,5 +1,7 @@
 # Database Design
 
+Este documento es la fuente SDD vigente para decisiones de persistencia junto con `specs/data-dictionary.md`. `specs/data-model.md` queda como documento historico/transitorio y matriz de evolucion legacy; ante diferencias, prevalecen `database-design.md` y `data-dictionary.md`.
+
 Este documento consolida decisiones de persistencia para los modulos nuevos y complementa `specs/data-model.md` y `specs/data-dictionary.md`.
 
 ## Principios
@@ -14,11 +16,13 @@ Este documento consolida decisiones de persistencia para los modulos nuevos y co
 ## Schemas
 
 - `tenant`: empresas y licencias.
+- `bff`: schema objetivo para sesiones web productivas, intentos OAuth temporales, CSRF y metadata de seguridad del BFF. No existe migracion Flyway activa todavia.
 - `identity`: usuarios, roles, permisos y sesiones.
 - `catalog`: catalogos globales, configuracion por empresa, departamentos y municipios.
 - `thirdparty`: clientes/proveedores consolidados.
 - `inventory`: productos, stock, compras y kardex.
 - `billing`: ventas, documentos electronicos y consumidor final parametrizable.
+- `dian_provider`: configuracion DIAN por empresa, envios, respuestas normalizadas y trazabilidad tecnica sin secretos.
 - `accounting`: PUC, reglas, asientos, cuentas por cobrar/pagar, ingresos, egresos, costos y activos.
 - `audit`: eventos de auditoria.
 - `payroll`: trabajadores, contratos, pagos diarios, liquidaciones y nomina electronica opcional.
@@ -111,6 +115,25 @@ No permitido:
 - Ventas demo.
 - Catalogos hardcodeados en frontend.
 
+## Sesion Web Productiva
+
+Tablas objetivo cuando el BFF opere sesion server-side:
+
+- `bff.oauth_login_attempt`
+- `bff.web_session`
+
+Reglas:
+
+- `oauth_login_attempt` conserva `state`, `nonce`, `code_verifier_hash` o referencia cifrada temporal, expiracion e IP/user-agent normalizados. No guarda passwords.
+- `web_session` conserva un identificador opaco hasheado, usuario, expiracion, estado, claims minimos y tokens Cognito cifrados en reposo con KMS/envelope encryption o referencia segura equivalente.
+- La cookie del navegador contiene solo el identificador opaco de sesion, no tokens.
+- CSRF se modela como token rotado asociado a sesion; no otorga autenticacion por si solo.
+- Las sesiones vencidas, revocadas o comprometidas deben invalidarse server-side.
+- Los tokens cifrados no deben aparecer en reportes, auditoria, errores ni logs.
+- En AWS productivo se puede reemplazar la persistencia PostgreSQL por un store administrado equivalente con TTL, siempre que mantenga cifrado, auditoria y aislamiento.
+
+Estado actual: `bff-service` no tiene migraciones Flyway ni persistencia propia. Estas tablas pertenecen al objetivo productivo de TASK-153 a TASK-160 y no deben asumirse disponibles hasta implementar esas tareas.
+
 ## Licenciamiento
 
 Tabla existente:
@@ -131,6 +154,25 @@ Reglas:
 - `enabled_modules` usa codigos en ingles para contrato tecnico, pero la UI muestra etiquetas en espanol.
 - Licencias existentes sin `enabled_modules` deben migrarse a arreglo vacio o valor explicito segun migracion aprobada; una licencia sin modulos no habilita operacion empresarial.
 - ROOT no depende de `tenant.company_license`.
+
+## Configuracion DIAN por empresa
+
+Tablas objetivo:
+
+- `dian_provider.provider_configuration`
+- `dian_provider.provider_submission`
+- `dian_provider.provider_response`
+
+Reglas:
+
+- `provider_configuration.company_id` es obligatorio y aisla cada configuracion por empresa.
+- `operation_mode` debe soportar `MOCK` y `SOFTWARE_PROPIO_CLIENTE`; otros modos requieren aprobacion SDD.
+- `environment` debe diferenciar `HABILITACION` y `PRODUCCION`.
+- La base de datos no almacena certificados, PIN tecnico, claves, tokens ni credenciales en claro.
+- La base de datos solo almacena referencias seguras (`certificate_secret_reference`, `software_pin_secret_reference`, `technical_key_secret_reference`), alias, huella, vencimiento, estado, ultima prueba y metadata no sensible.
+- Una configuracion activa en modo real exige certificado vigente, referencias seguras completas, resolucion vigente compatible y prueba exitosa o estado de habilitacion aprobado.
+- Cada mutacion de configuracion DIAN registra auditoria y nunca incluye secretos en `audit.detail`.
+- El modo `MOCK` conserva pruebas locales/E2E, pero no habilita operacion productiva ni valida cumplimiento tecnico DIAN.
 
 ## Productizacion operativa
 
@@ -168,7 +210,8 @@ Si el flujo de compra no esta completamente modelado, se debe introducir o compl
 
 - Los reportes se calculan desde tablas activas de contabilidad, inventario, billing e identidad.
 - El uso de licencia mensual se calcula desde documentos fiscales emitidos en `billing` y usuarios activos vinculados en `identity`.
-- Las proyecciones event-driven futuras deben poder reconstruirse desde los datos canonicos persistidos.
+- Las proyecciones event-driven deben poder reconstruirse desde los datos canonicos persistidos.
+- Estado actual: `reporting.reporting_inbox_event` y `reporting.reporting_event_projection` son creadas por `reporting-projection-lambda` si no existen. Antes de produccion se recomienda mover esas estructuras a migraciones Flyway gobernadas por un owner de schema aprobado o documentar formalmente la excepcion operacional.
 
 ### Depuracion futura
 

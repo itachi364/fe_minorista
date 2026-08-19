@@ -54,6 +54,50 @@
 | role_id | ref | Si | Rol dentro de la empresa. |
 | status | varchar(30) | Si | ACTIVE, INACTIVE. |
 
+## bff.oauth_login_attempt
+
+Estado: tabla objetivo pendiente de TASK-153 a TASK-160; todavia no existe en Flyway del `bff-service`.
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---:|---:|---|
+| id | uuid | Si | Identificador del intento OAuth. |
+| state_hash | varchar(160) | Si | Hash del `state` enviado a Cognito; no guardar state en claro si no es necesario. |
+| nonce_hash | varchar(160) | Si | Hash del `nonce`. |
+| code_verifier_secret_reference | varchar(300) | No | Referencia segura o valor cifrado server-side del PKCE code verifier temporal. |
+| redirect_uri | varchar(500) | Si | URI de callback validada. |
+| ip_address_hash | varchar(160) | No | Huella de IP para auditoria sin exponer dato completo cuando aplique. |
+| user_agent_hash | varchar(160) | No | Huella de user-agent para auditoria. |
+| expires_at | timestamptz | Si | Expiracion corta del intento. |
+| consumed_at | timestamptz | No | Fecha en la que se uso el codigo. |
+| created_at | timestamptz | Si | Fecha de creacion. |
+
+## bff.web_session
+
+Estado: tabla objetivo pendiente de TASK-153 a TASK-160; todavia no existe en Flyway del `bff-service`.
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---:|---:|---|
+| id | uuid | Si | Identificador interno de sesion. |
+| session_token_hash | varchar(160) | Si | Hash del identificador opaco enviado en cookie. |
+| user_id | uuid | Si | Usuario autenticado en identidad local. |
+| cognito_subject | varchar(160) | No | Claim `sub` de Cognito. |
+| encrypted_access_token | text | No | Token cifrado server-side; nunca en claro. |
+| encrypted_refresh_token | text | No | Refresh token cifrado server-side; nunca en claro. |
+| encrypted_id_token | text | No | ID token cifrado server-side; nunca en claro. |
+| csrf_token_hash | varchar(160) | Si | Hash del token CSRF asociado a la sesion. |
+| mfa_verified | boolean | Si | Indica si la sesion cumplio MFA cuando aplica. |
+| status | varchar(30) | Si | ACTIVE, EXPIRED, REVOKED. |
+| expires_at | timestamptz | Si | Expiracion de sesion. |
+| last_activity_at | timestamptz | Si | Ultima actividad validada. |
+| revoked_at | timestamptz | No | Fecha de revocacion. |
+| created_at | timestamptz | Si | Fecha de creacion. |
+
+Reglas:
+
+- Los campos `encrypted_*_token` deben cifrarse con KMS/envelope encryption o almacenarse como referencia a un secreto temporal administrado.
+- La SPA nunca recibe estos campos.
+- Auditoria y logs solo pueden registrar `id`, `user_id`, `status`, fechas y correlation ID, nunca token/cookie/CSRF en claro.
+
 ## catalog.catalog_definition
 
 | Campo | Tipo | Requerido | Descripcion |
@@ -498,12 +542,29 @@ Campos equivalentes a `billing.sale_line`, asociados a `electronic_document_id` 
 |---|---:|---:|---|
 | id | uuid/bigint | Si | Identificador. |
 | company_id | ref | Si | Empresa. |
-| provider_name | varchar(120) | Si | Nombre proveedor tecnologico. |
-| base_url | varchar(300) | No | URL base. Debe venir de entorno o configuracion segura. |
-| credentials_reference | varchar(300) | No | Referencia a secreto, no secreto real. |
-| certificate_reference | varchar(300) | No | Ruta/referencia segura a certificado. |
-| environment | varchar(30) | Si | TEST, PRODUCTION. |
+| operation_mode | varchar(40) | Si | MOCK, SOFTWARE_PROPIO_CLIENTE u otro modo aprobado por SDD. |
+| environment | varchar(30) | Si | HABILITACION, PRODUCCION o TEST local para mock. |
+| software_id | varchar(120) | No | Identificador de software configurado por la empresa ante DIAN, si aplica. |
+| software_pin_secret_reference | varchar(300) | No | Referencia segura al PIN tecnico; nunca valor real. |
+| technical_key_secret_reference | varchar(300) | No | Referencia segura a clave tecnica; nunca valor real. |
+| certificate_secret_reference | varchar(300) | No | Referencia segura al certificado digital de la empresa; nunca certificado real. |
+| certificate_alias | varchar(160) | No | Alias funcional visible del certificado. |
+| certificate_fingerprint | varchar(160) | No | Huella criptografica para identificar certificado sin exponerlo. |
+| certificate_expires_at | date | No | Fecha de vencimiento del certificado. |
+| authorization_url | varchar(500) | No | URL de habilitacion/configuracion DIAN no sensible. |
+| production_url | varchar(500) | No | URL productiva DIAN no sensible. |
+| status | varchar(40) | Si | DRAFT, PENDING_TEST, TESTED, ACTIVE, INACTIVE, EXPIRED. |
+| last_test_status | varchar(40) | No | NOT_EXECUTED, SUCCESS, FAILED. |
+| last_test_at | timestamptz | No | Fecha de ultima prueba controlada. |
+| responsibility_accepted | boolean | Si | Confirma que la empresa asume habilitacion/certificacion DIAN. |
 | active | boolean | Si | Estado. |
+
+Reglas:
+
+- El software no presta servicio de proveedor tecnologico DIAN; esta tabla modela configuracion tecnica por empresa facturadora.
+- Secretos, certificados, PIN y claves viven en gestor de secretos. Esta tabla solo guarda referencias y metadata no sensible.
+- `company_id` no puede ser nulo ni compartirse entre empresas.
+- Toda mutacion debe auditarse sin registrar valores secretos.
 
 ## dian_provider.provider_submission
 
@@ -512,8 +573,8 @@ Campos equivalentes a `billing.sale_line`, asociados a `electronic_document_id` 
 | id | uuid/bigint | Si | Identificador. |
 | company_id | ref | Si | Empresa. |
 | electronic_document_id | ref | Si | Documento electronico. |
-| provider_configuration_id | ref | Si | Configuracion usada. |
-| tracking_id | varchar(200) | No | Identificador proveedor. |
+| provider_configuration_id | ref | Si | Configuracion DIAN usada. |
+| tracking_id | varchar(200) | No | Identificador tecnico de la conexion DIAN o mock. |
 | request_payload | jsonb | No | Payload normalizado, sin secretos. |
 | response_payload | jsonb | No | Respuesta normalizada. |
 | status | varchar(40) | Si | SENT, ACCEPTED, REJECTED, FAILED, TIMEOUT. |
@@ -698,7 +759,7 @@ Regla: `event_id + consumer` debe ser unico para impedir reprocesamiento no idem
 |---|---|---:|---|
 | company_id | uuid | Si | Empresa propietaria de la configuracion. |
 | electronic_payroll_enabled | boolean | Si | Habilita nomina electronica opcional mock. |
-| provider_mode | varchar(30) | Si | MOCK o proveedor real futuro aprobado. |
+| provider_mode | varchar(30) | Si | MOCK o conector real futuro aprobado. |
 | updated_at | timestamptz | Si | Fecha de ultima modificacion. |
 
 ## payroll.worker

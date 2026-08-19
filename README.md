@@ -9,7 +9,7 @@ El proyecto migro desde una estructura legacy CRUD hacia Clean Architecture por 
 - Arquitectura Clean Architecture implementada por modulos.
 - PostgreSQL con migraciones Flyway versionadas.
 - Docker Compose local para PostgreSQL, `bff-service`, frontend SPA, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `audit-service` y `payroll-service`.
-- POS electronico con emisor/resolucion fiscal persistidos en `billing-service`, proveedor DIAN mock configurable como microservicio HTTP y efectos posteriores idempotentes sobre inventario/contabilidad.
+- POS electronico con emisor/resolucion fiscal persistidos en `billing-service`, conector DIAN mock configurable como microservicio HTTP y efectos posteriores idempotentes sobre inventario/contabilidad.
 - Persistencia JPA y endpoints REST para billing/POS, accounting, audit y nomina.
 - Limpieza legacy en curso: monolito removido, catalogos/terceros legacy de microservicios retirados mediante migraciones nuevas y datos historicos `public.*` preservados hasta migracion aprobada.
 - Suite multi-modulo activa validada con `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `audit-service` y `payroll-service`.
@@ -19,7 +19,7 @@ El proyecto migro desde una estructura legacy CRUD hacia Clean Architecture por 
 - Catalogos versionados: tipos de documento DIAN, responsabilidades fiscales, regimenes tributarios, metodos de pago, billeteras virtuales y DIVIPOLA por departamentos/municipios.
 - Terceros: clientes y proveedores.
 - Inventario: productos multiempresa, costos, compras, stock simple, movimientos y kardex.
-- Billing/POS: emisor, resoluciones, emision POS electronico, consulta y envio a proveedor DIAN mock.
+- Billing/POS: emisor, resoluciones, emision POS electronico, consulta y envio a conector DIAN mock.
 - Contabilidad: cuentas PUC por empresa, reglas contables configurables, asientos `POSTED`, libro diario y libro mayor.
 - Nomina: configuracion por empresa, trabajadores, pagos diarios verbales, documento soporte electronico mock opcional y contabilizacion base de pagos diarios.
 - Reportes: ventas, inventario, gastos, cuentas por cobrar, cuentas por pagar, libro diario y libro mayor.
@@ -48,7 +48,7 @@ Estructura actual:
 - `services/thirdparty-service`: microservicio fisico para clientes/proveedores.
 - `services/inventory-service`: microservicio fisico para productos, costos, stock, compras y kardex.
 - `services/billing-service`: microservicio fisico para ventas POS, emisor fiscal, resoluciones, numeracion fiscal y emision electronica mock.
-- `services/dian-provider-service`: microservicio fisico para mock DIAN y futura integracion real.
+- `services/dian-provider-service`: microservicio fisico para mock DIAN y futura conexion DIAN parametrizable por empresa.
 - `services/accounting-service`: microservicio fisico para PUC, reglas contables, asientos, libro diario y mayor.
 - `services/audit-service`: microservicio fisico para auditoria fiscal y tecnica.
 - `services/payroll-service`: microservicio fisico para trabajadores, pagos diarios verbales y nomina electronica mock opcional.
@@ -153,6 +153,20 @@ DB_URL=jdbc:postgresql://localhost:15432/facturaelectronica
 
 No se deben versionar `.env`, certificados, API keys ni credenciales reales.
 
+## Configuracion DIAN Por Empresa
+
+La plataforma se define como software parametrizable para empresas facturadoras. No presta ni comercializa servicio de proveedor tecnologico DIAN.
+
+Cada empresa que compre y use el software es responsable de su registro, habilitacion, certificacion, certificado digital, resoluciones, software ID/PIN, claves tecnicas y cumplimiento ante DIAN. La aplicacion proveera un modulo de configuracion por empresa para registrar referencias seguras a esos parametros, probar la conexion y operar el modo que la empresa tenga aprobado.
+
+Reglas de seguridad aprobadas:
+
+- No existe certificado global compartido para emitir documentos de empresas clientes.
+- Certificados, PIN, claves y credenciales DIAN deben vivir en gestor de secretos; PostgreSQL solo guarda referencias, alias, huellas, vencimientos y estados.
+- En desarrollo local se usa `DIAN_PROVIDER_MODE=mock` para E2E sin llamadas externas.
+- El modo mock no valida cumplimiento tecnico DIAN productivo ni reemplaza el proceso de habilitacion/certificacion de cada empresa.
+- Antes de operacion comercial real, esta interpretacion debe validarse con asesor legal/tributario.
+
 
 
 ## Identidad Y Roles
@@ -188,13 +202,40 @@ apps/facturaelectronica-web
 
 La SPA consume solamente el BFF por `/api/v1`. En desarrollo Vite usa proxy hacia `BFF_SERVICE_PORT`.
 
-El flujo operativo actual inicia con login desde la UI. Sin sesion activa solo se muestra la pantalla de login; los menus y formularios no se renderizan. La SPA llama `POST /api/v1/auth/login`, consulta `GET /api/v1/me/companies`, selecciona una empresa autorizada y valida internamente su licencia con `GET /api/v1/companies/{companyId}/license/validation?action=CREATE_TRANSACTION`.
+El flujo operativo local/transitorio inicia con login desde la UI. Sin sesion activa solo se muestra la pantalla de login; los menus y formularios no se renderizan. La SPA llama `POST /api/v1/auth/login`, consulta `GET /api/v1/me/companies`, selecciona una empresa autorizada y valida internamente su licencia con `GET /api/v1/companies/{companyId}/license/validation?action=CREATE_TRANSACTION`.
 
-Despues del login exitoso con licencia activa, la SPA muestra un shell operativo profesional con sidebar, panel superior de sesion/empresa y formularios de empresa, terceros, inventario, configuracion fiscal, venta POS/factura y reportes con campos editables. El JSON de request se arma al enviar cada formulario y se envia al BFF con `Authorization`, `X-Company-Id`, `X-User-Id`, `X-Correlation-Id` e `Idempotency-Key` cuando aplica. El campo `companyId` ya no se digita manualmente en la UI operativa; proviene de las empresas asociadas al usuario autenticado. ROOT selecciona empresas desde una lista; los usuarios empresariales ven el nombre de su empresa como informacion de solo lectura. Si la licencia no esta activa, la UI muestra un modal informativo, limpia la sesion automaticamente y vuelve al login. El encabezado autenticado incluye `Cerrar sesion`.
+Despues del login exitoso con licencia activa, la SPA muestra un shell operativo profesional con sidebar, panel superior de sesion/empresa y formularios de empresa, terceros, inventario, configuracion fiscal, venta POS/factura y reportes con campos editables. En el modo local actual, el JSON de request se arma al enviar cada formulario y se envia al BFF con `Authorization`, `X-Company-Id`, `X-User-Id`, `X-Correlation-Id` e `Idempotency-Key` cuando aplica. En produccion, `Authorization` no sera construido por JavaScript: el BFF resolvera identidad desde cookie segura. El campo `companyId` ya no se digita manualmente en la UI operativa; proviene de las empresas asociadas al usuario autenticado. ROOT selecciona empresas desde una lista; los usuarios empresariales ven el nombre de su empresa como informacion de solo lectura. Si la licencia no esta activa, la UI muestra un modal informativo, limpia la sesion automaticamente y vuelve al login. El encabezado autenticado incluye `Cerrar sesion`.
 
 El BFF endurece acceso para catálogos administrables, contabilidad, nomina y logs: `ROOT` conserva acceso global, las mutaciones de plataforma quedan reservadas a `ROOT` y las acciones empresariales validan permisos efectivos contra `identity-service`.
 
 La UI operativa no muestra paneles permanentes de JSON tecnico. Cada accion usa un modal de proceso/exito/error y los detalles de trazabilidad se consultan en el modulo `Logs`, visible para `ROOT`, administradores de empresa y usuarios con permiso de auditoria. Los permisos y modulos RBAC se presentan en espanol mediante `react-i18next`/`i18next`, aunque sus codigos internos sigan en ingles para mantener contratos estables.
+
+### Autenticacion Productiva Objetivo
+
+El login actual con `POST /api/v1/auth/login` y bearer token es un modo local/transitorio para desarrollo y E2E. No debe exponerse en produccion.
+
+El target productivo aprobado es:
+
+```text
+CloudFront HTTPS
+  -> Cognito Hosted UI con Authorization Code + PKCE
+  -> BFF callback OAuth
+  -> sesion server-side cifrada
+  -> cookie HttpOnly/Secure/SameSite en navegador
+  -> SPA consulta /api/v1/auth/session sin recibir tokens
+```
+
+Reglas:
+
+- La SPA productiva no captura password ni recibe `accessToken`, `refreshToken`, `idToken` o bearer token.
+- El navegador no guarda tokens en `localStorage`, `sessionStorage`, IndexedDB ni estado serializado.
+- El BFF intercambia el codigo OAuth, cifra tokens server-side y emite cookie opaca `HttpOnly`, `Secure`, `SameSite`.
+- Las mutaciones protegidas por cookie requieren CSRF.
+- ROOT y administradores requieren MFA en produccion.
+- CloudFront/BFF deben aplicar HSTS, CSP, proteccion anti-frame, `X-Content-Type-Options` y `Referrer-Policy`.
+- Las builds productivas no deben publicar sourcemaps sin control ni logs con payloads sensibles.
+
+Esta arquitectura reduce el impacto de DevTools, XSS y storage inseguro: un atacante que inspeccione el navegador no debe encontrar tokens reutilizables ni passwords manejados por la SPA.
 
 Ejecutar BFF fuera de Docker:
 
@@ -578,13 +619,13 @@ Las operaciones de negocio requieren `X-Company-Id`; los movimientos y compras r
 
 La creacion de venta valida disponibilidad contra `inventory-service`. El POS usa siempre canal POS/equivalente electronico; precio e impuesto de cada linea se toman del producto en inventario, no del vendedor. Si el comprador no solicita factura nominada, `billing-service` resuelve el perfil `FINAL_CONSUMER` desde configuracion persistida. La confirmacion envia el POS a `dian-provider-service`, que responde con CUDE/QR mock y estado configurable con `DIAN_MOCK_DEFAULT_STATUS`.
 
-Cuando el proveedor responde `ACCEPTED`, `billing-service`:
+Cuando la conexion DIAN responde `ACCEPTED`, `billing-service`:
 
 - registra `SALE_OUT` en `inventory-service` por cada linea vendida;
 - genera un asiento `SALE_CONFIRMED` en `accounting-service`;
 - marca `inventoryAppliedAt` y `accountingAppliedAt` en el documento electronico para reintentos idempotentes.
 
-### DIAN Provider
+### Conector DIAN
 
 `dian-provider-service` expone en `http://localhost:8089`:
 
@@ -637,7 +678,7 @@ Los eventos requieren `X-Company-Id` y almacenan detalle seguro sin secretos en 
 
 El BFF propaga `X-User-Id`, valida permisos efectivos con `identity-service` para recursos protegidos y registra auditoria best-effort para mutaciones `POST`, `PUT`, `PATCH` y `DELETE` que pasen por `/api/v1/**`. Para creacion de empresas sin `X-Company-Id`, toma el `id` de la empresa creada y registra la auditoria contra esa empresa. `catalog-service` tambien registra eventos especificos para crear, actualizar, activar e inactivar catalogos globales o configuracion empresarial. La falla de auditoria no detiene la operacion principal en el flujo sincrono local.
 
-`billing-service` registra eventos canonicos en Outbox al confirmar una venta POS/factura y obtener resultado del proveedor DIAN mock. `inventory-service` registra `InventoryMovementRegistered` al crear movimientos y `accounting-service` registra `AccountingEntryPosted` al postear asientos. La entrega hacia EventBridge/SQS ya cuenta con dispatcher condicional, consumidor Lambda `audit-event-writer-lambda` para auditoria, consumidor Lambda `inventory-sale-effect-lambda` para descontar stock desde `SaleConfirmed`, consumidor Lambda `accounting-sale-entry-lambda` para generar asientos contables de forma idempotente, consumidor `provider-submission-retry-lambda` para reintentos tecnicos de proveedor y consumidor `reporting-projection-lambda` para proyecciones de reportes.
+`billing-service` registra eventos canonicos en Outbox al confirmar una venta POS/factura y obtener resultado del conector DIAN mock. `inventory-service` registra `InventoryMovementRegistered` al crear movimientos y `accounting-service` registra `AccountingEntryPosted` al postear asientos. La entrega hacia EventBridge/SQS ya cuenta con dispatcher condicional, consumidor Lambda `audit-event-writer-lambda` para auditoria, consumidor Lambda `inventory-sale-effect-lambda` para descontar stock desde `SaleConfirmed`, consumidor Lambda `accounting-sale-entry-lambda` para generar asientos contables de forma idempotente, consumidor `provider-submission-retry-lambda` para reintentos tecnicos de conexion DIAN y consumidor `reporting-projection-lambda` para proyecciones de reportes.
 
 ### Eventing AWS
 
@@ -657,12 +698,12 @@ Lambdas iniciales:
 - `audit-event-writer-lambda`: consume `audit-events` y persiste auditoria central con Inbox.
 - `inventory-sale-effect-lambda`: consume `inventory-effects`, procesa `SaleConfirmed`, descuenta lineas `stockTracked=true` y evita duplicados con la clave de idempotencia de la venta.
 - `accounting-sale-entry-lambda`: consume `accounting-effects`, procesa `SaleConfirmed`, aplica reglas `SALE_CONFIRMED`/`SALE` y crea asientos contables sin duplicar ventas ya contabilizadas.
-- `provider-submission-retry-lambda`: consume `provider-retries`, reintenta fallas tecnicas `FAILED` contra el proveedor DIAN mock y republica eventos si la validacion queda aceptada.
+- `provider-submission-retry-lambda`: consume `provider-retries`, reintenta fallas tecnicas `FAILED` contra el conector DIAN mock y republica eventos si la validacion queda aceptada.
 - `reporting-projection-lambda`: consume `reporting-projections` y materializa eventos de ventas, documentos, inventario y contabilidad en `reporting.reporting_event_projection`.
 
 ## Guia De Pruebas Docker
 
-La guia E2E desde cero para microservicios, con empresa nueva, inventario, venta POS, proveedor DIAN mock, asiento contable, auditoria central, nomina minima con pago diario verbal, documento soporte mock, consultas SQL y checklist AC-024/AC-031/AC-032/AC-035 esta en:
+La guia E2E desde cero para microservicios, con empresa nueva, inventario, venta POS, conector DIAN mock, asiento contable, auditoria central, nomina minima con pago diario verbal, documento soporte mock, consultas SQL y checklist AC-024/AC-031/AC-032/AC-035 esta en:
 
 En Windows el script usa `127.0.0.1` por defecto para evitar bloqueos de resolucion de `localhost`.
 
@@ -676,9 +717,9 @@ La guia legacy del monolito con seed local se conserva como referencia transitor
 docs/local-docker-test-guide.md
 ```
 
-## Proveedor DIAN Mock
+## Conector DIAN Mock
 
-Mientras no existan proveedor tecnologico real, certificados y credenciales, la plataforma usa `dian-provider-service` en modo mock.
+Mientras no existan configuraciones DIAN reales por empresa, certificados y credenciales, la plataforma usa `dian-provider-service` en modo mock.
 
 Variables:
 
@@ -693,7 +734,7 @@ Valores soportados para `DIAN_MOCK_DEFAULT_STATUS`:
 - `REJECTED`
 - `FAILED`
 
-Esta simulacion no reemplaza la integracion real con proveedor tecnologico DIAN ni valida cumplimiento final de anexos tecnicos.
+Esta simulacion no reemplaza la conexion real DIAN configurada por cada empresa ni valida cumplimiento final de anexos tecnicos.
 
 ## Pruebas
 
@@ -799,6 +840,7 @@ Archivos principales:
 - `specs/design.md`
 - `specs/tasks.md`
 - `specs/api-contract.md`
+- `specs/database-design.md`
 - `specs/data-model.md`
 - `specs/data-dictionary.md`
 - `specs/architecture.md`
@@ -807,12 +849,23 @@ Archivos principales:
 
 Toda modificacion funcional debe estar trazada a requisitos, criterios de aceptacion y tareas SDD.
 
+Fuentes vigentes:
+
+- Arquitectura: `specs/architecture.md` y `specs/design.md`.
+- Infraestructura cloud: `specs/infrastructure.md`.
+- Persistencia: `specs/database-design.md` y `specs/data-dictionary.md`.
+- Contratos: `specs/api-contract.md`.
+- `specs/data-model.md` se conserva como documento historico/transitorio de evolucion y matriz legacy; no debe contradecir la fuente vigente.
+
 ## Seguridad
 
 - No versionar `.env`.
 - No versionar certificados DIAN.
 - No versionar API keys ni passwords reales.
-- El proveedor DIAN real esta pendiente.
+- La conexion DIAN real por empresa esta pendiente.
+- No exponer `AUTH_MODE=local` en produccion.
+- No guardar tokens productivos en storage del navegador.
+- No imprimir en consola passwords, tokens, cookies, headers sensibles ni payloads completos.
 - Los errores publicos deben usar mensajes seguros y no exponer stack traces.
 - Las variables DIAN reales deben moverse a un gestor de secretos o mecanismo aprobado antes de produccion.
 
@@ -822,25 +875,27 @@ Estado actual:
 
 - Docker Compose local disponible.
 - PostgreSQL local en contenedor.
-- `bff-service`, frontend SPA, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service` y `audit-service` locales montados como volumen y ejecutados con Maven/npm. Los comandos Compose usan `clean spring-boot:run` para evitar clases obsoletas durante la migracion.
+- `bff-service`, frontend SPA, `tenant-service`, `identity-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `audit-service` y `payroll-service` locales montados como volumen y ejecutados con Maven/npm. Los comandos Compose usan `clean spring-boot:run` para evitar clases obsoletas durante la migracion.
 - El monolito legacy fue removido del repositorio activo; Docker Compose solo levanta microservicios fisicos y PostgreSQL.
+- Terraform AWS inicial existe en `infra/aws` para el target cloud con red, RDS, ECS/Fargate, API/BFF, frontend, secretos, EventBridge/SQS y Lambdas event-driven.
 
 Pendiente:
 
 - `Dockerfile` productivo multi-stage.
-- Terraform/IaC.
-- Configuracion cloud.
+- Modulo Terraform `auth` para Cognito Hosted UI + PKCE/MFA.
+- Configuracion cloud final por ambiente, dominio, certificados ACM y variables productivas.
 - Pipeline CI/CD.
 - Escaneo de imagenes con Docker Scout, Trivy, Grype o herramienta equivalente.
+- Runbooks productivos para DLQ, reintentos DIAN, restauracion RDS, rotacion de secretos, incidentes de seguridad y vencimiento de licencias.
 
 ## Pendientes Relevantes
 
-- Integracion real con proveedor tecnologico DIAN.
+- Conexion DIAN real parametrizable por empresa.
 - Certificados digitales reales.
 - Representacion grafica oficial.
 - XML UBL y anexos tecnicos definitivos.
-- Seguridad/autenticacion/autorizacion.
-- Productores de auditoria restantes desde inventario y contabilidad, identity-service y modulo de gastos fuera del legacy.
+- Autenticacion productiva Cognito Hosted UI + BFF session con cookie segura, CSRF, MFA y bloqueo de login dummy en produccion.
+- OpenAPI formal versionado por servicio/BFF; Springdoc runtime esta disponible, pero falta publicar artefactos controlados.
 
 ## Git
 
@@ -864,7 +919,7 @@ arch: clean backend
 
 ## Nota Legal Y Contable
 
-La implementacion tecnica debe ser validada antes de produccion contra la normatividad colombiana vigente, los anexos tecnicos DIAN aplicables, el proveedor tecnologico seleccionado y el criterio de un contador publico o asesor tributario.
+La implementacion tecnica debe ser validada antes de produccion contra la normatividad colombiana vigente, los anexos tecnicos DIAN aplicables, el modo de operacion configurado por cada empresa y el criterio de un contador publico o asesor tributario.
 
 
 ## Arquitectura cloud AWS objetivo
@@ -877,6 +932,8 @@ El target productivo aprobado es 100% cloud en AWS:
 - Procesos event-driven cortos e idempotentes en Lambda con EventBridge/SQS.
 - Persistencia en RDS/Aurora PostgreSQL.
 - Secretos, certificados y credenciales en Secrets Manager o Parameter Store.
+- Cognito User Pool/App Client para autenticacion productiva, Authorization Code + PKCE y MFA.
+- BFF con sesion server-side cifrada y cookie segura.
 
 Docker Compose se mantiene como entorno local de desarrollo y pruebas. La arquitectura productiva documentada usa exclusivamente EventBridge/SQS + Lambda para mensajeria asincrona administrada en AWS.
 

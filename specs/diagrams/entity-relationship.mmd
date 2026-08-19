@@ -1,85 +1,148 @@
 erDiagram
-  COMPANY ||--o{ USER_COMPANY : has
-  USER_ACCOUNT ||--o{ USER_COMPANY : belongs
-  ROLE ||--o{ USER_COMPANY : grants
+  COMPANY ||--o{ COMPANY_LICENSE : has
+  COMPANY ||--o{ USER_COMPANY : authorizes
+  USER_ACCOUNT ||--o{ USER_COMPANY : belongs_to
+  USER_ACCOUNT ||--o{ GLOBAL_USER_ROLE : has
+  COMPANY ||--o{ COMPANY_ROLE : owns
+  COMPANY_ROLE ||--o{ ROLE_PERMISSION : grants
+  USER_COMPANY ||--o{ USER_COMPANY_ROLE : receives
+  COMPANY_ROLE ||--o{ USER_COMPANY_ROLE : assigned
 
-  COMPANY ||--o{ CUSTOMER : owns
-  COMPANY ||--o{ SUPPLIER : owns
-  IDENTIFICATION_TYPE ||--o{ CUSTOMER : classifies
-  IDENTIFICATION_TYPE ||--o{ SUPPLIER : classifies
+  COMPANY ||--o{ THIRD_PARTY : owns
+  CATALOG_ITEM ||--o{ THIRD_PARTY : identification_type
+  CATALOG_ITEM ||--o{ THIRD_PARTY : tax_regime
 
-  COMPANY ||--o{ CATEGORY : owns
+  CATALOG_DEFINITION ||--o{ CATALOG_ITEM : contains
+  CATALOG_ITEM ||--o{ COMPANY_CATALOG_ITEM_SETTING : configured_by
+  COMPANY ||--o{ COMPANY_CATALOG_ITEM_SETTING : configures
+  DEPARTMENT ||--o{ MUNICIPALITY : contains
+
   COMPANY ||--o{ PRODUCT : owns
-  CATEGORY ||--o{ PRODUCT : groups
+  CATALOG_ITEM ||--o{ PRODUCT : tax_code
+  MUNICIPALITY ||--o{ THIRD_PARTY : located_in
   PRODUCT ||--|| STOCK_BALANCE : has
   PRODUCT ||--o{ INVENTORY_MOVEMENT : moves
-
+  PRODUCT ||--o{ SERVICE_SUPPLY_REFERENCE : service
+  PRODUCT ||--o{ SERVICE_SUPPLY_REFERENCE : supply
   COMPANY ||--o{ PURCHASE : owns
-  SUPPLIER ||--o{ PURCHASE : supplies
+  THIRD_PARTY ||--o{ PURCHASE : supplies
   PURCHASE ||--o{ PURCHASE_LINE : contains
   PRODUCT ||--o{ PURCHASE_LINE : purchased
 
   COMPANY ||--o{ ISSUER_PROFILE : configures
   COMPANY ||--o{ NUMBERING_RESOLUTION : owns
-  NUMBERING_RESOLUTION ||--o{ ELECTRONIC_DOCUMENT : numbers
-
+  NUMBERING_RESOLUTION ||--o{ NUMBER_SEQUENCE : allocates
+  COMPANY ||--o{ FINAL_CONSUMER_PROFILE : configures
   COMPANY ||--o{ SALE : owns
-  CUSTOMER ||--o{ SALE : buys
+  THIRD_PARTY ||--o{ SALE : buyer
   SALE ||--o{ SALE_LINE : contains
   PRODUCT ||--o{ SALE_LINE : sold
   SALE ||--o| ELECTRONIC_DOCUMENT : generates
-
-  COMPANY ||--o{ ELECTRONIC_DOCUMENT : owns
+  NUMBERING_RESOLUTION ||--o{ ELECTRONIC_DOCUMENT : numbers
   ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_LINE : contains
   ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_TAX : taxes
   ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_ARTIFACT : produces
-  PRODUCT ||--o{ ELECTRONIC_DOCUMENT_LINE : snapshot
+  ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_TRACE_EVENT : traces
 
   COMPANY ||--o{ PROVIDER_CONFIGURATION : owns
   PROVIDER_CONFIGURATION ||--o{ PROVIDER_SUBMISSION : used_by
   ELECTRONIC_DOCUMENT ||--o{ PROVIDER_SUBMISSION : submitted
+  PROVIDER_SUBMISSION ||--o{ PROVIDER_RESPONSE : receives
 
-  PUC_ACCOUNT_TEMPLATE ||--o{ ACCOUNT : seeds
-  COMPANY ||--o{ ACCOUNT : owns
-  ACCOUNT ||--o{ ACCOUNT : parent
+  COMPANY ||--o{ ACCOUNTING_ACCOUNT : owns
+  ACCOUNTING_ACCOUNT ||--o{ ACCOUNTING_ACCOUNT : parent
+  COMPANY ||--o{ ACCOUNTING_RULE : owns
+  ACCOUNTING_RULE ||--o{ ACCOUNTING_RULE_LINE : contains
+  ACCOUNTING_ACCOUNT ||--o{ ACCOUNTING_RULE_LINE : posts_to
   COMPANY ||--o{ ACCOUNTING_ENTRY : owns
   ACCOUNTING_ENTRY ||--o{ ACCOUNTING_ENTRY_LINE : contains
-  ACCOUNT ||--o{ ACCOUNTING_ENTRY_LINE : posts
+  ACCOUNTING_ACCOUNT ||--o{ ACCOUNTING_ENTRY_LINE : posts
+  THIRD_PARTY ||--o{ ACCOUNTS_RECEIVABLE : debtor
+  THIRD_PARTY ||--o{ ACCOUNTS_PAYABLE : creditor
+
+  COMPANY ||--o{ PAYROLL_SETTINGS : configures
+  COMPANY ||--o{ WORKER : employs
+  WORKER ||--o{ CONTRACT : has
+  WORKER ||--o{ DAILY_LABOR_PAYMENT : receives
+  COMPANY ||--o{ ELECTRONIC_PAYROLL_DOCUMENT : emits
+
+  USER_ACCOUNT ||--o{ OAUTH_LOGIN_ATTEMPT : starts
+  USER_ACCOUNT ||--o{ WEB_SESSION : owns
 
   COMPANY ||--o{ AUDIT_EVENT : scopes
   USER_ACCOUNT ||--o{ AUDIT_EVENT : triggers
+  COMPANY ||--o{ OUTBOX_EVENT : publishes
+  COMPANY ||--o{ INBOX_EVENT : consumes
+  COMPANY ||--o{ REPORTING_EVENT_PROJECTION : projects
 
   COMPANY {
     uuid id PK
-    varchar legal_name
+    int identification_type_code
     varchar identification_number
+    varchar verification_digit
+    varchar legal_name
     varchar status
+  }
+
+  COMPANY_LICENSE {
+    uuid id PK
+    uuid company_id FK
+    date starts_at
+    date expires_at
+    varchar status
+    json enabled_modules
+    int max_users
+    int max_monthly_documents
   }
 
   USER_ACCOUNT {
     uuid id PK
-    varchar username
     varchar email
+    varchar full_name
     varchar password_hash
+    varchar cognito_subject
     varchar status
+  }
+
+  COMPANY_ROLE {
+    uuid id PK
+    uuid company_id FK
+    varchar name
+    varchar status
+  }
+
+  THIRD_PARTY {
+    uuid id PK
+    uuid company_id FK
+    json roles
+    varchar person_type
+    int identification_type_code
+    varchar identification_number
+    varchar verification_digit
+    varchar business_name
+    varchar full_name
+  }
+
+  CATALOG_ITEM {
+    uuid id PK
+    varchar catalog_code
+    varchar item_code
+    varchar label
+    boolean regulatory
+    boolean active
   }
 
   PRODUCT {
     uuid id PK
     uuid company_id FK
-    uuid category_id FK
+    varchar sku
     varchar barcode
+    varchar item_type
     varchar name
     numeric sale_price
-    boolean active
-  }
-
-  STOCK_BALANCE {
-    uuid id PK
-    uuid company_id FK
-    uuid product_id FK
-    numeric current_stock
-    numeric reserved_stock
+    varchar tax_code
+    numeric tax_rate
+    boolean stock_tracked
   }
 
   INVENTORY_MOVEMENT {
@@ -88,18 +151,17 @@ erDiagram
     uuid product_id FK
     varchar movement_type
     numeric quantity
-    numeric previous_stock
     numeric resulting_stock
     varchar source_document_type
     uuid source_document_id
-    varchar reason
   }
 
   SALE {
     uuid id PK
     uuid company_id FK
-    uuid customer_id FK
-    varchar sale_channel
+    uuid buyer_third_party_id FK
+    varchar buyer_identification_mode
+    varchar payment_method_code
     numeric total
     varchar status
   }
@@ -116,25 +178,15 @@ erDiagram
     varchar status
   }
 
-  NUMBERING_RESOLUTION {
+  PROVIDER_CONFIGURATION {
     uuid id PK
     uuid company_id FK
-    varchar document_type
-    varchar resolution_number
-    varchar prefix
-    bigint from_number
-    bigint to_number
-    bigint current_number
-    date valid_from
-    date valid_to
-  }
-
-  ACCOUNT {
-    uuid id PK
-    uuid company_id FK
-    varchar code
-    varchar name
-    varchar nature
+    varchar mode
+    varchar environment
+    varchar certificate_secret_ref
+    varchar software_pin_secret_ref
+    varchar technical_key_secret_ref
+    varchar status
   }
 
   ACCOUNTING_ENTRY {
@@ -143,5 +195,47 @@ erDiagram
     date entry_date
     varchar source_type
     uuid source_id
+    varchar status
+  }
+
+  PAYROLL_SETTINGS {
+    uuid id PK
+    uuid company_id FK
+    boolean electronic_payroll_enabled
+  }
+
+  WEB_SESSION {
+    uuid id PK
+    uuid user_id FK
+    varchar session_token_hash
+    varchar csrf_token_hash
+    varchar status
+    timestamp expires_at
+  }
+
+  AUDIT_EVENT {
+    uuid id PK
+    uuid company_id FK
+    uuid user_id FK
+    varchar event_type
+    varchar resource_type
+    varchar action
+    varchar result
+    timestamp occurred_at
+  }
+
+  OUTBOX_EVENT {
+    uuid event_id PK
+    uuid company_id FK
+    varchar event_type
+    varchar status
+    timestamp occurred_at
+  }
+
+  INBOX_EVENT {
+    uuid id PK
+    uuid event_id
+    uuid company_id FK
+    varchar consumer
     varchar status
   }

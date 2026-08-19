@@ -6,6 +6,12 @@ Definir contratos iniciales entre microservicios para una plataforma multiempres
 
 Estos contratos son la base para futuros archivos OpenAPI por servicio.
 
+## Estado de contratos y OpenAPI
+
+Los servicios incluyen `springdoc-openapi-starter-webmvc-ui`, por lo que pueden exponer documentacion runtime en `/v3/api-docs` y `/swagger-ui.html` cuando el servicio esta levantado. Eso no reemplaza los contratos SDD versionados de este archivo ni constituye todavia un artefacto OpenAPI formal publicado en el repositorio.
+
+Pendiente aprobado: generar, versionar y validar OpenAPI por servicio/BFF cuando los DTO publicos terminen de estabilizarse. Hasta entonces, `specs/api-contract.md` es la fuente contractual principal.
+
 ## Convenciones generales
 
 - Versionado HTTP: `/api/v1`.
@@ -18,7 +24,7 @@ Estos contratos son la base para futuros archivos OpenAPI por servicio.
 - Trazabilidad: `X-Correlation-Id` obligatorio o generado por gateway.
 - Idempotencia: `Idempotency-Key` obligatorio en emision fiscal, movimientos de inventario y contabilizacion.
 - Unidad de despliegue: un artefacto y contenedor por microservicio/bounded context, no por endpoint individual.
-- Comunicacion inicial: REST sincrono entre microservicios; eventos internos quedan como contrato para una fase posterior.
+- Comunicacion vigente: REST sincrono para comandos/consultas inmediatas y eventos Outbox/Inbox hacia EventBridge/SQS + Lambda para efectos posteriores, auditoria, reportes y reintentos productivos.
 
 ## Microservicios fisicos objetivo
 
@@ -30,7 +36,7 @@ Estos contratos son la base para futuros archivos OpenAPI por servicio.
 | `thirdparty-service` | Clientes y proveedores | `services/thirdparty-service` |
 | `inventory-service` | Productos, costos, compras, stock y kardex | `services/inventory-service` |
 | `billing-service` | Ventas, POS, factura electronica, notas y numeracion | `services/billing-service` |
-| `dian-provider-service` | Mock DIAN y futura integracion con proveedor real | `services/dian-provider-service` |
+| `dian-provider-service` | Mock DIAN y futura conexion DIAN parametrizable por empresa | `services/dian-provider-service` |
 | `accounting-service` | PUC, reglas, asientos, libro diario y mayor | `services/accounting-service` |
 | `audit-service` | Auditoria fiscal y tecnica | `services/audit-service` |
 | `payroll-service` | Empleados, contratos, pagos diarios, liquidaciones y nomina electronica opcional | `services/payroll-service` |
@@ -44,6 +50,12 @@ Estos contratos son la base para futuros archivos OpenAPI por servicio.
 | `X-User-Id` | Si | Acciones autenticadas | Usuario autenticado que ejecuta la accion, derivado del login/BFF. |
 | `X-Correlation-Id` | Si | Todas | Trazabilidad entre servicios. |
 | `Idempotency-Key` | Si | Comandos criticos | Evita duplicados por reintentos. |
+
+Nota productiva TASK-153/TASK-160:
+
+- El navegador no debe construir ni enviar `Authorization` en JavaScript. La autenticacion publica usa cookie opaca `HttpOnly` emitida por el BFF.
+- El BFF traduce la sesion publica a headers internos seguros hacia microservicios: `Authorization` de servicio cuando aplique, `X-User-Id`, `X-Company-Id`, `X-Correlation-Id` e `Idempotency-Key`.
+- Las mutaciones autenticadas por cookie requieren token CSRF en header aprobado, por ejemplo `X-CSRF-Token`.
 
 ## Error estandar
 
@@ -100,6 +112,87 @@ Reglas:
 - La falla del registro de auditoria no debe tumbar la accion principal; debe quedar como integracion best-effort hasta completar eventing asincrono.
 - Estado TASK-065: `/api/v1/auth/**` y `/api/v1/me/**` se enrutan a `identity-service`; `/api/v1/companies/{companyId}/license/**` se enruta a `tenant-service`; `/api/v1/companies/{companyId}/memberships`, `/api/v1/companies/{companyId}/users/{userId}/roles` y `/api/v1/companies/{companyId}/permissions` se enrutan a `identity-service`.
 - Estado TASK-122: `billing-service` queda protegido por permisos efectivos en BFF. `SALES_CREATE` autoriza registrar y confirmar venta POS con emision electronica asociada; `FISCAL_DOCUMENTS_ISSUE` autoriza configuracion fiscal, resoluciones, notas, ajustes y operaciones fiscales avanzadas.
+
+### Auth productivo Cognito + BFF session
+
+Endpoints publicos objetivo:
+
+- `GET /api/v1/auth/login-url`
+- `GET /api/v1/auth/callback?code=&state=`
+- `GET /api/v1/auth/session`
+- `POST /api/v1/auth/logout`
+- `POST /api/v1/auth/refresh` opcional si se requiere renovacion explicita server-side.
+
+`GET /api/v1/auth/login-url`:
+
+Respuesta:
+
+```json
+{
+  "loginUrl": "https://<cognito-domain>/oauth2/authorize?...",
+  "expiresAt": "2026-08-19T10:05:00Z"
+}
+```
+
+Reglas:
+
+- El BFF genera `state`, `nonce`, PKCE `code_verifier` y `code_challenge`.
+- El `code_verifier` se conserva server-side de forma temporal y no se retorna a la SPA.
+- La URL usa Authorization Code Grant con PKCE y scopes minimos `openid`, `email`, `profile` y los aprobados por arquitectura.
+
+`GET /api/v1/auth/callback`:
+
+Reglas:
+
+- Valida `state` y expiracion del intento de login.
+- Intercambia `code` por tokens en Cognito desde el BFF.
+- Crea sesion server-side con tokens cifrados.
+- Emite cookie opaca `HttpOnly; Secure; SameSite=Lax|Strict`.
+- Redirige a la SPA sin incluir tokens en query string, fragment, storage ni response body.
+
+`GET /api/v1/auth/session`:
+
+Respuesta:
+
+```json
+{
+  "userId": "uuid",
+  "email": "usuario@example.com",
+  "fullName": "Usuario Empresa",
+  "globalRoles": [],
+  "companies": [
+    {
+      "companyId": "uuid",
+      "companyName": "Empresa SAS",
+      "roles": ["OWNER"],
+      "permissions": ["SALES_CREATE"]
+    }
+  ],
+  "csrfToken": "opaque-non-secret-token",
+  "expiresAt": "2026-08-19T11:00:00Z"
+}
+```
+
+Reglas:
+
+- No retorna `accessToken`, `refreshToken`, `idToken`, bearer token interno, cookie ni secretos.
+- `csrfToken` no es secreto de autenticacion; solo protege mutaciones contra CSRF.
+- El BFF puede renovar tokens server-side sin exponerlos al navegador.
+
+`POST /api/v1/auth/logout`:
+
+Reglas:
+
+- Requiere cookie de sesion y CSRF valido.
+- Revoca sesion server-side.
+- Limpia cookie con expiracion inmediata.
+- Revoca tokens Cognito cuando aplique.
+- Registra auditoria segura.
+
+`POST /api/v1/auth/login`:
+
+- Se mantiene solo como contrato local/transitorio para desarrollo y E2E.
+- En produccion debe estar deshabilitado, no expuesto por API Gateway o responder `404/403` seguro.
 ## tenant-service
 
 Responsabilidad: empresas, configuracion multiempresa y estado del tenant.
@@ -206,6 +299,24 @@ Roles y usuarios por empresa:
 - `POST /api/v1/companies/{companyId}/users/{userId}/role-assignments`
 - `DELETE /api/v1/companies/{companyId}/users/{userId}/role-assignments/{roleId}`
 - `GET /api/v1/companies/{companyId}/users/{userId}/effective-permissions`
+
+### Cognito integration objective
+
+`identity-service` mantiene usuarios, roles, empresas y permisos como fuente de autorizacion de negocio. Cognito queda como proveedor de autenticacion productiva.
+
+Campos objetivo para vincular usuarios:
+
+- `cognitoSubject`: claim `sub` de Cognito.
+- `emailVerified`: estado derivado de Cognito.
+- `mfaRequired`: politica de negocio para ROOT/admin.
+- `lastLoginAt`: auditoria funcional.
+
+Reglas:
+
+- El backend crea usuarios Cognito para administradores iniciales y usuarios empresariales cuando el ambiente productivo use Cognito.
+- La contrasena inicial no se retorna despues de crear usuario; se usa flujo temporal/force-change-password o invitacion Cognito segun politica aprobada.
+- ROOT/admin requieren MFA en produccion.
+- La autorizacion por permisos efectivos sigue en `identity-service`; Cognito no reemplaza RBAC empresarial.
 
 Ejemplo `POST /api/v1/companies/{companyId}/roles`:
 
@@ -451,7 +562,7 @@ Estado TASK-034:
 - Endpoints `/api/v1` implementados para productos, disponibilidad, kardex, movimientos, compras y confirmacion de compras.
 - Las operaciones implementadas requieren `X-Company-Id`.
 - `Idempotency-Key` es obligatorio en movimientos y compras; en creacion de producto se usa cuando se registra stock inicial.
-- Las rutas de busqueda/listado, actualizacion y desactivacion quedan como contrato objetivo posterior.
+- Las rutas de busqueda/listado, actualizacion y desactivacion quedan marcadas como contrato objetivo posterior si no aparecen implementadas en el controlador activo del microservicio.
 
 Estado TASK-048:
 
@@ -682,8 +793,8 @@ Estado TASK-041:
 - Endpoints implementados: `POST /api/v1/issuers`, `GET /api/v1/issuers/current`, `POST /api/v1/numbering-resolutions`, `GET /api/v1/numbering-resolutions`, `POST /api/v1/sales`, `POST /api/v1/sales/{saleId}/confirm` y `GET /api/v1/sales/{saleId}`.
 - La creacion de venta valida disponibilidad contra `inventory-service` usando `GET /api/v1/products/{productId}/availability`.
 - La confirmacion exige emisor activo y resolucion vigente para `ELECTRONIC_POS` en ambiente `TEST`.
-- La confirmacion asigna prefijo y consecutivo desde `billing.numbering_resolution`, genera documento electronico POS y consume `dian-provider-service` por HTTP.
-- Si el proveedor acepta, aplica automaticamente `SALE_OUT` y asiento contable idempotente.
+- La confirmacion asigna prefijo y consecutivo desde `billing.numbering_resolution`, valida configuracion DIAN empresarial, genera documento electronico POS y consume `dian-provider-service` por HTTP.
+- Si la conexion DIAN acepta, aplica automaticamente `SALE_OUT` y asiento contable idempotente.
 
 Estado TASK-049:
 
@@ -697,15 +808,15 @@ Estado TASK-049:
 
 - `POST /api/v1/issuers`
 - `GET /api/v1/issuers/current`
-- `PUT /api/v1/issuers/{issuerId}` pendiente
+- `PUT /api/v1/issuers/{issuerId}` contrato objetivo para actualizacion auditada del emisor fiscal.
 
 ### Resoluciones
 
 - `POST /api/v1/numbering-resolutions`
 - `GET /api/v1/numbering-resolutions?documentType=&active=`
-- `GET /api/v1/numbering-resolutions/{resolutionId}` pendiente
-- `PUT /api/v1/numbering-resolutions/{resolutionId}/activate` pendiente
-- `PUT /api/v1/numbering-resolutions/{resolutionId}/deactivate` pendiente
+- `GET /api/v1/numbering-resolutions/{resolutionId}` contrato objetivo para consulta por identificador.
+- `PUT /api/v1/numbering-resolutions/{resolutionId}/activate` contrato objetivo para activacion auditada.
+- `PUT /api/v1/numbering-resolutions/{resolutionId}/deactivate` contrato objetivo para inactivacion auditada.
 
 ### Ventas POS
 
@@ -893,16 +1004,16 @@ Reglas:
 - Confirmar una venta fiscal exige emisor activo y resolucion vigente con numeros disponibles.
 - El POS genera documento electronico a partir de la venta.
 - La afectacion de inventario ocurre cuando la venta/documento llegue al estado aprobado por la politica transaccional.
-- Si el proveedor devuelve `ACCEPTED`, `billing-service` aplica `SALE_OUT` en `inventory-service` y genera asiento `SALE_CONFIRMED` en `accounting-service`.
+- Si la conexion DIAN devuelve `ACCEPTED`, `billing-service` aplica `SALE_OUT` en `inventory-service` y genera asiento `SALE_CONFIRMED` en `accounting-service`.
 - `SALE_OUT` solo se aplica a lineas con `stockTracked=true`; los servicios no generan consumo automatico de insumos.
 - El snapshot de linea fiscal/operativa se toma desde `inventory-service` al crear la venta.
 - Los campos `inventoryAppliedAt` y `accountingAppliedAt` evidencian la aplicacion idempotente de efectos posteriores.
 - Reintentar `POST /api/v1/sales/{saleId}/confirm` no debe duplicar documento, movimientos de inventario ni asiento contable.
-- En ambiente local, `POST /api/v1/electronic-pos/{documentId}/submit` usa proveedor DIAN mock sin llamadas externas.
+- En ambiente local, `POST /api/v1/electronic-pos/{documentId}/submit` usa conector DIAN mock sin llamadas externas.
 
 ## dian-provider-service
 
-Responsabilidad: encapsular integracion con proveedor tecnologico DIAN.
+Responsabilidad: encapsular el mock local y la futura conexion DIAN parametrizable por empresa. Este servicio no representa una oferta de proveedor tecnologico DIAN de la plataforma.
 
 Estado TASK-036:
 
@@ -911,6 +1022,7 @@ Estado TASK-036:
 - Persistencia de envios mock en `dian_provider.provider_submission`.
 - `billing-service` consume `POST /api/v1/provider/electronic-pos` por HTTP usando `DIAN_PROVIDER_SERVICE_URL`.
 - `GET /api/v1/provider/submissions/{trackingId}` permite consultar el resultado mock persistido y requiere `X-Company-Id`.
+- Estado objetivo TASK-145/TASK-152: cada request real debe resolver configuracion DIAN activa por `companyId`, validar secretos/referencias y rechazar emision si la configuracion esta incompleta, vencida, inactiva o no probada.
 
 ### Endpoints internos
 
@@ -919,6 +1031,69 @@ Estado TASK-036:
 - `POST /api/v1/provider/credit-notes`
 - `POST /api/v1/provider/debit-notes`
 - `GET /api/v1/provider/submissions/{trackingId}`
+
+### Configuracion DIAN por empresa
+
+Endpoints publicos via BFF, visibles para ROOT y administradores empresariales con permiso fiscal/configuracion:
+
+- `GET /api/v1/companies/{companyId}/dian-configuration`
+- `POST /api/v1/companies/{companyId}/dian-configuration`
+- `PUT /api/v1/companies/{companyId}/dian-configuration/{configurationId}`
+- `PUT /api/v1/companies/{companyId}/dian-configuration/{configurationId}/activate`
+- `PUT /api/v1/companies/{companyId}/dian-configuration/{configurationId}/deactivate`
+- `POST /api/v1/companies/{companyId}/dian-configuration/{configurationId}/test`
+
+`DianConfigurationRequest`:
+
+```json
+{
+  "operationMode": "SOFTWARE_PROPIO_CLIENTE",
+  "environment": "HABILITACION",
+  "softwareId": "uuid-o-identificador-dian",
+  "softwarePinSecretReference": "aws-secretsmanager://tenant/company/software-pin",
+  "technicalKeySecretReference": "aws-secretsmanager://tenant/company/technical-key",
+  "certificateSecretReference": "aws-secretsmanager://tenant/company/certificate-p12",
+  "certificateAlias": "certificado empresa",
+  "certificateExpiresAt": "2027-08-19",
+  "authorizationUrl": "https://catalogo-vpfe-hab.dian.gov.co/...",
+  "productionUrl": "https://catalogo-vpfe.dian.gov.co/...",
+  "responsibilityAccepted": true
+}
+```
+
+`DianConfigurationResponse`:
+
+```json
+{
+  "id": "uuid",
+  "companyId": "uuid",
+  "operationMode": "SOFTWARE_PROPIO_CLIENTE",
+  "environment": "HABILITACION",
+  "softwareIdConfigured": true,
+  "softwarePinConfigured": true,
+  "technicalKeyConfigured": true,
+  "certificateConfigured": true,
+  "certificateAlias": "certificado empresa",
+  "certificateFingerprint": "sha256:...",
+  "certificateExpiresAt": "2027-08-19",
+  "status": "PENDING_TEST",
+  "lastTestStatus": "NOT_EXECUTED",
+  "active": false,
+  "disclaimer": "La empresa facturadora es responsable de su habilitacion y certificacion ante DIAN. La plataforma no presta servicio de proveedor tecnologico DIAN."
+}
+```
+
+`DianConfigurationTestResponse`:
+
+```json
+{
+  "configurationId": "uuid",
+  "status": "SUCCESS",
+  "testedAt": "2026-08-19T10:00:00Z",
+  "message": "Configuracion validada para ambiente de habilitacion.",
+  "correlationId": "uuid"
+}
+```
 
 ### ProviderSubmissionRequest
 
@@ -955,7 +1130,7 @@ Reglas:
 
 - No guardar secretos en payloads ni logs.
 - Todo error externo debe mapearse a `EXTERNAL_PROVIDER_ERROR` con detalle seguro.
-- La integracion real queda pendiente hasta seleccionar proveedor tecnologico.
+- La integracion real queda pendiente hasta implementar el conector DIAN real configurable por empresa.
 - En desarrollo local se usa el microservicio mock sin llamadas externas y solo sirve para probar el flujo interno.
 - Variables locales del mock:
   - `DIAN_PROVIDER_MODE=mock`.
@@ -963,6 +1138,9 @@ Reglas:
   - `DIAN_MOCK_ERROR_CODE`.
   - `DIAN_MOCK_ERROR_MESSAGE`.
 - En esta version, `DIAN_PROVIDER_MODE` solo acepta `mock`; un valor distinto debe fallar explicitamente hasta implementar el adaptador real.
+- El request de configuracion DIAN no puede incluir secretos en claro; solo referencias seguras o datos no sensibles. Si una UI necesita cargar un certificado, debe enviarlo a un endpoint seguro que lo almacene en Secrets Manager/almacen equivalente y retorne referencia no sensible.
+- Las respuestas API nunca retornan certificado, PIN, claves, tokens ni credenciales; solo banderas `*Configured`, alias, huella, vencimiento y estado.
+- Activar modo real exige `responsibilityAccepted=true` para confirmar que la empresa entiende que opera su propia habilitacion/certificacion DIAN.
 
 ## accounting-service
 
@@ -1125,7 +1303,7 @@ Estado TASK-042:
 - Permite consultar eventos por recurso, rango de fechas y usuario.
 - TASK-043 conecta `billing-service` como primer productor automatico para eventos de confirmacion de venta y documento electronico.
 - TASK-090 conecta el BFF como auditor transversal best-effort para mutaciones publicas y `catalog-service` como productor especifico de cambios de catalogos.
-- La integracion automatica desde `inventory-service` y `accounting-service` queda para lotes posteriores.
+- La integracion asincrona productiva con inventario y contabilidad queda cubierta por Outbox/Inbox, EventBridge/SQS y Lambdas. En modo local/transitorio pueden existir efectos sincronicos o dispatchers deshabilitados segun configuracion.
 
 ### Endpoints
 
@@ -1171,12 +1349,12 @@ Reglas:
 - `detail` debe contener detalle seguro, sin certificados, API keys, tokens, credenciales, payloads completos del proveedor ni datos sensibles innecesarios.
 - Ninguna consulta debe retornar eventos de otra empresa.
 - La SPA expone el modulo `Logs` para `ROOT`, `OWNER`/`ADMIN` o usuarios con `AUDIT_VIEW`; consulta por empresa activa y filtra por recurso, identificador y rango de fechas.
-- `billing-service` publica `ELECTRONIC_DOCUMENT`/`SALE`/`CONFIRM_SALE` despues de confirmar una venta nueva. El resultado es `SUCCESS` cuando el documento queda `VALIDATED`; de lo contrario es `FAILURE`.
-- La publicacion inicial desde `billing-service` es sincrona y best-effort para no revertir una emision fiscal ya persistida; el patron outbox/inbox queda pendiente para endurecer garantias de entrega.
+- `billing-service` registra eventos canonicos en Outbox despues de confirmar una venta nueva. El resultado funcional es `SUCCESS` cuando el documento queda `VALIDATED`; de lo contrario es `FAILURE`.
+- La entrega productiva hacia auditoria, inventario, contabilidad, reintentos DIAN y reportes usa Outbox/Inbox, EventBridge/SQS, DLQ e idempotencia. En local puede mantenerse deshabilitada con `EVENTING_EVENTBRIDGE_ENABLED=false`.
 
-## Contratos objetivo pendientes antes de limpieza legacy
+## Contratos objetivo vigentes para flujo operativo
 
-Estos contratos deben estabilizarse antes de eliminar codigo o tablas legacy asociadas.
+Estos contratos documentan el flujo operativo activo y el backlog funcional aun no expuesto completamente. Cualquier endpoint marcado como contrato objetivo debe implementarse con tarea y criterio de aceptacion antes de usarse desde la SPA productiva.
 
 ### thirdparty-service: ThirdPartyResponse
 
@@ -1271,6 +1449,8 @@ Reglas:
 
 ### identity-service: roles y permisos
 
+Contrato local/transitorio para desarrollo y E2E. En produccion, autenticacion publica pasa por Cognito Hosted UI + BFF session; `POST /api/v1/auth/login` no se expone al navegador.
+
 - `POST /api/v1/users`
 - `POST /api/v1/auth/login`
 - `GET /api/v1/me`
@@ -1295,6 +1475,8 @@ Permisos iniciales: `USERS_MANAGE`, `ROLES_MANAGE`, `SALES_CREATE`, `FISCAL_DOCU
 ```
 
 #### LoginResponse
+
+Respuesta local/transitoria. No aplica para produccion.
 
 ```json
 {
@@ -1345,6 +1527,7 @@ Reglas:
 - El BFF no debe implementar reglas de negocio que pertenezcan a billing, inventory, accounting, tenant, identity, catalog, thirdparty o audit.
 - Un fallo de servicio interno debe responder como error publico estructurado sin stack trace ni detalles de infraestructura.
 - Estado TASK-065: `/api/v1/auth/**` y `/api/v1/me/**` se enrutan a `identity-service`; `/api/v1/companies/{companyId}/license/**` se enruta a `tenant-service`; `/api/v1/companies/{companyId}/memberships`, `/api/v1/companies/{companyId}/users/{userId}/roles` y `/api/v1/companies/{companyId}/permissions` se enrutan a `identity-service`.
+- Estado objetivo TASK-153/TASK-163: en produccion, el BFF no recibe `Authorization` desde la SPA; resuelve cookie segura server-side y genera headers internos.
 
 ### Reglas RBAC billing via BFF
 
@@ -1415,7 +1598,7 @@ Estado TASK-058 licencia consumidores:
 ### Reportes minimos por servicio dueno del dato
 
 TASK-054 implementa los reportes minimos como endpoints de lectura en los servicios duenos del dato.
-El `reporting-service` fisico queda diferido hasta implementar Outbox/Inbox, eventos AWS y proyecciones.
+El `reporting-service` fisico no existe actualmente como artefacto. Los reportes minimos se consultan desde `billing-service`, `inventory-service`, `accounting-service` y agregaciones BFF; las proyecciones event-driven viven en `reporting-projection-lambda`.
 
 #### billing-service
 
@@ -1496,7 +1679,7 @@ Publicado por: `accounting-service`.
 
 Consumidores:
 
-- `reporting-service`
+- `reporting-projection-lambda` para proyecciones asincronas; `reporting-service` solo si una tarea futura lo materializa como servicio fisico.
 - `audit-service`
 
 ## Contract tests futuros
@@ -1511,10 +1694,9 @@ Cuando los servicios existan fisicamente, cada contrato debe tener:
 
 ## Pendientes
 
-- Definir proveedor tecnologico DIAN especifico.
-- Definir si la primera implementacion sera monolito modular o servicios fisicos separados.
-- Definir broker de eventos si se decide asincronia.
-- Definir OpenAPI formal por servicio despues de estabilizar DTOs.
+- Implementar conector DIAN real parametrizable por empresa con XML UBL, firma, CUFE/CUDE, QR, validaciones tecnicas y respuestas DIAN.
+- Formalizar OpenAPI por servicio despues de estabilizar DTOs publicos y contratos BFF; Springdoc ya permite generar documentacion runtime, pero falta versionarla como artefacto controlado.
+- Completar endpoints objetivo de actualizacion/inactivacion donde hoy existe solo contrato documentado.
 
 ### Estado TASK-052: documentos fiscales, consultas y notas
 
@@ -1940,7 +2122,7 @@ Reglas UI/BFF:
 
 ### Flujo E2E desde cero
 
-El script/prueba E2E debe operar solo mediante API publicas del BFF o microservicios expuestos localmente:
+El script/prueba E2E local debe operar solo mediante API publicas del BFF o microservicios expuestos localmente. En produccion, el primer paso se reemplaza por Cognito Hosted UI + BFF session:
 
 - `POST /api/v1/auth/login`: autentica ROOT y administrador empresarial.
 - `POST /api/v1/companies`: crea empresa contratante.

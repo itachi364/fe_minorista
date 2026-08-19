@@ -4,7 +4,7 @@
 
 El proyecto actual es un backend Java/Spring Boot para un negocio pequeno, con modulos CRUD existentes para clientes, proveedores, productos, categorias, compras, gastos, impuestos, paises, metodos de pago, parametros y tipos de documento.
 
-El objetivo de esta especificacion es definir las actividades faltantes para evolucionar el backend hacia una plataforma de facturacion electronica colombiana, inventario y contabilidad, usando Clean Architecture basada en microservicios y emision mediante proveedor tecnologico DIAN.
+El objetivo de esta especificacion es definir las actividades faltantes para evolucionar el backend hacia una plataforma de facturacion electronica colombiana, inventario y contabilidad, usando Clean Architecture basada en microservicios y emision mediante configuracion DIAN parametrizable por empresa.
 
 ## Fuentes normativas de referencia
 
@@ -24,7 +24,7 @@ Nota: esta especificacion tecnica no reemplaza validacion legal, tributaria o co
 El backend actual contiene entidades y operaciones administrativas basicas, pero no implementa todavia los componentes obligatorios para operar facturacion electronica y POS electronico en Colombia:
 
 - Generacion de documentos electronicos conforme a anexos tecnicos DIAN.
-- Integracion con proveedor tecnologico DIAN.
+- Configuracion DIAN parametrizable por empresa, sin ofrecer el software como proveedor tecnologico DIAN.
 - Numeracion autorizada y resoluciones.
 - CUFE/CUDE, QR, firma, XML UBL, ApplicationResponse y trazabilidad.
 - Estados de documentos electronicos.
@@ -37,7 +37,7 @@ El backend actual contiene entidades y operaciones administrativas basicas, pero
 
 Definir e implementar progresivamente un backend basado en microservicios con Clean Architecture para:
 
-- Emitir facturas electronicas de venta mediante proveedor tecnologico DIAN.
+- Emitir facturas electronicas de venta mediante conexion DIAN configurada por cada empresa facturadora.
 - Emitir documento equivalente electronico tipo tiquete POS.
 - Gestionar inventario para un negocio pequeno.
 - Registrar movimientos contables basicos.
@@ -51,7 +51,9 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - Configurar resoluciones de numeracion, prefijos, rangos, vigencia y ambiente.
 - Crear, calcular, validar y emitir facturas electronicas de venta.
 - Generar y almacenar representacion estructurada del documento.
-- Integrarse con proveedor tecnologico DIAN para emision, transmision, validacion y consulta de estado.
+- Integrarse con la DIAN o con el modo de operacion que cada empresa configure bajo su responsabilidad como facturador electronico.
+- Permitir que cada empresa configure certificado digital, software ID/PIN, ambiente, resoluciones, URLs y credenciales/referencias seguras requeridas por su proceso de habilitacion.
+- Informar explicitamente que la plataforma no presta servicio de proveedor tecnologico DIAN; provee un modulo configurable para que cada empresa opere su propia conexion.
 - Registrar CUFE, QR, XML, PDF/representacion grafica, estado DIAN, eventos y errores.
 - Emitir notas credito y notas debito.
 - Gestionar contingencia y reintentos cuando aplique.
@@ -60,7 +62,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 
 - Emitir documento equivalente electronico tipo tiquete de maquina registradora con sistema POS.
 - Generar CUDE, QR y estructura tecnica requerida.
-- Enviar documento POS al proveedor tecnologico.
+- Enviar documento POS a la conexion DIAN configurada para la empresa.
 - Registrar notas de ajuste para correccion o anulacion del POS electronico.
 - Identificar adquirente cuando sea necesario para soportar impuestos descontables, costos o deducciones.
 
@@ -91,7 +93,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - Frontend movil. El frontend web SPA inicial queda incluido desde TASK-063 como capa operativa de prueba sobre BFF.
 - Nomina electronica.
 - RADIAN avanzado, salvo decision posterior.
-- Integracion directa DIAN sin proveedor tecnologico.
+- Prestacion de servicios como proveedor tecnologico DIAN autorizado.
 - Multiempresa avanzado, salvo que se confirme.
 - NIIF completo para empresas medianas/grandes.
 - Conciliacion bancaria automatica.
@@ -102,7 +104,9 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - Cajero o vendedor.
 - Administrador del sistema.
 - Contador.
-- Proveedor tecnologico DIAN.
+- DIAN.
+- Empresa facturadora responsable de su habilitacion/certificacion.
+- Asesor tributario/contador de la empresa.
 - DIAN.
 - Cliente/adquirente.
 
@@ -111,8 +115,8 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RF-001: El sistema debe permitir configurar la informacion fiscal del emisor.
 - RF-002: El sistema debe permitir administrar resoluciones de numeracion para factura electronica y POS electronico.
 - RF-003: El sistema debe crear facturas electronicas a partir de cliente, productos, impuestos, medios de pago y totales.
-- RF-004: El sistema debe emitir facturas mediante proveedor tecnologico DIAN.
-- RF-005: El sistema debe registrar estados de emision y respuestas del proveedor tecnologico.
+- RF-004: El sistema debe emitir facturas mediante la configuracion DIAN activa de la empresa.
+- RF-005: El sistema debe registrar estados de emision y respuestas de la conexion DIAN configurada.
 - RF-006: El sistema debe emitir POS electronico como documento equivalente electronico.
 - RF-007: El sistema debe generar notas credito, notas debito y notas de ajuste POS.
 - RF-008: El sistema debe actualizar inventario por ventas, compras, devoluciones y ajustes.
@@ -121,7 +125,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RF-011: El sistema debe registrar auditoria de cambios y operaciones fiscales.
 - RF-012: El sistema debe permitir consultar documentos por numero, prefijo, cliente, estado, fecha y CUFE/CUDE.
 - RF-013: El sistema debe permitir crear empresas/tenants reales y usar su identificador como frontera obligatoria de datos de negocio.
-- RF-014: El sistema debe ejecutar el flujo completo de venta desde inventario hasta documento electronico, proveedor DIAN mock, descuento de stock y asiento contable automatico.
+- RF-014: El sistema debe ejecutar el flujo completo de venta desde inventario hasta documento electronico, conector DIAN mock, descuento de stock y asiento contable automatico.
 - RF-015: El sistema debe migrar los modulos legacy a bounded contexts con Clean Architecture antes de eliminar codigo o tablas antiguas.
 - RF-016: El sistema debe administrar clientes/adquirentes con nombre completo o razon social, tipo de documento, numero de documento, digito de verificacion cuando aplique, tipo de persona, contacto y datos fiscales necesarios para facturacion.
 - RF-017: El sistema debe calcular automaticamente el digito de verificacion para terceros y empresas con tipo de documento NIT, usando el algoritmo oficial DIAN documentado.
@@ -130,7 +134,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RF-020: El sistema debe permitir que un servicio o intangible se facture como item vendible sin descontar automaticamente insumos asociados.
 - RF-021: El sistema debe permitir registrar referencias de insumos sugeridos para servicios, solo como informacion operativa, sin generar consumos automaticos.
 - RF-022: El sistema debe permitir movimientos manuales de inventario para insumos por compra, consumo, desperdicio, ajuste de entrada y ajuste de salida.
-- RF-056: El sistema debe permitir, despues de vender un servicio facturable, cargar los insumos asociados como sugerencia y confirmar manualmente las cantidades reales consumidas para descontarlas del inventario.
+- RF-032: El sistema debe permitir, despues de vender un servicio facturable, cargar los insumos asociados como sugerencia y confirmar manualmente las cantidades reales consumidas para descontarlas del inventario.
 - RF-023: El sistema debe registrar compras, gastos, cuentas por pagar y pagos basicos asociados a proveedores, inventario y contabilidad.
 - RF-024: El sistema debe generar factura electronica o POS electronico tanto para bienes fisicos como para servicios, conservando snapshot fiscal de lineas, impuestos y tercero adquirente.
 - RF-025: El sistema debe exponer reportes operativos minimos de ventas, inventario/kardex, compras/gastos, documentos electronicos, cuentas por cobrar/pagar y libros contables.
@@ -158,12 +162,28 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RF-053: El sistema debe implementar un modulo contable operativo para ingresos, egresos, costos de operacion, activos, cuentas por cobrar, cuentas por pagar y reportes basicos por empresa.
 - RF-054: El sistema debe mejorar el modulo de logs para mostrar por defecto los eventos del dia actual, filtrar por fechas y permitir `resourceType` opcional desde lista desplegable cargada de backend.
 - RF-055: El sistema debe personalizar los mensajes de modales segun contexto; login por credenciales invalidas debe mostrar mensaje especifico y errores 5xx deben mostrar fallo interno generico.
-- RF-056: El permiso empresarial `SALES_CREATE` debe habilitar el flujo completo de venta POS: registrar venta, confirmar POS y emitir el documento electronico asociado hacia DIAN/proveedor mock. El permiso `FISCAL_DOCUMENTS_ISSUE` queda reservado para operaciones fiscales avanzadas como configuracion de emisor/resoluciones, notas, ajustes, gestion manual y reenvios.
-- RF-057: Las traducciones visibles del frontend deben gestionarse mediante una libreria de internacionalizacion y recursos externos. Los codigos internos pueden permanecer en ingles, pero la UI debe renderizar textos en espanol sin diccionarios manuales dispersos en componentes.
-- RF-058: La navegacion principal debe priorizar `Ventas` como modulo inicial y agrupar configuracion y procesos administrativos en submenus: `Configuracion` y `Contabilidad`.
-- RF-059: La administracion de roles debe tener una pantalla exclusiva con formulario de permisos, tabla de roles por empresa, actualizacion y activacion/inactivacion.
-- RF-060: La administracion de usuarios debe tener una pantalla exclusiva con creacion de usuario y asignacion obligatoria de rol en el mismo flujo, listado por empresa, actualizacion y activacion/inactivacion.
-- RF-061: Las acciones exitosas deben cerrar el modal de progreso/exito en maximo 1 segundo; los errores deben permanecer visibles hasta cierre manual.
+- RF-125: El permiso empresarial `SALES_CREATE` debe habilitar el flujo completo de venta POS: registrar venta, confirmar POS y emitir el documento electronico asociado hacia el conector DIAN mock o configurado. El permiso `FISCAL_DOCUMENTS_ISSUE` queda reservado para operaciones fiscales avanzadas como configuracion de emisor/resoluciones, notas, ajustes, gestion manual y reenvios.
+- RF-126: Las traducciones visibles del frontend deben gestionarse mediante una libreria de internacionalizacion y recursos externos. Los codigos internos pueden permanecer en ingles, pero la UI debe renderizar textos en espanol sin diccionarios manuales dispersos en componentes.
+- RF-127: La navegacion principal debe priorizar `Ventas` como modulo inicial y agrupar configuracion y procesos administrativos en submenus: `Configuracion` y `Contabilidad`.
+- RF-128: La administracion de roles debe tener una pantalla exclusiva con formulario de permisos, tabla de roles por empresa, actualizacion y activacion/inactivacion.
+- RF-129: La administracion de usuarios debe tener una pantalla exclusiva con creacion de usuario y asignacion obligatoria de rol en el mismo flujo, listado por empresa, actualizacion y activacion/inactivacion.
+- RF-130: Las acciones exitosas deben cerrar el modal de progreso/exito en maximo 1 segundo; los errores deben permanecer visibles hasta cierre manual.
+- RF-062: El sistema debe administrar una configuracion DIAN por empresa, aislada por `company_id`, con modo `MOCK`, `SOFTWARE_PROPIO_CLIENTE` o modo equivalente aprobado.
+- RF-063: El sistema debe permitir capturar y actualizar referencias seguras a certificado digital, software ID, PIN tecnico, clave tecnica, ambiente, URLs de habilitacion/produccion y datos requeridos por DIAN sin exponer secretos.
+- RF-064: El sistema debe permitir probar la configuracion DIAN de una empresa antes de habilitar emision real, registrando resultado y auditoria segura.
+- RF-065: El sistema debe mostrar en la UI una declaracion operacional clara: el producto es software parametrizable por empresa y no presta servicio de proveedor tecnologico DIAN.
+- RF-066: El sistema debe conservar modo `MOCK` para desarrollo/E2E y bloquear modo real si la configuracion DIAN de la empresa esta incompleta, vencida o no habilitada.
+- RF-078: El sistema debe usar autenticacion productiva con Amazon Cognito Hosted UI y OAuth 2.0 Authorization Code Grant con PKCE.
+- RF-079: El frontend productivo no debe capturar ni manejar directamente passwords, access tokens, refresh tokens ni bearer tokens reutilizables.
+- RF-080: El BFF debe intercambiar el codigo OAuth por tokens, crear una sesion server-side y entregar al navegador solo una cookie opaca `HttpOnly`, `Secure` y `SameSite`.
+- RF-081: El BFF debe validar la sesion en cada request, resolver identidad/empresa/permisos y propagar solo headers internos necesarios hacia microservicios.
+- RF-082: El sistema debe permitir logout seguro con invalidacion de cookie, revocacion de sesion server-side y revocacion de tokens Cognito cuando aplique.
+- RF-083: ROOT, administradores empresariales y acciones criticas deben requerir MFA en produccion.
+- RF-084: El frontend debe eliminar logs, storage y paneles que expongan credenciales, tokens, headers sensibles, passwords o payloads completos.
+- RF-085: Los endpoints mutables protegidos por cookie deben implementar proteccion CSRF.
+- RF-086: La infraestructura productiva debe aplicar headers de seguridad: HSTS, CSP, `X-Content-Type-Options`, `X-Frame-Options`/`frame-ancestors` y `Referrer-Policy`.
+- RF-087: Al crear una empresa, el backend autorizado debe poder crear secretos AWS por empresa de forma programatica, usando IAM minimo, KMS y auditoria.
+- RF-088: El modo de autenticacion dummy/opaco actual queda permitido solo para desarrollo local y pruebas controladas; debe estar bloqueado en produccion.
 
 ## Requisitos no funcionales
 
@@ -191,6 +211,13 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RNF-022: La SPA debe mantener estado inicial vacio o derivado de sesion/API; no debe importar datos de negocio desde archivos locales.
 - RNF-023: La carga de catalogos en frontend debe usar estados asincronos explicitos, cleanup de fetches/temporizadores y bloqueo seguro de formularios cuando falten catalogos requeridos.
 - RNF-024: La SPA debe centralizar textos traducibles con `react-i18next`/`i18next` o libreria equivalente, manteniendo recursos versionados por idioma y evitando constantes UI duplicadas.
+- RNF-025: Los secretos DIAN por empresa deben almacenarse como referencias a un gestor de secretos; la base de datos solo puede guardar metadata, huellas, fechas, alias, estado y referencias no sensibles.
+- RNF-026: La arquitectura debe separar la capacidad tecnica de conexion DIAN del rol regulatorio de proveedor tecnologico; la documentacion, UI y contratos no deben presentar el producto como proveedor tecnologico DIAN.
+- RNF-027: Todo trafico productivo del navegador debe usar HTTPS/TLS; no se aceptan endpoints HTTP publicos para autenticacion o APIs.
+- RNF-028: Los tokens Cognito almacenados server-side deben cifrarse en reposo con KMS o mecanismo equivalente; nunca deben guardarse ni mostrarse en claro.
+- RNF-029: Las cookies de sesion productivas deben ser `HttpOnly`, `Secure`, `SameSite=Lax` o `Strict`, con expiracion corta y rotacion/renovacion controlada.
+- RNF-030: La SPA productiva no debe generar sourcemaps publicos con codigo sensible ni exponer mensajes tecnicos detallados en consola.
+- RNF-031: La auditoria de seguridad debe registrar login, logout, callback OAuth, refresh, fallos de autenticacion, acceso denegado, cambios de MFA, creacion de secretos y cambios de rol/licencia sin registrar secretos.
 
 ## Reglas de negocio
 
@@ -207,7 +234,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RN-011: Los importes monetarios se redondearan a 2 decimales usando `HALF_UP`.
 - RN-012: Los totales del documento se obtendran sumando los resultados redondeados de sus lineas.
 - RN-013: La unidad minima de despliegue sera el microservicio por bounded context, no un contenedor por endpoint individual.
-- RN-014: Un documento fiscal aceptado por el proveedor DIAN mock debe afectar inventario y contabilidad una sola vez por empresa, aunque el comando se reintente.
+- RN-014: Un documento fiscal aceptado por el conector DIAN mock o configurado debe afectar inventario y contabilidad una sola vez por empresa, aunque el comando se reintente.
 - RN-015: Las tablas y clases legacy solo podran eliminarse despues de demostrar que el flujo equivalente existe en Clean Architecture, que la prueba end-to-end pasa y que no quedan referencias de compilacion o runtime.
 - RN-016: Para tipo de documento NIT, el digito de verificacion se calcula automaticamente a partir del numero base; no se debe capturar como valor libre salvo importacion historica controlada.
 - RN-017: Para tipos de documento distintos a NIT, el digito de verificacion debe quedar nulo o vacio.
@@ -239,7 +266,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RN-042: El canal de venta POS operativo es interno y siempre se procesa como `POS`/`ELECTRONIC_POS` en esta fase; la SPA no debe pedir al vendedor seleccionar canal.
 - RN-043: El escaneo USB HID se interpreta como entrada de teclado solo en campos de codigo de barras; la SPA debe mantener foco controlado para inventario/POS y procesar el codigo por debounce automatico o terminador del scanner sin requerir clic.
 - RN-044: Si el comprador no desea factura electronica nominada, `billing-service` debe resolver el consumidor final desde configuracion fiscal persistida y usarlo como snapshot del adquirente, sin persistirlo como tercero empresarial.
-- RN-045: El perfil de consumidor final debe ser parametrizable por empresa o global, auditable y modificable por `ROOT` si DIAN/proveedor tecnologico cambia el contrato tecnico; la SPA solo envia la decision `buyerIdentificationMode`.
+- RN-045: El perfil de consumidor final debe ser parametrizable por empresa o global, auditable y modificable por `ROOT` si DIAN o el modo de operacion configurado cambia el contrato tecnico; la SPA solo envia la decision `buyerIdentificationMode`.
 - RN-046: Toda accion mutable del backend (`POST`, `PUT`, `PATCH`, `DELETE`) debe registrar auditoria segura con empresa, usuario cuando exista, accion, recurso, resultado, detalle no sensible, fecha y correlacion.
 - RN-047: La auditoria no debe registrar secretos, tokens, passwords, certificados, hashes de contrasena ni payloads completos con datos sensibles.
 - RN-048: Un fallo temporal de auditoria no debe revertir una accion de negocio ya persistida; debe dejar trazabilidad tecnica y/o evento pendiente de reintento cuando exista infraestructura asincrona.
@@ -256,14 +283,29 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RN-059: Una licencia parametrizable debe almacenar modulos habilitados; si no se especifican modulos, se interpreta como licencia sin acceso operativo salvo administracion ROOT.
 - RN-061: Los modulos licenciables son capacidades comerciales de alto nivel y se almacenan en ingles en backend/base de datos, pero la UI debe presentarlos en espanol.
 - RN-062: ROOT puede asignar o cambiar modulos licenciados para cualquier empresa; administradores empresariales solo pueden operar dentro de los modulos que ROOT habilito para su empresa.
+- RN-063: Cada empresa es responsable de registrarse, habilitarse, certificar su modo de operacion, obtener y custodiar su certificado digital y mantener vigentes sus resoluciones ante DIAN.
+- RN-064: El software no debe usar un certificado global del proveedor de la aplicacion para emitir documentos de empresas clientes.
+- RN-065: La configuracion DIAN debe pertenecer a una sola empresa y no puede compartirse implicitamente entre tenants.
+- RN-066: El certificado digital, PIN tecnico, claves, tokens y credenciales DIAN nunca deben aparecer en logs, auditoria, respuestas API ni payloads guardados.
+- RN-067: Una empresa no puede emitir documentos en modo real si su configuracion DIAN activa no esta completa, no esta habilitada, esta vencida o no tiene resolucion vigente compatible.
+- RN-068: El modo `MOCK` solo sirve para desarrollo, pruebas internas y E2E; no prueba cumplimiento tecnico final con anexos DIAN ni habilita operacion productiva.
+- RN-069: La contrasena del usuario nunca debe llegar a la SPA productiva de la aplicacion; el ingreso de credenciales ocurre en Cognito Hosted UI o proveedor de identidad aprobado.
+- RN-070: El navegador no debe recibir `accessToken`, `refreshToken`, `idToken` ni bearer token interno en respuestas API productivas.
+- RN-071: `sessionStorage` y `localStorage` no deben guardar credenciales, tokens, passwords, headers de autorizacion ni secretos. Solo pueden guardar preferencias no sensibles de UI.
+- RN-072: El BFF debe tratar la cookie de sesion como identificador opaco y resolver datos sensibles desde almacenamiento server-side cifrado.
+- RN-073: La proteccion CSRF debe validarse antes de mutaciones `POST`, `PUT`, `PATCH` y `DELETE` cuando la autenticacion use cookies.
+- RN-074: ROOT y administradores no pueden operar sin MFA activo en produccion.
+- RN-075: La creacion programatica de secretos AWS por empresa debe ser idempotente, auditable y restringida por prefijo de ruta del ambiente/empresa.
+- RN-076: La aplicacion no debe registrar en `console.log`, logs tecnicos, auditoria ni errores publicos valores de passwords, tokens, cookies, certificados, PIN, claves tecnicas o payloads completos con datos sensibles.
 
 ## Supuestos
 
-- Se usara proveedor tecnologico DIAN para emision y validacion de documentos.
+- Se usara un modulo de configuracion DIAN por empresa; cada empresa facturadora decide y configura su modo de operacion ante DIAN bajo su responsabilidad.
 - El negocio emitira POS electronico.
 - El backend se evolucionara hacia microservicios, manteniendo compatibilidad temporal con el proyecto actual.
 - La correccion de credenciales hardcodeadas queda incluida como tarea aprobada para fase de implementacion.
-- Mientras no exista proveedor tecnologico, contrato tecnico, certificado y credenciales reales, la integracion DIAN se implementara con un adaptador dummy local sin llamadas externas.
+- Mientras no existan configuraciones DIAN reales por empresa, certificado y credenciales reales, la integracion DIAN se implementara con un adaptador dummy local sin llamadas externas.
+- La plataforma no se comercializara como proveedor tecnologico DIAN; se comercializara como software configurable para conexion DIAN por empresa. Esta decision debe validarse legal/tributariamente antes de operar comercialmente a escala.
 - La migracion fisica a microservicios se hara por bounded context para mantener un balance entre independencia de despliegue y complejidad operacional.
 - En local se usara Docker Compose con contenedores por microservicio; la separacion de bases de datos podra iniciar con esquemas o bases separadas en PostgreSQL y evolucionar a instancias independientes.
 - Para produccion AWS se adopta EventBridge/SQS + Lambda como objetivo event-driven administrado. No se contempla despliegue on-premise ni broker self-hosted.
@@ -282,6 +324,11 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - No introducir broker, login ni infraestructura adicional antes de completar y validar el flujo core de negocio por API, persistencia PostgreSQL y prueba end-to-end desde cero, salvo documentacion/planificacion SDD aprobada.
 - No mantener catalogos regulatorios u operativos hardcodeados en frontend, ni fallback productivo de catalogos locales.
 - No crear seeds de empresas, terceros, productos, ventas, resoluciones o usuarios empresariales para UI local; solo `ROOT` puede existir como seed inicial de pruebas.
+- No almacenar certificados digitales reales, PIN, claves tecnicas ni credenciales DIAN en archivos versionados o columnas de texto plano.
+- No presentar en UI, README, contratos comerciales ni documentacion tecnica que el producto presta servicios de proveedor tecnologico DIAN.
+- No exponer en produccion la autenticacion dummy basada en `POST /api/v1/auth/login` con password manejado por la SPA.
+- No guardar tokens productivos en `sessionStorage`, `localStorage`, IndexedDB ni variables globales del navegador.
+- No publicar sourcemaps productivos sin control de acceso.
 
 ## Fuentes normativas de referencia
 
@@ -301,41 +348,42 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 
 ## Requisitos RBAC modular aprobado
 
-- RF-030: El sistema debe soportar un usuario `ROOT` global de plataforma que no pertenece a ninguna empresa y no depende de licencia empresarial para iniciar sesion.
-- RF-031: El usuario `ROOT` debe poder crear empresas contratantes, configurar o activar licencias y crear/asignar el administrador inicial de cada empresa.
-- RF-032: Todos los roles distintos de `ROOT` deben pertenecer a una empresa especifica y estar aislados por `company_id`.
-- RF-033: Cada empresa debe poder crear roles personalizados con nombres propios y permisos modulares dentro de su alcance empresarial.
-- RF-034: El sistema debe impedir que un actor cree, edite o asigne roles con permisos iguales, superiores o no poseidos por el actor.
-- RF-035: Los permisos globales `GLOBAL_*` deben ser exclusivos de `ROOT` y no deben asignarse a roles empresariales.
-- RF-036: El frontend debe mostrar panel global para `ROOT` y panel empresarial para usuarios de empresa segun permisos efectivos.
-- RF-037: El backend debe validar permisos efectivos en cada accion protegida; el frontend no es fuente de seguridad.
-- RF-038: ROOT debe poder administrar catalogos globales/regulatorios de la plataforma, incluyendo crear, actualizar, activar e inactivar registros, siempre dejando auditoria.
-- RF-039: La UI debe ofrecer un modulo de Logs/Auditoria visible solo para ROOT, administradores de empresa o roles con permiso `AUDIT_VIEW`.
-- RF-040: ROOT debe poder consultar auditoria de la empresa activa seleccionada y administradores de empresa solo auditoria de su empresa.
-- RF-041: ROOT debe poder crear, actualizar, activar y suspender licencias empresariales desde la SPA sin usar llamadas manuales.
-- RF-042: Una licencia empresarial debe definir vigencia, limites comerciales y modulos habilitados de forma parametrizable.
-- RF-043: El sistema debe validar licencia por modulo/accion antes de habilitar menus y antes de ejecutar operaciones criticas.
-- RF-044: Si una empresa no tiene licencia configurada, el login empresarial debe mostrar un mensaje claro de licencia no configurada, cerrar la sesion y no mostrar menus.
-- RF-045: El licenciamiento comercial no reemplaza RBAC; un usuario solo puede acceder a funcionalidades permitidas por la licencia de la empresa y por sus permisos efectivos.
-- RF-046: El sistema debe aplicar los limites comerciales de licencia: `maxUsers` limita la cantidad de usuarios activos con acceso a una empresa y `maxMonthlyDocuments` limita la cantidad de documentos fiscales emitidos por mes en `billing-service`.
-- RF-047: Cuando una empresa alcance un limite de licencia, el backend debe bloquear la operacion con mensaje funcional claro y la UI debe mostrarlo como error de regla de negocio.
-- RF-048: La administracion de empresa debe diferenciar alcance ROOT y alcance empresarial: ROOT puede crear, actualizar, activar e inactivar empresas; OWNER/ADMIN empresarial solo puede actualizar la empresa activa y no debe ver acciones de creacion de nuevas empresas.
-- RF-049: La UI debe mostrar nombres de empresa y etiquetas de permisos/modulos en espanol, sin exponer UUID como dato principal al usuario final; los codigos internos pueden permanecer en ingles en API, backend y base de datos.
+- RF-105: El sistema debe soportar un usuario `ROOT` global de plataforma que no pertenece a ninguna empresa y no depende de licencia empresarial para iniciar sesion.
+- RF-106: El usuario `ROOT` debe poder crear empresas contratantes, configurar o activar licencias y crear/asignar el administrador inicial de cada empresa.
+- RF-107: Todos los roles distintos de `ROOT` deben pertenecer a una empresa especifica y estar aislados por `company_id`.
+- RF-108: Cada empresa debe poder crear roles personalizados con nombres propios y permisos modulares dentro de su alcance empresarial.
+- RF-109: El sistema debe impedir que un actor cree, edite o asigne roles con permisos iguales, superiores o no poseidos por el actor.
+- RF-110: Los permisos globales `GLOBAL_*` deben ser exclusivos de `ROOT` y no deben asignarse a roles empresariales.
+- RF-111: El frontend debe mostrar panel global para `ROOT` y panel empresarial para usuarios de empresa segun permisos efectivos.
+- RF-112: El backend debe validar permisos efectivos en cada accion protegida; el frontend no es fuente de seguridad.
+- RF-113: ROOT debe poder administrar catalogos globales/regulatorios de la plataforma, incluyendo crear, actualizar, activar e inactivar registros, siempre dejando auditoria.
+- RF-114: La UI debe ofrecer un modulo de Logs/Auditoria visible solo para ROOT, administradores de empresa o roles con permiso `AUDIT_VIEW`.
+- RF-115: ROOT debe poder consultar auditoria de la empresa activa seleccionada y administradores de empresa solo auditoria de su empresa.
+- RF-116: ROOT debe poder crear, actualizar, activar y suspender licencias empresariales desde la SPA sin usar llamadas manuales.
+- RF-117: Una licencia empresarial debe definir vigencia, limites comerciales y modulos habilitados de forma parametrizable.
+- RF-118: El sistema debe validar licencia por modulo/accion antes de habilitar menus y antes de ejecutar operaciones criticas.
+- RF-119: Si una empresa no tiene licencia configurada, el login empresarial debe mostrar un mensaje claro de licencia no configurada, cerrar la sesion y no mostrar menus.
+- RF-120: El licenciamiento comercial no reemplaza RBAC; un usuario solo puede acceder a funcionalidades permitidas por la licencia de la empresa y por sus permisos efectivos.
+- RF-121: El sistema debe aplicar los limites comerciales de licencia: `maxUsers` limita la cantidad de usuarios activos con acceso a una empresa y `maxMonthlyDocuments` limita la cantidad de documentos fiscales emitidos por mes en `billing-service`.
+- RF-122: Cuando una empresa alcance un limite de licencia, el backend debe bloquear la operacion con mensaje funcional claro y la UI debe mostrarlo como error de regla de negocio.
+- RF-123: La administracion de empresa debe diferenciar alcance ROOT y alcance empresarial: ROOT puede crear, actualizar, activar e inactivar empresas; OWNER/ADMIN empresarial solo puede actualizar la empresa activa y no debe ver acciones de creacion de nuevas empresas.
+- RF-124: La UI debe mostrar nombres de empresa y etiquetas de permisos/modulos en espanol, sin exponer UUID como dato principal al usuario final; los codigos internos pueden permanecer en ingles en API, backend y base de datos.
 
 ## Requisitos fase productizacion operativa
 
-- RF-063: El sistema debe contar con una prueba E2E desde cero que cree empresa, licencia, administrador, catalogos requeridos, tercero, inventario, venta POS, factura electronica mock, efecto de inventario, asiento contable y auditoria.
-- RF-064: El sistema debe soportar compras/entradas de inventario con proveedor, costo, medio de pago, cuentas por pagar cuando aplique y asiento contable parametrizable.
-- RF-065: El sistema debe soportar servicios facturables que consumen insumos controlados mediante confirmacion manual/asistida posterior o asociada a la venta, sin recetas automaticas obligatorias.
-- RF-066: La SPA debe ofrecer listados profesionales con busqueda, paginacion, estado y accion contextual para ventas, documentos fiscales, terceros, productos, compras, servicios, movimientos, usuarios, roles, licencias y logs.
-- RF-067: BFF y microservicios deben validar RBAC y licencia en endpoints criticos; el frontend nunca sera el control de seguridad principal.
-- RF-068: ROOT debe ver un tablero de uso de licencia por empresa con usuarios activos, documentos emitidos en el mes, modulos habilitados, vigencia, estado y proximidad de vencimiento.
-- RF-069: Toda accion mutable debe generar auditoria segura verificable, incluyendo intentos fallidos por permiso, licencia, regla de negocio o validacion.
-- RF-070: La sesion debe soportar expiracion por inactividad, restauracion controlada y renovacion segura segun contrato backend; refrescar la pagina no debe cerrar sesion si sigue vigente.
-- RF-071: Las reglas contables deben ser parametrizables por empresa y evento de negocio usando cuentas PUC validas.
-- RF-072: Ventas, compras, gastos, pagos de nomina/pagos diarios y consumos relevantes deben generar comprobantes/asientos balanceados o fallar con error funcional si falta parametrizacion contable.
-- RF-073: La plataforma debe exponer reportes minimos de estado de resultados, balance basico, libro diario, cuentas por cobrar, cuentas por pagar, inventario valorizado y uso de licencia.
-- RF-074: El BFF debe tener pruebas de contrato contra los microservicios para rutas criticas de login, empresa, licencia, terceros, inventario, ventas, auditoria, usuarios y roles.
-- RF-075: Debe existir prueba E2E de aislamiento multiempresa que demuestre que una empresa no ve ni modifica datos de otra.
-- RF-076: La infraestructura AWS objetivo debe quedar definida con Terraform para SPA en S3/CloudFront, BFF/API en ECS Fargate, microservicios privados, RDS PostgreSQL, Secrets Manager, CloudWatch, SQS/EventBridge y Lambdas event-driven.
-- RF-077: Los eventos asincronos productivos deben usar servicios administrados AWS, con Outbox/Inbox, idempotencia, reintentos y DLQ; no se usaran brokers self-hosted en produccion.
+- RF-089: El sistema debe contar con una prueba E2E desde cero que cree empresa, licencia, administrador, catalogos requeridos, tercero, inventario, venta POS, factura electronica mock, efecto de inventario, asiento contable y auditoria.
+- RF-090: El sistema debe soportar compras/entradas de inventario con proveedor, costo, medio de pago, cuentas por pagar cuando aplique y asiento contable parametrizable.
+- RF-091: El sistema debe soportar servicios facturables que consumen insumos controlados mediante confirmacion manual/asistida posterior o asociada a la venta, sin recetas automaticas obligatorias.
+- RF-092: La SPA debe ofrecer listados profesionales con busqueda, paginacion, estado y accion contextual para ventas, documentos fiscales, terceros, productos, compras, servicios, movimientos, usuarios, roles, licencias y logs.
+- RF-093: BFF y microservicios deben validar RBAC y licencia en endpoints criticos; el frontend nunca sera el control de seguridad principal.
+- RF-094: ROOT debe ver un tablero de uso de licencia por empresa con usuarios activos, documentos emitidos en el mes, modulos habilitados, vigencia, estado y proximidad de vencimiento.
+- RF-095: Toda accion mutable debe generar auditoria segura verificable, incluyendo intentos fallidos por permiso, licencia, regla de negocio o validacion.
+- RF-096: La sesion debe soportar expiracion por inactividad, restauracion controlada y renovacion segura segun contrato backend; refrescar la pagina no debe cerrar sesion si sigue vigente.
+- RF-097: Las reglas contables deben ser parametrizables por empresa y evento de negocio usando cuentas PUC validas.
+- RF-098: Ventas, compras, gastos, pagos de nomina/pagos diarios y consumos relevantes deben generar comprobantes/asientos balanceados o fallar con error funcional si falta parametrizacion contable.
+- RF-099: La plataforma debe exponer reportes minimos de estado de resultados, balance basico, libro diario, cuentas por cobrar, cuentas por pagar, inventario valorizado y uso de licencia.
+- RF-100: El BFF debe tener pruebas de contrato contra los microservicios para rutas criticas de login, empresa, licencia, terceros, inventario, ventas, auditoria, usuarios y roles.
+- RF-101: Debe existir prueba E2E de aislamiento multiempresa que demuestre que una empresa no ve ni modifica datos de otra.
+- RF-102: La infraestructura AWS objetivo debe quedar definida con Terraform para SPA en S3/CloudFront, BFF/API en ECS Fargate, microservicios privados, RDS PostgreSQL, Secrets Manager, CloudWatch, SQS/EventBridge y Lambdas event-driven.
+- RF-103: Los eventos asincronos productivos deben usar servicios administrados AWS, con Outbox/Inbox, idempotencia, reintentos y DLQ; no se usaran brokers self-hosted en produccion.
+- RF-104: La documentacion SDD debe mantenerse consistente y trazable; cada decision vigente debe estar reflejada en requisitos, diseno, arquitectura, infraestructura, contratos API, modelo/diccionario de datos, criterios de aceptacion, tareas y README cuando aplique.
