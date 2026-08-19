@@ -823,7 +823,7 @@ Permisos empresariales iniciales:
 - Topic consulted: authorities, permissions, role hierarchy and custom authorization managers.
 - Relevant finding: Spring Security soporta autorizacion por authorities/permisos, jerarquias de roles y gestores de autorizacion personalizados para reglas dinamicas.
 - Decision impact: `identity-service` debe calcular permisos efectivos desde BD y exponerlos al BFF/frontend; los microservicios deben validar permisos por accion mediante contratos internos o middleware aprobado, sin depender solo de nombres de roles fijos.
-## TASK-067 rediseï¿½o visual profesional
+## TASK-067 rediseÃ¯Â¿Â½o visual profesional
 
 La SPA adopta una presentacion de herramienta SaaS operativa: login centrado con panel de marca, shell autenticado con sidebar fijo en escritorio, area de trabajo clara, panel superior compacto, formularios densos y controles consistentes.
 
@@ -1129,7 +1129,7 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 
 ### RBAC en BFF
 
-- El frontend oculta modulos segun permisos efectivos, pero la autorizacion real para catálogos administrables, contabilidad, nomina y logs se valida en `bff-service` contra `identity-service`.
+- El frontend oculta modulos segun permisos efectivos, pero la autorizacion real para catÃ¡logos administrables, contabilidad, nomina y logs se valida en `bff-service` contra `identity-service`.
 - `ROOT` se valida con `/api/v1/platform/permissions` y conserva acceso global.
 - En el modo local actual, los usuarios empresariales envian `Authorization`, `X-Company-Id` y `X-User-Id`; el BFF confirma que `X-User-Id` coincide con `/api/v1/me` antes de evaluar permisos efectivos de empresa.
 - En el modo productivo TASK-153/TASK-163, la SPA no envia `Authorization`; el BFF resuelve la cookie segura, deriva `X-User-Id` y propaga identidad interna.
@@ -1336,3 +1336,1012 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 - Topic consulted: versioned SQL migrations, validation and schema history.
 - Relevant finding: Flyway valida migraciones aplicadas contra las migraciones resueltas localmente, incluyendo checksum, tipo, descripcion y migraciones aplicadas no resueltas.
 - Decision impact: La limpieza no borra ni modifica migraciones historicas; usa script nuevo idempotente para tablas vacias y preserva datos con filas.
+
+<!-- BEGIN SDD TASK DESIGN TRACEABILITY -->
+## Trazabilidad individual de diseno por task
+
+Esta seccion normaliza la documentacion SDD para que cada task tenga una decision de diseno verificable, incluso cuando el detalle ampliado exista en secciones historicas anteriores.
+
+### TASK-001 - Preparar Docker y variables de entorno para secretos
+- Estado: Completada.
+- Fase: Fase 0: Seguridad y base SDD.
+- Decision de diseno: Define base de ejecucion SDD, configuracion inicial y controles minimos para avanzar con cambios trazables.
+- Componentes/capas: infra/aws, docker-compose.
+
+### TASK-002 - Crear estructura SDD local
+- Estado: Completada.
+- Fase: Fase 0: Seguridad y base SDD.
+- Decision de diseno: Define base de ejecucion SDD, configuracion inicial y controles minimos para avanzar con cambios trazables.
+- Componentes/capas: backend modular.
+
+### TASK-003 - Disenar modelo de base de datos multiempresa
+- Estado: Completada.
+- Fase: Fase 1: Arquitectura y plataforma.
+- Decision de diseno: Define decisiones base de arquitectura, contratos, version de plataforma y modelo multiempresa.
+- Componentes/capas: tenant-service.
+
+### TASK-004 - Definir contratos entre microservicios
+- Estado: Completada.
+- Fase: Fase 1: Arquitectura y plataforma.
+- Decision de diseno: Define decisiones base de arquitectura, contratos, version de plataforma y modelo multiempresa.
+- Componentes/capas: inventory-service.
+
+### TASK-005 - Actualizar Spring Boot a version soportada/LTS
+- Estado: Completada.
+- Fase: Fase 1: Arquitectura y plataforma.
+- Decision de diseno: Define decisiones base de arquitectura, contratos, version de plataforma y modelo multiempresa.
+- Componentes/capas: backend modular.
+
+### TASK-006 - Crear estructura Clean Architecture para `billing-service`
+- Estado: Completada.
+- Fase: Fase 1: Arquitectura y plataforma.
+- Decision de diseno: Modela el nucleo de facturacion electronica/POS con dominio, casos de uso, persistencia y conector DIAN mock.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-007 - Crear migraciones versionadas de base de datos
+- Estado: Completada.
+- Fase: Fase 1: Arquitectura y plataforma.
+- Decision de diseno: Modela el nucleo de facturacion electronica/POS con dominio, casos de uso, persistencia y conector DIAN mock.
+- Componentes/capas: backend modular.
+
+### TASK-008 - Implementar configuracion de emisor y resoluciones
+- Estado: Completada.
+- Fase: Fase 2: Facturacion electronica y conector DIAN.
+- Decision de diseno: Modela el nucleo de facturacion electronica/POS con dominio, casos de uso, persistencia y conector DIAN mock.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-009 - Implementar calculo de factura electronica
+- Estado: Completada.
+- Fase: Fase 2: Facturacion electronica y conector DIAN.
+- Decision de diseno: Modela el nucleo de facturacion electronica/POS con dominio, casos de uso, persistencia y conector DIAN mock.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-010 - Implementar puerto y adaptador de conexion DIAN
+- Estado: Completada.
+- Fase: Fase 2: Facturacion electronica y conector DIAN.
+- Decision de diseno: Modela el nucleo de facturacion electronica/POS con dominio, casos de uso, persistencia y conector DIAN mock.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-011 - Implementar estados y trazabilidad de documentos electronicos
+- Estado: Completada.
+- Fase: Fase 2: Facturacion electronica y conector DIAN.
+- Decision de diseno: Modela el nucleo de facturacion electronica/POS con dominio, casos de uso, persistencia y conector DIAN mock.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-012 - Implementar notas credito y debito
+- Estado: Completada.
+- Fase: Fase 2: Facturacion electronica y conector DIAN.
+- Decision de diseno: Modela el nucleo de facturacion electronica/POS con dominio, casos de uso, persistencia y conector DIAN mock.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-013 - Implementar emision de documento equivalente electronico POS
+- Estado: Completada.
+- Fase: Fase 3: POS electronico.
+- Decision de diseno: Modela el nucleo de facturacion electronica/POS con dominio, casos de uso, persistencia y conector DIAN mock.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-014 - Refactorizar modulos CRUD existentes hacia Clean Architecture
+- Estado: Completada.
+- Fase: Fase 4: Refactorizacion arquitectonica legacy.
+- Decision de diseno: Migra funcionalidad legacy hacia Clean Architecture y retira codigo reemplazado bajo validacion.
+- Componentes/capas: backend modular.
+
+### TASK-015 - Implementar nota de ajuste POS
+- Estado: Completada.
+- Fase: Fase 5: POS electronico - ajustes.
+- Decision de diseno: Migra funcionalidad legacy hacia Clean Architecture y retira codigo reemplazado bajo validacion.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-016 - Implementar movimientos de inventario
+- Estado: Completada.
+- Fase: Fase 6: Inventario.
+- Decision de diseno: Migra funcionalidad legacy hacia Clean Architecture y retira codigo reemplazado bajo validacion.
+- Componentes/capas: inventory-service.
+
+### TASK-017 - Implementar validacion de disponibilidad
+- Estado: Completada.
+- Fase: Fase 6: Inventario.
+- Decision de diseno: Migra funcionalidad legacy hacia Clean Architecture y retira codigo reemplazado bajo validacion.
+- Componentes/capas: backend modular.
+
+### TASK-018 - Implementar plan de cuentas basico
+- Estado: Completada.
+- Fase: Fase 7: Contabilidad base.
+- Decision de diseno: Migra funcionalidad legacy hacia Clean Architecture y retira codigo reemplazado bajo validacion.
+- Componentes/capas: accounting-service.
+
+### TASK-019 - Completar refactor de modulos legacy restantes hacia Clean Architecture
+- Estado: Completada.
+- Fase: Fase 8: Refactorizacion legacy restante.
+- Decision de diseno: Migra funcionalidad legacy hacia Clean Architecture y retira codigo reemplazado bajo validacion.
+- Componentes/capas: backend modular.
+
+### TASK-020 - Migrar persistencia y contratos legacy a Clean Architecture completa
+- Estado: Completada.
+- Fase: Fase 8: Refactorizacion legacy restante.
+- Decision de diseno: Migra funcionalidad legacy hacia Clean Architecture y retira codigo reemplazado bajo validacion.
+- Componentes/capas: backend modular.
+
+### TASK-021 - Eliminar codigo muerto legacy despues de migracion Clean Architecture completa
+- Estado: Completada.
+- Fase: Fase 8: Refactorizacion legacy restante.
+- Decision de diseno: Migra funcionalidad legacy hacia Clean Architecture y retira codigo reemplazado bajo validacion.
+- Componentes/capas: backend modular.
+
+### TASK-022 - Implementar asientos contables automaticos
+- Estado: Completada.
+- Fase: Fase 9: Contabilidad.
+- Decision de diseno: Completa persistencia, API REST, contabilidad, auditoria, errores y pruebas locales para el backend inicial.
+- Componentes/capas: accounting-service.
+
+### TASK-023 - Implementar libro diario y libro mayor
+- Estado: Completada.
+- Fase: Fase 9: Contabilidad.
+- Decision de diseno: Completa persistencia, API REST, contabilidad, auditoria, errores y pruebas locales para el backend inicial.
+- Componentes/capas: accounting-service.
+
+### TASK-024 - Estandarizar errores API
+- Estado: Completada.
+- Fase: Fase 10: Calidad, auditoria y observabilidad.
+- Decision de diseno: Completa persistencia, API REST, contabilidad, auditoria, errores y pruebas locales para el backend inicial.
+- Componentes/capas: backend modular.
+
+### TASK-025 - Implementar auditoria fiscal
+- Estado: Completada.
+- Fase: Fase 10: Calidad, auditoria y observabilidad.
+- Decision de diseno: Completa persistencia, API REST, contabilidad, auditoria, errores y pruebas locales para el backend inicial.
+- Componentes/capas: billing-service, dian-provider-service, audit-service.
+
+### TASK-026 - Implementar correlation ID y logs estructurados
+- Estado: Completada.
+- Fase: Fase 10: Calidad, auditoria y observabilidad.
+- Decision de diseno: Completa persistencia, API REST, contabilidad, auditoria, errores y pruebas locales para el backend inicial.
+- Componentes/capas: audit-service.
+
+### TASK-027 - Implementar persistencia JPA y endpoints REST para billing/POS
+- Estado: Completada.
+- Fase: Fase 11: Pruebas end-to-end locales con Docker.
+- Decision de diseno: Completa persistencia, API REST, contabilidad, auditoria, errores y pruebas locales para el backend inicial.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-028 - Implementar conector DIAN mock configurable
+- Estado: Completada.
+- Fase: Fase 11: Pruebas end-to-end locales con Docker.
+- Decision de diseno: Completa persistencia, API REST, contabilidad, auditoria, errores y pruebas locales para el backend inicial.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-029 - Implementar persistencia JPA y endpoints REST para accounting
+- Estado: Completada.
+- Fase: Fase 11: Pruebas end-to-end locales con Docker.
+- Decision de diseno: Completa persistencia, API REST, contabilidad, auditoria, errores y pruebas locales para el backend inicial.
+- Componentes/capas: backend modular.
+
+### TASK-030 - Crear seed local y guia de pruebas Docker
+- Estado: Completada.
+- Fase: Fase 11: Pruebas end-to-end locales con Docker.
+- Decision de diseno: Completa persistencia, API REST, contabilidad, auditoria, errores y pruebas locales para el backend inicial.
+- Componentes/capas: infra/aws, docker-compose.
+
+### TASK-031 - Redisenar estructura Maven multi-modulo para microservicios fisicos
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Decision de diseno: Separa el monolito en microservicios fisicos, conecta efectos entre dominios y define desacoplamiento/eventos cloud.
+- Componentes/capas: inventory-service.
+
+### TASK-032 - Implementar `tenant-service` para empresas multiempresa
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Decision de diseno: Separa el monolito en microservicios fisicos, conecta efectos entre dominios y define desacoplamiento/eventos cloud.
+- Componentes/capas: tenant-service.
+
+### TASK-033 - Migrar catalogos y terceros legacy a Clean Architecture y microservicios
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Decision de diseno: Separa el monolito en microservicios fisicos, conecta efectos entre dominios y define desacoplamiento/eventos cloud.
+- Componentes/capas: inventory-service, catalog-service, thirdparty-service.
+
+### TASK-034 - Implementar `inventory-service` completo con costos, compras, stock y kardex
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Decision de diseno: Separa el monolito en microservicios fisicos, conecta efectos entre dominios y define desacoplamiento/eventos cloud.
+- Componentes/capas: inventory-service.
+
+### TASK-035 - Implementar venta completa y emision electronica conectada al flujo
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Decision de diseno: Separa el monolito en microservicios fisicos, conecta efectos entre dominios y define desacoplamiento/eventos cloud.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-036 - Separar `dian-provider-service` con mock configurable
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Decision de diseno: Separa el monolito en microservicios fisicos, conecta efectos entre dominios y define desacoplamiento/eventos cloud.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-037 - Conectar facturacion validada con inventario y contabilidad
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Decision de diseno: Separa el monolito en microservicios fisicos, conecta efectos entre dominios y define desacoplamiento/eventos cloud.
+- Componentes/capas: billing-service, dian-provider-service, inventory-service, accounting-service.
+
+### TASK-038 - Implementar prueba end-to-end Docker desde cero
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Decision de diseno: Separa el monolito en microservicios fisicos, conecta efectos entre dominios y define desacoplamiento/eventos cloud.
+- Componentes/capas: infra/aws, docker-compose.
+
+### TASK-039 - Identificar codigo y tablas legacy no usadas
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Decision de diseno: Separa el monolito en microservicios fisicos, conecta efectos entre dominios y define desacoplamiento/eventos cloud.
+- Componentes/capas: facturaelectronica-web, bff-service.
+
+### TASK-040 - Eliminar codigo muerto y tablas legacy reemplazadas
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Decision de diseno: Separa el monolito en microservicios fisicos, conecta efectos entre dominios y define desacoplamiento/eventos cloud.
+- Componentes/capas: facturaelectronica-web, bff-service.
+
+### TASK-041 - Migrar emisor, resoluciones y numeracion fiscal a billing-service
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Decision de diseno: Separa el monolito en microservicios fisicos, conecta efectos entre dominios y define desacoplamiento/eventos cloud.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-042 - Migrar audit-service como microservicio fisico
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Decision de diseno: Separa el monolito en microservicios fisicos, conecta efectos entre dominios y define desacoplamiento/eventos cloud.
+- Componentes/capas: inventory-service.
+
+### TASK-043 - Conectar billing-service como productor de auditoria fiscal
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Decision de diseno: Separa el monolito en microservicios fisicos, conecta efectos entre dominios y define desacoplamiento/eventos cloud.
+- Componentes/capas: billing-service, dian-provider-service, inventory-service, audit-service.
+
+### TASK-044 - Desacoplar dependencias de arranque entre microservicios
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Decision de diseno: Separa el monolito en microservicios fisicos, conecta efectos entre dominios y define desacoplamiento/eventos cloud.
+- Componentes/capas: inventory-service.
+
+### TASK-045 - Definir estrategia de mensajeria asincrona cloud
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Decision de diseno: Separa el monolito en microservicios fisicos, conecta efectos entre dominios y define desacoplamiento/eventos cloud.
+- Componentes/capas: infra/aws, docker-compose.
+
+### TASK-046 - Cerrar diseno backend core pendiente antes de depuracion legacy
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Cierra reglas core de negocio: terceros, inventario, compras, ventas, contabilidad PUC, reportes, usuarios y licencias.
+- Componentes/capas: microservicios.
+
+### TASK-047 - Implementar terceros fiscales con DV NIT automatico
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Cierra reglas core de negocio: terceros, inventario, compras, ventas, contabilidad PUC, reportes, usuarios y licencias.
+- Componentes/capas: billing-service, dian-provider-service, thirdparty-service.
+
+### TASK-048 - Implementar bienes, servicios, insumos y referencias operativas
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Cierra reglas core de negocio: terceros, inventario, compras, ventas, contabilidad PUC, reportes, usuarios y licencias.
+- Componentes/capas: inventory-service.
+
+### TASK-049 - Ajustar ventas y documentos para bienes y servicios
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Cierra reglas core de negocio: terceros, inventario, compras, ventas, contabilidad PUC, reportes, usuarios y licencias.
+- Componentes/capas: billing-service, dian-provider-service, inventory-service.
+
+### TASK-050 - Implementar movimientos manuales de insumos
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Cierra reglas core de negocio: terceros, inventario, compras, ventas, contabilidad PUC, reportes, usuarios y licencias.
+- Componentes/capas: inventory-service.
+
+### TASK-051 - Implementar compras, gastos y cuentas por pagar
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Cierra reglas core de negocio: terceros, inventario, compras, ventas, contabilidad PUC, reportes, usuarios y licencias.
+- Componentes/capas: inventory-service, accounting-service.
+
+### TASK-052 - Completar documentos fiscales y consultas fiscales
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Cierra reglas core de negocio: terceros, inventario, compras, ventas, contabilidad PUC, reportes, usuarios y licencias.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-053 - Completar contabilidad parametrizable PUC
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Cierra reglas core de negocio: terceros, inventario, compras, ventas, contabilidad PUC, reportes, usuarios y licencias.
+- Componentes/capas: accounting-service.
+
+### TASK-054 - Implementar reportes minimos operativos, fiscales y contables
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Cierra reglas core de negocio: terceros, inventario, compras, ventas, contabilidad PUC, reportes, usuarios y licencias.
+- Componentes/capas: billing-service, dian-provider-service, accounting-service.
+
+### TASK-055 - Implementar cuentas por cobrar y recaudos
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Cierra reglas core de negocio: terceros, inventario, compras, ventas, contabilidad PUC, reportes, usuarios y licencias.
+- Componentes/capas: accounting-service.
+
+### TASK-056 - Implementar usuarios, roles, permisos y auditoria de acceso
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Cierra reglas core de negocio: terceros, inventario, compras, ventas, contabilidad PUC, reportes, usuarios y licencias.
+- Componentes/capas: identity-service, bff-service, audit-service.
+
+### TASK-057 - Implementar licenciamiento por empresa
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Cierra reglas core de negocio: terceros, inventario, compras, ventas, contabilidad PUC, reportes, usuarios y licencias.
+- Componentes/capas: tenant-service.
+
+### TASK-058 - Migrar legacy pendiente al modelo Clean Architecture completo
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Cierra reglas core de negocio: terceros, inventario, compras, ventas, contabilidad PUC, reportes, usuarios y licencias.
+- Componentes/capas: microservicios.
+
+### TASK-059 - Depurar y eliminar codigo muerto, endpoints y tablas legacy
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Alinea la arquitectura objetivo AWS, BFF, ECS Fargate, Lambda y patron Outbox/Inbox para eventos.
+- Componentes/capas: facturaelectronica-web, bff-service.
+
+### TASK-060 - Definir arquitectura cloud AWS, BFF y clasificacion ECS Fargate/Lambda
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Alinea la arquitectura objetivo AWS, BFF, ECS Fargate, Lambda y patron Outbox/Inbox para eventos.
+- Componentes/capas: infra/aws, docker-compose.
+
+### TASK-061 - Implementar IaC AWS inicial para frontend, BFF, ECS Fargate, RDS y servicios base
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Alinea la arquitectura objetivo AWS, BFF, ECS Fargate, Lambda y patron Outbox/Inbox para eventos.
+- Componentes/capas: inventory-service, facturaelectronica-web, bff-service, infra/aws, docker-compose.
+
+### TASK-062 - Implementar event-driven AWS con Outbox/Inbox, EventBridge/SQS y Lambdas
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Decision de diseno: Alinea la arquitectura objetivo AWS, BFF, ECS Fargate, Lambda y patron Outbox/Inbox para eventos.
+- Componentes/capas: infra/aws, docker-compose.
+
+### TASK-063 - Disenar e implementar frontend SPA y BFF inicial
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Decision de diseno: Construye la capa frontend/BFF inicial, sesion local, RBAC, permisos, formularios y UX administrativa.
+- Componentes/capas: facturaelectronica-web, bff-service.
+
+### TASK-064 - Optimizar gestion de conexiones PostgreSQL por microservicio
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Decision de diseno: Construye la capa frontend/BFF inicial, sesion local, RBAC, permisos, formularios y UX administrativa.
+- Componentes/capas: billing-service, dian-provider-service, inventory-service.
+
+### TASK-065 - Mejorar frontend con login, empresa activa y formularios controlados
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Decision de diseno: Construye la capa frontend/BFF inicial, sesion local, RBAC, permisos, formularios y UX administrativa.
+- Componentes/capas: identity-service, bff-service, tenant-service, facturaelectronica-web.
+
+### TASK-066 - Restringir UI operativa por sesion y licencia activa
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Decision de diseno: Construye la capa frontend/BFF inicial, sesion local, RBAC, permisos, formularios y UX administrativa.
+- Componentes/capas: identity-service, bff-service, tenant-service.
+
+### TASK-067 - RediseÃ¯Â¿Â½ar experiencia visual profesional de toda la aplicacion
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Decision de diseno: Construye la capa frontend/BFF inicial, sesion local, RBAC, permisos, formularios y UX administrativa.
+- Componentes/capas: BFF/SPA y servicios core.
+
+### TASK-068 - Disenar RBAC modular con ROOT global y roles por empresa
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Decision de diseno: Construye la capa frontend/BFF inicial, sesion local, RBAC, permisos, formularios y UX administrativa.
+- Componentes/capas: identity-service, bff-service, tenant-service.
+
+### TASK-069 - Implementar RBAC modular en identity-service
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Decision de diseno: Construye la capa frontend/BFF inicial, sesion local, RBAC, permisos, formularios y UX administrativa.
+- Componentes/capas: identity-service, bff-service.
+
+### TASK-070 - Implementar UI de administracion de usuarios, roles y permisos
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Decision de diseno: Construye la capa frontend/BFF inicial, sesion local, RBAC, permisos, formularios y UX administrativa.
+- Componentes/capas: identity-service, bff-service.
+
+### TASK-071 - Aplicar navegacion y acciones frontend basadas en permisos efectivos
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Decision de diseno: Construye la capa frontend/BFF inicial, sesion local, RBAC, permisos, formularios y UX administrativa.
+- Componentes/capas: identity-service, bff-service, facturaelectronica-web.
+
+### TASK-072 - Implementar bootstrap ROOT minimo para pruebas locales
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Decision de diseno: Construye la capa frontend/BFF inicial, sesion local, RBAC, permisos, formularios y UX administrativa.
+- Componentes/capas: BFF/SPA y servicios core.
+
+### TASK-073 - Completar flujo ROOT operativo
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Decision de diseno: Construye la capa frontend/BFF inicial, sesion local, RBAC, permisos, formularios y UX administrativa.
+- Componentes/capas: BFF/SPA y servicios core.
+
+### TASK-074 - Corregir tipo de documento de empresa a codigo DIAN numerico
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Decision de diseno: Construye la capa frontend/BFF inicial, sesion local, RBAC, permisos, formularios y UX administrativa.
+- Componentes/capas: billing-service, dian-provider-service, tenant-service.
+
+### TASK-075 - Unificar tipos de documento de identificacion como codigo DIAN numerico
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Decision de diseno: Construye la capa frontend/BFF inicial, sesion local, RBAC, permisos, formularios y UX administrativa.
+- Componentes/capas: billing-service, dian-provider-service, catalog-service.
+
+### TASK-076 - Ajustar experiencia funcional colombiana y RBAC operativo
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Decision de diseno: Construye la capa frontend/BFF inicial, sesion local, RBAC, permisos, formularios y UX administrativa.
+- Componentes/capas: identity-service, bff-service.
+
+### TASK-077 - Modularizar SPA frontend por Clean Code y SOLID
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Decision de diseno: Construye la capa frontend/BFF inicial, sesion local, RBAC, permisos, formularios y UX administrativa.
+- Componentes/capas: facturaelectronica-web, bff-service.
+
+### TASK-078 - Importar catalogo completo DIVIPOLA para municipios colombianos
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Decision de diseno: Parametriza catalogos colombianos, DIVIPOLA, reglas fiscales, consumidores finales, scanner POS e impuestos por producto.
+- Componentes/capas: catalog-service.
+
+### TASK-079 - Parametrizar responsabilidades fiscales, regimenes y medios de pago
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Decision de diseno: Parametriza catalogos colombianos, DIVIPOLA, reglas fiscales, consumidores finales, scanner POS e impuestos por producto.
+- Componentes/capas: billing-service, dian-provider-service, catalog-service.
+
+### TASK-080 - Mejorar seleccion de responsabilidades fiscales
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Decision de diseno: Parametriza catalogos colombianos, DIVIPOLA, reglas fiscales, consumidores finales, scanner POS e impuestos por producto.
+- Componentes/capas: billing-service, dian-provider-service, catalog-service.
+
+### TASK-081 - Persistir sesion y cerrar por inactividad
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Decision de diseno: Parametriza catalogos colombianos, DIVIPOLA, reglas fiscales, consumidores finales, scanner POS e impuestos por producto.
+- Componentes/capas: identity-service, bff-service.
+
+### TASK-082 - Pulir UX de login y venta POS
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Decision de diseno: Parametriza catalogos colombianos, DIVIPOLA, reglas fiscales, consumidores finales, scanner POS e impuestos por producto.
+- Componentes/capas: billing-service, dian-provider-service, identity-service, bff-service, facturaelectronica-web.
+
+### TASK-083 - Buscador de cliente en Venta POS
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Decision de diseno: Parametriza catalogos colombianos, DIVIPOLA, reglas fiscales, consumidores finales, scanner POS e impuestos por producto.
+- Componentes/capas: billing-service, dian-provider-service, thirdparty-service.
+
+### TASK-084 - NIT y digito de verificacion segun concepto DIAN
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Decision de diseno: Parametriza catalogos colombianos, DIVIPOLA, reglas fiscales, consumidores finales, scanner POS e impuestos por producto.
+- Componentes/capas: billing-service, dian-provider-service, thirdparty-service.
+
+### TASK-085 - Simplificar registro de clientes naturales
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Decision de diseno: Parametriza catalogos colombianos, DIVIPOLA, reglas fiscales, consumidores finales, scanner POS e impuestos por producto.
+- Componentes/capas: thirdparty-service.
+
+### TASK-086 - Persistir y administrar catalogos oficiales y operativos
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Decision de diseno: Parametriza catalogos colombianos, DIVIPOLA, reglas fiscales, consumidores finales, scanner POS e impuestos por producto.
+- Componentes/capas: catalog-service.
+
+### TASK-087 - Crear modulo administrativo de catalogos parametrizables
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Decision de diseno: Parametriza catalogos colombianos, DIVIPOLA, reglas fiscales, consumidores finales, scanner POS e impuestos por producto.
+- Componentes/capas: catalog-service.
+
+### TASK-088 - Auditar y eliminar tablas legacy no usadas
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Decision de diseno: Parametriza catalogos colombianos, DIVIPOLA, reglas fiscales, consumidores finales, scanner POS e impuestos por producto.
+- Componentes/capas: facturaelectronica-web, bff-service.
+
+### TASK-089 - Configurar impuestos por producto, scanner POS y consumidor final parametrizable
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Decision de diseno: Parametriza catalogos colombianos, DIVIPOLA, reglas fiscales, consumidores finales, scanner POS e impuestos por producto.
+- Componentes/capas: billing-service, dian-provider-service, inventory-service.
+
+### TASK-090 - Definir politica transversal de auditoria para acciones mutables
+- Estado: Completada.
+- Fase: Fase 16: Auditoria, logs y acciones mutables.
+- Decision de diseno: Centraliza auditoria, logs y experiencia de acciones mutables mediante modales y consulta operativa.
+- Componentes/capas: audit-service.
+
+### TASK-091 - Permitir administracion ROOT auditada de catalogos globales
+- Estado: Completada.
+- Fase: Fase 16: Auditoria, logs y acciones mutables.
+- Decision de diseno: Centraliza auditoria, logs y experiencia de acciones mutables mediante modales y consulta operativa.
+- Componentes/capas: catalog-service.
+
+### TASK-092 - Reemplazar paneles Respuesta/Error por modal de proceso
+- Estado: Completada.
+- Fase: Fase 16: Auditoria, logs y acciones mutables.
+- Decision de diseno: Centraliza auditoria, logs y experiencia de acciones mutables mediante modales y consulta operativa.
+- Componentes/capas: facturaelectronica-web, bff-service.
+
+### TASK-093 - Modulo Logs/Auditoria para ROOT y administradores
+- Estado: Completada.
+- Fase: Fase 16: Auditoria, logs y acciones mutables.
+- Decision de diseno: Centraliza auditoria, logs y experiencia de acciones mutables mediante modales y consulta operativa.
+- Componentes/capas: audit-service.
+
+### TASK-094 - Eliminar `initialState` demo y catalogos locales de negocio en frontend
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: catalog-service, thirdparty-service, facturaelectronica-web, bff-service.
+
+### TASK-095 - Completar catalogos DB-only para UI operativa
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: catalog-service.
+
+### TASK-096 - Ajustar modales de proceso y mensajes contextuales
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: facturaelectronica-web, bff-service.
+
+### TASK-097 - Redisenar modulo Logs/Auditoria
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: audit-service.
+
+### TASK-098 - Mejorar UX de uso de items de inventario
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: inventory-service, facturaelectronica-web, bff-service.
+
+### TASK-099 - Disenar modulo contable funcional v2
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: accounting-service.
+
+### TASK-100 - Implementar contabilidad operativa v2
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: accounting-service.
+
+### TASK-101 - Disenar modulo de nomina y clasificacion laboral/contractual
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: accounting-service.
+
+### TASK-102 - Crear `payroll-service`
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: identity-service, bff-service.
+
+### TASK-103 - Implementar pagos diarios verbales/jornal
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: BFF/SPA y servicios core.
+
+### TASK-104 - Configurar nomina electronica opcional por empresa
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: accounting-service, tenant-service.
+
+### TASK-105 - Implementar nomina electronica mock
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: accounting-service.
+
+### TASK-106 - Integrar nomina con contabilidad
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: accounting-service.
+
+### TASK-107 - Endurecer RBAC para catalogos, logs, contabilidad y nomina
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: accounting-service, identity-service, bff-service, catalog-service, audit-service.
+
+### TASK-108 - Mejorar frontend profesional y componentes reutilizables
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: facturaelectronica-web, bff-service.
+
+### TASK-109 - Prueba E2E desde cero sin datos demo frontend
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: facturaelectronica-web, bff-service.
+
+### TASK-110 - Revision normativa y catalogos de cumplimiento
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: catalog-service.
+
+### TASK-111 - Preparacion cloud/productiva para nuevos modulos
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: infra/aws, docker-compose.
+
+### TASK-112 - Commit y reporte de cierre de fase
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Decision de diseno: Elimina datos demo de UI, usa catalogos DB-only y expande contabilidad/nomina con integraciones auditables.
+- Componentes/capas: accounting-service.
+
+### TASK-113 - Implementar consumo asistido de insumos por servicios facturados
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Decision de diseno: Extiende licenciamiento, cuotas, servicios con insumos, navegacion, roles, usuarios y modales operativos.
+- Componentes/capas: billing-service, dian-provider-service, inventory-service.
+
+### TASK-114 - Corregir error de login por licencia no configurada
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Decision de diseno: Extiende licenciamiento, cuotas, servicios con insumos, navegacion, roles, usuarios y modales operativos.
+- Componentes/capas: identity-service, bff-service, tenant-service.
+
+### TASK-115 - Extender licencias empresariales con modulos contratados
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Decision de diseno: Extiende licenciamiento, cuotas, servicios con insumos, navegacion, roles, usuarios y modales operativos.
+- Componentes/capas: tenant-service.
+
+### TASK-116 - Crear modulo ROOT para administrar licencias
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Decision de diseno: Extiende licenciamiento, cuotas, servicios con insumos, navegacion, roles, usuarios y modales operativos.
+- Componentes/capas: tenant-service.
+
+### TASK-117 - Aplicar licencia por modulo en menues y operaciones
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Decision de diseno: Extiende licenciamiento, cuotas, servicios con insumos, navegacion, roles, usuarios y modales operativos.
+- Componentes/capas: tenant-service.
+
+### TASK-118 - Auditar administracion de licencias
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Decision de diseno: Extiende licenciamiento, cuotas, servicios con insumos, navegacion, roles, usuarios y modales operativos.
+- Componentes/capas: tenant-service.
+
+### TASK-119 - E2E licencia parametrizable
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Decision de diseno: Extiende licenciamiento, cuotas, servicios con insumos, navegacion, roles, usuarios y modales operativos.
+- Componentes/capas: tenant-service.
+
+### TASK-120 - Aplicar cuotas comerciales de licencia
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Decision de diseno: Extiende licenciamiento, cuotas, servicios con insumos, navegacion, roles, usuarios y modales operativos.
+- Componentes/capas: tenant-service.
+
+### TASK-121 - Ajustar UX/RBAC de empresa y permisos
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Decision de diseno: Extiende licenciamiento, cuotas, servicios con insumos, navegacion, roles, usuarios y modales operativos.
+- Componentes/capas: identity-service, bff-service, tenant-service, facturaelectronica-web.
+
+### TASK-122 - Unificar permiso de Venta POS e internacionalizar permisos
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Decision de diseno: Extiende licenciamiento, cuotas, servicios con insumos, navegacion, roles, usuarios y modales operativos.
+- Componentes/capas: billing-service, dian-provider-service, identity-service, bff-service.
+
+### TASK-123 - Redisenar navegacion principal con submenus
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Decision de diseno: Extiende licenciamiento, cuotas, servicios con insumos, navegacion, roles, usuarios y modales operativos.
+- Componentes/capas: facturaelectronica-web, bff-service.
+
+### TASK-124 - Crear pantalla exclusiva de Roles
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Decision de diseno: Extiende licenciamiento, cuotas, servicios con insumos, navegacion, roles, usuarios y modales operativos.
+- Componentes/capas: identity-service, bff-service.
+
+### TASK-125 - Crear pantalla exclusiva de Usuarios
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Decision de diseno: Extiende licenciamiento, cuotas, servicios con insumos, navegacion, roles, usuarios y modales operativos.
+- Componentes/capas: identity-service, bff-service.
+
+### TASK-126 - Reducir autocierre de modales exitosos
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Decision de diseno: Extiende licenciamiento, cuotas, servicios con insumos, navegacion, roles, usuarios y modales operativos.
+- Componentes/capas: facturaelectronica-web, bff-service.
+
+### TASK-127 - Endurecer contratos backend de roles
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Decision de diseno: Extiende licenciamiento, cuotas, servicios con insumos, navegacion, roles, usuarios y modales operativos.
+- Componentes/capas: identity-service, bff-service.
+
+### TASK-128 - Actualizar e inactivar usuarios empresariales
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Decision de diseno: Extiende licenciamiento, cuotas, servicios con insumos, navegacion, roles, usuarios y modales operativos.
+- Componentes/capas: identity-service, bff-service, tenant-service.
+
+### TASK-129 - Implementar E2E operativo desde cero para venta POS electronica
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Decision de diseno: Cierra productizacion operativa con E2E, listados, RBAC backend, reportes, Terraform AWS y eventos productivos.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-130 - Completar compras y entradas de inventario con contabilidad
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Decision de diseno: Cierra productizacion operativa con E2E, listados, RBAC backend, reportes, Terraform AWS y eventos productivos.
+- Componentes/capas: inventory-service, accounting-service.
+
+### TASK-131 - Completar servicios facturables con consumo manual de insumos
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Decision de diseno: Cierra productizacion operativa con E2E, listados, RBAC backend, reportes, Terraform AWS y eventos productivos.
+- Componentes/capas: billing-service, dian-provider-service, inventory-service.
+
+### TASK-132 - Crear listados operativos profesionales
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Decision de diseno: Cierra productizacion operativa con E2E, listados, RBAC backend, reportes, Terraform AWS y eventos productivos.
+- Componentes/capas: BFF/SPA y servicios core.
+
+### TASK-133 - Endurecer validacion backend de RBAC y licencias
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Decision de diseno: Cierra productizacion operativa con E2E, listados, RBAC backend, reportes, Terraform AWS y eventos productivos.
+- Componentes/capas: identity-service, bff-service, tenant-service.
+
+### TASK-134 - Tablero ROOT de uso de licencias
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Decision de diseno: Cierra productizacion operativa con E2E, listados, RBAC backend, reportes, Terraform AWS y eventos productivos.
+- Componentes/capas: tenant-service.
+
+### TASK-135 - Auditoria transversal verificable
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Decision de diseno: Cierra productizacion operativa con E2E, listados, RBAC backend, reportes, Terraform AWS y eventos productivos.
+- Componentes/capas: audit-service.
+
+### TASK-136 - Robustecer sesion, expiracion y restauracion
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Decision de diseno: Cierra productizacion operativa con E2E, listados, RBAC backend, reportes, Terraform AWS y eventos productivos.
+- Componentes/capas: identity-service, bff-service.
+
+### TASK-137 - Parametrizar reglas contables PUC por evento
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Decision de diseno: Cierra productizacion operativa con E2E, listados, RBAC backend, reportes, Terraform AWS y eventos productivos.
+- Componentes/capas: accounting-service, infra/aws, docker-compose.
+
+### TASK-138 - Generar comprobantes/asientos automaticos
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Decision de diseno: Cierra productizacion operativa con E2E, listados, RBAC backend, reportes, Terraform AWS y eventos productivos.
+- Componentes/capas: accounting-service.
+
+### TASK-139 - Implementar reportes minimos contables y operativos
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Decision de diseno: Cierra productizacion operativa con E2E, listados, RBAC backend, reportes, Terraform AWS y eventos productivos.
+- Componentes/capas: accounting-service.
+
+### TASK-140 - Pruebas de contrato BFF/microservicios
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Decision de diseno: Cierra productizacion operativa con E2E, listados, RBAC backend, reportes, Terraform AWS y eventos productivos.
+- Componentes/capas: inventory-service.
+
+### TASK-141 - E2E de aislamiento multiempresa
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Decision de diseno: Cierra productizacion operativa con E2E, listados, RBAC backend, reportes, Terraform AWS y eventos productivos.
+- Componentes/capas: tenant-service.
+
+### TASK-142 - Completar Terraform AWS productivo
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Decision de diseno: Cierra productizacion operativa con E2E, listados, RBAC backend, reportes, Terraform AWS y eventos productivos.
+- Componentes/capas: infra/aws, docker-compose.
+
+### TASK-143 - Completar eventos productivos AWS
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Decision de diseno: Cierra productizacion operativa con E2E, listados, RBAC backend, reportes, Terraform AWS y eventos productivos.
+- Componentes/capas: infra/aws, docker-compose.
+
+### TASK-144 - Mejorar tablas administrativas de usuarios y roles
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Decision de diseno: Cierra productizacion operativa con E2E, listados, RBAC backend, reportes, Terraform AWS y eventos productivos.
+- Componentes/capas: identity-service, bff-service, facturaelectronica-web.
+
+### TASK-145 - Replantear alcance DIAN como software parametrizable por empresa
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
+- Componentes/capas: billing-service, dian-provider-service, tenant-service.
+
+### TASK-146 - Disenar modulo de configuracion DIAN por empresa
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
+- Componentes/capas: billing-service, dian-provider-service, tenant-service.
+
+### TASK-147 - Persistencia segura de certificados y secretos DIAN por empresa
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
+- Componentes/capas: billing-service, dian-provider-service, tenant-service, infra/aws, docker-compose.
+
+### TASK-148 - Ajustar contratos API para configuracion DIAN y prueba de conexion
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-149 - Actualizar infraestructura AWS para secretos DIAN por empresa
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
+- Componentes/capas: billing-service, dian-provider-service, tenant-service, infra/aws, docker-compose.
+
+### TASK-150 - Renombrar lenguaje funcional de proveedor a conector DIAN
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
+- Componentes/capas: billing-service, dian-provider-service, thirdparty-service.
+
+### TASK-151 - Preparar flujo tecnico DIAN real segun caja de herramientas
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-152 - Implementar UI de Configuracion DIAN por empresa
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
+- Componentes/capas: billing-service, dian-provider-service, tenant-service.
+
+### TASK-153 - Disenar autenticacion productiva con Cognito Hosted UI y PKCE
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
+- Componentes/capas: identity-service, bff-service, thirdparty-service.
+
+### TASK-154 - Reemplazar tokens en SPA por sesion BFF con cookie segura
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
+- Componentes/capas: identity-service, bff-service, facturaelectronica-web.
+
+### TASK-155 - Crear almacenamiento server-side de sesion cifrada
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
+- Componentes/capas: identity-service, bff-service.
+
+### TASK-156 - Implementar logout seguro y revocacion
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
+- Componentes/capas: SDD/documentacion.
+
+### TASK-157 - Hardening frontend contra exposicion de datos sensibles
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
+- Componentes/capas: billing-service, dian-provider-service, facturaelectronica-web, bff-service.
+
+### TASK-158 - Agregar security headers CloudFront/BFF
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
+- Componentes/capas: infra/aws, docker-compose.
+
+### TASK-159 - Implementar proteccion CSRF para sesiones por cookie
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
+- Componentes/capas: identity-service, bff-service.
+
+### TASK-160 - MFA obligatorio para ROOT, administradores y acciones criticas
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
+- Componentes/capas: identity-service, bff-service.
+
+### TASK-161 - Provisionamiento runtime de secretos AWS por empresa
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
+- Componentes/capas: tenant-service, infra/aws, docker-compose.
+
+### TASK-162 - Auditoria de seguridad transversal
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
+- Componentes/capas: audit-service.
+
+### TASK-163 - Modo transicion local y bloqueo productivo de auth dummy
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
+- Componentes/capas: identity-service, bff-service.
+
+### TASK-164 - Cerrar consistencia documental SDD antes de nueva implementacion
+- Estado: Completada.
+- Fase: Fase 22: Gobierno SDD, diagramas y limpieza final.
+- Decision de diseno: Gobierna consistencia SDD, diagramas, brechas documentales y limpieza final antes de nuevas mejoras.
+- Componentes/capas: SDD/documentacion.
+
+### TASK-165 - Actualizar diagramas Mermaid a la arquitectura y modelo vigentes
+- Estado: Completada.
+- Fase: Fase 22: Gobierno SDD, diagramas y limpieza final.
+- Decision de diseno: Gobierna consistencia SDD, diagramas, brechas documentales y limpieza final antes de nuevas mejoras.
+- Componentes/capas: SDD/documentacion.
+
+### TASK-166 - Cerrar brechas documentales de estado actual versus objetivo
+- Estado: Completada.
+- Fase: Fase 22: Gobierno SDD, diagramas y limpieza final.
+- Decision de diseno: Gobierna consistencia SDD, diagramas, brechas documentales y limpieza final antes de nuevas mejoras.
+- Componentes/capas: SDD/documentacion.
+
+### TASK-167 - Ejecutar limpieza final legacy y artefactos huerfanos antes de nuevas mejoras
+- Estado: Completada.
+- Fase: Fase 22: Gobierno SDD, diagramas y limpieza final.
+- Decision de diseno: Gobierna consistencia SDD, diagramas, brechas documentales y limpieza final antes de nuevas mejoras.
+- Componentes/capas: SDD/documentacion.
+
+<!-- END SDD TASK DESIGN TRACEABILITY -->

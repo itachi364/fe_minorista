@@ -404,3 +404,1012 @@ La creacion de secretos por empresa ocurre en runtime cuando ROOT crea una empre
 - Procesos event-driven transversales usan EventBridge/SQS + Lambda con DLQ, reintentos e idempotencia.
 - No se incorpora NATS, RabbitMQ ni broker self-hosted para produccion.
 - Las tareas locales Docker Compose siguen existiendo solo como entorno de desarrollo y E2E, no como arquitectura productiva.
+
+<!-- BEGIN SDD TASK INFRASTRUCTURE TRACEABILITY -->
+## Trazabilidad individual de infraestructura por task
+
+Esta seccion documenta de forma uniforme el impacto de infraestructura de cada task. Cuando una task no cambia infraestructura, queda expresado explicitamente para evitar huecos de trazabilidad.
+
+### TASK-001 - Preparar Docker y variables de entorno para secretos
+- Estado: Completada.
+- Fase: Fase 0: Seguridad y base SDD.
+- Impacto de infraestructura: Afecta entorno local Docker/Compose, variables de entorno y gestion de secretos dummy.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-002 - Crear estructura SDD local
+- Estado: Completada.
+- Fase: Fase 0: Seguridad y base SDD.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-003 - Disenar modelo de base de datos multiempresa
+- Estado: Completada.
+- Fase: Fase 1: Arquitectura y plataforma.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-004 - Definir contratos entre microservicios
+- Estado: Completada.
+- Fase: Fase 1: Arquitectura y plataforma.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-005 - Actualizar Spring Boot a version soportada/LTS
+- Estado: Completada.
+- Fase: Fase 1: Arquitectura y plataforma.
+- Impacto de infraestructura: Afecta empaquetado Maven, artefactos independientes y construccion/despliegue por servicio.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-006 - Crear estructura Clean Architecture para `billing-service`
+- Estado: Completada.
+- Fase: Fase 1: Arquitectura y plataforma.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-007 - Crear migraciones versionadas de base de datos
+- Estado: Completada.
+- Fase: Fase 1: Arquitectura y plataforma.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-008 - Implementar configuracion de emisor y resoluciones
+- Estado: Completada.
+- Fase: Fase 2: Facturacion electronica y conector DIAN.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-009 - Implementar calculo de factura electronica
+- Estado: Completada.
+- Fase: Fase 2: Facturacion electronica y conector DIAN.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-010 - Implementar puerto y adaptador de conexion DIAN
+- Estado: Completada.
+- Fase: Fase 2: Facturacion electronica y conector DIAN.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-011 - Implementar estados y trazabilidad de documentos electronicos
+- Estado: Completada.
+- Fase: Fase 2: Facturacion electronica y conector DIAN.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-012 - Implementar notas credito y debito
+- Estado: Completada.
+- Fase: Fase 2: Facturacion electronica y conector DIAN.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-013 - Implementar emision de documento equivalente electronico POS
+- Estado: Completada.
+- Fase: Fase 3: POS electronico.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-014 - Refactorizar modulos CRUD existentes hacia Clean Architecture
+- Estado: Completada.
+- Fase: Fase 4: Refactorizacion arquitectonica legacy.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-015 - Implementar nota de ajuste POS
+- Estado: Completada.
+- Fase: Fase 5: POS electronico - ajustes.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-016 - Implementar movimientos de inventario
+- Estado: Completada.
+- Fase: Fase 6: Inventario.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-017 - Implementar validacion de disponibilidad
+- Estado: Completada.
+- Fase: Fase 6: Inventario.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-018 - Implementar plan de cuentas basico
+- Estado: Completada.
+- Fase: Fase 7: Contabilidad base.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-019 - Completar refactor de modulos legacy restantes hacia Clean Architecture
+- Estado: Completada.
+- Fase: Fase 8: Refactorizacion legacy restante.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-020 - Migrar persistencia y contratos legacy a Clean Architecture completa
+- Estado: Completada.
+- Fase: Fase 8: Refactorizacion legacy restante.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-021 - Eliminar codigo muerto legacy despues de migracion Clean Architecture completa
+- Estado: Completada.
+- Fase: Fase 8: Refactorizacion legacy restante.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-022 - Implementar asientos contables automaticos
+- Estado: Completada.
+- Fase: Fase 9: Contabilidad.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-023 - Implementar libro diario y libro mayor
+- Estado: Completada.
+- Fase: Fase 9: Contabilidad.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-024 - Estandarizar errores API
+- Estado: Completada.
+- Fase: Fase 10: Calidad, auditoria y observabilidad.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-025 - Implementar auditoria fiscal
+- Estado: Completada.
+- Fase: Fase 10: Calidad, auditoria y observabilidad.
+- Impacto de infraestructura: Afecta contratos de eventos, Outbox/Inbox, auditoria y procesamiento asincrono.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-026 - Implementar correlation ID y logs estructurados
+- Estado: Completada.
+- Fase: Fase 10: Calidad, auditoria y observabilidad.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-027 - Implementar persistencia JPA y endpoints REST para billing/POS
+- Estado: Completada.
+- Fase: Fase 11: Pruebas end-to-end locales con Docker.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-028 - Implementar conector DIAN mock configurable
+- Estado: Completada.
+- Fase: Fase 11: Pruebas end-to-end locales con Docker.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-029 - Implementar persistencia JPA y endpoints REST para accounting
+- Estado: Completada.
+- Fase: Fase 11: Pruebas end-to-end locales con Docker.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-030 - Crear seed local y guia de pruebas Docker
+- Estado: Completada.
+- Fase: Fase 11: Pruebas end-to-end locales con Docker.
+- Impacto de infraestructura: Afecta entorno local Docker/Compose, variables de entorno y gestion de secretos dummy.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-031 - Redisenar estructura Maven multi-modulo para microservicios fisicos
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Impacto de infraestructura: Afecta empaquetado Maven, artefactos independientes y construccion/despliegue por servicio.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-032 - Implementar `tenant-service` para empresas multiempresa
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-033 - Migrar catalogos y terceros legacy a Clean Architecture y microservicios
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-034 - Implementar `inventory-service` completo con costos, compras, stock y kardex
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-035 - Implementar venta completa y emision electronica conectada al flujo
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-036 - Separar `dian-provider-service` con mock configurable
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Impacto de infraestructura: Afecta empaquetado Maven, artefactos independientes y construccion/despliegue por servicio.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-037 - Conectar facturacion validada con inventario y contabilidad
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-038 - Implementar prueba end-to-end Docker desde cero
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Impacto de infraestructura: Afecta entorno local Docker/Compose, variables de entorno y gestion de secretos dummy.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-039 - Identificar codigo y tablas legacy no usadas
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-040 - Eliminar codigo muerto y tablas legacy reemplazadas
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-041 - Migrar emisor, resoluciones y numeracion fiscal a billing-service
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-042 - Migrar audit-service como microservicio fisico
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-043 - Conectar billing-service como productor de auditoria fiscal
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Impacto de infraestructura: Afecta contratos de eventos, Outbox/Inbox, auditoria y procesamiento asincrono.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-044 - Desacoplar dependencias de arranque entre microservicios
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-045 - Definir estrategia de mensajeria asincrona cloud
+- Estado: Completada.
+- Fase: Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base.
+- Impacto de infraestructura: Afecta contratos de eventos, Outbox/Inbox, auditoria y procesamiento asincrono.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-046 - Cerrar diseno backend core pendiente antes de depuracion legacy
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-047 - Implementar terceros fiscales con DV NIT automatico
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-048 - Implementar bienes, servicios, insumos y referencias operativas
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-049 - Ajustar ventas y documentos para bienes y servicios
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-050 - Implementar movimientos manuales de insumos
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-051 - Implementar compras, gastos y cuentas por pagar
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-052 - Completar documentos fiscales y consultas fiscales
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-053 - Completar contabilidad parametrizable PUC
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-054 - Implementar reportes minimos operativos, fiscales y contables
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-055 - Implementar cuentas por cobrar y recaudos
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-056 - Implementar usuarios, roles, permisos y auditoria de acceso
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Afecta contratos de eventos, Outbox/Inbox, auditoria y procesamiento asincrono.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-057 - Implementar licenciamiento por empresa
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-058 - Migrar legacy pendiente al modelo Clean Architecture completo
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-059 - Depurar y eliminar codigo muerto, endpoints y tablas legacy
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-060 - Definir arquitectura cloud AWS, BFF y clasificacion ECS Fargate/Lambda
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-061 - Implementar IaC AWS inicial para frontend, BFF, ECS Fargate, RDS y servicios base
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-062 - Implementar event-driven AWS con Outbox/Inbox, EventBridge/SQS y Lambdas
+- Estado: Completada.
+- Fase: Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes.
+- Impacto de infraestructura: Afecta infraestructura productiva AWS objetivo y debe reflejarse en Terraform/IAM/red/seguridad.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-063 - Disenar e implementar frontend SPA y BFF inicial
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-064 - Optimizar gestion de conexiones PostgreSQL por microservicio
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-065 - Mejorar frontend con login, empresa activa y formularios controlados
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-066 - Restringir UI operativa por sesion y licencia activa
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-067 - RediseÃ¯Â¿Â½ar experiencia visual profesional de toda la aplicacion
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-068 - Disenar RBAC modular con ROOT global y roles por empresa
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-069 - Implementar RBAC modular en identity-service
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-070 - Implementar UI de administracion de usuarios, roles y permisos
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-071 - Aplicar navegacion y acciones frontend basadas en permisos efectivos
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-072 - Implementar bootstrap ROOT minimo para pruebas locales
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-073 - Completar flujo ROOT operativo
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-074 - Corregir tipo de documento de empresa a codigo DIAN numerico
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-075 - Unificar tipos de documento de identificacion como codigo DIAN numerico
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-076 - Ajustar experiencia funcional colombiana y RBAC operativo
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-077 - Modularizar SPA frontend por Clean Code y SOLID
+- Estado: Completada.
+- Fase: Fase 14: BFF, frontend, RBAC y UX operativa.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-078 - Importar catalogo completo DIVIPOLA para municipios colombianos
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-079 - Parametrizar responsabilidades fiscales, regimenes y medios de pago
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-080 - Mejorar seleccion de responsabilidades fiscales
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-081 - Persistir sesion y cerrar por inactividad
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-082 - Pulir UX de login y venta POS
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-083 - Buscador de cliente en Venta POS
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-084 - NIT y digito de verificacion segun concepto DIAN
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-085 - Simplificar registro de clientes naturales
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-086 - Persistir y administrar catalogos oficiales y operativos
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-087 - Crear modulo administrativo de catalogos parametrizables
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-088 - Auditar y eliminar tablas legacy no usadas
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-089 - Configurar impuestos por producto, scanner POS y consumidor final parametrizable
+- Estado: Completada.
+- Fase: Fase 15: Catalogos colombianos y reglas fiscales operativas.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-090 - Definir politica transversal de auditoria para acciones mutables
+- Estado: Completada.
+- Fase: Fase 16: Auditoria, logs y acciones mutables.
+- Impacto de infraestructura: Afecta contratos de eventos, Outbox/Inbox, auditoria y procesamiento asincrono.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-091 - Permitir administracion ROOT auditada de catalogos globales
+- Estado: Completada.
+- Fase: Fase 16: Auditoria, logs y acciones mutables.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-092 - Reemplazar paneles Respuesta/Error por modal de proceso
+- Estado: Completada.
+- Fase: Fase 16: Auditoria, logs y acciones mutables.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-093 - Modulo Logs/Auditoria para ROOT y administradores
+- Estado: Completada.
+- Fase: Fase 16: Auditoria, logs y acciones mutables.
+- Impacto de infraestructura: Afecta contratos de eventos, Outbox/Inbox, auditoria y procesamiento asincrono.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-094 - Eliminar `initialState` demo y catalogos locales de negocio en frontend
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-095 - Completar catalogos DB-only para UI operativa
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-096 - Ajustar modales de proceso y mensajes contextuales
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-097 - Redisenar modulo Logs/Auditoria
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Afecta contratos de eventos, Outbox/Inbox, auditoria y procesamiento asincrono.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-098 - Mejorar UX de uso de items de inventario
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-099 - Disenar modulo contable funcional v2
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-100 - Implementar contabilidad operativa v2
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-101 - Disenar modulo de nomina y clasificacion laboral/contractual
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-102 - Crear `payroll-service`
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-103 - Implementar pagos diarios verbales/jornal
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-104 - Configurar nomina electronica opcional por empresa
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-105 - Implementar nomina electronica mock
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-106 - Integrar nomina con contabilidad
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-107 - Endurecer RBAC para catalogos, logs, contabilidad y nomina
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-108 - Mejorar frontend profesional y componentes reutilizables
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-109 - Prueba E2E desde cero sin datos demo frontend
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-110 - Revision normativa y catalogos de cumplimiento
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-111 - Preparacion cloud/productiva para nuevos modulos
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-112 - Commit y reporte de cierre de fase
+- Estado: Completada.
+- Fase: Fase 17: Catalogos DB-only, contabilidad v2 y nomina.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-113 - Implementar consumo asistido de insumos por servicios facturados
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-114 - Corregir error de login por licencia no configurada
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-115 - Extender licencias empresariales con modulos contratados
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-116 - Crear modulo ROOT para administrar licencias
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-117 - Aplicar licencia por modulo en menues y operaciones
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-118 - Auditar administracion de licencias
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-119 - E2E licencia parametrizable
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-120 - Aplicar cuotas comerciales de licencia
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-121 - Ajustar UX/RBAC de empresa y permisos
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-122 - Unificar permiso de Venta POS e internacionalizar permisos
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-123 - Redisenar navegacion principal con submenus
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-124 - Crear pantalla exclusiva de Roles
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-125 - Crear pantalla exclusiva de Usuarios
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-126 - Reducir autocierre de modales exitosos
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-127 - Endurecer contratos backend de roles
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-128 - Actualizar e inactivar usuarios empresariales
+- Estado: Completada.
+- Fase: Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-129 - Implementar E2E operativo desde cero para venta POS electronica
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-130 - Completar compras y entradas de inventario con contabilidad
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-131 - Completar servicios facturables con consumo manual de insumos
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-132 - Crear listados operativos profesionales
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-133 - Endurecer validacion backend de RBAC y licencias
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-134 - Tablero ROOT de uso de licencias
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Impacto de infraestructura: Afecta identity/tenant/BFF y politicas de acceso; infraestructura nueva solo si requiere autenticacion productiva.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-135 - Auditoria transversal verificable
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Impacto de infraestructura: Afecta contratos de eventos, Outbox/Inbox, auditoria y procesamiento asincrono.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-136 - Robustecer sesion, expiracion y restauracion
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-137 - Parametrizar reglas contables PUC por evento
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Impacto de infraestructura: Afecta contratos de eventos, Outbox/Inbox, auditoria y procesamiento asincrono.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-138 - Generar comprobantes/asientos automaticos
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-139 - Implementar reportes minimos contables y operativos
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-140 - Pruebas de contrato BFF/microservicios
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-141 - E2E de aislamiento multiempresa
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-142 - Completar Terraform AWS productivo
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Impacto de infraestructura: Afecta infraestructura productiva AWS objetivo y debe reflejarse en Terraform/IAM/red/seguridad.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-143 - Completar eventos productivos AWS
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Impacto de infraestructura: Afecta infraestructura productiva AWS objetivo y debe reflejarse en Terraform/IAM/red/seguridad.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-144 - Mejorar tablas administrativas de usuarios y roles
+- Estado: Completada.
+- Fase: Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS.
+- Impacto de infraestructura: Afecta PostgreSQL/Flyway y datos de referencia consumidos por servicios.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-145 - Replantear alcance DIAN como software parametrizable por empresa
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-146 - Disenar modulo de configuracion DIAN por empresa
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-147 - Persistencia segura de certificados y secretos DIAN por empresa
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: Afecta entorno local Docker/Compose, variables de entorno y gestion de secretos dummy.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-148 - Ajustar contratos API para configuracion DIAN y prueba de conexion
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-149 - Actualizar infraestructura AWS para secretos DIAN por empresa
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: Afecta entorno local Docker/Compose, variables de entorno y gestion de secretos dummy.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-150 - Renombrar lenguaje funcional de proveedor a conector DIAN
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-151 - Preparar flujo tecnico DIAN real segun caja de herramientas
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-152 - Implementar UI de Configuracion DIAN por empresa
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-153 - Disenar autenticacion productiva con Cognito Hosted UI y PKCE
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Impacto de infraestructura: Afecta infraestructura productiva AWS objetivo y debe reflejarse en Terraform/IAM/red/seguridad.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-154 - Reemplazar tokens en SPA por sesion BFF con cookie segura
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-155 - Crear almacenamiento server-side de sesion cifrada
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-156 - Implementar logout seguro y revocacion
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-157 - Hardening frontend contra exposicion de datos sensibles
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-158 - Agregar security headers CloudFront/BFF
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-159 - Implementar proteccion CSRF para sesiones por cookie
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Impacto de infraestructura: Afecta infraestructura productiva AWS objetivo y debe reflejarse en Terraform/IAM/red/seguridad.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-160 - MFA obligatorio para ROOT, administradores y acciones criticas
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Impacto de infraestructura: Afecta infraestructura productiva AWS objetivo y debe reflejarse en Terraform/IAM/red/seguridad.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-161 - Provisionamiento runtime de secretos AWS por empresa
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Impacto de infraestructura: Afecta entorno local Docker/Compose, variables de entorno y gestion de secretos dummy.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-162 - Auditoria de seguridad transversal
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Impacto de infraestructura: Afecta contratos de eventos, Outbox/Inbox, auditoria y procesamiento asincrono.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-163 - Modo transicion local y bloqueo productivo de auth dummy
+- Estado: Pendiente.
+- Fase: Fase 21: Backlog autenticacion productiva y hardening.
+- Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-164 - Cerrar consistencia documental SDD antes de nueva implementacion
+- Estado: Completada.
+- Fase: Fase 22: Gobierno SDD, diagramas y limpieza final.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-165 - Actualizar diagramas Mermaid a la arquitectura y modelo vigentes
+- Estado: Completada.
+- Fase: Fase 22: Gobierno SDD, diagramas y limpieza final.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-166 - Cerrar brechas documentales de estado actual versus objetivo
+- Estado: Completada.
+- Fase: Fase 22: Gobierno SDD, diagramas y limpieza final.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+### TASK-167 - Ejecutar limpieza final legacy y artefactos huerfanos antes de nuevas mejoras
+- Estado: Completada.
+- Fase: Fase 22: Gobierno SDD, diagramas y limpieza final.
+- Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
+- Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
+
+<!-- END SDD TASK INFRASTRUCTURE TRACEABILITY -->
