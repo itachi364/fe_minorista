@@ -452,6 +452,22 @@ textarea:hover {
   background: #edf2f6;
 }
 
+.secondary.compact {
+  min-height: 34px;
+  padding: 7px 11px;
+}
+
+.secondary.danger-soft {
+  border-color: #e3b4b4;
+  background: #fff8f8;
+  color: #8b2525;
+}
+
+.secondary.danger-soft:hover:not(:disabled) {
+  border-color: #cf8f8f;
+  background: #fff0f0;
+}
+
 .icon-button {
   min-width: 38px;
   border: 1px solid #d17070;
@@ -552,17 +568,25 @@ textarea:hover {
 .data-table th,
 .data-table td {
   border-bottom: 1px solid #edf1f4;
-  padding: 10px 12px;
+  padding: 12px 14px;
   color: #263746;
   font-size: 12px;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .data-table th {
   background: #f6f8fa;
   color: #3b4b5a;
   font-weight: 820;
+}
+
+.data-table tbody tr {
+  transition: background 140ms ease;
+}
+
+.data-table tbody tr:hover {
+  background: #fbfdfe;
 }
 
 .data-table td code {
@@ -820,6 +844,82 @@ pre {
 
 .identity-admin .tool-panel {
   min-height: 0;
+}
+
+.entity-cell {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.entity-cell b {
+  color: #17202a;
+  font-size: 13px;
+  font-weight: 820;
+  overflow-wrap: anywhere;
+}
+
+.entity-cell small {
+  color: #637485;
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.status-pill {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 780;
+  white-space: nowrap;
+}
+
+.status-pill.active {
+  border-color: #8ac29b;
+  background: #edf8f1;
+  color: #196b37;
+}
+
+.status-pill.inactive {
+  border-color: #c6d0db;
+  background: #f3f6f8;
+  color: #5c6d7c;
+}
+
+.permission-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 520px;
+}
+
+.permission-chip {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  border: 1px solid #cbd9e4;
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: #f7fafc;
+  color: #2d4052;
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.permission-chip.muted {
+  border-color: #dce5ec;
+  color: #687787;
+}
+
+.table-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .identity-split {

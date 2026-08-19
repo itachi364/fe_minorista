@@ -1,3 +1,4 @@
+import { DataTable } from '../../components/DataTable.jsx';
 import { Field, FormPanel, StatusBadge } from '../../components/forms.jsx';
 import { moduleLabel, permissionDescription, permissionLabel } from '../../utils/permissionLabels.js';
 
@@ -51,42 +52,14 @@ export function RolesPanel({
             <p>Actualiza o inactiva roles de la empresa seleccionada.</p>
           </div>
         </header>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Rol</th>
-                <th>Descripcion</th>
-                <th>Permisos</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {roles.map((role) => (
-                <tr key={role.id}>
-                  <td>{role.name}</td>
-                  <td>{role.description || 'Sin descripcion'}</td>
-                  <td>{role.permissionCodes?.length || 0}</td>
-                  <td>{role.active === false ? 'Inactivo' : 'Activo'}</td>
-                  <td>
-                    <div className="button-row">
-                      <button className="secondary" disabled={busy} onClick={() => onEdit(role)} type="button">Actualizar</button>
-                      <button className="secondary" disabled={busy} onClick={() => onToggleActive(role)} type="button">
-                        {role.active === false ? 'Activar' : 'Inactivar'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {roles.length === 0 && (
-                <tr>
-                  <td colSpan="5">No hay roles creados para esta empresa.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={['Rol', 'Permisos', 'Estado', 'Acciones']}
+          emptyMessage="No hay roles creados para esta empresa."
+          pageSize={8}
+          rowKey={(_, index) => roles[index]?.id ?? index}
+          rows={roles.map((role) => roleRow(role, busy, onEdit, onToggleActive))}
+          sectionClassName="embedded-table"
+        />
       </section>
     </div>
   );
@@ -144,41 +117,93 @@ export function UsersPanel({
             <p>Actualiza datos basicos o activa/inactiva accesos empresariales.</p>
           </div>
         </header>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Correo</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id}>
-                  <td>{user.fullName}</td>
-                  <td>{user.email}</td>
-                  <td>{user.status === 'INACTIVE' ? 'Inactivo' : 'Activo'}</td>
-                  <td>
-                    <div className="button-row">
-                      <button className="secondary" disabled={busy} onClick={() => onEdit(user)} type="button">Actualizar</button>
-                      <button className="secondary" disabled={busy} onClick={() => onToggleActive(user)} type="button">
-                        {user.status === 'INACTIVE' ? 'Activar' : 'Inactivar'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {users.length === 0 && (
-                <tr>
-                  <td colSpan="4">No hay usuarios creados para esta empresa.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={['Usuario', 'Estado', 'Acciones']}
+          emptyMessage="No hay usuarios creados para esta empresa."
+          pageSize={8}
+          rowKey={(_, index) => users[index]?.id ?? index}
+          rows={users.map((user) => userRow(user, busy, onEdit, onToggleActive))}
+          sectionClassName="embedded-table"
+        />
       </section>
+    </div>
+  );
+}
+
+function roleRow(role, busy, onEdit, onToggleActive) {
+  const permissionCodes = role.permissionCodes || [];
+  return [
+    {
+      content: <EntityCell title={role.name} subtitle={role.description || 'Sin descripcion'} />,
+      searchText: `${role.name} ${role.description || ''}`,
+    },
+    {
+      content: <PermissionSummary permissionCodes={permissionCodes} />,
+      searchText: permissionCodes.map((code) => `${code} ${permissionLabel(code)}`).join(' '),
+    },
+    {
+      content: <EntityStatusBadge active={role.active !== false} />,
+      searchText: role.active === false ? 'inactivo' : 'activo',
+    },
+    {
+      content: <RowActions active={role.active !== false} busy={busy} onEdit={() => onEdit(role)} onToggle={() => onToggleActive(role)} />,
+      searchText: '',
+    },
+  ];
+}
+
+function userRow(user, busy, onEdit, onToggleActive) {
+  const active = user.status !== 'INACTIVE';
+  return [
+    {
+      content: <EntityCell title={user.fullName} subtitle={user.email} />,
+      searchText: `${user.fullName} ${user.email}`,
+    },
+    {
+      content: <EntityStatusBadge active={active} />,
+      searchText: active ? 'activo' : 'inactivo',
+    },
+    {
+      content: <RowActions active={active} busy={busy} onEdit={() => onEdit(user)} onToggle={() => onToggleActive(user)} />,
+      searchText: '',
+    },
+  ];
+}
+
+function EntityCell({ title, subtitle }) {
+  return (
+    <span className="entity-cell">
+      <b>{title}</b>
+      <small>{subtitle}</small>
+    </span>
+  );
+}
+
+function EntityStatusBadge({ active }) {
+  return <span className={active ? 'status-pill active' : 'status-pill inactive'}>{active ? 'Activo' : 'Inactivo'}</span>;
+}
+
+function PermissionSummary({ permissionCodes }) {
+  if (permissionCodes.length === 0) {
+    return <span className="muted-block">Sin permisos</span>;
+  }
+  const visible = permissionCodes.slice(0, 3);
+  const remaining = permissionCodes.length - visible.length;
+  return (
+    <span className="permission-chip-list">
+      {visible.map((code) => <span className="permission-chip" key={code}>{permissionLabel(code)}</span>)}
+      {remaining > 0 && <span className="permission-chip muted">+{remaining} mas</span>}
+    </span>
+  );
+}
+
+function RowActions({ active, busy, onEdit, onToggle }) {
+  return (
+    <div className="table-action-row">
+      <button className="secondary compact" disabled={busy} onClick={onEdit} type="button">Actualizar</button>
+      <button className={active ? 'secondary compact danger-soft' : 'secondary compact'} disabled={busy} onClick={onToggle} type="button">
+        {active ? 'Inactivar' : 'Activar'}
+      </button>
     </div>
   );
 }

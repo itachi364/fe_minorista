@@ -1172,6 +1172,22 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 - Relevant finding: React recomienda dividir interfaces en jerarquias de componentes, mantener estado minimo, usar formularios controlados, renderizar listas con `map()`/`key` y modelar estados asincronos de envio/exito/error.
 - Decision impact: Las nuevas pantallas operativas se construiran como features separadas con componentes de formulario, tabla/listado, filtros y modales, evitando volver a concentrar flujo en un unico archivo.
 
+## TASK-144 tablas administrativas de usuarios y roles
+
+### Decisiones
+
+- Las tablas de `Usuarios` y `Roles` deben usar el mismo lenguaje visual de los listados operativos: `DataTable`, busqueda local, encabezados consistentes, estados vacios, badges y acciones contextuales.
+- Los datos principales se renderizan con jerarquia visual: nombre destacado, detalle secundario y conteos o codigos como metadatos, sin exponer estructuras JSON ni UUID como informacion principal.
+- Las acciones de actualizar, activar e inactivar se mantienen en la fila para preservar el flujo actual, pero se presentan como botones compactos y alineados.
+- Esta tarea no cambia contratos REST, RBAC, licencias ni persistencia; solo mejora presentacion y mantenibilidad del frontend.
+
+### Context7 evidence
+
+- Library/tool: React oficial (`/reactjs/react.dev`).
+- Topic consulted: rendering dynamic lists with stable keys and extracting reusable components.
+- Relevant finding: React recomienda renderizar colecciones con `map()`, usar `key` estable derivado de datos y extraer componentes reutilizables para estructuras repetidas.
+- Decision impact: Las filas de usuarios y roles se renderizan desde arreglos de datos con claves por `id`, reutilizando `DataTable` y componentes visuales pequenos para nombre, estado y acciones.
+
 ### Validaciones agregadas
 
 - `services/accounting-service` cubre calculo de estado de resultados y balance basico desde cuentas PUC.

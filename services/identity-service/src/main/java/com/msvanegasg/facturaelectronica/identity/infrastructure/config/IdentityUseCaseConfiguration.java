@@ -13,6 +13,7 @@ import com.msvanegasg.facturaelectronica.identity.application.port.in.ManageIden
 import com.msvanegasg.facturaelectronica.identity.application.port.out.AccessAuditRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.CompanyMembershipRepositoryPort;
+import com.msvanegasg.facturaelectronica.identity.application.port.out.CompanyRoleRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.GlobalUserRoleRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.LicenseValidationPort;
@@ -33,6 +34,7 @@ public class IdentityUseCaseConfiguration {
     @Bean
     ManageIdentityUseCase manageIdentityUseCase(UserAccountRepositoryPort userRepository,
             CompanyMembershipRepositoryPort membershipRepository,
+            CompanyRoleRepositoryPort companyRoleRepository,
             UserSessionRepositoryPort sessionRepository,
             AccessAuditRepositoryPort auditRepository,
             GlobalUserRoleRepositoryPort globalRoleRepository,
@@ -43,9 +45,9 @@ public class IdentityUseCaseConfiguration {
             IdGeneratorPort idGenerator,
             ClockPort clock,
             @Value("${identity.session.duration-hours:12}") long sessionDurationHours) {
-        return new IdentityManagementService(userRepository, membershipRepository, sessionRepository, auditRepository,
-                globalRoleRepository, licenseValidationPort, passwordHasher, tokenGenerator, tokenHash, idGenerator,
-                clock, Duration.ofHours(sessionDurationHours));
+        return new IdentityManagementService(userRepository, membershipRepository, companyRoleRepository,
+                sessionRepository, auditRepository, globalRoleRepository, licenseValidationPort, passwordHasher,
+                tokenGenerator, tokenHash, idGenerator, clock, Duration.ofHours(sessionDurationHours));
     }
 
     @Bean

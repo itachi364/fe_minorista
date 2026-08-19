@@ -3857,3 +3857,22 @@
     - `infra/aws/modules/event_consumers` define Lambdas para auditoria, inventario, contabilidad, reintentos de proveedor y proyecciones de reportes.
     - `services/platform-eventing` conserva outbox con reintentos y tests.
     - `.\mvnw.cmd -q test`: OK.
+
+- [x] TASK-144: Mejorar tablas administrativas de usuarios y roles
+  - Estado: DONE
+  - Requisitos: RF-059, RF-060, RF-066.
+  - Acceptance criteria: AC-167.
+  - Alcance:
+    - Migrar las tablas de `Roles` y `Usuarios` al patron visual reutilizable de listados operativos.
+    - Mostrar estado con badges, datos principales con jerarquia visual y acciones alineadas.
+    - Mantener textos visibles en espanol y no cambiar contratos backend ni reglas RBAC.
+    - Conservar estados vacios claros para empresas sin usuarios o roles creados.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/features/identity/IdentityAdminPanel.jsx`
+    - `apps/facturaelectronica-web/src/styles.css`
+    - `apps/facturaelectronica-web/src/App.test.jsx` si el render esperado cambia.
+  - Validacion:
+    - `DataTable` soporta celdas enriquecidas con texto de busqueda para mantener filtrado en filas visuales.
+    - Las tablas de Roles y Usuarios muestran nombre/detalle, badges de estado, permisos como chips y acciones compactas.
+    - `npm test -- --run`: OK, 20 tests.
+    - `npm run build`: OK.

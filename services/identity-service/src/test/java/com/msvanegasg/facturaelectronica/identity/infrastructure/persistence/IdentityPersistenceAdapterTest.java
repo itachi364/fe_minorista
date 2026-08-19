@@ -2,6 +2,8 @@ package com.msvanegasg.facturaelectronica.identity.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -50,6 +52,32 @@ class IdentityPersistenceAdapterTest {
         assertThat(saved.id()).isEqualTo(USER_ID);
         assertThat(found).isPresent();
         assertThat(found.get().email()).isEqualTo("owner@example.com");
+    }
+
+    @Test
+    void listsCompanyUsersWithoutEmailFilterUsingCompanyOnlyQuery() {
+        when(userRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of(userEntity()));
+        UserAccountPersistenceAdapter adapter = new UserAccountPersistenceAdapter(userRepository);
+
+        List<UserAccount> users = adapter.findByCompanyIdAndEmailContaining(COMPANY_ID, "");
+
+        assertThat(users).hasSize(1);
+        assertThat(users.get(0).email()).isEqualTo("owner@example.com");
+        verify(userRepository).findByCompanyId(COMPANY_ID);
+        verify(userRepository, never()).findByCompanyIdAndEmailContaining(any(), any());
+    }
+
+    @Test
+    void listsCompanyUsersWithNormalizedEmailFilter() {
+        when(userRepository.findByCompanyIdAndEmailContaining(COMPANY_ID, "owner"))
+                .thenReturn(List.of(userEntity()));
+        UserAccountPersistenceAdapter adapter = new UserAccountPersistenceAdapter(userRepository);
+
+        List<UserAccount> users = adapter.findByCompanyIdAndEmailContaining(COMPANY_ID, " Owner ");
+
+        assertThat(users).hasSize(1);
+        verify(userRepository).findByCompanyIdAndEmailContaining(COMPANY_ID, "owner");
+        verify(userRepository, never()).findByCompanyId(any());
     }
 
     @Test

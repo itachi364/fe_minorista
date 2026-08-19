@@ -48,7 +48,10 @@ public class UserAccountPersistenceAdapter implements UserAccountRepositoryPort 
     @Override
     public List<UserAccount> findByCompanyIdAndEmailContaining(UUID companyId, String email) {
         String normalized = email == null || email.isBlank() ? null : email.trim().toLowerCase(java.util.Locale.ROOT);
-        return repository.findByCompanyIdAndEmailContaining(companyId, normalized).stream()
+        List<UserAccountJpaEntity> users = normalized == null
+                ? repository.findByCompanyId(companyId)
+                : repository.findByCompanyIdAndEmailContaining(companyId, normalized);
+        return users.stream()
                 .map(UserAccountPersistenceAdapter::toDomain)
                 .toList();
     }

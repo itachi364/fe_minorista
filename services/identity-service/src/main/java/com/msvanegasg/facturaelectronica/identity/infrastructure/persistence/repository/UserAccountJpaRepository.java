@@ -17,10 +17,28 @@ public interface UserAccountJpaRepository extends JpaRepository<UserAccountJpaEn
     boolean existsByEmail(String email);
 
     boolean existsByEmailAndIdNot(String email, UUID id);
+
     @Query("""
             select distinct u
             from UserAccountJpaEntity u
-            where (:email is null or lower(u.email) like lower(concat('%', :email, '%')))
+            where (
+                exists (
+                  select 1 from CompanyMembershipJpaEntity m
+                  where m.userId = u.id and m.companyId = :companyId and m.active = true
+                )
+                or exists (
+                  select 1 from CompanyUserRoleAssignmentJpaEntity a
+                  where a.userId = u.id and a.companyId = :companyId and a.revokedAt is null
+                )
+              )
+            order by u.email asc
+            """)
+    List<UserAccountJpaEntity> findByCompanyId(@Param("companyId") UUID companyId);
+
+    @Query("""
+            select distinct u
+            from UserAccountJpaEntity u
+            where lower(u.email) like concat('%', :email, '%')
               and (
                 exists (
                   select 1 from CompanyMembershipJpaEntity m
@@ -34,7 +52,7 @@ public interface UserAccountJpaRepository extends JpaRepository<UserAccountJpaEn
             order by u.email asc
             """)
     List<UserAccountJpaEntity> findByCompanyIdAndEmailContaining(@Param("companyId") UUID companyId,
-            @Param("email") String email);
+            @Param("email") String normalizedEmail);
 
     @Query("""
             select count(distinct u.id)

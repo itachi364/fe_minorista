@@ -58,7 +58,7 @@ export function DataTable({
             {filteredRows.length === 0 && <tr><td colSpan={columns.length}>{rows.length === 0 ? emptyMessage : 'Sin coincidencias.'}</td></tr>}
             {visibleRows.map(({ row, index }) => (
               <tr key={rowKey ? rowKey(row, index) : index}>
-                {row.map((cell, cellIndex) => <td key={cellIndex}>{cell}</td>)}
+                {row.map((cell, cellIndex) => <td key={cellIndex}>{cellContent(cell)}</td>)}
               </tr>
             ))}
           </tbody>
@@ -79,8 +79,18 @@ function cellText(cell) {
   if (cell === null || cell === undefined) {
     return '';
   }
+  if (typeof cell === 'object' && 'searchText' in cell) {
+    return String(cell.searchText || '').toLowerCase();
+  }
   if (typeof cell === 'string' || typeof cell === 'number' || typeof cell === 'boolean') {
     return String(cell).toLowerCase();
   }
   return '';
+}
+
+function cellContent(cell) {
+  if (cell && typeof cell === 'object' && 'content' in cell) {
+    return cell.content;
+  }
+  return cell;
 }

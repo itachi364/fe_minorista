@@ -736,29 +736,34 @@ export default function App() {
     if (!managedUserForm.roleId) {
       throw new Error('Selecciona un rol obligatorio para el usuario.');
     }
-    const user = editingUserId
-      ? await requestJson(`/api/v1/companies/${activeCompanyId}/users/${editingUserId}`, {
-        method: 'PUT',
-        body: { fullName: managedUserForm.fullName, email: managedUserForm.email },
-        token,
-        companyId: activeCompanyId,
-        idempotencyKey: createIdempotencyKey('managed-user-update'),
-      })
-      : await requestJson('/api/v1/users', {
-        method: 'POST',
-        body: {
-          fullName: managedUserForm.fullName,
-          email: managedUserForm.email,
-          password: managedUserForm.password,
-        },
-        token,
-        idempotencyKey: createIdempotencyKey('managed-user'),
-      });
-    await assignRoleToUser(user.id, managedUserForm.roleId);
-    const users = await loadCompanyUsers('');
-    setManagedUsers(users);
-    setEditingUserId(user.id);
-    return user;
+    try {
+      const user = editingUserId
+        ? await requestJson(`/api/v1/companies/${activeCompanyId}/users/${editingUserId}`, {
+          method: 'PUT',
+          body: { fullName: managedUserForm.fullName, email: managedUserForm.email },
+          token,
+          companyId: activeCompanyId,
+          idempotencyKey: createIdempotencyKey('managed-user-update'),
+        })
+        : await requestJson('/api/v1/users', {
+          method: 'POST',
+          body: {
+            fullName: managedUserForm.fullName,
+            email: managedUserForm.email,
+            password: managedUserForm.password,
+          },
+          token,
+          idempotencyKey: createIdempotencyKey('managed-user'),
+        });
+      await assignRoleToUser(user.id, managedUserForm.roleId);
+      const users = await loadCompanyUsers('');
+      setManagedUsers(users);
+      setEditingUserId(user.id);
+      return user;
+    } finally {
+      await loadIdentityAdminData().catch(() => undefined);
+      await loadCompanyUsers('').catch(() => undefined);
+    }
   }
 
   async function toggleManagedUserActive(user) {

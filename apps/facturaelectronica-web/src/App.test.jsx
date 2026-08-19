@@ -451,6 +451,9 @@ test('root manages company roles users and assignments', async () => {
     .mockResolvedValueOnce(jsonResponse([]))
     .mockResolvedValueOnce(jsonResponse(createdUser))
     .mockResolvedValueOnce(jsonResponse(assignedAccess))
+    .mockResolvedValueOnce(jsonResponse([createdUser]))
+    .mockResolvedValueOnce(jsonResponse(permissionCatalog))
+    .mockResolvedValueOnce(jsonResponse([createdRole]))
     .mockResolvedValueOnce(jsonResponse([createdUser]));
   vi.stubGlobal('fetch', fetchMock);
 
@@ -476,7 +479,7 @@ test('root manages company roles users and assignments', async () => {
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(7));
   fillManagedUserForm();
   fireEvent.click(screen.getByRole('button', { name: 'Crear usuario' }));
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(10));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(13));
 
   expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/v1/platform/permissions', expect.objectContaining({
     headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
@@ -501,6 +504,15 @@ test('root manages company roles users and assignments', async () => {
     method: 'POST',
     body: JSON.stringify({ roleIds: [createdRole.id] }),
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(fetchMock).toHaveBeenNthCalledWith(11, '/api/v1/platform/permissions', expect.objectContaining({
+    headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(fetchMock).toHaveBeenNthCalledWith(12, `/api/v1/companies/${COMPANY_ID}/roles`, expect.objectContaining({
+    headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(fetchMock).toHaveBeenNthCalledWith(13, `/api/v1/companies/${COMPANY_ID}/users`, expect.objectContaining({
+    headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
   }));
 });
 
