@@ -65,8 +65,24 @@ Target productivo aprobado:
 - Procesos event-driven transversales en Lambda disparados por EventBridge/SQS.
 - Persistencia en RDS/Aurora PostgreSQL por base o esquema de servicio, segun fase de madurez.
 - Secretos y certificados en AWS Secrets Manager o Parameter Store, nunca en imagenes ni repositorio.
+- Assets empresariales, exportaciones de reportes y artefactos POS en S3 privado con KMS, metadata en PostgreSQL y acceso controlado por BFF/CloudFront.
 
 Estado de materializacion: `reporting-service` no existe como artefacto fisico. Los reportes minimos se sirven desde los microservicios duenos de datos y las proyecciones asincronas se materializan con `reporting-projection-lambda`. Un `reporting-service` futuro requiere tarea, contrato y criterios propios antes de agregarse a ECS.
+
+## Marca NexoFiscal, branding y documentos
+
+- La marca publica objetivo de la aplicacion es `NexoFiscal`.
+- `tenant-service` sera el owner de la configuracion de branding empresarial: nombre visual, logos, favicon y metadata de assets.
+- El frontend debe aplicar branding por empresa activa y usar fallback `NexoFiscal` si no existe logo empresarial.
+- `billing-service` sera el owner de artefactos POS/documentos fiscales: comprobante imprimible, XML/JSON tecnico cuando aplique, QR, hash y metadata de almacenamiento.
+- Reimpresiones POS se tratan como eventos operativos auditables; no crean nuevos documentos fiscales.
+
+## Reportes avanzados objetivo
+
+- El modulo actual de reportes minimos se mantiene sobre servicios duenos de datos.
+- Cuando se implemente TASK-174, `reporting-service` sera el owner de reportes avanzados, catalogo de reportes, filtros dinamicos, ejecuciones, exportaciones y descargas.
+- El BFF no ejecuta agregaciones pesadas; enruta, autoriza, normaliza errores y conserva borde publico.
+- `reporting-projection-lambda` sigue siendo una proyeccion reconstruible, no la fuente canonica unica.
 
 ## Decision de extraccion fisica
 

@@ -4335,3 +4335,227 @@
     - Tablas `public.*` eliminadas: `auditoria`, `accounting_entry`, `accounting_entry_line`, `compra`, `detalle_compra`, `detalle_factura`, `detalle_gasto`, `factura`, `gastos`, `parametros`, `registro_accesos`, `roles`, `usuarios`.
     - Tablas `public.*` conservadas por tener filas o historial: `accounting_account`, `accounting_rule`, `accounting_rule_line`, `billing_electronic_document_trace_event`, `billing_electronic_pos_document`, `billing_electronic_pos_document_line`, `billing_fiscal_audit_event`, `billing_issuer_profile`, `billing_numbering_resolution`, `billing_provider_submission`, `categoria`, `cliente`, `flyway_schema_history`, `impuesto`, `metodo_pago`, `pais`, `producto`, `proveedor`, `tipo_gasto`, `tipodocumento`.
     - Normalizados textos visibles de error/diagnostico DIAN mock hacia "conector DIAN mock" en servicios activos.
+
+## Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS
+
+- [ ] TASK-168: Adoptar marca NexoFiscal en frontend y documentacion visible
+  - Estado: TODO
+  - Requisitos: RF-131.
+  - Acceptance criteria: AC-193.
+  - Descripcion: Migrar textos visibles de la aplicacion desde `Factura Electronica` hacia `NexoFiscal`, incluyendo login, titulo del navegador, sidebar, encabezado, README y referencias visibles no tecnicas.
+  - Archivos:
+    - `apps/facturaelectronica-web/index.html`
+    - `apps/facturaelectronica-web/src/**`
+    - `README.md`
+    - `specs/**` cuando aplique a texto de producto
+  - Dependencias:
+    - TASK-167 completada.
+  - Criterios:
+    - No renombrar paquetes Java, carpetas o artefactos tecnicos sin tarea especifica.
+    - No romper rutas Docker, Compose ni contratos API existentes.
+    - La UI publica debe mostrar `NexoFiscal`.
+  - Validacion:
+    - `npm run build` en `apps/facturaelectronica-web`.
+    - `rg "Factura Electronica|Factura Electronica"` para distinguir referencias historicas permitidas de textos visibles pendientes.
+
+- [ ] TASK-169: Disenar branding empresarial parametrizable
+  - Estado: TODO
+  - Requisitos: RF-132, RF-133, RF-134, RF-135.
+  - Acceptance criteria: AC-194, AC-195, AC-196, AC-197.
+  - Descripcion: Definir modelo, contrato, permisos, almacenamiento y reglas de seguridad para logos, favicon y tema visual por empresa.
+  - Archivos:
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+    - `specs/infrastructure.md`
+  - Dependencias:
+    - TASK-168.
+  - Criterios:
+    - Metadata en PostgreSQL y archivo en storage seguro.
+    - Formatos iniciales permitidos: PNG, JPEG, WebP e ICO.
+    - SVG queda excluido hasta validar sanitizacion.
+    - ROOT puede operar cualquier empresa; OWNER/ADMIN solo su empresa.
+  - Validacion:
+    - Revision SDD de RF/AC/contratos/modelo.
+
+- [ ] TASK-170: Implementar backend de branding empresarial
+  - Estado: TODO
+  - Requisitos: RF-132, RF-133, RF-135.
+  - Acceptance criteria: AC-195, AC-196, AC-197.
+  - Descripcion: Agregar persistencia, endpoints y storage adapter para branding empresarial, con validacion multipart, RBAC, licencia cuando aplique y auditoria.
+  - Archivos:
+    - `services/tenant-service/**`
+    - `services/bff-service/**`
+    - `services/audit-service/**` si requiere contrato adicional
+    - `docker-compose.yml`
+    - `.env.example`
+  - Dependencias:
+    - TASK-169.
+  - Criterios:
+    - Validar tamano, tipo MIME, extension, hash y proposito del asset.
+    - No retornar rutas internas ni contenido binario sensible.
+    - Registrar auditoria de exito y fallo.
+  - Validacion:
+    - Tests unitarios de validacion de archivos.
+    - Tests de integracion de endpoints con archivo valido/invalido.
+    - Suite Maven del servicio afectado.
+
+- [ ] TASK-171: Implementar UI de branding y aplicacion dinamica de favicon/logo
+  - Estado: TODO
+  - Requisitos: RF-131, RF-132, RF-134.
+  - Acceptance criteria: AC-193, AC-194.
+  - Descripcion: Crear configuracion visual empresarial en la SPA y aplicar logo/favicons dinamicamente segun empresa activa, con fallback `NexoFiscal`.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/**`
+    - `apps/facturaelectronica-web/index.html`
+  - Dependencias:
+    - TASK-170.
+  - Criterios:
+    - El login muestra logo NexoFiscal o logo empresarial cuando la sesion/empresa lo permita.
+    - El encabezado muestra logo superior derecho configurado.
+    - El favicon cambia al branding activo sin recargar toda la app.
+  - Validacion:
+    - `npm run build`.
+    - Prueba manual con upload, refresh y cambio de empresa ROOT.
+
+- [ ] TASK-172: Disenar artefactos fiscales, comprobantes POS e impresion termica
+  - Estado: TODO
+  - Requisitos: RF-143, RF-144, RF-145.
+  - Acceptance criteria: AC-205, AC-206, AC-207.
+  - Descripcion: Definir modelo y contratos para artefactos de documentos POS, comprobante imprimible, QR, metadata fiscal, descarga, reimpresion y estrategia termica gradual.
+  - Archivos:
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+    - `specs/infrastructure.md`
+  - Dependencias:
+    - TASK-167.
+  - Criterios:
+    - Fase inicial usa impresion web 58/80 mm.
+    - Reimpresion no crea nuevo documento fiscal.
+    - Conectores directos de impresora requieren tarea posterior con hardware real.
+  - Validacion:
+    - Revision SDD de contrato y modelo.
+
+- [ ] TASK-173: Disenar reporting-service y contratos de reportes avanzados
+  - Estado: TODO
+  - Requisitos: RF-136, RF-137, RF-138, RF-139, RF-140, RF-141, RF-142.
+  - Acceptance criteria: AC-198, AC-199, AC-200, AC-201, AC-203, AC-204, AC-208.
+  - Descripcion: Definir `reporting-service` como microservicio fisico objetivo para reportes avanzados, catalogo de reportes, filtros dinamicos, graficos, aislamiento multiempresa, RBAC/licencia y origen de datos.
+  - Archivos:
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+    - `specs/infrastructure.md`
+    - `specs/tasks.md`
+  - Dependencias:
+    - TASK-139 completada como reporte minimo actual.
+    - TASK-143 completada para eventos productivos base.
+  - Criterios:
+    - Reportes disponibles por dropdown desde catalogo backend.
+    - Filtros y opciones dinamicas por reporte.
+    - Ventas por vendedor solo lista usuarios con rol/permiso de ventas.
+    - Exportacion queda separada en TASK-176.
+  - Validacion:
+    - Revision SDD de contratos y trazabilidad RF/AC.
+
+- [ ] TASK-174: Implementar reporting-service con reportes iniciales
+  - Estado: TODO
+  - Requisitos: RF-137, RF-138, RF-139, RF-140.
+  - Acceptance criteria: AC-200, AC-201, AC-204, AC-208.
+  - Descripcion: Crear microservicio `reporting-service` con Clean Architecture, endpoints de catalogo/opciones/query y reportes iniciales de ventas, compras, inventario, rentabilidad, cuentas, nomina y licencia.
+  - Archivos:
+    - `services/reporting-service/**`
+    - `pom.xml`
+    - `docker-compose.yml`
+    - `infra/aws/**`
+    - `services/bff-service/**`
+  - Dependencias:
+    - TASK-173.
+  - Criterios:
+    - Servicio fisico con artefacto y contenedor propio.
+    - Consultas aisladas por empresa.
+    - RBAC/licencia validado en BFF y backend.
+    - No duplicar datos canonicos como unica fuente de verdad.
+  - Validacion:
+    - `mvn test` del servicio.
+    - Pruebas de contrato BFF/reporting-service.
+    - Docker Compose levanta con `reporting-service`.
+
+- [ ] TASK-175: Implementar UI avanzada de reportes con filtros dinamicos y graficos
+  - Estado: TODO
+  - Requisitos: RF-136, RF-138, RF-139, RF-141.
+  - Acceptance criteria: AC-198, AC-199, AC-200, AC-201, AC-203.
+  - Descripcion: Redisenar modulo de Reportes con selector de reporte, filtros dinamicos, rango de fechas, opciones de datos, selector de grafico, tabla y visualizacion inicial profesional.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/features/reports/**`
+    - `apps/facturaelectronica-web/src/services/**`
+  - Dependencias:
+    - TASK-174.
+  - Criterios:
+    - No hardcodear catalogo de reportes en frontend.
+    - Validar fechas y filtros requeridos antes de consultar.
+    - Renderizar tabla siempre; grafico segun tipo permitido.
+  - Validacion:
+    - `npm run build`.
+    - Prueba manual con ventas por vendedor, compras e inventario.
+
+- [ ] TASK-176: Implementar exportacion CSV/Excel/PDF para reportes
+  - Estado: TODO
+  - Requisitos: RF-142.
+  - Acceptance criteria: AC-202, AC-204.
+  - Descripcion: Implementar exportaciones auditadas para reportes historicos y tabulares, minimo CSV/Excel, con PDF gerencial opcional si se aprueban plantillas.
+  - Archivos:
+    - `services/reporting-service/**`
+    - `services/bff-service/**`
+    - `apps/facturaelectronica-web/src/features/reports/**`
+    - `infra/aws/**`
+  - Dependencias:
+    - TASK-174, TASK-175.
+  - Criterios:
+    - Descargas aisladas por empresa y permisos.
+    - Archivos con expiracion y auditoria.
+    - Dependencias para Excel/PDF requieren aprobacion si no existen.
+  - Validacion:
+    - Tests de exportacion CSV/XLSX.
+    - Prueba manual de descarga.
+
+- [ ] TASK-177: Implementar comprobante POS imprimible y estrategia termica fase 1
+  - Estado: TODO
+  - Requisitos: RF-143, RF-144.
+  - Acceptance criteria: AC-205, AC-206.
+  - Descripcion: Generar comprobante POS imprimible en 58/80 mm, almacenar artefacto, abrir vista de impresion web y auditar intentos de impresion/reimpresion.
+  - Archivos:
+    - `services/billing-service/**`
+    - `services/bff-service/**`
+    - `apps/facturaelectronica-web/src/features/sales/**`
+  - Dependencias:
+    - TASK-172.
+  - Criterios:
+    - No seleccionar impresora por driver desde backend.
+    - Usar `window.print`/vista imprimible en la fase inicial.
+    - Reimpresion registra nuevo print job sin reemitir documento.
+  - Validacion:
+    - Tests de generacion de artefacto.
+    - Prueba manual de vista 58/80 mm.
+
+- [ ] TASK-178: Implementar historico avanzado de ventas/documentos con descarga y reimpresion
+  - Estado: TODO
+  - Requisitos: RF-145.
+  - Acceptance criteria: AC-207.
+  - Descripcion: Construir consulta paginada de ventas/documentos emitidos con filtros por fecha, vendedor, cliente, metodo de pago, estado fiscal, detalle, artefactos, descarga y reimpresion.
+  - Archivos:
+    - `services/billing-service/**`
+    - `services/bff-service/**`
+    - `apps/facturaelectronica-web/src/features/sales/**`
+    - `apps/facturaelectronica-web/src/features/reports/**` si comparte filtros
+  - Dependencias:
+    - TASK-177.
+  - Criterios:
+    - Datos aislados por empresa.
+    - ROOT consulta solo empresa activa seleccionada.
+    - Acciones segun permisos y licencia.
+    - La lista debe ser profesional, paginada y con estados visibles en espanol.
+  - Validacion:
+    - Tests de consulta/filtros.
+    - Prueba E2E creando venta, confirmando POS, consultando historico y reimprimiendo.

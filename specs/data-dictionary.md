@@ -862,3 +862,116 @@ Tabla planificada para fase posterior. Todavia no existe en Flyway.
 | source | varchar(80) | Si | Fuente normativa/operativa. |
 | source_version | varchar(40) | Si | Version/corte de fuente. |
 | updated_at | timestamptz | Si | Fecha de ultima modificacion. |
+
+## Extensiones TASK-168 a TASK-178
+
+### `tenant.company_branding`
+
+Tabla objetivo para branding empresarial. Todavia no existe en Flyway hasta ejecutar TASK-170.
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| company_id | uuid | Si | Empresa propietaria del branding; PK/FK hacia `tenant.company`. |
+| display_name | varchar(180) | No | Nombre visual opcional para UI. |
+| primary_color | varchar(20) | No | Color primario aprobado para tema visual. |
+| accent_color | varchar(20) | No | Color secundario aprobado para tema visual. |
+| main_logo_storage_key | varchar(500) | No | Referencia segura del logo principal en storage. |
+| header_logo_storage_key | varchar(500) | No | Referencia segura del logo de encabezado. |
+| login_logo_storage_key | varchar(500) | No | Referencia segura del logo de login. |
+| favicon_storage_key | varchar(500) | No | Referencia segura del favicon empresarial. |
+| main_logo_content_type | varchar(80) | No | MIME validado del logo principal. |
+| header_logo_content_type | varchar(80) | No | MIME validado del logo de encabezado. |
+| login_logo_content_type | varchar(80) | No | MIME validado del logo de login. |
+| favicon_content_type | varchar(80) | No | MIME validado del favicon. |
+| main_logo_hash | varchar(120) | No | Hash del archivo para trazabilidad/cache. |
+| header_logo_hash | varchar(120) | No | Hash del archivo para trazabilidad/cache. |
+| login_logo_hash | varchar(120) | No | Hash del archivo para trazabilidad/cache. |
+| favicon_hash | varchar(120) | No | Hash del archivo para trazabilidad/cache. |
+| updated_by | uuid | No | Usuario que actualizo el branding. |
+| updated_at | timestamptz | Si | Fecha de ultima actualizacion. |
+
+### `reporting.report_definition`
+
+Tabla objetivo para catalogo backend de reportes avanzados. Todavia no existe en Flyway hasta ejecutar TASK-174.
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| code | varchar(80) | Si | Codigo tecnico del reporte, por ejemplo `SALES_BY_SELLER`. |
+| label | varchar(180) | Si | Nombre visible en espanol. |
+| description | varchar(500) | No | Descripcion funcional del reporte. |
+| required_modules | jsonb | Si | Modulos de licencia requeridos. |
+| required_permissions | jsonb | Si | Permisos RBAC requeridos. |
+| date_range_required | boolean | Si | Indica si el rango de fechas es obligatorio. |
+| allowed_chart_types | jsonb | Si | Tipos de grafico permitidos: `TABLE`, `BAR`, `LINE`, `PIE`, `KPI`. |
+| export_formats | jsonb | Si | Formatos habilitados: `CSV`, `XLSX`, `PDF` cuando aplique. |
+| active | boolean | Si | Disponibilidad del reporte. |
+
+### `reporting.report_execution`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador de ejecucion. |
+| company_id | uuid | Si | Empresa propietaria de la consulta. |
+| report_code | varchar(80) | Si | Reporte solicitado. |
+| requested_by | uuid | Si | Usuario que ejecuto el reporte. |
+| requested_at | timestamptz | Si | Fecha/hora de solicitud. |
+| from_date | date | No | Fecha inicial del reporte. |
+| to_date | date | No | Fecha final del reporte. |
+| filters_json | jsonb | Si | Filtros normalizados sin datos sensibles. |
+| chart_type | varchar(20) | Si | Tipo de visualizacion solicitada. |
+| status | varchar(40) | Si | `SUCCESS`, `FAILED` o `VALIDATION_ERROR`. |
+| correlation_id | varchar(120) | No | Identificador de correlacion. |
+
+### `reporting.report_export`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador de exportacion. |
+| company_id | uuid | Si | Empresa propietaria. |
+| report_code | varchar(80) | Si | Reporte exportado. |
+| format | varchar(20) | Si | `CSV`, `XLSX` o `PDF` cuando aplique. |
+| status | varchar(40) | Si | `PROCESSING`, `READY`, `FAILED` o `EXPIRED`. |
+| storage_key | varchar(500) | No | Referencia segura del archivo generado. |
+| content_type | varchar(120) | No | Tipo MIME del archivo. |
+| file_name | varchar(220) | No | Nombre de descarga sugerido. |
+| content_hash | varchar(120) | No | Hash del archivo generado. |
+| requested_by | uuid | Si | Usuario solicitante. |
+| requested_at | timestamptz | Si | Fecha/hora de solicitud. |
+| ready_at | timestamptz | No | Fecha/hora en que quedo disponible. |
+| expires_at | timestamptz | No | Fecha/hora de expiracion de descarga. |
+| error_code | varchar(80) | No | Codigo de error sanitizado. |
+| error_message | varchar(500) | No | Mensaje de error no sensible. |
+
+### `billing.fiscal_document_artifact`
+
+Tabla objetivo para artefactos POS/documento fiscal. Todavia no existe en Flyway hasta ejecutar TASK-177.
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del artefacto. |
+| company_id | uuid | Si | Empresa propietaria. |
+| document_id | uuid | Si | Documento fiscal asociado. |
+| artifact_type | varchar(40) | Si | `PRINTABLE_HTML`, `XML`, `JSON_METADATA`, `QR` o `PDF`. |
+| storage_key | varchar(500) | Si | Referencia segura del archivo. |
+| content_type | varchar(120) | Si | MIME del artefacto. |
+| file_name | varchar(220) | No | Nombre sugerido. |
+| content_hash | varchar(120) | Si | Hash para integridad. |
+| generated_at | timestamptz | Si | Fecha/hora de generacion. |
+| generated_by | uuid | No | Usuario o proceso generador. |
+| active | boolean | Si | Indica si el artefacto esta vigente. |
+
+### `billing.pos_print_job`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador de solicitud de impresion. |
+| company_id | uuid | Si | Empresa propietaria. |
+| document_id | uuid | Si | Documento POS asociado. |
+| paper_width_mm | integer | Si | Ancho del papel, inicialmente 58 u 80. |
+| strategy | varchar(40) | Si | Estrategia inicial `WEB_PRINT`. |
+| status | varchar(40) | Si | `REQUESTED`, `OPENED`, `PRINTED`, `FAILED` o `CANCELLED`. |
+| requested_by | uuid | Si | Usuario que solicito impresion/reimpresion. |
+| requested_at | timestamptz | Si | Fecha/hora de solicitud. |
+| printed_at | timestamptz | No | Fecha/hora informada de impresion. |
+| error_message | varchar(500) | No | Error sanitizado si falla. |
+| correlation_id | varchar(120) | No | Correlacion tecnica. |

@@ -1,6 +1,6 @@
-# Factura Electronica Minorista
+# NexoFiscal
 
-Backend Java/Spring Boot para una plataforma multiempresa de facturacion electronica colombiana, POS electronico, inventario simple y contabilidad basica con PUC colombiano.
+Backend Java/Spring Boot y SPA React para una plataforma multiempresa de facturacion electronica colombiana, POS electronico, inventario simple, contabilidad basica con PUC colombiano y operaciones administrativas para pequenos negocios.
 
 El proyecto migro desde una estructura legacy CRUD hacia Clean Architecture por bounded contexts. Actualmente usa una estructura Maven multi-modulo con microservicios fisicos activos en `services/*`; el codigo del monolito legacy fue removido del repositorio en TASK-059 y las tablas `public.*` legacy se conservan temporalmente solo para auditoria/migracion de datos.
 
@@ -25,6 +25,20 @@ El proyecto migro desde una estructura legacy CRUD hacia Clean Architecture por 
 - Reportes: ventas, inventario, gastos, cuentas por cobrar, cuentas por pagar, libro diario y libro mayor.
 - Errores API: contrato estandar con `timestamp`, `status`, `code`, `message`, `correlationId` y `details`.
 - Observabilidad HTTP: correlation ID por request y logs estructurados de inicio/fin.
+
+## Backlog Aprobado Fase 23
+
+La fase vigente de producto define la evolucion visual y operativa de NexoFiscal:
+
+- Marca publica `NexoFiscal` en frontend, login, titulo del navegador, sidebar y textos visibles.
+- Branding empresarial parametrizable por empresa: logo principal, logo de login, logo de encabezado y favicon.
+- Storage seguro de assets de branding, exportaciones y artefactos POS: metadata en PostgreSQL y archivos en storage local controlado o S3 privado/KMS en AWS.
+- Reportes avanzados mediante `reporting-service` objetivo: selector de reporte, filtros dinamicos, opciones de datos, graficos permitidos y exportaciones.
+- Reportes objetivo iniciales: ventas por vendedor, ventas por producto, compras, inventario/kardex, rentabilidad basica, cuentas por cobrar, cuentas por pagar, contabilidad, nomina/pagos diarios y uso de licencia.
+- Historico avanzado de ventas/documentos con detalle, vendedor, cliente/consumidor final, items, totales, estado DIAN/mock, artefactos, descargas y reimpresiones.
+- Comprobante POS imprimible con estrategia gradual: primero impresion web 58/80 mm; conectores ESC/POS, WebUSB, WebSerial o agente local quedan para una tarea posterior con hardware validado.
+
+Estado: estas capacidades estan especificadas en SDD como `TASK-168` a `TASK-178`; no deben asumirse implementadas hasta que sus tareas queden marcadas como `DONE`.
 
 ## Arquitectura
 
@@ -52,6 +66,7 @@ Estructura actual:
 - `services/accounting-service`: microservicio fisico para PUC, reglas contables, asientos, libro diario y mayor.
 - `services/audit-service`: microservicio fisico para auditoria fiscal y tecnica.
 - `services/payroll-service`: microservicio fisico para trabajadores, pagos diarios verbales y nomina electronica mock opcional.
+- `services/reporting-service`: microservicio objetivo pendiente para reportes avanzados; actualmente no existe como artefacto fisico.
 
 
 La unidad de despliegue objetivo es un artefacto/contenedor por microservicio, no uno por endpoint individual.
@@ -884,6 +899,8 @@ Estado actual:
 Pendiente:
 
 - `Dockerfile` productivo multi-stage.
+- Storage productivo para branding, exportaciones y artefactos POS en S3 privado/KMS.
+- `reporting-service` ECS/Fargate privado para reportes avanzados y exportaciones.
 - Modulo Terraform `auth` para Cognito Hosted UI + PKCE/MFA.
 - Configuracion cloud final por ambiente, dominio, certificados ACM y variables productivas.
 - Pipeline CI/CD.
@@ -894,6 +911,10 @@ Pendiente:
 
 - Conexion DIAN real parametrizable por empresa.
 - Certificados digitales reales.
+- Branding empresarial y adopcion visual completa de NexoFiscal en la SPA.
+- `reporting-service`, reportes avanzados, graficos y exportaciones CSV/Excel.
+- Historico avanzado de ventas/documentos, artefactos fiscales descargables y reimpresion POS.
+- Impresion POS web 58/80 mm; conectores directos a impresoras termicas quedan diferidos.
 - Representacion grafica oficial.
 - XML UBL y anexos tecnicos definitivos.
 - Autenticacion productiva Cognito Hosted UI + BFF session con cookie segura, CSRF, MFA y bloqueo de login dummy en produccion.

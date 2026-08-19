@@ -239,3 +239,108 @@ Reglas:
 Tablas `public.*` vacias detectadas el 2026-08-19 y candidatas de limpieza segura local: `auditoria`, `accounting_entry`, `accounting_entry_line`, `compra`, `detalle_compra`, `detalle_factura`, `detalle_gasto`, `factura`, `gastos`, `parametros`, `registro_accesos`, `roles`, `usuarios`.
 
 Tablas `public.*` con filas detectadas el 2026-08-19 y pendientes de decision de datos: `accounting_account`, `accounting_rule`, `accounting_rule_line`, `billing_electronic_document_trace_event`, `billing_electronic_pos_document`, `billing_electronic_pos_document_line`, `billing_fiscal_audit_event`, `billing_issuer_profile`, `billing_numbering_resolution`, `billing_provider_submission`, `categoria`, `cliente`, `impuesto`, `metodo_pago`, `pais`, `producto`, `proveedor`, `tipo_gasto`, `tipodocumento`.
+
+## Branding Empresarial Y Marca NexoFiscal
+
+Tabla objetivo en `tenant-service`:
+
+- `tenant.company_branding`
+
+Campos principales:
+
+- `company_id`: PK/FK hacia `tenant.company`.
+- `display_name`: nombre visual de la empresa en UI, si difiere de razon social/nombre comercial.
+- `primary_color`, `accent_color`: colores opcionales aprobados para tema visual.
+- `main_logo_storage_key`: referencia de almacenamiento del logo principal.
+- `header_logo_storage_key`: referencia de almacenamiento del logo superior.
+- `login_logo_storage_key`: referencia de almacenamiento del logo de login.
+- `favicon_storage_key`: referencia de almacenamiento del favicon.
+- `main_logo_content_type`, `header_logo_content_type`, `login_logo_content_type`, `favicon_content_type`: tipo MIME validado.
+- `main_logo_hash`, `header_logo_hash`, `login_logo_hash`, `favicon_hash`: huella criptografica para trazabilidad e invalidacion de cache.
+- `updated_at`, `updated_by`: auditoria minima de actualizacion.
+
+Reglas:
+
+- La base de datos no almacena binarios de logos salvo aprobacion posterior; almacena referencias y metadata.
+- Los archivos deben vivir en almacenamiento seguro: volumen local controlado para desarrollo o S3 privado con KMS en AWS.
+- Toda mutacion se refleja en `audit.audit_event` con `resource_type='COMPANY_BRANDING'`.
+- Si no existe registro de branding, la SPA usa fallback `NexoFiscal`.
+
+## Reporting Service Objetivo
+
+Esquema objetivo:
+
+- `reporting.report_definition`
+- `reporting.report_execution`
+- `reporting.report_export`
+- `reporting.report_export_download`
+
+Campos principales de `report_definition`:
+
+- `code`: codigo tecnico (`SALES_BY_SELLER`, `PURCHASES_SUMMARY`, etc.).
+- `label`: etiqueta visible por defecto.
+- `description`: descripcion funcional.
+- `required_modules`: modulos de licencia requeridos.
+- `required_permissions`: permisos RBAC requeridos.
+- `date_range_required`: indica si `from/to` son obligatorios.
+- `allowed_chart_types`: `TABLE`, `BAR`, `LINE`, `PIE`, `KPI`.
+- `export_formats`: `CSV`, `XLSX`, `PDF` cuando aplique.
+- `active`: estado operacional.
+
+Campos principales de `report_execution`:
+
+- `id`, `company_id`, `report_code`.
+- `requested_by`, `requested_at`.
+- `from_date`, `to_date`.
+- `filters_json`: filtros normalizados sin datos sensibles.
+- `chart_type`.
+- `status`: `SUCCESS`, `FAILED`, `VALIDATION_ERROR`.
+- `correlation_id`.
+
+Campos principales de `report_export`:
+
+- `id`, `company_id`, `report_code`, `format`.
+- `status`: `PROCESSING`, `READY`, `FAILED`, `EXPIRED`.
+- `storage_key`, `content_type`, `file_name`, `content_hash`.
+- `requested_by`, `requested_at`, `ready_at`, `expires_at`.
+- `error_code`, `error_message` sanitizado.
+
+Reglas:
+
+- Las proyecciones event-driven (`reporting.reporting_inbox_event`, `reporting.reporting_event_projection`) son reconstruibles desde eventos canonicos y no reemplazan datos fuente.
+- Los reportes por vendedor resuelven elegibilidad de usuarios desde `identity-service` por rol/permiso de ventas.
+- Los reportes deben aislar siempre por `company_id`.
+- Las exportaciones pesadas pueden procesarse asincronamente con SQS/EventBridge/Lambda o worker del `reporting-service`, segun la tarea aprobada.
+
+## Artefactos POS, Historico E Impresion
+
+Tablas objetivo en `billing-service`:
+
+- `billing.fiscal_document_artifact`
+- `billing.pos_print_job`
+
+Campos principales de `fiscal_document_artifact`:
+
+- `id`, `company_id`, `document_id`.
+- `artifact_type`: `PRINTABLE_HTML`, `XML`, `JSON_METADATA`, `QR`, `PDF`.
+- `storage_key` o `storage_uri`.
+- `content_type`, `file_name`, `content_hash`.
+- `generated_at`, `generated_by`.
+- `active`.
+
+Campos principales de `pos_print_job`:
+
+- `id`, `company_id`, `document_id`.
+- `paper_width_mm`: 58 u 80 inicialmente.
+- `strategy`: `WEB_PRINT` inicialmente.
+- `status`: `REQUESTED`, `OPENED`, `PRINTED`, `FAILED`, `CANCELLED`.
+- `requested_by`, `requested_at`, `printed_at`.
+- `error_message` sanitizado.
+- `correlation_id`.
+
+Reglas:
+
+- El historico de ventas debe consultar datos canonicos de `billing.sale`, lineas, documento fiscal y artefactos.
+- Las reimpresiones no recrean documentos fiscales; solo registran nuevo `pos_print_job`.
+- Cada descarga e impresion/reimpresion queda auditada.
+- Los conectores directos de impresora no se modelan como activos hasta completar tarea de hardware y seguridad.

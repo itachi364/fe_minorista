@@ -1,5 +1,6 @@
 erDiagram
   COMPANY ||--o{ COMPANY_LICENSE : has
+  COMPANY ||--o| COMPANY_BRANDING : configures
   COMPANY ||--o{ USER_COMPANY : authorizes
   USER_ACCOUNT ||--o{ USER_COMPANY : belongs_to
   USER_ACCOUNT ||--o{ GLOBAL_USER_ROLE : has
@@ -42,6 +43,7 @@ erDiagram
   ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_LINE : contains
   ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_TAX : taxes
   ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_ARTIFACT : produces
+  ELECTRONIC_DOCUMENT ||--o{ POS_PRINT_JOB : printed_by
   ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_TRACE_EVENT : traces
 
   COMPANY ||--o{ PROVIDER_CONFIGURATION : owns
@@ -74,6 +76,10 @@ erDiagram
   COMPANY ||--o{ OUTBOX_EVENT : publishes
   COMPANY ||--o{ INBOX_EVENT : consumes
   COMPANY ||--o{ REPORTING_EVENT_PROJECTION : projects
+  REPORT_DEFINITION ||--o{ REPORT_EXECUTION : executed_as
+  REPORT_DEFINITION ||--o{ REPORT_EXPORT : exports
+  COMPANY ||--o{ REPORT_EXECUTION : requests
+  COMPANY ||--o{ REPORT_EXPORT : owns
 
   COMPANY {
     uuid id PK
@@ -82,6 +88,17 @@ erDiagram
     varchar verification_digit
     varchar legal_name
     varchar status
+  }
+
+  COMPANY_BRANDING {
+    uuid company_id PK
+    varchar display_name
+    varchar main_logo_storage_key
+    varchar header_logo_storage_key
+    varchar login_logo_storage_key
+    varchar favicon_storage_key
+    varchar main_logo_hash
+    varchar favicon_hash
   }
 
   COMPANY_LICENSE {
@@ -178,6 +195,26 @@ erDiagram
     varchar status
   }
 
+  ELECTRONIC_DOCUMENT_ARTIFACT {
+    uuid id PK
+    uuid company_id FK
+    uuid document_id FK
+    varchar artifact_type
+    varchar storage_key
+    varchar content_hash
+    timestamp generated_at
+  }
+
+  POS_PRINT_JOB {
+    uuid id PK
+    uuid company_id FK
+    uuid document_id FK
+    int paper_width_mm
+    varchar strategy
+    varchar status
+    timestamp requested_at
+  }
+
   PROVIDER_CONFIGURATION {
     uuid id PK
     uuid company_id FK
@@ -238,4 +275,33 @@ erDiagram
     uuid company_id FK
     varchar consumer
     varchar status
+  }
+
+  REPORT_DEFINITION {
+    varchar code PK
+    varchar label
+    boolean date_range_required
+    json allowed_chart_types
+    json export_formats
+    boolean active
+  }
+
+  REPORT_EXECUTION {
+    uuid id PK
+    uuid company_id FK
+    varchar report_code FK
+    date from_date
+    date to_date
+    json filters_json
+    varchar status
+  }
+
+  REPORT_EXPORT {
+    uuid id PK
+    uuid company_id FK
+    varchar report_code FK
+    varchar format
+    varchar storage_key
+    varchar status
+    timestamp expires_at
   }

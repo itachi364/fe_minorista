@@ -1412,4 +1412,102 @@ Esta seccion documenta de forma uniforme el impacto de infraestructura de cada t
 - Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
+## TASK-168 a TASK-178 infraestructura objetivo
+
+### Branding y archivos empresariales
+
+- Local: `tenant-service` puede exponer assets desde un volumen Docker controlado o almacenamiento local configurado por variable de entorno.
+- AWS: logos, favicons, exportaciones y artefactos POS deben almacenarse en S3 privado con cifrado KMS, versionado opcional, lifecycle y prefijos por ambiente/empresa.
+- Acceso de lectura: por BFF o CloudFront con politicas restrictivas; no se permiten buckets publicos de escritura.
+- Uploads: limites de tamano y tipos MIME en BFF/tenant-service, mas configuracion multipart Spring Boot.
+- Auditoria: toda carga, actualizacion, eliminacion, descarga o error debe generar evento sin contenido binario.
+
+### Reporting-service y exportaciones
+
+- `reporting-service` sera ECS Fargate privado cuando se implemente TASK-174.
+- El BFF sera el unico borde publico para reportes.
+- Exportaciones pequenas pueden generarse sincronicamente; exportaciones grandes deben poder pasar a flujo asincrono con EventBridge/SQS/Lambda o worker interno del servicio.
+- Los archivos exportados se almacenan en S3 privado con expiracion y metadata de auditoria.
+- Los reportes pueden usar proyecciones reconstruibles, pero los datos canonicos pertenecen a los servicios de negocio.
+
+### Artefactos POS e impresion termica
+
+- Fase 1: no requiere infraestructura cloud adicional; usa vista imprimible web con CSS para papel 58/80 mm y auditoria de solicitud.
+- Fase 2: conectores ESC/POS, WebUSB, WebSerial o agente local requieren decision SDD adicional, validacion de impresoras reales, permisos del navegador/SO, seguridad del endpoint local y soporte operativo.
+- Artefactos fiscales y comprobantes se almacenan en S3 privado en produccion y en storage local controlado en desarrollo.
+- Reimpresiones generan registros de `print_job`, no nuevos documentos fiscales.
+
+### Trazabilidad de infraestructura
+
+- Requisitos: RF-131 a RF-145.
+- Acceptance criteria: AC-193 a AC-208.
+- Tareas: TASK-168 a TASK-178.
+- Modulos/servicios: `frontend`, `ecs`, `secrets`, `messaging`, futuro almacenamiento S3 de artefactos, `tenant-service`, `billing-service`, `reporting-service`.
+
+### TASK-168 - Adoptar marca NexoFiscal en frontend y documentacion visible
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Impacto de infraestructura: Sin cambio directo; afecta SPA y metadata publica.
+- Control operativo: validar build frontend y cache de CloudFront cuando exista despliegue cloud.
+
+### TASK-169 - Disenar branding empresarial parametrizable
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Impacto de infraestructura: Define storage local/S3 privado para assets empresariales.
+- Control operativo: revisar IAM, KMS, prefijos por empresa y lifecycle.
+
+### TASK-170 - Implementar backend de branding empresarial
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Impacto de infraestructura: Afecta limites multipart, storage de archivos y permisos de lectura/escritura.
+- Control operativo: configurar tamanos maximos y monitoreo de errores de upload.
+
+### TASK-171 - Implementar UI de branding y aplicacion dinamica
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Impacto de infraestructura: Afecta cache de favicon/logo en navegador y CloudFront.
+- Control operativo: usar URLs versionadas/hash para invalidar cache sin exponer buckets.
+
+### TASK-172 - Disenar artefactos fiscales, comprobantes POS e impresion termica
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Impacto de infraestructura: Define storage de artefactos POS y eventual canal de impresion.
+- Control operativo: separar fase web print de conectores directos.
+
+### TASK-173 - Disenar reporting-service y contratos de reportes avanzados
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Impacto de infraestructura: Define futuro servicio ECS privado y posibles colas/eventos para exportaciones.
+- Control operativo: mantener BFF como unico borde publico.
+
+### TASK-174 - Implementar reporting-service con reportes iniciales
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Impacto de infraestructura: Agrega servicio ECS, ECR, logs, healthcheck y variables de entorno.
+- Control operativo: Terraform y Docker Compose deben incorporar el servicio sin dependencias fuertes entre contenedores salvo base de datos.
+
+### TASK-175 - Implementar UI avanzada de reportes
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Impacto de infraestructura: Sin cambio directo; consume BFF.
+- Control operativo: validar performance de consultas, paginacion y carga de graficos.
+
+### TASK-176 - Implementar exportacion de reportes
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Impacto de infraestructura: Requiere storage privado para exportaciones y posible procesamiento asincrono.
+- Control operativo: expiracion de archivos, auditoria de descargas y control de tamano.
+
+### TASK-177 - Implementar comprobante POS imprimible e impresion web
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Impacto de infraestructura: Sin cambio cloud inicial; usa navegador e imprime desde cliente.
+- Control operativo: validar CSS 58/80 mm, reimpresion y auditoria.
+
+### TASK-178 - Implementar historico avanzado de ventas/documentos
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Impacto de infraestructura: Puede aumentar consultas sobre billing; requiere indices, paginacion y observabilidad.
+- Control operativo: vigilar performance y aislamiento multiempresa.
+
 <!-- END SDD TASK INFRASTRUCTURE TRACEABILITY -->

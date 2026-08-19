@@ -388,3 +388,21 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-102: La infraestructura AWS objetivo debe quedar definida con Terraform para SPA en S3/CloudFront, BFF/API en ECS Fargate, microservicios privados, RDS PostgreSQL, Secrets Manager, CloudWatch, SQS/EventBridge y Lambdas event-driven.
 - RF-103: Los eventos asincronos productivos deben usar servicios administrados AWS, con Outbox/Inbox, idempotencia, reintentos y DLQ; no se usaran brokers self-hosted en produccion.
 - RF-104: La documentacion SDD debe mantenerse consistente y trazable; cada decision vigente debe estar reflejada en requisitos, diseno, arquitectura, infraestructura, contratos API, modelo/diccionario de datos, criterios de aceptacion, tareas y README cuando aplique.
+
+## Requisitos fase marca, branding, reportes avanzados e impresion POS
+
+- RF-131: La aplicacion debe presentarse visualmente como `NexoFiscal` en el frontend, login, titulo del navegador, sidebar y textos publicos de producto.
+- RF-132: Cada empresa debe poder configurar su marca visual dentro de su alcance: logo principal, favicon empresarial y logo de encabezado/login, con permisos de administrador empresarial o ROOT.
+- RF-133: El sistema debe validar y almacenar logos empresariales de forma segura, limitando tamano, tipo MIME, extension, dimensiones y contenido permitido.
+- RF-134: La SPA debe aplicar dinamicamente el branding de la empresa activa: favicon, logo superior derecho, logo de login y fallback visual de NexoFiscal cuando no exista logo empresarial.
+- RF-135: El sistema debe conservar auditoria de carga, actualizacion, eliminacion o activacion de logos/branding empresarial.
+- RF-136: El modulo de reportes debe evolucionar a un modulo avanzado con selector de reporte, filtros dinamicos segun reporte, rango de fechas obligatorio u opcional segun caso, tipo de grafico y exportacion.
+- RF-137: El sistema debe evaluar e implementar `reporting-service` como microservicio fisico cuando los reportes requieran agregacion transversal, historicos, exportaciones o proyecciones que no deban vivir en BFF ni en servicios transaccionales.
+- RF-138: Los reportes de ventas deben permitir agrupaciones utiles para toma de decisiones: por vendedor, producto/servicio, cliente, metodo de pago, estado fiscal, periodo y empresa.
+- RF-139: El reporte de ventas por vendedor debe filtrar usuarios con rol/permiso de venta, no cualquier usuario empresarial.
+- RF-140: El modulo de reportes debe incluir reportes de compras realizadas, inventario/kardex, rentabilidad basica, cuentas por cobrar, cuentas por pagar, reportes contables, nomina/pagos diarios y uso de licencia.
+- RF-141: El usuario debe poder seleccionar el tipo de visualizacion del reporte: tabla, barras, lineas historicas, torta/donut o tarjetas KPI cuando aplique.
+- RF-142: Los reportes historicos y tabulares deben poder exportarse al menos a CSV/Excel; PDF gerencial queda como salida adicional parametrizable.
+- RF-143: El sistema debe generar y conservar artefactos de comprobantes/documentos POS: representacion imprimible, XML/JSON tecnico cuando aplique, QR y metadata de hash/almacenamiento.
+- RF-144: El sistema debe permitir imprimir o reimprimir comprobantes POS en impresoras termicas mediante una estrategia gradual: primero impresion web 58/80 mm y luego conector ESC/POS/WebUSB/WebSerial/agente local si se aprueba por hardware real.
+- RF-145: El historico de ventas y documentos debe permitir consultar ventas emitidas, detalle, vendedor, cliente/consumidor final, items, totales, estado DIAN/mock, artefactos, descargas y reimpresiones, siempre aislado por empresa y permisos.

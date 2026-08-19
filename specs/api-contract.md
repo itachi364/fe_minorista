@@ -2220,3 +2220,285 @@ Reglas:
 - `income-statement` agrupa PUC por prefijos `4`, `6`, `5` y `7`.
 - `balance-sheet` agrupa PUC por prefijos `1`, `2` y `3`.
 - El BFF enruta ambos endpoints a `accounting-service` y exige permisos de consulta contable/reportes.
+
+## Contratos fase marca, branding, reportes avanzados e impresion POS
+
+### Branding empresarial
+
+Los endpoints publicos deben exponerse por BFF y enrutar a `tenant-service`.
+
+```http
+GET /api/v1/companies/{companyId}/branding
+X-Company-Id: {companyId}
+```
+
+Respuesta:
+
+```json
+{
+  "companyId": "uuid",
+  "displayName": "Empresa Demo SAS",
+  "mainLogoUrl": "https://...",
+  "headerLogoUrl": "https://...",
+  "loginLogoUrl": "https://...",
+  "faviconUrl": "https://...",
+  "updatedAt": "2026-08-19T10:00:00Z"
+}
+```
+
+```http
+PUT /api/v1/companies/{companyId}/branding
+Content-Type: application/json
+```
+
+```json
+{
+  "displayName": "Tienda Demo",
+  "primaryColor": "#0F766E",
+  "accentColor": "#1D4ED8"
+}
+```
+
+```http
+POST /api/v1/companies/{companyId}/branding/assets
+Content-Type: multipart/form-data
+```
+
+Campos:
+
+- `purpose`: `MAIN_LOGO`, `HEADER_LOGO`, `LOGIN_LOGO` o `FAVICON`.
+- `file`: archivo PNG, JPEG, WebP o ICO dentro de limites configurados.
+
+Reglas:
+
+- ROOT puede operar sobre cualquier empresa seleccionada.
+- OWNER/ADMIN empresarial solo puede operar sobre su empresa activa.
+- El backend retorna URL/referencia de lectura, nunca ruta interna sensible.
+- Toda mutacion genera auditoria `COMPANY_BRANDING/*`.
+
+### Catalogo de reportes
+
+```http
+GET /api/v1/reports/catalog
+X-Company-Id: {companyId}
+```
+
+Respuesta:
+
+```json
+[
+  {
+    "code": "SALES_BY_SELLER",
+    "label": "Ventas por vendedor",
+    "description": "Agrupa ventas confirmadas por vendedor.",
+    "requiredPermissions": ["REPORTS_VIEW"],
+    "requiredModules": ["REPORTING", "BILLING"],
+    "dateRangeRequired": true,
+    "allowedChartTypes": ["TABLE", "BAR", "LINE"],
+    "exportFormats": ["CSV", "XLSX"]
+  }
+]
+```
+
+Reportes objetivo iniciales:
+
+- `SALES_SUMMARY`: ventas por periodo.
+- `SALES_BY_SELLER`: ventas por usuarios con rol/permiso de ventas.
+- `SALES_BY_PRODUCT`: ventas por producto/servicio.
+- `SALES_BY_PAYMENT_METHOD`: ventas por medio de pago.
+- `PURCHASES_SUMMARY`: compras realizadas.
+- `INVENTORY_KARDEX`: movimientos y saldos de inventario.
+- `BASIC_PROFITABILITY`: ingresos, costos y margen basico.
+- `ACCOUNTS_RECEIVABLE`: cuentas por cobrar.
+- `ACCOUNTS_PAYABLE`: cuentas por pagar.
+- `ACCOUNTING_STATEMENTS`: estado de resultados y balance basico.
+- `PAYROLL_DAILY_PAYMENTS`: pagos diarios/nomina interna.
+- `LICENSE_USAGE`: uso de licencia por empresa.
+
+```http
+GET /api/v1/reports/{reportCode}/options?from=2026-08-01&to=2026-08-31
+X-Company-Id: {companyId}
+```
+
+Respuesta:
+
+```json
+{
+  "reportCode": "SALES_BY_SELLER",
+  "filters": [
+    {
+      "code": "sellerId",
+      "label": "Vendedor",
+      "type": "SELECT",
+      "required": false,
+      "options": [
+        {"value": "uuid", "label": "Ana Rojas"}
+      ]
+    }
+  ],
+  "allowedChartTypes": ["TABLE", "BAR", "LINE"],
+  "exportFormats": ["CSV", "XLSX"]
+}
+```
+
+Regla: para `SALES_BY_SELLER`, `sellerId` solo lista usuarios activos con rol/permiso efectivo de ventas.
+
+```http
+POST /api/v1/reports/query
+X-Company-Id: {companyId}
+Content-Type: application/json
+```
+
+```json
+{
+  "reportCode": "SALES_BY_SELLER",
+  "from": "2026-08-01",
+  "to": "2026-08-31",
+  "chartType": "BAR",
+  "filters": {
+    "sellerId": "uuid"
+  }
+}
+```
+
+Respuesta:
+
+```json
+{
+  "reportCode": "SALES_BY_SELLER",
+  "from": "2026-08-01",
+  "to": "2026-08-31",
+  "chartType": "BAR",
+  "columns": [
+    {"key": "sellerName", "label": "Vendedor", "type": "TEXT"},
+    {"key": "totalSales", "label": "Total ventas", "type": "MONEY"}
+  ],
+  "rows": [
+    {"sellerName": "Ana Rojas", "totalSales": 1500000.00}
+  ],
+  "series": [
+    {"label": "Total ventas", "points": [{"x": "Ana Rojas", "y": 1500000.00}]}
+  ]
+}
+```
+
+### Exportacion de reportes
+
+```http
+POST /api/v1/reports/export
+X-Company-Id: {companyId}
+Content-Type: application/json
+```
+
+```json
+{
+  "reportCode": "SALES_BY_SELLER",
+  "from": "2026-08-01",
+  "to": "2026-08-31",
+  "format": "XLSX",
+  "filters": {}
+}
+```
+
+Respuesta sincrona para archivos pequenos:
+
+```json
+{
+  "exportId": "uuid",
+  "status": "READY",
+  "downloadUrl": "/api/v1/reports/exports/uuid/download",
+  "expiresAt": "2026-08-19T12:00:00Z"
+}
+```
+
+Respuesta asincrona para archivos pesados:
+
+```json
+{
+  "exportId": "uuid",
+  "status": "PROCESSING"
+}
+```
+
+```http
+GET /api/v1/reports/exports/{exportId}/download
+X-Company-Id: {companyId}
+```
+
+### Historico de ventas y documentos
+
+```http
+GET /api/v1/sales/history?from=2026-08-01&to=2026-08-31&sellerId={sellerId}&customerId={customerId}&paymentMethodCode=CASH&documentStatus=ACCEPTED&page=0&size=20
+X-Company-Id: {companyId}
+```
+
+Respuesta:
+
+```json
+{
+  "content": [
+    {
+      "saleId": "uuid",
+      "documentId": "uuid",
+      "saleDate": "2026-08-19T10:30:00Z",
+      "sellerName": "Ana Rojas",
+      "buyerLabel": "Consumidor final",
+      "paymentMethodLabel": "Efectivo",
+      "grossTotal": 100000.00,
+      "taxTotal": 19000.00,
+      "netTotal": 119000.00,
+      "documentStatus": "MOCK_ACCEPTED",
+      "canDownload": true,
+      "canReprint": true
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 1,
+  "totalPages": 1
+}
+```
+
+```http
+GET /api/v1/sales/{saleId}/detail
+X-Company-Id: {companyId}
+```
+
+### Artefactos e impresion POS
+
+```http
+GET /api/v1/electronic-pos/{documentId}/artifacts
+X-Company-Id: {companyId}
+```
+
+Respuesta:
+
+```json
+{
+  "documentId": "uuid",
+  "printableHtmlUrl": "/api/v1/electronic-pos/uuid/artifacts/printable",
+  "qrUrl": "/api/v1/electronic-pos/uuid/artifacts/qr",
+  "xmlUrl": "/api/v1/electronic-pos/uuid/artifacts/xml",
+  "jsonMetadataUrl": "/api/v1/electronic-pos/uuid/artifacts/metadata",
+  "hash": "sha256:..."
+}
+```
+
+```http
+POST /api/v1/electronic-pos/{documentId}/print-jobs
+X-Company-Id: {companyId}
+Content-Type: application/json
+```
+
+```json
+{
+  "paperWidthMm": 80,
+  "strategy": "WEB_PRINT"
+}
+```
+
+Reglas:
+
+- `WEB_PRINT` abre una vista imprimible controlada por la SPA/BFF.
+- `ESC_POS`, `WEB_USB`, `WEB_SERIAL` o `LOCAL_AGENT` quedan reservados para tareas futuras con aprobacion de hardware y seguridad.
+- Cada solicitud de impresion/reimpresion debe auditarse.

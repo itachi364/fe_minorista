@@ -2344,4 +2344,106 @@ Esta seccion normaliza la documentacion SDD para que cada task tenga una decisio
 - Decision de diseno: Gobierna consistencia SDD, diagramas, brechas documentales y limpieza final antes de nuevas mejoras.
 - Componentes/capas: SDD/documentacion.
 
+## TASK-168 a TASK-178: marca, branding, reportes avanzados e impresion POS
+
+### Decisiones de diseno
+
+- La marca publica de la aplicacion sera `NexoFiscal`; los nombres historicos del frontend deben migrarse sin cambiar nombres tecnicos de paquetes o esquemas si no aportan valor funcional inmediato.
+- El branding empresarial pertenece al bounded context de `tenant-service`, porque describe a la empresa contratante y su experiencia visual.
+- Los archivos de logo/favicon no deben almacenarse como binarios pesados en PostgreSQL; la base de datos guarda metadata, hash y referencia de almacenamiento. En local se puede usar volumen controlado; en AWS el objetivo es S3 privado con KMS y acceso por BFF/CloudFront controlado.
+- La SPA aplica branding como sincronizacion con sistemas externos del navegador: titulo, favicon y logo visible se actualizan al cambiar empresa activa o sesion.
+- Los formatos iniciales permitidos para branding deben ser PNG, JPEG, WebP e ICO. SVG solo debe evaluarse en una tarea posterior si existe sanitizacion estricta, porque puede introducir riesgo XSS.
+- El modulo de reportes debe ser guiado por catalogo de reportes: tipo de reporte, filtros dinamicos, opciones de datos, graficos permitidos y formatos de exportacion.
+- `reporting-service` se implementara como microservicio fisico cuando se ejecuten TASK-173/TASK-176, porque los reportes avanzados requieren agregacion transversal, historicos, exportaciones y potencialmente procesamiento asincrono. El BFF no debe convertirse en motor de reportes.
+- Los reportes deben usar datos canonicos de servicios duenos o proyecciones reconstruibles desde eventos. Ninguna proyeccion puede ser la unica fuente de verdad.
+- El reporte de ventas por vendedor debe resolver vendedores desde `identity-service` por rol/permiso efectivo de ventas y cruzar con ventas confirmadas de `billing-service`.
+- La exportacion debe iniciar con CSV/Excel para reportes tabulares e historicos. PDF gerencial queda como salida adicional parametrizable cuando existan plantillas aprobadas.
+- Los artefactos POS deben conservar representacion imprimible y metadata fiscal para consulta, descarga y reimpresion posterior.
+- La impresion POS se implementa por fases: primero impresion web con CSS para 58/80 mm, luego conector directo ESC/POS/WebUSB/WebSerial/agente local solo despues de validar impresoras reales y riesgos de seguridad del entorno local.
+
+### Context7 evidence
+
+- Library/tool: React (`/reactjs/react.dev`).
+- Topic consulted: controlled forms and effects for browser synchronization.
+- Relevant finding: React recommends controlled state for forms and `useEffect` with cleanup when synchronizing components with external browser systems.
+- Decision impact: La SPA aplicara branding, favicon y estado de filtros de reportes desde estado controlado y efectos acotados.
+
+- Library/tool: Spring Boot (`/spring-projects/spring-boot`).
+- Topic consulted: multipart file upload.
+- Relevant finding: Spring Boot uses the standard Jakarta Servlet multipart support and exposes multipart limits through `spring.servlet.multipart.max-file-size` and `spring.servlet.multipart.max-request-size`.
+- Decision impact: El backend de branding usara multipart nativo con limites explicitos por configuracion, sin dependencia adicional hasta que exista una razon aprobada.
+
+### Trazabilidad de diseno
+
+- Requisitos: RF-131 a RF-145.
+- Acceptance criteria: AC-193 a AC-208.
+- Tareas: TASK-168 a TASK-178.
+- Componentes/capas: `facturaelectronica-web`, `bff-service`, `tenant-service`, `billing-service`, `identity-service`, `reporting-service` objetivo, `audit-service`, `infra/aws`.
+
+### TASK-168 - Adoptar marca NexoFiscal en frontend y documentacion visible
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Decision de diseno: Migrar textos publicos a NexoFiscal conservando compatibilidad tecnica donde el renombrado no sea necesario.
+- Componentes/capas: `facturaelectronica-web`, README y SDD.
+
+### TASK-169 - Disenar branding empresarial parametrizable
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Decision de diseno: Branding como configuracion del tenant con metadata en DB y archivos en almacenamiento seguro.
+- Componentes/capas: `tenant-service`, `bff-service`, `facturaelectronica-web`, `infra/aws`.
+
+### TASK-170 - Implementar backend de branding empresarial
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Decision de diseno: Endpoints multipart con validacion estricta, RBAC/licencia y auditoria.
+- Componentes/capas: `tenant-service`, `audit-service`, `bff-service`.
+
+### TASK-171 - Implementar UI de branding y aplicacion dinamica
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Decision de diseno: La SPA aplica logo/favicon por empresa activa y fallback NexoFiscal.
+- Componentes/capas: `facturaelectronica-web`.
+
+### TASK-172 - Disenar artefactos fiscales, comprobantes POS e impresion termica
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Decision de diseno: Artefactos persistidos y estrategia de impresion por fases.
+- Componentes/capas: `billing-service`, `bff-service`, `facturaelectronica-web`.
+
+### TASK-173 - Disenar reporting-service y contratos de reportes avanzados
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Decision de diseno: Reportes avanzados como microservicio cuando haya agregaciones, historicos y exportaciones.
+- Componentes/capas: `reporting-service` objetivo, `bff-service`, servicios duenos de datos.
+
+### TASK-174 - Implementar reporting-service con reportes iniciales
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Decision de diseno: Reportes iniciales de ventas, compras, inventario, rentabilidad, cuentas, nomina y licencia.
+- Componentes/capas: `reporting-service`, `billing-service`, `inventory-service`, `accounting-service`, `payroll-service`, `tenant-service`, `identity-service`.
+
+### TASK-175 - Implementar UI avanzada de reportes
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Decision de diseno: Selector de reporte, filtros dinamicos, opciones de datos, rango de fechas y grafico permitido por contrato.
+- Componentes/capas: `facturaelectronica-web`, `bff-service`.
+
+### TASK-176 - Implementar exportacion de reportes
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Decision de diseno: Exportaciones CSV/Excel como minimo, auditadas y descargables por permisos.
+- Componentes/capas: `reporting-service`, `bff-service`, `infra/aws`.
+
+### TASK-177 - Implementar comprobante POS imprimible e impresion web
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Decision de diseno: Impresion web 58/80 mm antes de conectores directos de impresora.
+- Componentes/capas: `billing-service`, `facturaelectronica-web`, `bff-service`.
+
+### TASK-178 - Implementar historico avanzado de ventas/documentos
+- Estado: Pendiente.
+- Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
+- Decision de diseno: Consulta operacional de ventas y documentos con detalle, artefactos, descarga y reimpresion.
+- Componentes/capas: `billing-service`, `bff-service`, `facturaelectronica-web`.
+
 <!-- END SDD TASK DESIGN TRACEABILITY -->
