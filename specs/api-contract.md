@@ -514,7 +514,7 @@ Estado TASK-033:
 - `POST /api/v1/suppliers`
 - `GET /api/v1/suppliers?active=`
 
-### Clientes/proveedores legacy compatibles
+### Contratos retirados de clientes/proveedores
 
 Retirados en TASK-059 lote 2. Los consumidores deben usar `/api/v1/customers`, `/api/v1/suppliers` o `/api/v1/third-parties`.
 

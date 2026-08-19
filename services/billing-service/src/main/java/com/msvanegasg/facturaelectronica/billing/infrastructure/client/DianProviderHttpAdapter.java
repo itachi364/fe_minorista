@@ -38,7 +38,7 @@ public class DianProviderHttpAdapter implements ElectronicDocumentProviderPort {
                 .retrieve()
                 .body(ProviderSubmissionResponse.class);
         if (response == null) {
-            throw new IllegalStateException("El proveedor DIAN mock no retorno respuesta.");
+            throw new IllegalStateException("El conector DIAN mock no retorno respuesta.");
         }
         return new ProviderSubmissionResult(ProviderStatus.valueOf(response.status()), response.trackingId(),
                 response.cufeCude(), response.qrContent(), response.errorCode(), response.errorMessage());

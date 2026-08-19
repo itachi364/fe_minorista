@@ -221,3 +221,21 @@ Ninguna tabla legacy debe eliminarse hasta que:
 - La tabla no tenga referencias en JPA, repositorios, SQL, migraciones posteriores o scripts.
 - Los datos esten vacios o migrados/respaldados.
 - Flyway valide sobre base limpia y base local actual.
+
+### Limpieza operativa de `public.*`
+
+Estado TASK-167: los microservicios activos ejecutan Flyway sobre sus esquemas propios (`tenant`, `identity`, `catalog`, `thirdparty`, `inventory`, `billing`, `accounting`, `audit`, `dian_provider`, `payroll`). Ningun microservicio activo gobierna el esquema `public`, por lo que la depuracion de tablas heredadas `public.*` se trata como operacion controlada de base local/ambiente, no como migracion de un bounded context.
+
+Script operativo:
+
+- `scripts/db/drop-empty-legacy-public-tables.sql`
+
+Reglas:
+
+- El script solo elimina tablas `public.*` existentes con cero filas.
+- Si una tabla tiene filas, se conserva y queda pendiente de migracion, respaldo o descarte aprobado.
+- No se eliminan ni reescriben migraciones Flyway historicas ya aplicadas, para evitar romper validaciones de historial y checksum.
+
+Tablas `public.*` vacias detectadas el 2026-08-19 y candidatas de limpieza segura local: `auditoria`, `accounting_entry`, `accounting_entry_line`, `compra`, `detalle_compra`, `detalle_factura`, `detalle_gasto`, `factura`, `gastos`, `parametros`, `registro_accesos`, `roles`, `usuarios`.
+
+Tablas `public.*` con filas detectadas el 2026-08-19 y pendientes de decision de datos: `accounting_account`, `accounting_rule`, `accounting_rule_line`, `billing_electronic_document_trace_event`, `billing_electronic_pos_document`, `billing_electronic_pos_document_line`, `billing_fiscal_audit_event`, `billing_issuer_profile`, `billing_numbering_resolution`, `billing_provider_submission`, `categoria`, `cliente`, `impuesto`, `metodo_pago`, `pais`, `producto`, `proveedor`, `tipo_gasto`, `tipodocumento`.

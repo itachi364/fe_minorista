@@ -694,7 +694,7 @@
     - `specs/tasks.md`
   - Resultado local:
     - Implementado `RegisterFiscalAuditEventUseCase` para registrar auditoria fiscal con empresa, recurso, accion, resultado, usuario cuando exista, fecha y detalle seguro.
-    - El resultado de proveedor DIAN/POS reutiliza el caso de uso de auditoria fiscal en vez de persistir auditoria directamente.
+    - El resultado de conector DIAN/POS reutiliza el caso de uso de auditoria fiscal en vez de persistir auditoria directamente.
     - Documentado que `user_id` puede ser nulo hasta implementar autenticacion/autorizacion, pero debe propagarse cuando la capa de seguridad lo entregue.
     - Agregadas pruebas unitarias de registro de auditoria, validacion de campos requeridos y reutilizacion desde resultado de proveedor.
     - Verificacion enfocada: `.\mvnw.cmd "-Dtest=RegisterFiscalAuditEventServiceTest,RegisterProviderSubmissionOutcomeServiceTest" test` ejecutado con exito: 9 tests, 0 fallos.
@@ -744,7 +744,7 @@
     - Flujo HTTP probado: emisor, resolucion POS, emision POS, consulta POS y envio mock DIAN.
     - Evidencia PostgreSQL: documento `1604da5f-30ba-4dbe-806a-4cb5c90e7b16` validado con `DUMMY-SUBMISSION-1604DA5F-30B` y `DUMMY-CUDE-1604DA5F-30B`.
 
-- [x] TASK-028: Implementar proveedor DIAN mock configurable
+- [x] TASK-028: Implementar conector DIAN mock configurable
   - Estado: DONE
   - Acceptance criteria: AC-003, AC-004, AC-019, AC-023.
   - Tests requeridos: tests de adaptador mock y errores externos seguros.
@@ -795,17 +795,17 @@
   - Alcance:
     - Datos dummy seguros para empresa, catalogos, emisor, resolucion POS, productos, cliente/proveedor y cuentas contables base.
     - Comandos `docker compose up`, logs, healthchecks, curls de prueba y consultas SQL.
-    - Documentar limitaciones locales: proveedor DIAN mock, sin certificados reales y sin validacion oficial DIAN.
+    - Documentar limitaciones locales: conector DIAN mock, sin certificados reales y sin validacion oficial DIAN.
   - Archivos:
     - `src/main/resources/db/seed/local-demo-seed.sql`
-    - `docs/local-docker-test-guide.md`
+    - `docs/e2e-from-zero-test-guide.md`
     - `README.md`
     - `specs/tasks.md`
   - Resultado local:
     - Creado seed SQL local idempotente para catalogos base, producto demo, cliente/proveedor demo, emisor, resolucion POS, cuentas PUC y regla contable de venta POS.
     - El seed queda fuera de `db/migration` para que Flyway no lo aplique automaticamente en ambientes no locales.
     - Creada guia Docker con comandos de arranque, healthcheck, carga de seed, curls para POS/proveedor mock/contabilidad, consultas SQL y checklist AC-024.
-    - Documentadas limitaciones locales: proveedor DIAN mock, sin certificados reales, sin validacion oficial DIAN, inventario y contabilidad automatica aun no conectados al flujo POS.
+    - Documentadas limitaciones locales: conector DIAN mock, sin certificados reales, sin validacion oficial DIAN, inventario y contabilidad automatica aun no conectados al flujo POS.
     - Verificacion: `.\mvnw.cmd test` con PostgreSQL local en `localhost:15432` ejecutado con exito: 245 tests, 0 fallos.
     - Seed aplicado en PostgreSQL Docker mediante `psql`; verificado emisor demo, resolucion POS demo, cuentas PUC demo, categoria y productos demo.
 
@@ -983,7 +983,7 @@
   - Estado: DONE
   - Requisitos: RF-003, RF-004, RF-005, RF-006, RF-014, RN-001, RN-002, RN-005, RN-006, RN-014.
   - Acceptance criteria: AC-001, AC-002, AC-003, AC-004, AC-007, AC-009, AC-030, AC-031, AC-033, AC-035.
-  - Descripcion: Completar `billing-service` como microservicio fisico para crear venta, validar stock, emitir POS/factura electronica, consultar proveedor DIAN mock y orquestar efectos posteriores.
+  - Descripcion: Completar `billing-service` como microservicio fisico para crear venta, validar stock, emitir POS/factura electronica, consultar conector DIAN mock y orquestar efectos posteriores.
   - Alcance:
     - Endpoint `POST /api/v1/sales`.
     - Endpoint `POST /api/v1/sales/{saleId}/confirm`.
@@ -1027,7 +1027,7 @@
     - Los pendientes de `SALE_OUT`, asiento contable e idempotencia integral fueron cubiertos por TASK-037.
     - La numeracion fiscal desde resolucion activa fue cubierta por TASK-041.
     - La auditoria central del evento fiscal de confirmacion fue cubierta por TASK-043.
-    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: flujo desde cero exitoso con venta POS, proveedor DIAN mock, inventario, contabilidad y auditoria central.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: flujo desde cero exitoso con venta POS, conector DIAN mock, inventario, contabilidad y auditoria central.
 
 - [x] TASK-036: Separar `dian-provider-service` con mock configurable
   - Estado: DONE
@@ -1172,7 +1172,7 @@
     - Eliminar codigo o tablas.
     - Borrar datos.
   - Archivos propuestos:
-    - `docs/legacy-cleanup-inventory.md`
+    - `specs/legacy-cleanup-audit.md`
     - `specs/data-model.md`
     - `specs/tasks.md`
   - Completion criteria:
@@ -1183,7 +1183,7 @@
     - `mvn test`.
     - Reporte de busqueda de referencias con `rg`.
   - Evidencia:
-    - Creado `docs/legacy-cleanup-inventory.md` con matriz de endpoints, tablas, componentes, candidatos a eliminar y bloqueos.
+    - Creado `specs/legacy-cleanup-audit.md` con matriz de endpoints, tablas, componentes, candidatos a eliminar y bloqueos.
     - Actualizado `specs/data-model.md` con politica de migracion legacy refinada despues de TASK-038.
     - `rg --files src/main/java`: no existe `src/main/java` raiz; el codigo transitorio esta concentrado en `services/legacy-monolith`.
     - `services/legacy-monolith` contiene 430 archivos Java main y 45 pruebas; no participa en la prueba E2E Docker desde cero.
@@ -1220,7 +1220,7 @@
     - paquetes legacy bajo `src/main/java/com/msvanegasg/facturaelectronica`
     - migraciones Flyway nuevas.
     - `README.md`
-    - `docs/legacy-cleanup-inventory.md`
+    - `specs/legacy-cleanup-audit.md`
   - Completion criteria:
     - No quedan referencias a codigo eliminado.
     - La suite completa pasa.
@@ -1266,7 +1266,7 @@
   - Evidencia Lote 1:
     - `docker compose config`: configuracion valida sin servicio `legacy-monolith`.
     - `docker compose up -d postgres tenant-service catalog-service thirdparty-service inventory-service accounting-service dian-provider-service billing-service`: servicios activos creados y saludables sin levantar `legacy-monolith`.
-    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: flujo E2E desde cero exitoso con empresa, producto, venta, documento POS electronico y proveedor DIAN mock.
+    - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: flujo E2E desde cero exitoso con empresa, producto, venta, documento POS electronico y conector DIAN mock.
     - IDs de evidencia E2E: CompanyId `b079614c-f648-4608-a7bb-849351f5c56b`, ProductId `c8f1494c-f92a-4c41-9943-be0bc70a947e`, SaleId `cd2bf4bf-6023-424c-b94e-8889c6cdc929`, DocumentId `c5cb26d5-aec0-4938-a72b-23c2853f80e2`.
     - `.\mvnw.cmd test` con `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `DIAN_PROVIDER_MODE=mock`: BUILD SUCCESS.
     - Reportes Surefire: 140 archivos, 708 tests, 0 failures, 0 errors, 0 skipped.
@@ -1327,7 +1327,7 @@
     - `specs/api-contract.md`
     - `specs/data-model.md`
     - `specs/design.md`
-    - `docs/legacy-cleanup-inventory.md`
+    - `specs/legacy-cleanup-audit.md`
     - `README.md`
   - Completion criteria:
     - `billing-service` persiste emisor activo por empresa.
@@ -1348,7 +1348,7 @@
     - Migracion Flyway `services/billing-service/src/main/resources/db/migration/V003__create_billing_fiscal_configuration.sql` crea `billing.issuer_profile` y `billing.numbering_resolution`.
     - `SaleManagementService` dejo de usar secuencia local en memoria y ahora asigna prefijo/consecutivo desde resolucion activa vigente para `ELECTRONIC_POS` en ambiente `TEST`.
     - `scripts/e2e-from-zero.ps1` ahora crea emisor y resolucion POS antes de confirmar la venta y valida prefijo/documento generado.
-    - `README.md`, `docs/e2e-from-zero-test-guide.md`, `docs/legacy-cleanup-inventory.md`, `specs/api-contract.md`, `specs/data-model.md` y `specs/design.md` actualizados.
+    - `README.md`, `docs/e2e-from-zero-test-guide.md`, `specs/legacy-cleanup-audit.md`, `specs/api-contract.md`, `specs/data-model.md` y `specs/design.md` actualizados.
     - `.\mvnw.cmd -pl services/billing-service test`: BUILD SUCCESS, 28 tests, 0 failures, 0 errors.
     - `docker compose config`: configuracion valida.
     - `.\mvnw.cmd test` con `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `DIAN_PROVIDER_MODE=mock`: BUILD SUCCESS del reactor activo.
@@ -1390,7 +1390,7 @@
     - `specs/api-contract.md`
     - `specs/data-model.md`
     - `specs/design.md`
-    - `docs/legacy-cleanup-inventory.md`
+    - `specs/legacy-cleanup-audit.md`
   - Completion criteria:
     - `audit-service` compila y arranca como microservicio Spring Boot.
     - `audit.audit_event` existe mediante migracion Flyway.
@@ -1408,7 +1408,7 @@
     - Implementado `audit-service` como aplicacion Spring Boot independiente con 30 clases main y 4 clases de test.
     - Implementada migracion Flyway `services/audit-service/src/main/resources/db/migration/V001__create_audit_schema.sql` para `audit.audit_event`.
     - Implementados endpoints `POST /api/v1/audit-events` y `GET /api/v1/audit-events` con aislamiento obligatorio por `X-Company-Id`.
-    - Actualizados `docker-compose.yml`, `.env.example`, `README.md`, `specs/api-contract.md`, `specs/data-model.md`, `specs/design.md`, `docs/legacy-cleanup-inventory.md` y `scripts/legacy-data-audit.sql`.
+    - Actualizados `docker-compose.yml`, `.env.example`, `README.md`, `specs/api-contract.md`, `specs/data-model.md`, `specs/design.md`, `specs/legacy-cleanup-audit.md` y `scripts/legacy-data-audit.sql`.
     - `.\mvnw.cmd -pl services/audit-service test`: BUILD SUCCESS, 10 tests, 0 failures, 0 errors, 0 skipped.
     - `.\mvnw.cmd test` con `SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=2`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `AUDIT_DB_*` y `DIAN_PROVIDER_MODE=mock`: BUILD SUCCESS del reactor activo.
     - Reportes Surefire del reactor activo: 55 archivos, 231 tests, 0 failures, 0 errors, 0 skipped.
@@ -1449,7 +1449,7 @@
     - `specs/api-contract.md`
     - `specs/design.md`
     - `docs/e2e-from-zero-test-guide.md`
-    - `docs/legacy-cleanup-inventory.md`
+    - `specs/legacy-cleanup-audit.md`
   - Completion criteria:
     - Confirmar una venta nueva publica evento de auditoria hacia `audit-service`.
     - El evento queda asociado a `companyId`, `resourceType=SALE`, `resourceId=saleId`, `action=CONFIRM_SALE` y resultado segun validacion fiscal.
@@ -1466,7 +1466,7 @@
     - `billing-service` agrega `AuditEventPort`, `AuditEventCommand`, `AuditResult` y `AuditEventHttpAdapter`.
     - `SaleManagementService` publica `ELECTRONIC_DOCUMENT`/`SALE`/`CONFIRM_SALE` despues de confirmar una venta nueva y aplicar efectos posteriores cuando corresponda.
     - `docker-compose.yml` configura `AUDIT_SERVICE_URL` y hace que `billing-service` dependa del healthcheck de `audit-service`.
-    - `.env.example`, `README.md`, `specs/api-contract.md`, `specs/design.md`, `docs/e2e-from-zero-test-guide.md` y `docs/legacy-cleanup-inventory.md` actualizados.
+    - `.env.example`, `README.md`, `specs/api-contract.md`, `specs/design.md`, `docs/e2e-from-zero-test-guide.md` y `specs/legacy-cleanup-audit.md` actualizados.
     - `scripts/e2e-from-zero.ps1` valida evento de auditoria por API y aislamiento multiempresa.
     - `.\mvnw.cmd -pl services/billing-service test`: BUILD SUCCESS, 29 tests, 0 failures, 0 errors, 0 skipped.
     - `.\mvnw.cmd test` con `SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=2`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `AUDIT_DB_*` y `DIAN_PROVIDER_MODE=mock`: BUILD SUCCESS del reactor activo.
@@ -4263,7 +4263,7 @@
     - `specs/design.md`
     - `specs/database-design.md`
     - `README.md`
-    - `docs/legacy-cleanup-inventory.md`
+    - `specs/legacy-cleanup-audit.md`
     - `scripts/legacy-data-audit.sql`
   - Criterios:
     - Cognito, BFF session persistente, CSRF, MFA y modulo Terraform `auth` quedan identificados como objetivo pendiente de TASK-153 a TASK-163.
@@ -4275,3 +4275,45 @@
     - Context7 Springdoc consultado para confirmar exposicion runtime de `/v3/api-docs` y diferencia con contratos versionados.
     - `rg` sobre referencias a `reporting-service`, `modules/auth`, `legacy-monolith`, rutas legacy y pendientes.
     - `git diff --check`.
+
+- [x] TASK-167: Ejecutar limpieza final legacy y artefactos huerfanos antes de nuevas mejoras
+  - Estado: DONE
+  - Requisitos: RF-104, RF-125.
+  - Acceptance criteria: AC-189, AC-191, AC-192.
+  - Descripcion: Auditar y limpiar residuos legacy/huerfanos del repositorio y PostgreSQL local antes de continuar con nuevas capacidades: artefactos generados/IDE ignorados, guias historicas obsoletas, lenguaje ambiguo de proveedor DIAN visible, tablas `public.*` vacias y documentacion que aun sugiera contratos legacy activos.
+  - Archivos:
+    - `specs/acceptance-criteria.md`
+    - `specs/requirements.md`
+    - `specs/tasks.md`
+    - `specs/design.md`
+    - `specs/database-design.md`
+    - `specs/api-contract.md`
+    - `README.md`
+    - `specs/legacy-cleanup-audit.md`
+    - `scripts/db/drop-empty-legacy-public-tables.sql`
+    - `docs/e2e-from-zero-test-guide.md`
+    - `docs/legacy-cleanup-inventory.md` eliminado
+    - `docs/local-docker-test-guide.md` eliminado
+  - Criterios:
+    - No borrar migraciones Flyway ya aplicadas; cualquier limpieza de DB debe quedar en migracion/script nuevo idempotente.
+    - Solo eliminar tablas `public.*` vacias o con descarte/migracion aprobado; las tablas con filas quedan como pendientes documentados.
+    - Los artefactos ignorados `target`, `dist`, `.idea`, `.settings` y `.github/java-upgrade`/`.github/modernize` pueden eliminarse localmente si no estan rastreados por Git.
+    - La documentacion vigente no debe presentar rutas legacy como contratos activos ni guias historicas como flujo de prueba principal.
+    - Los textos visibles deben referirse a "conector DIAN" o "conexion DIAN parametrizable", no a "proveedor tecnologico" como servicio ofrecido por la plataforma.
+  - Context7 evidence:
+    - Library/tool: Flyway (`/flyway/flyway`).
+    - Topic consulted: versioned SQL migrations, validation and schema history.
+    - Relevant finding: Flyway valida migraciones aplicadas contra migraciones locales, incluyendo checksum y migraciones aplicadas no resueltas.
+    - Decision impact: No se eliminan ni reescriben migraciones historicas; la limpieza de tablas se expresa como script/migracion nueva y segura.
+  - Validacion:
+    - `git ls-files` para confirmar que artefactos generados/IDE no estan rastreados.
+    - Conteo de tablas `public.*` antes y despues en PostgreSQL local.
+    - `rg` para confirmar ausencia de imports legacy activos y rutas legacy activas.
+    - `git diff --check`.
+  - Resultado:
+    - Eliminados artefactos locales ignorados no rastreados: `.github`, `.idea`, `.settings`, `target`, `services/*/target` y `apps/facturaelectronica-web/dist`.
+    - Eliminadas guias historicas obsoletas `docs/legacy-cleanup-inventory.md` y `docs/local-docker-test-guide.md`; la fuente vigente queda en `specs/legacy-cleanup-audit.md`, `docs/e2e-from-zero-test-guide.md` y README.
+    - Creado y ejecutado `scripts/db/drop-empty-legacy-public-tables.sql` contra PostgreSQL local; elimino solo tablas `public.*` vacias sin usar `CASCADE`.
+    - Tablas `public.*` eliminadas: `auditoria`, `accounting_entry`, `accounting_entry_line`, `compra`, `detalle_compra`, `detalle_factura`, `detalle_gasto`, `factura`, `gastos`, `parametros`, `registro_accesos`, `roles`, `usuarios`.
+    - Tablas `public.*` conservadas por tener filas o historial: `accounting_account`, `accounting_rule`, `accounting_rule_line`, `billing_electronic_document_trace_event`, `billing_electronic_pos_document`, `billing_electronic_pos_document_line`, `billing_fiscal_audit_event`, `billing_issuer_profile`, `billing_numbering_resolution`, `billing_provider_submission`, `categoria`, `cliente`, `flyway_schema_history`, `impuesto`, `metodo_pago`, `pais`, `producto`, `proveedor`, `tipo_gasto`, `tipodocumento`.
+    - Normalizados textos visibles de error/diagnostico DIAN mock hacia "conector DIAN mock" en servicios activos.

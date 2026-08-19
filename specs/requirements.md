@@ -368,6 +368,7 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-122: Cuando una empresa alcance un limite de licencia, el backend debe bloquear la operacion con mensaje funcional claro y la UI debe mostrarlo como error de regla de negocio.
 - RF-123: La administracion de empresa debe diferenciar alcance ROOT y alcance empresarial: ROOT puede crear, actualizar, activar e inactivar empresas; OWNER/ADMIN empresarial solo puede actualizar la empresa activa y no debe ver acciones de creacion de nuevas empresas.
 - RF-124: La UI debe mostrar nombres de empresa y etiquetas de permisos/modulos en espanol, sin exponer UUID como dato principal al usuario final; los codigos internos pueden permanecer en ingles en API, backend y base de datos.
+- RF-125: Antes de implementar nuevas mejoras, el proyecto debe quedar limpio de artefactos legacy/huerfanos: codigo runtime legacy sin uso, documentacion historica obsoleta, artefactos generados/IDE ignorados y tablas `public.*` vacias deben retirarse o quedar documentados con decision explicita.
 
 ## Requisitos fase productizacion operativa
 

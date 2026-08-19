@@ -1317,3 +1317,22 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 - `services/accounting-service` cubre calculo de estado de resultados y balance basico desde cuentas PUC.
 - `services/bff-service` cubre agregacion ROOT de uso de licencias y ruteo de nuevos reportes contables.
 - La SPA muestra uso comercial en `Licencias` y consume los reportes financieros desde backend.
+
+## TASK-167 limpieza final legacy y artefactos huerfanos
+
+### Decisiones
+
+- El codigo runtime activo se considera migrado cuando no existen imports desde microservicios hacia paquetes legacy `DTO`, `mapper`, `models`, `repository`, `service` o `validator`, ni endpoints legacy expuestos por controladores.
+- Las guias historicas que describen el monolito o pruebas transitorias no deben seguir enlazadas desde README como flujo vigente.
+- Los artefactos generados o de IDE ignorados (`target`, `dist`, `.idea`, `.settings`, `.github/java-upgrade`, `.github/modernize`) se eliminan localmente si no estan rastreados por Git.
+- La depuracion de tablas `public.*` se hace con script operativo seguro porque ningun microservicio activo gobierna Flyway sobre `public`.
+- El script de DB solo elimina tablas vacias; cualquier tabla con filas queda preservada hasta migracion, respaldo o descarte aprobado.
+- No se reescriben migraciones Flyway ya aplicadas. Una eventual compactacion/baseline de migraciones queda para una decision separada antes de produccion.
+- El lenguaje visible cambia de "proveedor DIAN/proveedor tecnologico" a "conector DIAN" cuando se refiere al componente tecnico del software.
+
+### Context7 evidence
+
+- Library/tool: Flyway (`/flyway/flyway`).
+- Topic consulted: versioned SQL migrations, validation and schema history.
+- Relevant finding: Flyway valida migraciones aplicadas contra las migraciones resueltas localmente, incluyendo checksum, tipo, descripcion y migraciones aplicadas no resueltas.
+- Decision impact: La limpieza no borra ni modifica migraciones historicas; usa script nuevo idempotente para tablas vacias y preserva datos con filas.

@@ -88,8 +88,8 @@ public class MockProviderSubmissionService implements SubmitProviderDocumentUseC
             return properties.mockErrorMessage();
         }
         return status == ProviderSubmissionStatus.REJECTED
-                ? "Documento rechazado por proveedor DIAN mock."
-                : "Fallo tecnico simulado por proveedor DIAN mock.";
+                ? "Documento rechazado por conector DIAN mock."
+                : "Fallo tecnico simulado por conector DIAN mock.";
     }
 
     private static String safeRawResponse(ProviderSubmissionStatus status, String trackingId, String cude,

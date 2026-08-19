@@ -1,6 +1,6 @@
 # Prueba E2E Docker desde cero
 
-Esta guia valida el flujo local multi-contenedor desde una empresa nueva hasta una venta POS aceptada por el proveedor DIAN mock, con descuento de inventario, asiento contable generado, pago diario verbal y documento soporte de nomina electronica mock.
+Esta guia valida el flujo local multi-contenedor desde una empresa nueva hasta una venta POS aceptada por el conector DIAN mock, con descuento de inventario, asiento contable generado, pago diario verbal y documento soporte de nomina electronica mock.
 
 No usa credenciales reales, certificados DIAN ni datos productivos.
 

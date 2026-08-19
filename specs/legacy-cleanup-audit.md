@@ -50,6 +50,75 @@ Fecha local de auditoria: 2026-08-10.
 - `thirdparty.cliente` y `thirdparty.proveedor` se eliminaron mediante `services/thirdparty-service/src/main/resources/db/migration/V005__drop_legacy_thirdparty_tables.sql`; la migracion aborta si encuentra datos legacy con `company_id` no nulo.
 - Las migraciones Flyway historicas `V001/V002` no se reescriben para evitar romper checksums de bases existentes; la limpieza se expresa como migraciones nuevas.
 
+## Actualizacion TASK-167 - 2026-08-19
+
+### Repositorio
+
+- No existe `services/legacy-monolith` ni carpeta raiz `src/` activa.
+- No se encontraron imports activos hacia paquetes legacy `DTO`, `mapper`, `models`, `repository`, `service` o `validator` dentro de `services` ni `apps`.
+- Las rutas legacy `/api/clientes`, `/api/proveedores`, `/api/categorias`, `/api/productos`, `/api/metodopago`, `/api/tipos-documento`, `/api/impuesto`, `/api/paises`, `/api/parametros` y `/api/tipogasto` no aparecen como endpoints activos en controladores.
+- Los artefactos ignorados `.github/java-upgrade`, `.github/modernize`, `.idea`, `.settings`, `target/`, `services/*/target` y `apps/facturaelectronica-web/dist` son candidatos de limpieza local porque no estan rastreados por Git.
+
+### Base local PostgreSQL
+
+Consulta ejecutada:
+
+```sql
+select table_schema, table_name
+from information_schema.tables
+where table_type='BASE TABLE'
+  and table_schema in ('public','catalog','thirdparty','inventory','billing','accounting','identity','tenant','audit','dian_provider','payroll')
+order by table_schema, table_name;
+```
+
+Tablas `public.*` vacias candidatas a eliminacion segura por script idempotente:
+
+| Tabla | Filas |
+|---|---:|
+| `auditoria` | 0 |
+| `accounting_entry` | 0 |
+| `accounting_entry_line` | 0 |
+| `compra` | 0 |
+| `detalle_compra` | 0 |
+| `detalle_factura` | 0 |
+| `detalle_gasto` | 0 |
+| `factura` | 0 |
+| `gastos` | 0 |
+| `parametros` | 0 |
+| `registro_accesos` | 0 |
+| `roles` | 0 |
+| `usuarios` | 0 |
+
+Tablas `public.*` con datos, no eliminables sin migracion, respaldo o descarte aprobado:
+
+| Tabla | Filas |
+|---|---:|
+| `accounting_account` | 3 |
+| `accounting_rule` | 1 |
+| `accounting_rule_line` | 3 |
+| `billing_electronic_document_trace_event` | 1 |
+| `billing_electronic_pos_document` | 1 |
+| `billing_electronic_pos_document_line` | 1 |
+| `billing_fiscal_audit_event` | 1 |
+| `billing_issuer_profile` | 4 |
+| `billing_numbering_resolution` | 4 |
+| `billing_provider_submission` | 1 |
+| `categoria` | 1 |
+| `cliente` | 1 |
+| `impuesto` | 1 |
+| `metodo_pago` | 1 |
+| `pais` | 1 |
+| `producto` | 2 |
+| `proveedor` | 1 |
+| `tipo_gasto` | 1 |
+| `tipodocumento` | 2 |
+
+### Decision
+
+- Se crea `scripts/db/drop-empty-legacy-public-tables.sql` para eliminar solo tablas `public.*` vacias.
+- Las tablas `public.*` con datos quedan bloqueadas para una siguiente decision de migracion, respaldo o descarte.
+- No se reescriben migraciones Flyway existentes; Context7/Flyway confirma que el historial aplicado se valida contra migraciones locales y checksums.
+
 ## Siguiente paso propuesto
 
 1. Ejecutar suite completa del reactor.

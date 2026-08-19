@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
 
     private static final String SAFE_INTERNAL_ERROR_MESSAGE = "Ha ocurrido un error inesperado.";
     private static final String SAFE_EXTERNAL_PROVIDER_ERROR_MESSAGE =
-            "El proveedor tecnologico no pudo procesar la solicitud.";
+            "El servicio no pudo procesar la solicitud.";
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidationException(

@@ -42,7 +42,7 @@ export function PayrollPanel({
         <FormPanel title="Configuracion de nomina" submitLabel="Guardar configuracion" onSubmit={onSaveSettings} busy={busy}>
           <div className="form-grid compact">
             <CheckField label="Usar nomina electronica" checked={settingsForm.electronicPayrollEnabled} onChange={(value) => setSettingsForm({ ...settingsForm, electronicPayrollEnabled: value })} />
-            <Field label="Modo proveedor" value={settingsForm.providerMode} onChange={(value) => setSettingsForm({ ...settingsForm, providerMode: value })} readOnly />
+            <Field label="Modo conector" value={settingsForm.providerMode} onChange={(value) => setSettingsForm({ ...settingsForm, providerMode: value })} readOnly />
           </div>
         </FormPanel>
 

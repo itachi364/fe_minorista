@@ -476,13 +476,21 @@ Migraciones de servicios extraidos:
 - `services/audit-service/src/main/resources/db/migration/V001__create_audit_schema.sql`
 
 
-Auditar conteos de tablas legacy y tablas de destino antes de proponer eliminaciones:
+Auditar conteos de tablas `public.*` heredadas y tablas de destino antes de proponer eliminaciones:
 
 ```powershell
 Get-Content .\scripts\legacy-data-audit.sql | docker compose exec -T postgres psql -U factura_user -d facturaelectronica
 ```
 
 Este script no elimina ni modifica datos de negocio. Reporta tablas presentes o faltantes y conteos exactos para apoyar la limpieza controlada de `TASK-040`.
+
+Para limpiar solo tablas `public.*` heredadas que esten vacias en la base local:
+
+```powershell
+Get-Content .\scripts\db\drop-empty-legacy-public-tables.sql | docker compose exec -T postgres psql -U factura_user -d facturaelectronica
+```
+
+El script conserva automaticamente cualquier tabla con filas. Las tablas con datos requieren migracion, respaldo o descarte aprobado.
 
 Tablas relevantes:
 
@@ -709,12 +717,6 @@ En Windows el script usa `127.0.0.1` por defecto para evitar bloqueos de resoluc
 
 ```text
 docs/e2e-from-zero-test-guide.md
-```
-
-La guia legacy del monolito con seed local se conserva como referencia transitoria:
-
-```text
-docs/local-docker-test-guide.md
 ```
 
 ## Conector DIAN Mock
