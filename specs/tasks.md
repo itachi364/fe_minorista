@@ -809,7 +809,7 @@
     - Verificacion: `.\mvnw.cmd test` con PostgreSQL local en `localhost:15432` ejecutado con exito: 245 tests, 0 fallos.
     - Seed aplicado en PostgreSQL Docker mediante `psql`; verificado emisor demo, resolucion POS demo, cuentas PUC demo, categoria y productos demo.
 
-## Fase 12: Microservicios fisicos y flujo completo antes de depuracion legacy
+## Fase 12: Microservicios fisicos, desacoplamiento e infraestructura base
 
 - [x] TASK-031: Redisenar estructura Maven multi-modulo para microservicios fisicos
   - Estado: DONE
@@ -1567,6 +1567,8 @@
     - La decision queda reflejada en requirements, design, api-contract e infrastructure.
     - `rg "NATS|JetStream|RabbitMQ|Kafka" specs infra docker-compose.yml`: sin objetivo productivo activo; solo menciones historicas o descartadas si aplican.
 
+## Fase 13: Backend core fiscal, terceros, inventario, contabilidad y reportes
+
 - [x] TASK-046: Cerrar diseno backend core pendiente antes de depuracion legacy
   - Estado: DONE
   - Requisitos: RF-016, RF-017, RF-018, RF-019, RF-020, RF-021, RF-022, RF-023, RF-024, RF-025, RF-026, RF-027, RN-016, RN-030.
@@ -2184,6 +2186,8 @@
     - Suite completa final: `./mvnw.cmd test` exitoso con PostgreSQL local `localhost:15432`: 326 tests, 0 fallos, 0 errores, 0 omitidos.
     - E2E Docker desde cero final: `./scripts/e2e-from-zero.ps1 -StartContainers` exitoso con CompanyId `a96a0ac5-37c3-4418-a5b7-791a13f65626`, ProductId `4816d47c-95b4-4eb5-b780-8810caea8f2f`, SaleId `8675f0d6-6155-4bd8-baef-0070659803ad`, DocumentId `946779b1-bedd-4a9f-96b1-e2f4c168b427` y ProviderTrackingId `mock-electronic_pos-946779b1-bedd-4a9f-96b1-e2f4c168b427`.
 
+## Fase 14: BFF, frontend, RBAC y UX operativa
+
 - [x] TASK-063: Disenar e implementar frontend SPA y BFF inicial
   - Estado: DONE
   - Requisitos: RF-010, RF-013, RF-014, RF-016, RF-019, RF-023, RF-025, RF-026, RF-027, RNF-019, RNF-020.
@@ -2614,6 +2618,8 @@
     - `npm run test`: 10 tests, 0 fallos.
     - `npm run build`: exitoso.
 
+## Fase 15: Catalogos colombianos y reglas fiscales operativas
+
 - [x] TASK-078: Importar catalogo completo DIVIPOLA para municipios colombianos
   - Estado: DONE
   - Requisitos: RF-016, RF-030, RN-018, RN-019.
@@ -2970,6 +2976,8 @@
     - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: OK.
     - Evidencia E2E: CompanyId `b832cd9f-6c84-4091-a813-3cc1581db95b`, ProductId `a1cb9d34-4c45-4f37-8830-ec9b09c2b833`, SaleId `c2c19408-8197-4ab3-bc20-0553864fc16a`, DocumentId `fa532e8d-cb66-4393-93d5-0177f75f64ca`, ProviderTrackingId `mock-electronic_pos-fa532e8d-cb66-4393-93d5-0177f75f64ca`.
 
+## Fase 16: Auditoria, logs y acciones mutables
+
 - [x] TASK-090: Definir politica transversal de auditoria para acciones mutables
   - Estado: DONE
   - Requisitos: RN-046, RN-047, RN-048.
@@ -3030,7 +3038,7 @@
     - `npm run test` en `apps/facturaelectronica-web`: OK, 15 tests.
     - `npm run build` en `apps/facturaelectronica-web`: OK.
 
-## Fase 13: Catalogos DB-only, UX operativa, contabilidad y nomina
+## Fase 17: Catalogos DB-only, contabilidad v2 y nomina
 
 - [x] TASK-094: Eliminar `initialState` demo y catalogos locales de negocio en frontend
   - Estado: DONE
@@ -3371,6 +3379,8 @@
     - `powershell -ExecutionPolicy Bypass -File .\scripts\e2e-from-zero.ps1`: OK con CompanyId `87c7b293-b2ff-4567-89d8-e6877aaaea8c`, SaleId `f0b6a469-8d9e-45a3-99bc-2ca6608599e1`, DocumentId `368d737e-23e4-4b07-8dda-4507e81d316a` y PayrollPaymentId `6b073700-8687-49ed-ab0f-b4de48279dae`.
     - Commit/push no ejecutados por regla de confirmacion separada. Mensaje sugerido: `✨ feat(platform): cerrar flujo operativo cloud y rbac`.
 
+## Fase 18: Licencias, servicios con insumos y UX/RBAC empresarial
+
 - [x] TASK-113: Implementar consumo asistido de insumos por servicios facturados
   - Estado: DONE
   - Requisitos: RF-020, RF-021, RF-022, RF-032, RN-021, RN-022, RN-023, RN-060.
@@ -3650,6 +3660,8 @@
     - Usuario inactivo no puede iniciar sesion.
     - UI permite editar y activar/inactivar usuarios desde `Usuarios`.
 
+## Fase 19: Productizacion operativa, E2E, reportes e infraestructura AWS
+
 - [x] TASK-129: Implementar E2E operativo desde cero para venta POS electronica
   - Estado: DONE
   - Requisitos: RF-089, RF-093, RF-095, RF-097, RF-098.
@@ -3877,6 +3889,8 @@
     - `npm test -- --run`: OK, 20 tests.
     - `npm run build`: OK.
 
+## Fase 20: Backlog DIAN real parametrizable por empresa
+
 - [ ] TASK-145: Replantear alcance DIAN como software parametrizable por empresa
   - Estado: TODO
   - Requisitos: RF-062, RF-065, RNF-026, RN-063, RN-064, RN-068.
@@ -4014,6 +4028,8 @@
   - Validacion:
     - Tests frontend de render, permisos, estado incompleto y confirmacion de responsabilidad.
     - `npm test -- --run` y `npm run build`.
+
+## Fase 21: Backlog autenticacion productiva y hardening
 
 - [ ] TASK-153: Disenar autenticacion productiva con Cognito Hosted UI y PKCE
   - Estado: TODO
@@ -4200,6 +4216,8 @@
   - Validacion:
     - Tests de perfiles/configuracion.
     - E2E local sigue funcionando con modo dummy aprobado.
+
+## Fase 22: Gobierno SDD, diagramas y limpieza final
 
 - [x] TASK-164: Cerrar consistencia documental SDD antes de nueva implementacion
   - Estado: DONE

@@ -156,6 +156,94 @@ Docker Compose agrega `bff-service` en el puerto `BFF_SERVICE_PORT` y `frontend`
 
 La arquitectura productiva se mantiene alineada con el target AWS: SPA estatica en S3/CloudFront, API Gateway hacia BFF en ECS Fargate y microservicios internos privados.
 
+## TASK-064 infraestructura de conexiones PostgreSQL
+
+TASK-064 introduce configuracion explicita de Hikari por microservicio para evitar saturacion de conexiones en local y preparar el salto a RDS/RDS Proxy. Esta decision afecta Compose, variables de entorno y propiedades `spring.datasource.hikari.*`.
+
+Reglas vigentes:
+
+- Cada microservicio declara pool maximo, minimo idle, timeout, idle timeout y max lifetime por variables propias y fallback global.
+- En local se mantiene `DB_POOL_MAX_SIZE=3` como base conservadora.
+- En AWS, ECS y Lambdas deben pasar por RDS Proxy o equivalente administrado antes de escalar concurrencia.
+- Los errores de conexion se diagnostican por servicio; un microservicio no debe depender del arranque de otro microservicio.
+
+## TASK-065 a TASK-077 infraestructura frontend/BFF/RBAC local
+
+Estas tareas completan el entorno operativo local sobre BFF y SPA, sin cambiar todavia el target AWS.
+
+Impacto de infraestructura:
+
+- `frontend` corre como contenedor Node/Vite solo para desarrollo local y E2E; produccion compila artefacto estatico para S3/CloudFront.
+- La SPA no consume microservicios internos directamente; todas las llamadas publicas pasan por `bff-service`.
+- `bff-service` propaga `X-Company-Id`, `X-Correlation-Id`, `X-User-Id` e `Idempotency-Key` hacia servicios internos.
+- El login local/transitorio usa `identity-service`; la autenticacion productiva con Cognito queda en TASK-153 a TASK-163.
+- ROOT local se usa solo para pruebas y administracion inicial; no requiere licencia empresarial.
+- RBAC y permisos efectivos se validan en backend/BFF, no solo en la SPA.
+- La modularizacion frontend no introduce catalogos de negocio locales ni secretos en el bundle.
+
+## TASK-078 a TASK-089 infraestructura de catalogos y parametrizacion operativa
+
+Estas tareas mueven datos regulatorios/operativos a base de datos y reducen dependencias estaticas del frontend.
+
+Impacto de infraestructura:
+
+- `catalog-service` gobierna catalogos DB-only, DIVIPOLA, departamentos, municipios, responsabilidades fiscales, regimenes, metodos de pago, billeteras y tipos de documento DIAN.
+- `inventory-service` gobierna productos, impuestos configurados por producto, codigo de barras y disponibilidad.
+- `billing-service` resuelve consumidor final desde configuracion persistida, no desde constantes frontend.
+- La UI obtiene catalogos por BFF; si el backend no responde, la accion se bloquea en vez de inventar opciones locales.
+- La pistola de codigo de barras USB HID se trata como entrada de teclado del navegador; no requiere driver ni contenedor adicional.
+
+## TASK-090 a TASK-093 infraestructura de auditoria y logs
+
+Estas tareas consolidan auditoria visible en UI y eliminan paneles tecnicos de respuesta/error.
+
+Impacto de infraestructura:
+
+- `audit-service` es el punto de consulta de eventos de auditoria.
+- Las acciones mutables deben producir auditoria sin secretos ni payload sensible.
+- La SPA consume logs por BFF y muestra por defecto eventos del dia.
+- Los errores visibles muestran correlation ID cuando existe, pero no exponen stack trace ni respuesta cruda.
+- Los eventos asincronos de auditoria productiva se enrutan por EventBridge/SQS/Lambda segun TASK-143.
+
+## TASK-094 a TASK-112 catalogos DB-only, contabilidad v2 y nomina
+
+Estas tareas agregan nuevos dominios y datos operativos que deben considerarse en infraestructura local y cloud.
+
+Impacto de infraestructura:
+
+- `payroll-service` se agrega como microservicio fisico local y artefacto ECS objetivo.
+- Nomina electronica mock vive como capacidad opcional por empresa; no obliga a activar nomina electronica globalmente.
+- Contabilidad v2 y reportes financieros usan `accounting-service`; no existe `reporting-service` ECS independiente.
+- Los reportes operativos se exponen desde servicios duenos y se agregan por BFF cuando aplica.
+- Los catalogos operativos no deben vivir en `initialState` ni recursos frontend productivos.
+- Los nuevos servicios mantienen esquemas propios y migraciones Flyway por bounded context.
+
+## TASK-113 a TASK-128 licencias, servicios con insumos y administracion empresarial
+
+Estas tareas endurecen operacion multiempresa, cuotas y administracion desde ROOT/OWNER.
+
+Impacto de infraestructura:
+
+- `tenant-service` gobierna licencias, vigencia, modulos habilitados y cuotas comerciales.
+- `identity-service` gobierna usuarios, roles, permisos, membresias y asignaciones por empresa.
+- `billing-service` valida limite mensual de documentos antes de emitir documentos fiscales.
+- `identity-service` valida limite de usuarios activos por licencia antes de crear/activar usuarios empresariales.
+- El consumo asistido de insumos se mantiene en `inventory-service`; los efectos posteriores pueden publicarse por Outbox.
+- El BFF debe resolver nombre de empresa para usuarios empresariales y no exponer UUID como dato principal.
+
+## TASK-129 a TASK-141 productizacion operativa antes de AWS final
+
+Estas tareas cierran el flujo operativo antes de profundizar infraestructura productiva.
+
+Impacto de infraestructura:
+
+- El E2E desde cero debe validar empresa, licencia, OWNER, catalogos, tercero, producto, stock, venta POS, conector DIAN mock, inventario, asiento contable, auditoria y reportes.
+- Compras, gastos, pagos, servicios con insumos, reportes y reglas contables generan datos canonicos en servicios duenos.
+- `bff-service` debe tener pruebas de contrato contra rutas criticas de microservicios.
+- El aislamiento multiempresa se valida por `company_id` en APIs, reportes y acciones mutables.
+- Las proyecciones event-driven deben poder reconstruirse desde tablas canonicas.
+- Las tablas administrativas de usuarios/roles son UX/frontend; no agregan recursos cloud nuevos.
+
 ## TASK-142 a TASK-143 infraestructura productiva objetivo
 
 ### Alcance cerrado por TASK-142
@@ -265,6 +353,36 @@ Reglas no negociables:
 - Topic consulted: SQS-triggered Lambda partial batch failures and DLQ.
 - Relevant finding: Lambda con SQS puede devolver `batchItemFailures` para reintentar solo mensajes fallidos; SQS soporta redrive policy hacia DLQ.
 - Decision impact: Las Lambdas de TASK-143 usan Inbox/idempotencia y partial batch response para no reprocesar lotes completos.
+
+## TASK-144 cierre UX administrativo
+
+TASK-144 no agrega recursos cloud ni contenedores nuevos. Su impacto de infraestructura se limita a mantener la SPA/BFF como borde operativo unico para administracion de usuarios y roles.
+
+Reglas:
+
+- Las tablas profesionales de roles/usuarios son presentacion frontend.
+- La autorizacion real permanece en BFF/identity-service.
+- No se agregan endpoints directos desde la SPA hacia microservicios internos.
+
+## TASK-145 a TASK-152 DIAN real parametrizable por empresa
+
+Estas tareas son backlog productivo para evolucionar `dian-provider-service` como conector DIAN parametrizable por empresa, manteniendo el modo mock para local/E2E.
+
+Impacto de infraestructura:
+
+- Secrets Manager almacena certificados, PIN, claves tecnicas y credenciales por empresa como secretos separados bajo prefijo controlado.
+- KMS cifra secretos por ambiente; IAM limita lectura/escritura por servicio y prefijo.
+- Terraform crea KMS, policies, roles y estructura base, pero no crea secretos por empresa de forma estatica.
+- La creacion/rotacion de secretos por empresa ocurre en runtime desde servicios autorizados, con auditoria y sin exponer valores.
+- `dian-provider-service` debe poder operar en `MOCK` y, cuando se implemente, en modo real por empresa sin compartir certificado global.
+- Las pruebas de conexion DIAN real deben ejecutarse sin registrar certificados, PIN, tokens ni payload sensible.
+- En produccion, la salida hacia DIAN debe controlarse por subnets privadas con NAT Gateway o VPC endpoints/egress aprobado segun el destino tecnico disponible.
+
+Estado:
+
+- `dian-provider-service` existe como microservicio fisico y conector mock.
+- La persistencia objetivo de configuracion DIAN por empresa esta documentada en `database-design.md` y `data-dictionary.md`.
+- La implementacion real DIAN queda pendiente de TASK-145 a TASK-152.
 
 ## TASK-153 a TASK-163 seguridad de autenticacion productiva
 
