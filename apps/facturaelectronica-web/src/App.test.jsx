@@ -124,6 +124,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   window.sessionStorage.clear();
+  window.history.pushState({}, '', '/');
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
@@ -190,6 +191,33 @@ test('stored session expires after five minutes of inactivity', () => {
 
   expect(loadStoredSession(1000 + SESSION_TIMEOUT_MS - 1)).not.toBeNull();
   expect(loadStoredSession(1000 + SESSION_TIMEOUT_MS)).toBeNull();
+});
+
+test('cookie backed sessions do not persist browser-readable tokens', () => {
+  saveStoredSession({
+    session: {
+      ...LOGIN_RESPONSE,
+      authMode: 'cognito',
+      cookieSession: true,
+      accessToken: 'prod-access-token',
+      refreshToken: 'prod-refresh-token',
+      idToken: 'prod-id-token',
+    },
+    companyAccesses: COMPANY_ACCESS,
+    activeCompanyId: COMPANY_ID,
+    lastActivityAt: 1000,
+  });
+
+  const storageKey = window.sessionStorage.key(0);
+  const rawSnapshot = window.sessionStorage.getItem(storageKey);
+  const restored = loadStoredSession(1001);
+
+  expect(rawSnapshot).not.toContain('prod-access-token');
+  expect(rawSnapshot).not.toContain('prod-refresh-token');
+  expect(rawSnapshot).not.toContain('prod-id-token');
+  expect(restored.session.accessToken).toBeUndefined();
+  expect(restored.session.refreshToken).toBeUndefined();
+  expect(restored.session.idToken).toBeUndefined();
 });
 
 test('company user sees only modules allowed by effective permissions', async () => {
@@ -713,6 +741,37 @@ test('logout clears session and returns to login screen', async () => {
 
   expect(screen.getByRole('heading', { name: 'Iniciar sesion' })).toBeInTheDocument();
   expect(screen.queryByRole('navigation', { name: 'Flujo principal' })).not.toBeInTheDocument();
+});
+
+test('hydrates Cognito cookie session without browser Authorization header', async () => {
+  window.history.pushState({}, '', '/?auth=success');
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(jsonResponse({
+      authenticated: true,
+      authMode: 'cognito',
+      userId: LOGIN_RESPONSE.userId,
+      email: LOGIN_RESPONSE.email,
+      fullName: LOGIN_RESPONSE.fullName,
+      groups: [],
+      expiresAt: LOGIN_RESPONSE.expiresAt,
+    }))
+    .mockResolvedValueOnce(jsonResponse(COMPANY_ACCESS))
+    .mockResolvedValueOnce(jsonResponse(ACTIVE_LICENSE))
+    .mockResolvedValueOnce(jsonResponse(ACTIVE_LICENSE))
+    .mockResolvedValueOnce(jsonResponse(ACTIVE_COMPANY));
+  vi.stubGlobal('fetch', fetchMock);
+
+  render(<App />);
+
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
+  expect(screen.getByText('Owner User - owner@example.com')).toBeInTheDocument();
+  expect(screen.getByDisplayValue('Empresa Demo SAS (900123456)')).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/auth/session', expect.objectContaining({
+    credentials: 'same-origin',
+  }));
+  expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/me/companies', expect.objectContaining({
+    headers: expect.not.objectContaining({ Authorization: expect.any(String) }),
+  }));
 });
 
 function mockLoginFlow(licensePayload, accesses = COMPANY_ACCESS) {

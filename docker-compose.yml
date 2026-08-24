@@ -253,6 +253,13 @@ services:
       DIAN_MOCK_DEFAULT_STATUS: ${DIAN_MOCK_DEFAULT_STATUS:-ACCEPTED}
       DIAN_MOCK_ERROR_CODE: ${DIAN_MOCK_ERROR_CODE:-}
       DIAN_MOCK_ERROR_MESSAGE: ${DIAN_MOCK_ERROR_MESSAGE:-}
+      DIAN_TECHNICAL_ARTIFACTS_ROOT: ${DIAN_TECHNICAL_ARTIFACTS_ROOT:-Caja_de_herramientas_Factura_Electronica_Validacion_Previa/Caja_de_herramientas_Factura_Electronica_Validacion_Previa/Version 1.8}
+      DIAN_UBL_INVOICE_XSD_PATH: ${DIAN_UBL_INVOICE_XSD_PATH:-XSD/maindoc/UBL-Invoice-2.1.xsd}
+      DIAN_UBL_CREDIT_NOTE_XSD_PATH: ${DIAN_UBL_CREDIT_NOTE_XSD_PATH:-XSD/maindoc/UBL-CreditNote-2.1.xsd}
+      DIAN_UBL_DEBIT_NOTE_XSD_PATH: ${DIAN_UBL_DEBIT_NOTE_XSD_PATH:-XSD/maindoc/UBL-DebitNote-2.1.xsd}
+      DIAN_MODEL_SCHEMATRON_PATH: ${DIAN_MODEL_SCHEMATRON_PATH:-Schemes/DIAN-UBL21-model.sch}
+      DIAN_COMPILED_XSL_PATH: ${DIAN_COMPILED_XSL_PATH:-XSL/DIAN-UBL21-model-compiled.xsl}
+      DIAN_CODE_LIST_SCHEMATRON_PATH: ${DIAN_CODE_LIST_SCHEMATRON_PATH:-Schemes/listacodigos/DIAN_UBL21-listacodigos_v1.6.sch}
       JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
     ports:
       - "${DIAN_PROVIDER_SERVICE_PORT:-8089}:${DIAN_PROVIDER_SERVICE_PORT:-8089}"
@@ -402,6 +409,14 @@ services:
     working_dir: /workspace
     environment:
       SERVER_PORT: ${BFF_SERVICE_PORT:-8083}
+      BFF_DB_URL: ${BFF_DB_URL:-${DB_URL}}
+      BFF_DB_USERNAME: ${BFF_DB_USERNAME:-${DB_USERNAME}}
+      BFF_DB_PASSWORD: ${BFF_DB_PASSWORD:-${DB_PASSWORD}}
+      BFF_DB_POOL_MAX_SIZE: ${BFF_DB_POOL_MAX_SIZE:-${DB_POOL_MAX_SIZE:-3}}
+      BFF_DB_POOL_MIN_IDLE: ${BFF_DB_POOL_MIN_IDLE:-${DB_POOL_MIN_IDLE:-0}}
+      BFF_DB_CONNECTION_TIMEOUT_MS: ${BFF_DB_CONNECTION_TIMEOUT_MS:-${DB_CONNECTION_TIMEOUT_MS:-10000}}
+      BFF_DB_IDLE_TIMEOUT_MS: ${BFF_DB_IDLE_TIMEOUT_MS:-${DB_IDLE_TIMEOUT_MS:-60000}}
+      BFF_DB_MAX_LIFETIME_MS: ${BFF_DB_MAX_LIFETIME_MS:-${DB_MAX_LIFETIME_MS:-300000}}
       TENANT_SERVICE_URL: http://tenant-service:${TENANT_SERVICE_PORT:-8084}
       IDENTITY_SERVICE_URL: http://identity-service:${IDENTITY_SERVICE_PORT:-8092}
       CATALOG_SERVICE_URL: http://catalog-service:${CATALOG_SERVICE_PORT:-8085}
@@ -419,6 +434,7 @@ services:
       BFF_COOKIE_SECURE: ${BFF_COOKIE_SECURE:-false}
       BFF_COOKIE_SAME_SITE: ${BFF_COOKIE_SAME_SITE:-Strict}
       BFF_SESSION_ENCRYPTION_KEY: ${BFF_SESSION_ENCRYPTION_KEY:-dev-only-change-this-32-byte-minimum-key}
+      BFF_SESSION_STORE: ${BFF_SESSION_STORE:-jdbc}
     ports:
       - "${BFF_SERVICE_PORT:-8083}:${BFF_SERVICE_PORT:-8083}"
     volumes:
@@ -431,6 +447,9 @@ services:
       timeout: 5s
       retries: 10
       start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   frontend:
     image: node:20-alpine

@@ -14,6 +14,8 @@ public interface UserAccountRepositoryPort {
 
     Optional<UserAccount> findByEmail(String email);
 
+    Optional<UserAccount> findByCognitoSubject(String cognitoSubject);
+
     List<UserAccount> findByCompanyIdAndEmailContaining(UUID companyId, String email);
 
     long countByCompanyId(UUID companyId);

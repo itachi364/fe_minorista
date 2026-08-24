@@ -9,6 +9,7 @@ import com.msvanegasg.facturaelectronica.dianprovider.application.dto.DianConfig
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.in.ManageDianConfigurationUseCase;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.DianConfigurationRepositoryPort;
+import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.DianTechnicalArtifactPort;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.SecretVaultPort;
 import com.msvanegasg.facturaelectronica.dianprovider.domain.model.DianCompanyConfiguration;
@@ -21,13 +22,20 @@ public class DianConfigurationManagementService implements ManageDianConfigurati
 
     private final DianConfigurationRepositoryPort repository;
     private final SecretVaultPort secretVault;
+    private final DianTechnicalArtifactPort technicalArtifacts;
     private final IdGeneratorPort idGenerator;
     private final ClockPort clock;
 
     public DianConfigurationManagementService(DianConfigurationRepositoryPort repository, SecretVaultPort secretVault,
             IdGeneratorPort idGenerator, ClockPort clock) {
+        this(repository, secretVault, () -> { }, idGenerator, clock);
+    }
+
+    public DianConfigurationManagementService(DianConfigurationRepositoryPort repository, SecretVaultPort secretVault,
+            DianTechnicalArtifactPort technicalArtifacts, IdGeneratorPort idGenerator, ClockPort clock) {
         this.repository = repository;
         this.secretVault = secretVault;
+        this.technicalArtifacts = technicalArtifacts;
         this.idGenerator = idGenerator;
         this.clock = clock;
     }
@@ -113,6 +121,7 @@ public class DianConfigurationManagementService implements ManageDianConfigurati
             throw new DianConfigurationIncompleteException(
                     "La configuracion DIAN real esta incompleta o no tiene responsabilidad empresarial aceptada.");
         }
+        technicalArtifacts.ensureReadyForRealMode();
     }
 
     private String secretRef(String currentRef, UUID companyId, String secretName, String value) {

@@ -6,6 +6,7 @@ import com.msvanegasg.facturaelectronica.identity.application.dto.AssignCompanyR
 import com.msvanegasg.facturaelectronica.identity.application.dto.AssignRolesCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CompanyAccessResult;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CompanyRoleResult;
+import com.msvanegasg.facturaelectronica.identity.application.dto.CognitoSessionCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CreateCompanyRoleCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CreateUserCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.LoginCommand;
@@ -21,6 +22,7 @@ import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CompanyAcc
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CompanyRoleAssignmentsRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CompanyRoleRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CompanyRoleResponse;
+import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CognitoSessionRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CreateUserRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.LoginRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.LoginResponse;
@@ -42,6 +44,10 @@ public final class IdentityRestMapper {
 
     public static LoginCommand toCommand(LoginRequest request) {
         return new LoginCommand(request.email(), request.password());
+    }
+
+    public static CognitoSessionCommand toCommand(CognitoSessionRequest request) {
+        return new CognitoSessionCommand(request.subject(), request.email(), request.fullName(), request.groups());
     }
 
     public static AssignRolesCommand toCommand(UUID companyId, MembershipRequest request, String authorizationHeader) {

@@ -30,8 +30,8 @@ class MockProviderSubmissionServiceTest {
     @Test
     void submitsAcceptedMockDocument() {
         InMemoryRepository repository = new InMemoryRepository();
-        MockProviderSubmissionService service = service(repository,
-                new DianProviderProperties("mock", ProviderSubmissionStatus.ACCEPTED, null, null));
+        MockProviderSubmissionService service = service(repository, properties("mock", ProviderSubmissionStatus.ACCEPTED,
+                null, null));
 
         var result = service.submit(command("confirm-1"));
 
@@ -45,8 +45,8 @@ class MockProviderSubmissionServiceTest {
     @Test
     void submissionIsIdempotent() {
         InMemoryRepository repository = new InMemoryRepository();
-        MockProviderSubmissionService service = service(repository,
-                new DianProviderProperties("mock", ProviderSubmissionStatus.ACCEPTED, null, null));
+        MockProviderSubmissionService service = service(repository, properties("mock", ProviderSubmissionStatus.ACCEPTED,
+                null, null));
 
         var first = service.submit(command("confirm-1"));
         var second = service.submit(command("confirm-1"));
@@ -58,8 +58,7 @@ class MockProviderSubmissionServiceTest {
     @Test
     void returnsConfiguredRejectedResponse() {
         MockProviderSubmissionService service = service(new InMemoryRepository(),
-                new DianProviderProperties("mock", ProviderSubmissionStatus.REJECTED, "CUSTOM_REJECTED",
-                        "Rechazo simulado."));
+                properties("mock", ProviderSubmissionStatus.REJECTED, "CUSTOM_REJECTED", "Rechazo simulado."));
 
         var result = service.submit(command("confirm-2"));
 
@@ -70,8 +69,8 @@ class MockProviderSubmissionServiceTest {
 
     @Test
     void rejectsNonMockMode() {
-        MockProviderSubmissionService service = service(new InMemoryRepository(),
-                new DianProviderProperties("real", ProviderSubmissionStatus.ACCEPTED, null, null));
+        MockProviderSubmissionService service = service(new InMemoryRepository(), properties("real",
+                ProviderSubmissionStatus.ACCEPTED, null, null));
 
         assertThatThrownBy(() -> service.submit(command("confirm-1")))
                 .isInstanceOf(IllegalStateException.class)
@@ -88,6 +87,12 @@ class MockProviderSubmissionServiceTest {
     private static SubmitProviderDocumentCommand command(String idempotencyKey) {
         return new SubmitProviderDocumentCommand(COMPANY_ID, DOCUMENT_ID, ProviderDocumentType.ELECTRONIC_POS,
                 idempotencyKey, "{}");
+    }
+
+    private static DianProviderProperties properties(String mode, ProviderSubmissionStatus status, String errorCode,
+            String errorMessage) {
+        return new DianProviderProperties(mode, status, errorCode, errorMessage, null, null, null, null, null, null,
+                null);
     }
 
     private static final class InMemoryRepository implements ProviderSubmissionRepositoryPort {

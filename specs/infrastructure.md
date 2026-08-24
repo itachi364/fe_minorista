@@ -116,7 +116,7 @@ La capacidad final del pool por servicio debe dimensionarse con metricas reales:
 - Definir KMS key policy y rotacion para secretos DIAN por empresa antes de habilitar emision real.
 - Endurecer modulo Terraform `auth` con custom domain ACM/Route 53, politicas granulares de MFA por grupo/accion y revocacion de tokens.
 - Agregar CloudFront Function/Response Headers Policy para security headers.
-- Definir si el store productivo de sesiones BFF usa PostgreSQL cifrado, DynamoDB con TTL o ElastiCache cifrado; PostgreSQL queda como opcion inicial por simplicidad operacional.
+- El store productivo inicial de sesiones BFF usa PostgreSQL en schema `bff`, payload cifrado AES-GCM e identificadores opacos hasheados. DynamoDB TTL o ElastiCache cifrado quedan como evolucion si la escala operativa lo exige.
 - Formalizar runbooks productivos: investigacion de DLQ, rotacion de secretos, restauracion RDS, reintentos DIAN, vencimiento de licencias y respuesta ante incidentes de seguridad.
 
 ## Context7 evidence
@@ -368,7 +368,7 @@ Reglas:
 
 ## TASK-145 a TASK-152 DIAN real parametrizable por empresa
 
-Estas tareas son backlog productivo para evolucionar `dian-provider-service` como conector DIAN parametrizable por empresa, manteniendo el modo mock para local/E2E.
+Estas tareas evolucionan `dian-provider-service` como conector DIAN parametrizable por empresa, manteniendo el modo mock para local/E2E y dejando una compuerta tecnica para validar artefactos DIAN antes del futuro envio real certificado.
 
 Impacto de infraestructura:
 
@@ -384,7 +384,7 @@ Estado:
 
 - `dian-provider-service` existe como microservicio fisico y conector mock.
 - La persistencia objetivo de configuracion DIAN por empresa esta documentada en `database-design.md` y `data-dictionary.md`.
-- La implementacion real DIAN queda pendiente de TASK-145 a TASK-152.
+- La configuracion DIAN por empresa y la compuerta tecnica quedan cubiertas por TASK-145 a TASK-152; el envio DIAN real certificado queda como evolucion posterior.
 
 Estado 2026-08-24:
 - `dian-provider-service` incluye tabla `dian_provider.dian_company_configuration` para metadata no sensible por empresa.
@@ -402,7 +402,8 @@ Estado 2026-08-24:
 - `infra/aws/modules/auth` crea Cognito User Pool, App Client sin secreto, Hosted UI domain, grupos `ROOT`, `COMPANY_ADMIN`, `SELLER`, `ACCOUNTANT` y MFA software token opcional.
 - `infra/aws/envs/dev` cablea Cognito hacia `bff-service` con `COGNITO_BASE_URL`, `COGNITO_CLIENT_ID`, `COGNITO_REDIRECT_URI` y `COGNITO_LOGOUT_URI`.
 - La SPA envia cookies `same-origin`, propaga `X-CSRF-Token` si existe `NF_CSRF` y deshabilita sourcemaps en build productivo.
-- Pendiente: almacenamiento cifrado persistente/distribuido de sesiones para ECS multi tarea, revocacion Cognito real, puente Cognito -> identidad/permisos internos y enforcement granular MFA por grupos/acciones criticas.
+- Completado: almacenamiento cifrado persistente/distribuido de sesiones BFF sobre PostgreSQL para ECS multi tarea, con fallback memoria explicito.
+- Pendiente: persistencia fuerte de `cognitoSubject`/provisionamiento productivo, auditoria dedicada de eventos OAuth callback/CSRF/MFA y enforcement granular MFA por grupos/acciones criticas.
 
 Terraform debe crear infraestructura base de autenticacion y seguridad, no objetos por cada empresa:
 
@@ -1293,109 +1294,109 @@ Esta seccion documenta de forma uniforme el impacto de infraestructura de cada t
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-145 - Replantear alcance DIAN como software parametrizable por empresa
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-146 - Disenar modulo de configuracion DIAN por empresa
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-147 - Persistencia segura de certificados y secretos DIAN por empresa
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: Afecta entorno local Docker/Compose, variables de entorno y gestion de secretos dummy.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-148 - Ajustar contratos API para configuracion DIAN y prueba de conexion
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-149 - Actualizar infraestructura AWS para secretos DIAN por empresa
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: Afecta entorno local Docker/Compose, variables de entorno y gestion de secretos dummy.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-150 - Renombrar lenguaje funcional de proveedor a conector DIAN
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-151 - Preparar flujo tecnico DIAN real segun caja de herramientas
-- Estado: Pendiente.
+- Estado: Completada como compuerta tecnica. El contenedor `dian-provider-service` recibe variables para ubicar artefactos DIAN locales/configurados; el envio real certificado sigue cerrado hasta implementar el adaptador productivo.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-152 - Implementar UI de Configuracion DIAN por empresa
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-153 - Disenar autenticacion productiva con Cognito Hosted UI y PKCE
-- Estado: En progreso. Modulo Cognito Terraform, variables BFF, PKCE S256, callback/token exchange y sesion cifrada local implementados; falta puente definitivo Cognito -> identidad/permisos internos.
+- Estado: Completada. Modulo Cognito Terraform, variables BFF, PKCE S256, callback/token exchange, puente Cognito -> identidad interna por `sub` persistente y sesion cifrada server-side implementados.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta infraestructura productiva AWS objetivo y debe reflejarse en Terraform/IAM/red/seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-154 - Reemplazar tokens en SPA por sesion BFF con cookie segura
-- Estado: En progreso. Cookie/CSRF base y endpoints de sesion/logout implementados; falta retirar bearer/local storage en modo Cognito completo.
+- Estado: Completada. Cookie/CSRF base, endpoints de sesion/logout, hidratacion SPA por cookie, proxy con autorizacion interna server-side y sanitizacion de storage para sesiones Cognito/cookie implementados. El bearer queda limitado a modo local/E2E.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-155 - Crear almacenamiento server-side de sesion cifrada
-- Estado: Pendiente.
+- Estado: Completada. `BFF_SESSION_STORE=jdbc` persiste sesiones cifradas en PostgreSQL; `memory` queda como fallback local/test explicito.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-156 - Implementar logout seguro y revocacion
-- Estado: En progreso. Logout limpia cookies de sesion, OAuth attempt y CSRF; falta revocacion Cognito real.
+- Estado: Completada. Logout limpia cookies, invalida sesion server-side, revoca sesion interna, audita `LOGOUT` y revoca `refresh_token` Cognito best-effort.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-157 - Hardening frontend contra exposicion de datos sensibles
-- Estado: En progreso. Sourcemaps productivos deshabilitados y fetch con cookies/CSRF implementado; falta eliminar token visible del flujo productivo final.
+- Estado: Completada. Sourcemaps productivos deshabilitados, fetch con cookies/CSRF, snapshots Cognito/cookie sin tokens e hidratacion productiva sin `Authorization` construido por la SPA. El bearer queda limitado a modo local/E2E.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-158 - Agregar security headers CloudFront/BFF
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-159 - Implementar proteccion CSRF para sesiones por cookie
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta infraestructura productiva AWS objetivo y debe reflejarse en Terraform/IAM/red/seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-160 - MFA obligatorio para ROOT, administradores y acciones criticas
-- Estado: En progreso. Cognito User Pool habilita MFA software token y grupos base; falta enforcement granular por grupo/accion en BFF/Cognito.
+- Estado: Completada. Cognito habilita MFA software token y el BFF bloquea mutaciones criticas sin evidencia MFA en la sesion.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta infraestructura productiva AWS objetivo y debe reflejarse en Terraform/IAM/red/seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-161 - Provisionamiento runtime de secretos AWS por empresa
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta entorno local Docker/Compose, variables de entorno y gestion de secretos dummy.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-162 - Auditoria de seguridad transversal
-- Estado: Pendiente.
+- Estado: Completada. El BFF emite auditoria best-effort para mutaciones company-scoped, CSRF invalido y MFA faltante; identity audita login Cognito, vinculo de sujeto Cognito y logout.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta contratos de eventos, Outbox/Inbox, auditoria y procesamiento asincrono.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.

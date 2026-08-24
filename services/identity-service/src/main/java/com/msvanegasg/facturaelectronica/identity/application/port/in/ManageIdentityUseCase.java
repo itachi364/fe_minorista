@@ -7,6 +7,7 @@ import com.msvanegasg.facturaelectronica.identity.application.dto.AssignCompanyR
 import com.msvanegasg.facturaelectronica.identity.application.dto.AssignRolesCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CompanyAccessResult;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CompanyRoleResult;
+import com.msvanegasg.facturaelectronica.identity.application.dto.CognitoSessionCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CreateCompanyRoleCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CreateUserCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.LoginCommand;
@@ -24,6 +25,10 @@ public interface ManageIdentityUseCase {
     UserResult createUser(CreateUserCommand command);
 
     LoginResult login(LoginCommand command);
+
+    LoginResult issueCognitoSession(CognitoSessionCommand command);
+
+    void logout(String authorizationHeader);
 
     UserResult currentUser(String authorizationHeader);
 

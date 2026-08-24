@@ -385,10 +385,11 @@ Flujo principal:
 3. El BFF genera `state`, `nonce` y PKCE, y redirige a Cognito Hosted UI.
 4. El usuario ingresa credenciales y completa MFA cuando aplique.
 5. Cognito redirige al callback del BFF con `code` y `state`.
-6. El BFF valida `state`, intercambia el codigo por tokens y crea sesion server-side cifrada.
+6. El BFF valida `state`, intercambia el codigo por tokens y solicita a `identity-service` una sesion interna para el usuario local activo asociado.
 7. El BFF emite cookie opaca `HttpOnly`, `Secure`, `SameSite`.
-8. La SPA consulta `/api/v1/auth/session` y recibe usuario, empresas, permisos y CSRF, sin tokens.
-9. Las solicitudes posteriores usan la cookie segura y el BFF propaga identidad interna a microservicios.
+8. La SPA consulta `/api/v1/auth/session` y recibe identidad resumida y CSRF, sin tokens.
+9. La SPA carga empresas, licencia y permisos mediante requests al BFF sin construir `Authorization` en JavaScript.
+10. Las solicitudes posteriores usan la cookie segura y el BFF propaga `Authorization` interno y `X-User-Id` a microservicios.
 
 Flujos alternos:
 - Si `state` no coincide o expiro, el BFF rechaza el callback y registra auditoria.

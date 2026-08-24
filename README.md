@@ -58,7 +58,7 @@ La siguiente evolucion de reportes queda documentada para ejecutarse despues de 
 - El modulo `DIAN` permite configurar por empresa el modo mock/real, ambiente, Software ID, metadata de certificado, prueba y activacion. Los secretos se reciben solo como entrada y el backend guarda referencias seguras.
 - NexoFiscal se declara como software parametrizable por empresa; cada empresa es responsable de su habilitacion, certificado y credenciales DIAN.
 - El BFF soporta `AUTH_MODE=local|cognito`. El modo `local` queda para desarrollo/E2E; en entorno productivo el BFF falla cerrado si no usa `AUTH_MODE=cognito` y `BFF_SESSION_ENCRYPTION_KEY`.
-- El BFF agrega Hosted UI + PKCE, callback Cognito, sesion cifrada server-side local, headers de seguridad y token CSRF para sesiones por cookie. La SPA envia cookies same-origin y propaga `X-CSRF-Token` cuando existe cookie `NF_CSRF`.
+- El BFF agrega Hosted UI + PKCE, callback Cognito, puente Cognito -> identidad interna por `sub` persistente con alta previa por correo, sesion cifrada server-side persistente en PostgreSQL (`bff.secure_sessions`) con fallback memoria explicito, logout con revocacion de sesion interna auditada y revocacion best-effort de `refresh_token`, headers de seguridad, token CSRF para sesiones por cookie y bloqueo MFA de mutaciones criticas. La SPA envia cookies same-origin, propaga `X-CSRF-Token` cuando existe cookie `NF_CSRF`, hidrata sesion desde `/api/v1/auth/session` y no persiste tokens para sesiones Cognito/cookie.
 
 ## Arquitectura
 
@@ -199,6 +199,8 @@ Reglas de seguridad aprobadas:
 - No existe certificado global compartido para emitir documentos de empresas clientes.
 - Certificados, PIN, claves y credenciales DIAN deben vivir en gestor de secretos; PostgreSQL solo guarda referencias, alias, huellas, vencimientos y estados.
 - En desarrollo local se usa `DIAN_PROVIDER_MODE=mock` para E2E sin llamadas externas.
+- El `dian-provider-service` ya valida una compuerta tecnica para modo real: existencia de XSD UBL 2.1, Schematron DIAN, XSL compilado y lista de codigos configurados por variables `DIAN_TECHNICAL_ARTIFACTS_ROOT`, `DIAN_UBL_*`, `DIAN_MODEL_SCHEMATRON_PATH`, `DIAN_COMPILED_XSL_PATH` y `DIAN_CODE_LIST_SCHEMATRON_PATH`.
+- El envio DIAN real con XML UBL firmado, CUFE/CUDE productivo, validacion completa y transporte SOAP/HTTP certificado sigue pendiente antes de habilitar operacion comercial real.
 - El modo mock no valida cumplimiento tecnico DIAN productivo ni reemplaza el proceso de habilitacion/certificacion de cada empresa.
 - Antes de operacion comercial real, esta interpretacion debe validarse con asesor legal/tributario.
 
@@ -921,7 +923,7 @@ Pendiente:
 - `Dockerfile` productivo multi-stage.
 - Storage productivo para branding, exportaciones y artefactos POS en S3 privado/KMS.
 - `reporting-service` ECS/Fargate privado para reportes avanzados y exportaciones.
-- Endurecimiento final de Cognito: dominio/custom domain, persistencia distribuida de sesiones, puente Cognito -> identidad/permisos internos, enforcement MFA por grupo/accion y revocacion.
+- Endurecimiento final de Cognito: dominio/custom domain, flujo productivo de invitacion/provisionamiento en Cognito y auditoria global platform-scoped para eventos OAuth sin empresa.
 - Configuracion cloud final por ambiente, certificados ACM y variables productivas.
 - Pipeline CI/CD.
 - Escaneo de imagenes con Docker Scout, Trivy, Grype o herramienta equivalente.

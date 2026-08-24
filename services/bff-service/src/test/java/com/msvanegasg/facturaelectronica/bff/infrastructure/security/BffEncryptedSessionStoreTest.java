@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
 import java.util.Set;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
@@ -37,7 +38,7 @@ class BffEncryptedSessionStoreTest {
     @Test
     void storesAndRevokesEncryptedUserSessions() {
         BffEncryptedSessionStore store = store();
-        BffUserSession session = new BffUserSession("subject-1", "user@example.com", "User Example",
+        BffUserSession session = new BffUserSession(UUID.randomUUID(), "subject-1", "user@example.com", "User Example",
                 Set.of("COMPANY_ADMIN"), "access", "id", "refresh", Instant.now().plusSeconds(3600), Instant.now());
 
         String id = store.createSession(session);

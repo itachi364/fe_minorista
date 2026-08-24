@@ -3994,8 +3994,8 @@
   - Validacion:
     - `rg "proveedor tecnologico|Provider|provider"` revisado y clasificado.
 
-- [ ] TASK-151: Preparar flujo tecnico DIAN real segun caja de herramientas
-  - Estado: TODO. Queda pendiente implementacion real de UBL/firma/validacion; la configuracion por empresa ya esta disponible para usarla como entrada.
+- [x] TASK-151: Preparar flujo tecnico DIAN real segun caja de herramientas
+  - Estado: DONE como preparacion tecnica. El `dian-provider-service` valida la existencia configurable de XSD UBL 2.1, Schematron DIAN, XSL compilado y lista de codigos antes de aprobar una prueba en modo real. Queda pendiente una tarea posterior de envio DIAN real completo: generacion XML, firma, CUFE/CUDE productivo, validacion y transporte certificado.
   - Requisitos: RF-064, RF-066.
   - Acceptance criteria: AC-175.
   - Descripcion: Disenar e implementar progresivamente generacion XML UBL 2.1, firma XMLDSig/XAdES, CUFE/CUDE, QR, validacion XSD/Schematron, AttachedDocument, ApplicationResponse y set de pruebas, usando la configuracion de cada empresa.
@@ -4006,10 +4006,12 @@
   - Criterios:
     - No subir artefactos duplicados, `__MACOSX`, `.DS_Store` ni jars innecesarios de la caja.
     - Importar solo recursos necesarios y documentar fuente/version.
-    - Validaciones tecnicas fallan antes de envio real si XML/firma no cumplen.
+    - Validaciones tecnicas fallan antes de modo real si faltan XSD/Schematron/XSL/lista de codigos.
+    - El envio DIAN real sigue fallando cerrado hasta implementar el adaptador certificado; no se permite degradar silenciosamente a mock.
   - Validacion:
-    - Tests unitarios de CUFE/CUDE/firma/validacion.
-    - Tests contra XML de ejemplo sanitizados.
+    - `.\mvnw -pl services/dian-provider-service test`: BUILD SUCCESS, 13 tests, 0 failures, 0 errors.
+    - Tests unitarios de compuerta tecnica de artefactos y configuracion real.
+    - Tests futuros de CUFE/CUDE/firma/validacion contra XML de ejemplo sanitizados quedan para la implementacion DIAN real completa.
 
 - [x] TASK-152: Implementar UI de Configuracion DIAN por empresa
   - Estado: DONE
@@ -4031,8 +4033,8 @@
 
 ## Fase 21: Backlog autenticacion productiva y hardening
 
-- [ ] TASK-153: Disenar autenticacion productiva con Cognito Hosted UI y PKCE
-  - Estado: IN_PROGRESS. Base `AUTH_MODE=cognito`, `login-url`, PKCE S256, cookie opaca de intento OAuth, callback/token exchange real y bloqueo productivo local implementados; falta vincular claims Cognito con identidad/permisos internos definitivos.
+- [x] TASK-153: Disenar autenticacion productiva con Cognito Hosted UI y PKCE
+  - Estado: DONE. Base `AUTH_MODE=cognito`, `login-url`, PKCE S256, cookie opaca de intento OAuth, callback/token exchange real, puente Cognito -> identidad interna por `sub` persistente con alta previa por email y bloqueo productivo local implementados. El provisionamiento productivo de usuarios Cognito queda como operacion del modulo de usuarios/invitacion y no como autocreacion durante login.
   - Requisitos: RF-078, RF-079, RF-088, RNF-027, RN-069, RN-070.
   - Acceptance criteria: AC-176, AC-177, AC-187.
   - Descripcion: Definir e implementar el flujo productivo de login usando Amazon Cognito Hosted UI, Authorization Code Grant y PKCE, dejando el login dummy solo para desarrollo local.
@@ -4047,9 +4049,10 @@
     - `POST /api/v1/auth/login` no queda expuesto en produccion.
   - Validacion:
     - Tests de BFF para login-url, callback valido, state invalido y modo dummy bloqueado en profile productivo.
+    - Tests de identity para vinculo persistente `cognito_subject`, reuso por `sub` y auditoria `LINK_COGNITO_SUBJECT`.
 
-- [ ] TASK-154: Reemplazar tokens en SPA por sesion BFF con cookie segura
-  - Estado: IN_PROGRESS. `GET /api/v1/auth/session`, cookies BFF y logout base implementados; falta retirar bearer/local storage del modo productivo completo.
+- [x] TASK-154: Reemplazar tokens en SPA por sesion BFF con cookie segura
+  - Estado: DONE. `GET /api/v1/auth/session`, cookies BFF, hidratacion SPA por cookie, proxy con autorizacion interna server-side, logout base y sanitizacion de `sessionStorage` para sesiones Cognito/cookie implementados. El bearer queda limitado a modo local/E2E.
   - Requisitos: RF-080, RF-081, RF-082, RNF-029, RN-070, RN-071, RN-072.
   - Acceptance criteria: AC-178, AC-179, AC-180, AC-181.
   - Descripcion: Cambiar el modelo de sesion para que el navegador reciba solo cookie opaca `HttpOnly/Secure/SameSite` y la SPA consulte `/api/v1/auth/session`.
@@ -4062,11 +4065,11 @@
     - BFF propaga identidad interna a microservicios.
     - Logout limpia cookie y sesion server-side.
   - Validacion:
-    - Tests frontend verifican ausencia de tokens en `sessionStorage`/`localStorage`.
+    - Tests frontend verifican ausencia de tokens en `sessionStorage` para sesiones Cognito/cookie.
     - Tests BFF verifican atributos de cookie y logout.
 
-- [ ] TASK-155: Crear almacenamiento server-side de sesion cifrada
-  - Estado: IN_PROGRESS. Store cifrado server-side en memoria implementado para intentos OAuth y sesiones web; falta persistencia distribuida productiva para ECS multi tarea.
+- [x] TASK-155: Crear almacenamiento server-side de sesion cifrada
+  - Estado: DONE. Store server-side abstraido por `BffSessionStore`; modo JDBC por defecto con PostgreSQL/Flyway en schema `bff` y modo memoria explicito para fallback local/test. Los IDs opacos de cookie se guardan hasheados y los payloads de OAuth/sesion se cifran antes de persistir.
   - Requisitos: RF-080, RF-081, RNF-028, RNF-029, RN-072.
   - Acceptance criteria: AC-177, AC-178, AC-188.
   - Descripcion: Implementar persistencia de intentos OAuth y sesiones web con tokens Cognito cifrados server-side y hashes para cookie/CSRF.
@@ -4076,15 +4079,15 @@
     - `specs/database-design.md`
     - `specs/data-dictionary.md`
   - Criterios:
-    - `session_token_hash` y `csrf_token_hash`, nunca tokens en claro.
-    - Tokens Cognito cifrados o referenciados en secreto seguro.
+    - Identificadores opacos hasheados en DB; nunca tokens en claro.
+    - Tokens Cognito e internal token cifrados en payload server-side.
     - Sesiones revocables y con expiracion.
   - Validacion:
-    - Tests de persistencia y sanitizacion.
+    - Tests de persistencia JDBC, revocacion, store memoria y sanitizacion.
     - `rg` para asegurar que respuestas DTO no exponen tokens.
 
-- [ ] TASK-156: Implementar logout seguro y revocacion
-  - Estado: IN_PROGRESS. Logout idempotente, revocacion de sesion server-side local y limpieza de cookies implementados; falta revocacion Cognito real y auditoria dedicada.
+- [x] TASK-156: Implementar logout seguro y revocacion
+  - Estado: DONE. Logout idempotente limpia cookies BFF/CSRF/OAuth attempt, invalida sesion BFF, revoca sesion interna en `identity-service`, audita `LOGOUT` en `identity.identity_access_audit` y revoca `refresh_token` Cognito de forma best-effort cuando aplica.
   - Requisitos: RF-082, RNF-031.
   - Acceptance criteria: AC-181.
   - Descripcion: Implementar logout productivo que invalide sesion local, limpie cookie, revoque tokens Cognito cuando aplique y registre auditoria segura.
@@ -4094,12 +4097,14 @@
   - Criterios:
     - Logout idempotente.
     - Cookie expira inmediatamente.
+    - Sesion interna revocada en `identity-service`.
     - Auditoria sin tokens/cookies.
   - Validacion:
-    - Tests BFF de logout repetido, cookie expirada y auditoria.
+    - Tests BFF de cookie expirada, revocacion de sesion server-side y llamada a logout interno.
+    - Tests identity de revocacion de sesion interna y auditoria `LOGOUT`.
 
-- [ ] TASK-157: Hardening frontend contra exposicion de datos sensibles
-  - Estado: IN_PROGRESS. Fetch con cookies/CSRF y sourcemaps productivos deshabilitados; falta eliminar bearer/local storage al cerrar Cognito.
+- [x] TASK-157: Hardening frontend contra exposicion de datos sensibles
+  - Estado: DONE. Fetch con cookies/CSRF, sourcemaps productivos deshabilitados, snapshots Cognito/cookie sin tokens e hidratacion productiva sin `Authorization` construido en JavaScript implementados. El token local queda acotado a desarrollo/E2E por TASK-163.
   - Requisitos: RF-079, RF-084, RNF-030, RN-071, RN-076.
   - Acceptance criteria: AC-179, AC-184, AC-188.
   - Descripcion: Eliminar almacenamiento/logging de tokens, passwords, headers sensibles y payloads completos; ajustar build productiva para no publicar sourcemaps sin control.
@@ -4147,8 +4152,8 @@
     - Tests BFF positivos/negativos.
     - Tests frontend propagan CSRF en mutaciones.
 
-- [ ] TASK-160: MFA obligatorio para ROOT, administradores y acciones criticas
-  - Estado: IN_PROGRESS. Modulo Terraform/Cognito base creado con MFA software token y grupos objetivo; falta enforcement por grupo/accion y validacion de claim en BFF.
+- [x] TASK-160: MFA obligatorio para ROOT, administradores y acciones criticas
+  - Estado: DONE. Modulo Terraform/Cognito base creado con MFA software token y grupos objetivo. El BFF deriva `mfaAuthenticated` desde claims del `id_token` Cognito y bloquea mutaciones criticas company/platform cuando la sesion por cookie no trae MFA. Ventas POS no exigen MFA adicional para no romper el flujo operativo.
   - Requisitos: RF-083, RN-074.
   - Acceptance criteria: AC-182.
   - Descripcion: Diseñar e implementar politica de MFA productiva para ROOT, administradores empresariales y acciones criticas como licencias, roles, secretos y configuracion DIAN.
@@ -4182,8 +4187,8 @@
     - Tests con fake/stub de Secrets Manager.
     - Terraform validate.
 
-- [ ] TASK-162: Auditoria de seguridad transversal
-  - Estado: IN_PROGRESS. Auditoria BFF best-effort cubre mutaciones; faltan eventos dedicados de OAuth/CSRF/MFA.
+- [x] TASK-162: Auditoria de seguridad transversal
+  - Estado: DONE. Auditoria BFF best-effort cubre mutaciones y eventos de seguridad company-scoped (`CSRF_VALIDATION`, `MFA_REQUIRED`) sin tokens/cookies; `identity-service` audita `COGNITO_LOGIN`, `LINK_COGNITO_SUBJECT` y `LOGOUT`. Eventos OAuth sin empresa quedan en logs tecnicos hasta que exista auditoria global platform-scoped.
   - Requisitos: RF-082, RF-087, RNF-031, RN-076.
   - Acceptance criteria: AC-181, AC-186, AC-188.
   - Descripcion: Extender auditoria para login, callback OAuth, refresh, logout, CSRF invalido, acceso denegado, MFA faltante, creacion de secretos y cambios de roles/licencias.
@@ -4197,6 +4202,7 @@
     - Falla de auditoria no expone secretos.
   - Validacion:
     - Tests de auditoria y sanitizacion.
+    - Tests BFF de bloqueo MFA sin ejecutar proxy.
 
 - [x] TASK-163: Modo transicion local y bloqueo productivo de auth dummy
   - Estado: DONE
@@ -4285,7 +4291,7 @@
     - `scripts/legacy-data-audit.sql`
   - Criterios:
     - Cognito, BFF session persistente, CSRF, MFA y modulo Terraform `auth` quedan identificados como objetivo de TASK-153 a TASK-163, diferenciando componentes ya implementados de pendientes productivos.
-    - DIAN real, secretos/certificados por empresa y prueba de conexion quedan identificados como objetivo pendiente de TASK-145 a TASK-152.
+    - DIAN parametrizable por empresa, secretos/certificados referenciados y prueba de conexion quedan identificados como objetivo de TASK-145 a TASK-152; el envio DIAN real certificado queda separado como evolucion posterior.
     - `reporting-service` no se presenta como microservicio fisico implementado; el estado vigente usa `reporting-projection-lambda`.
     - OpenAPI queda documentado como dependencia Springdoc disponible, pero pendiente como artefacto versionado por servicio.
     - Documentos y scripts legacy no deben indicar como pendientes componentes ya migrados ni como activas tablas/rutas retiradas.

@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.DianConfigurationRepositoryPort;
+import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.DianTechnicalArtifactPort;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.ProviderSubmissionRepositoryPort;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.SecretVaultPort;
@@ -22,7 +23,8 @@ public class DianProviderUseCaseConfiguration {
 
     @Bean
     DianConfigurationManagementService dianConfigurationManagementService(DianConfigurationRepositoryPort repository,
-            SecretVaultPort secretVault, IdGeneratorPort idGenerator, ClockPort clock) {
-        return new DianConfigurationManagementService(repository, secretVault, idGenerator, clock);
+            SecretVaultPort secretVault, DianTechnicalArtifactPort technicalArtifacts, IdGeneratorPort idGenerator,
+            ClockPort clock) {
+        return new DianConfigurationManagementService(repository, secretVault, technicalArtifacts, idGenerator, clock);
     }
 }

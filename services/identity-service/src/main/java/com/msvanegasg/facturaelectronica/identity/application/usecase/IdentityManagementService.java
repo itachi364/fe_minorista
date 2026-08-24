@@ -14,6 +14,7 @@ import com.msvanegasg.facturaelectronica.identity.application.dto.AssignCompanyR
 import com.msvanegasg.facturaelectronica.identity.application.dto.AssignRolesCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CompanyAccessResult;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CompanyRoleResult;
+import com.msvanegasg.facturaelectronica.identity.application.dto.CognitoSessionCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CreateCompanyRoleCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CreateUserCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.LoginCommand;
@@ -164,6 +165,57 @@ public class IdentityManagementService implements ManageIdentityUseCase {
         audit(null, user.id(), "LOGIN", "USER", user.id().toString(), AccessAuditResult.SUCCESS, null);
         return new LoginResult(user.id(), user.email(), user.fullName(), rawToken, expiresAt,
                 globalRoleRepository.findByUserId(user.id()));
+    }
+
+    @Override
+    public LoginResult issueCognitoSession(CognitoSessionCommand command) {
+        Objects.requireNonNull(command, "command is required");
+        String subject = required(command.subject(), "subject");
+        String email = normalizeEmail(command.email());
+        UserAccount user = resolveCognitoUser(subject, email, command.fullName());
+        if (user == null || !user.isActive()) {
+            audit(null, user == null ? null : user.id(), "COGNITO_LOGIN", "USER", email, AccessAuditResult.FAILURE,
+                    "UNKNOWN_OR_INACTIVE_USER");
+            throw new AuthenticationFailedException();
+        }
+        String rawToken = tokenGenerator.generate();
+        Instant now = clock.now();
+        Instant expiresAt = now.plus(sessionDuration);
+        sessionRepository.save(UserSession.create(idGenerator.nextId(), user.id(), tokenHash.hash(rawToken), expiresAt,
+                now));
+        audit(null, user.id(), "COGNITO_LOGIN", "USER", user.id().toString(), AccessAuditResult.SUCCESS,
+                "subject=" + subject);
+        return new LoginResult(user.id(), user.email(), user.fullName(), rawToken, expiresAt,
+                globalRoleRepository.findByUserId(user.id()));
+    }
+
+    private UserAccount resolveCognitoUser(String subject, String email, String fullName) {
+        return userRepository.findByCognitoSubject(subject)
+                .orElseGet(() -> userRepository.findByEmail(email)
+                        .filter(UserAccount::isActive)
+                        .map(user -> {
+                            UserAccount linked = userRepository.save(user.linkCognitoSubject(subject, fullName,
+                                    clock.now()));
+                            audit(null, linked.id(), "LINK_COGNITO_SUBJECT", "USER", linked.id().toString(),
+                                    AccessAuditResult.SUCCESS, null);
+                            return linked;
+                        })
+                        .orElse(null));
+    }
+
+    @Override
+    public void logout(String authorizationHeader) {
+        String token = extractBearerToken(authorizationHeader);
+        String hash = tokenHash.hash(token);
+        UserSession session = sessionRepository.findByTokenHash(hash).orElse(null);
+        if (session == null) {
+            audit(null, null, "LOGOUT", "SESSION", "unknown", AccessAuditResult.FAILURE, "SESSION_NOT_FOUND");
+            return;
+        }
+        if (session.revokedAt() == null) {
+            sessionRepository.save(session.revoke(clock.now()));
+        }
+        audit(null, session.userId(), "LOGOUT", "SESSION", session.id().toString(), AccessAuditResult.SUCCESS, null);
     }
 
     @Override

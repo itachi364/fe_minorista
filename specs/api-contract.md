@@ -56,6 +56,7 @@ Nota productiva TASK-153/TASK-160:
 - El navegador no debe construir ni enviar `Authorization` en JavaScript. La autenticacion publica usa cookie opaca `HttpOnly` emitida por el BFF.
 - El BFF traduce la sesion publica a headers internos seguros hacia microservicios: `Authorization` de servicio cuando aplique, `X-User-Id`, `X-Company-Id`, `X-Correlation-Id` e `Idempotency-Key`.
 - Las mutaciones autenticadas por cookie requieren token CSRF en header aprobado, por ejemplo `X-CSRF-Token`.
+- Las mutaciones criticas de configuracion plataforma/empresa con sesion Cognito requieren evidencia MFA (`mfaAuthenticated=true`) en la sesion server-side del BFF. Ventas POS se mantienen operativas sin reto MFA por transaccion.
 
 ## Error estandar
 
@@ -148,10 +149,11 @@ Reglas:
 
 - Valida `state` y expiracion del intento de login.
 - Intercambia `code` por tokens en Cognito desde el BFF.
-- Crea sesion server-side con tokens cifrados.
+- Solicita a `identity-service` una sesion interna para el usuario local activo asociado al `sub` Cognito; si no existe vinculo, `identity-service` puede enlazarlo una unica vez contra un usuario activo previamente provisionado por correo.
+- Crea sesion server-side con tokens Cognito cifrados y token interno cifrado.
 - Emite cookie opaca `HttpOnly; Secure; SameSite=Lax|Strict`.
 - Redirige a la SPA sin incluir tokens en query string, fragment, storage ni response body.
-- Estado actual: el BFF implementa intercambio contra `/oauth2/token`, consulta `/oauth2/userInfo`, guarda la sesion cifrada en memoria y emite `NF_SESSION`. La persistencia distribuida para ECS multi tarea queda pendiente.
+- Estado actual: el BFF implementa intercambio contra `/oauth2/token`, consulta `/oauth2/userInfo`, emite sesion interna contra `identity-service`, guarda intentos OAuth/sesiones cifradas en `bff.secure_sessions` cuando `BFF_SESSION_STORE=jdbc` y emite `NF_SESSION`. La base guarda hash del identificador opaco, no el valor de cookie.
 
 `GET /api/v1/auth/session`:
 
@@ -181,7 +183,8 @@ Reglas:
 - No retorna `accessToken`, `refreshToken`, `idToken`, bearer token interno, cookie ni secretos.
 - `csrfToken` no es secreto de autenticacion; solo protege mutaciones contra CSRF.
 - El BFF puede renovar tokens server-side sin exponerlos al navegador.
-- Estado actual transitorio: mientras se completa el mapeo Cognito -> identidad interna, el endpoint retorna `authenticated`, `authMode`, `csrfToken`, `email`, `fullName`, `groups` y `expiresAt` cuando existe `NF_SESSION` valida.
+- Estado actual transitorio: el endpoint retorna `authenticated`, `authMode`, `csrfToken`, `userId`, `email`, `fullName`, `groups` y `expiresAt` cuando existe `NF_SESSION` valida. La SPA hidrata empresas/licencia mediante requests normales al BFF sin header `Authorization` en modo Cognito.
+- Tambien retorna `mfaAuthenticated` para que la UI pueda anticipar acciones criticas; la autorizacion efectiva sigue siendo server-side.
 
 `POST /api/v1/auth/logout`:
 
@@ -189,14 +192,59 @@ Reglas:
 
 - Requiere cookie de sesion y CSRF valido.
 - Revoca sesion server-side.
+- Invoca `identity-service` para revocar el token interno y auditar `LOGOUT`.
 - Limpia cookie con expiracion inmediata.
 - Revoca tokens Cognito cuando aplique.
 - Registra auditoria segura.
+
+`POST /api/v1/auth/logout` en `identity-service`:
+
+- Contrato interno/local para revocar la sesion interna emitida por `identity-service`.
+- Requiere `Authorization: Bearer <internal-token>`.
+- Responde `204 No Content` cuando procesa la solicitud de forma idempotente.
+- Revoca `identity.user_session.revoked_at` cuando existe.
+- Registra `LOGOUT` en `identity.identity_access_audit`.
+- Si el token no existe, registra intento fallido sin exponer el token.
 
 `POST /api/v1/auth/login`:
 
 - Se mantiene solo como contrato local/transitorio para desarrollo y E2E.
 - En produccion debe estar deshabilitado, no expuesto por API Gateway o responder `404/403` seguro.
+
+`POST /api/v1/internal/auth/cognito/session`:
+
+Contrato interno BFF -> `identity-service`; no debe exponerse como endpoint publico de la SPA.
+
+Request:
+
+```json
+{
+  "subject": "cognito-sub",
+  "email": "usuario@empresa.com",
+  "fullName": "Usuario Empresa",
+  "groups": ["COMPANY_ADMIN"]
+}
+```
+
+Response:
+
+```json
+{
+  "userId": "uuid",
+  "email": "usuario@empresa.com",
+  "fullName": "Usuario Empresa",
+  "tokenType": "Bearer",
+  "accessToken": "internal-opaque-token",
+  "expiresAt": "2026-08-24T19:00:00Z",
+  "globalRoles": []
+}
+```
+
+Reglas:
+
+- El BFF llama este contrato solo despues de validar `code` y `state` con Cognito.
+- El token interno se guarda cifrado en la sesion server-side del BFF y nunca se retorna a la SPA.
+- Estado actual: resolucion primaria por `cognitoSubject` persistente. El email solo se usa para el primer enlace contra usuarios activos previamente provisionados; no hay autocreacion durante login.
 ## tenant-service
 
 Responsabilidad: empresas, configuracion multiempresa y estado del tenant.
@@ -310,7 +358,7 @@ Roles y usuarios por empresa:
 
 Campos objetivo para vincular usuarios:
 
-- `cognitoSubject`: claim `sub` de Cognito.
+- `cognitoSubject`: claim `sub` de Cognito persistido como `identity.user_account.cognito_subject`.
 - `emailVerified`: estado derivado de Cognito.
 - `mfaRequired`: politica de negocio para ROOT/admin.
 - `lastLoginAt`: auditoria funcional.
@@ -1139,14 +1187,15 @@ Reglas:
 
 - No guardar secretos en payloads ni logs.
 - Todo error externo debe mapearse a `EXTERNAL_PROVIDER_ERROR` con detalle seguro.
-- La integracion real queda pendiente hasta implementar el conector DIAN real configurable por empresa.
+- La integracion real de envio queda pendiente hasta implementar el conector DIAN real configurable por empresa.
 - En desarrollo local se usa el microservicio mock sin llamadas externas y solo sirve para probar el flujo interno.
 - Variables locales del mock:
   - `DIAN_PROVIDER_MODE=mock`.
   - `DIAN_MOCK_DEFAULT_STATUS=ACCEPTED|REJECTED|FAILED`.
   - `DIAN_MOCK_ERROR_CODE`.
   - `DIAN_MOCK_ERROR_MESSAGE`.
-- En esta version, `DIAN_PROVIDER_MODE` solo acepta `mock`; un valor distinto debe fallar explicitamente hasta implementar el adaptador real.
+- El servicio cuenta con compuerta tecnica para modo real: verifica artefactos DIAN locales/configurados (`DIAN_TECHNICAL_ARTIFACTS_ROOT`, XSD UBL 2.1, Schematron DIAN, XSL compilado y lista de codigos) antes de aprobar una prueba de configuracion real.
+- El envio de documentos sigue cerrado a `mock` hasta implementar el adaptador real de generacion XML, firma, validacion y transporte; un intento de envio real no debe degradar silenciosamente a mock.
 - El request de configuracion DIAN no puede incluir secretos en claro; solo referencias seguras o datos no sensibles. Si una UI necesita cargar un certificado, debe enviarlo a un endpoint seguro que lo almacene en Secrets Manager/almacen equivalente y retorne referencia no sensible.
 - Las respuestas API nunca retornan certificado, PIN, claves, tokens ni credenciales; solo banderas `*Configured`, alias, huella, vencimiento y estado.
 - Activar modo real exige `responsibilityAccepted=true` para confirmar que la empresa entiende que opera su propia habilitacion/certificacion DIAN.

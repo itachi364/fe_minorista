@@ -28,6 +28,9 @@ public class UserAccountJpaEntity {
     @Column(name = "password_hash", nullable = false, length = 500)
     private String passwordHash;
 
+    @Column(name = "cognito_subject", length = 120)
+    private String cognitoSubject;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private UserStatus status;
@@ -49,6 +52,8 @@ public class UserAccountJpaEntity {
     public void setFullName(String fullName) { this.fullName = fullName; }
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+    public String getCognitoSubject() { return cognitoSubject; }
+    public void setCognitoSubject(String cognitoSubject) { this.cognitoSubject = cognitoSubject; }
     public UserStatus getStatus() { return status; }
     public void setStatus(UserStatus status) { this.status = status; }
     public Instant getCreatedAt() { return createdAt; }

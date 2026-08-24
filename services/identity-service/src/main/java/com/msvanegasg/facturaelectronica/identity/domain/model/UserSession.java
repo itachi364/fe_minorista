@@ -29,4 +29,8 @@ public record UserSession(
     public boolean isValidAt(Instant now) {
         return revokedAt == null && expiresAt.isAfter(now);
     }
+
+    public UserSession revoke(Instant now) {
+        return new UserSession(id, userId, tokenHash, expiresAt, createdAt, now);
+    }
 }

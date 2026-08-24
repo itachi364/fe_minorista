@@ -16,7 +16,7 @@ Este documento consolida decisiones de persistencia para los modulos nuevos y co
 ## Schemas
 
 - `tenant`: empresas y licencias.
-- `bff`: schema objetivo para sesiones web productivas, intentos OAuth temporales, CSRF y metadata de seguridad del BFF. No existe migracion Flyway activa todavia.
+- `bff`: sesiones web productivas e intentos OAuth temporales del BFF, cifrados y gobernados por Flyway.
 - `identity`: usuarios, roles, permisos y sesiones.
 - `catalog`: catalogos globales, configuracion por empresa, departamentos y municipios.
 - `thirdparty`: clientes/proveedores consolidados.
@@ -117,22 +117,29 @@ No permitido:
 
 ## Sesion Web Productiva
 
-Tablas objetivo cuando el BFF opere sesion server-side:
+Tabla implementada:
 
-- `bff.oauth_login_attempt`
-- `bff.web_session`
+- `bff.secure_sessions`
 
 Reglas:
 
-- `oauth_login_attempt` conserva `state`, `nonce`, `code_verifier_hash` o referencia cifrada temporal, expiracion e IP/user-agent normalizados. No guarda passwords.
-- `web_session` conserva un identificador opaco hasheado, usuario, expiracion, estado, claims minimos y tokens Cognito cifrados en reposo con KMS/envelope encryption o referencia segura equivalente.
+- `secure_sessions.session_type='OAUTH_ATTEMPT'` conserva `state`, `nonce` y `code_verifier` dentro de payload cifrado temporal. No guarda passwords.
+- `secure_sessions.session_type='USER_SESSION'` conserva usuario, claims minimos, expiracion, token interno y tokens Cognito dentro de payload cifrado.
+- `secure_sessions.id` guarda hash SHA-256 del identificador opaco entregado en cookie; la DB no guarda el valor de cookie en claro.
 - La cookie del navegador contiene solo el identificador opaco de sesion, no tokens.
 - CSRF se modela como token rotado asociado a sesion; no otorga autenticacion por si solo.
 - Las sesiones vencidas, revocadas o comprometidas deben invalidarse server-side.
 - Los tokens cifrados no deben aparecer en reportes, auditoria, errores ni logs.
 - En AWS productivo se puede reemplazar la persistencia PostgreSQL por un store administrado equivalente con TTL, siempre que mantenga cifrado, auditoria y aislamiento.
 
-Estado actual: `bff-service` no tiene migraciones Flyway ni persistencia propia. Estas tablas pertenecen al objetivo productivo de TASK-153 a TASK-160 y no deben asumirse disponibles hasta implementar esas tareas.
+Estado actual: `bff-service` tiene migracion `V001__create_bff_secure_sessions.sql` y usa `BFF_SESSION_STORE=jdbc` por defecto. `BFF_SESSION_STORE=memory` queda reservado para fallback local/test.
+
+### identity.user_account y Cognito
+
+- `identity.user_account.cognito_subject` guarda el claim `sub` de Cognito cuando el usuario productivo ya fue vinculado.
+- El campo es opcional para soportar root/local/E2E y usuarios provisionados antes del primer login Cognito.
+- Existe indice unico parcial sobre `cognito_subject` cuando no es nulo, evitando que dos usuarios locales apunten al mismo sujeto Cognito.
+- El primer login Cognito solo enlaza `sub` contra un usuario activo previamente creado por correo; no se crean usuarios automaticamente desde claims externos.
 
 ## Licenciamiento
 
@@ -181,7 +188,7 @@ Reglas:
 La prueba desde cero debe crear datos en las tablas activas de cada bounded context:
 
 - `tenant.company` y `tenant.company_license`.
-- `identity.user_account`, roles, permisos y membresias empresariales.
+- `identity.user_account`, `cognito_subject`, roles, permisos y membresias empresariales.
 - `catalog.catalog_definition`, `catalog.catalog_item`, `catalog.department`, `catalog.municipality`.
 - `thirdparty.third_party`.
 - `inventory.product`, `inventory.inventory_movement` y tablas de compra/entrada cuando existan.

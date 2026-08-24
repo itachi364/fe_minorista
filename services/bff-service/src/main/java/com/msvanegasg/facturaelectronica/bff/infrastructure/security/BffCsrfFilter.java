@@ -23,9 +23,11 @@ public class BffCsrfFilter extends OncePerRequestFilter {
     public static final String CSRF_HEADER = "X-CSRF-Token";
 
     private final BffAuthProperties properties;
+    private final BffSecurityAuditClient auditClient;
 
-    public BffCsrfFilter(BffAuthProperties properties) {
+    public BffCsrfFilter(BffAuthProperties properties, BffSecurityAuditClient auditClient) {
         this.properties = properties;
+        this.auditClient = auditClient;
     }
 
     @Override
@@ -38,6 +40,8 @@ public class BffCsrfFilter extends OncePerRequestFilter {
         String cookieToken = cookieValue(request, CSRF_COOKIE);
         String headerToken = request.getHeader(CSRF_HEADER);
         if (cookieToken == null || headerToken == null || !cookieToken.equals(headerToken)) {
+            auditClient.audit(request, null, "BFF_SECURITY", "CSRF_VALIDATION", "FAILURE",
+                    "csrf_validation_error");
             response.setStatus(HttpStatus.FORBIDDEN.value());
             response.setContentType("application/json");
             response.getWriter().write("{\"code\":\"CSRF_VALIDATION_ERROR\",\"message\":\"Token CSRF invalido.\"}");

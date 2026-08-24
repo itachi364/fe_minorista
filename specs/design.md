@@ -172,11 +172,12 @@ Flujo objetivo:
 2. El BFF genera `state`, `nonce` y PKCE `code_verifier`/`code_challenge`, conserva el verificador server-side temporalmente y devuelve/redirige a Cognito Hosted UI.
 3. El usuario ingresa credenciales y MFA en Cognito Hosted UI o proveedor de identidad aprobado.
 4. Cognito redirige al BFF en `/api/v1/auth/callback?code=&state=`.
-5. El BFF valida `state`, intercambia el codigo por tokens, cifra los tokens server-side y crea una sesion opaca.
-6. El BFF responde con cookie `HttpOnly`, `Secure`, `SameSite=Lax` o `Strict`, expiracion corta y token CSRF no sensible cuando aplique.
-7. La SPA consulta `GET /api/v1/auth/session` para conocer usuario, empresas, permisos resumidos, licencia y expiracion funcional sin recibir tokens.
-8. En cada request, el BFF resuelve la cookie opaca contra su sesion server-side, valida CSRF para mutaciones y propaga identidad interna hacia microservicios.
-9. Logout ejecuta `POST /api/v1/auth/logout`, invalida sesion server-side, limpia cookie y revoca tokens Cognito cuando aplique.
+5. El BFF valida `state`, intercambia el codigo por tokens y obtiene claims minimos de Cognito.
+6. El BFF solicita a `identity-service` una sesion interna para el usuario local activo asociado al `sub` Cognito persistente. Si el `sub` aun no esta vinculado, `identity-service` solo puede enlazarlo una vez contra un usuario activo previamente provisionado por correo; no se autocrean usuarios durante login.
+7. El BFF cifra tokens server-side, crea una sesion opaca y responde con cookie `HttpOnly`, `Secure`, `SameSite=Lax` o `Strict`, expiracion corta y token CSRF no sensible cuando aplique.
+8. La SPA consulta `GET /api/v1/auth/session` para conocer usuario, empresas, permisos resumidos, licencia y expiracion funcional sin recibir tokens.
+9. En cada request, el BFF resuelve la cookie opaca contra su sesion server-side, valida CSRF para mutaciones y propaga `Authorization` interno y `X-User-Id` hacia microservicios sin exponer tokens al navegador.
+10. Logout ejecuta `POST /api/v1/auth/logout`, invalida sesion server-side, limpia cookie y revoca tokens Cognito cuando aplique.
 
 Reglas:
 
@@ -297,7 +298,7 @@ Toda transicion fiscal debe registrar evento de trazabilidad con estado anterior
 - Para habilitar pruebas locales completas, el backend debe exponer endpoints REST y persistencia PostgreSQL para configurar emisor, configurar resoluciones, emitir POS electronico, enviar el documento a un conector DIAN mock y consultar el resultado.
 - El conector DIAN mock debe ser deterministico, no debe hacer llamadas externas y no debe requerir credenciales reales.
 - En modo local, el mock puede devolver respuestas simuladas `ACCEPTED` o `REJECTED` usando parametros de request o configuracion local segura.
-- El modo local se configura con `DIAN_PROVIDER_MODE=mock`. En esta version no existe adaptador real; cualquier valor distinto de `mock` debe fallar explicitamente para evitar una falsa integracion productiva.
+- El modo local se configura con `DIAN_PROVIDER_MODE=mock`. La configuracion real puede validar la presencia de artefactos tecnicos DIAN, pero el envio certificado real sigue fallando cerrado hasta implementar generacion XML, firma, validacion completa y transporte DIAN para evitar una falsa integracion productiva.
 - El resultado simulado se configura con `DIAN_MOCK_DEFAULT_STATUS`, usando `ACCEPTED` por defecto y permitiendo `REJECTED` o `FAILED` para pruebas negativas.
 - Los errores simulados pueden configurarse con `DIAN_MOCK_ERROR_CODE` y `DIAN_MOCK_ERROR_MESSAGE`; cuando no se definan, el mock debe usar mensajes seguros predeterminados sin secretos.
 - Una respuesta `ACCEPTED` del mock debe registrar tracking ID, CUFE/CUDE simulado, QR simulado y artefactos dummy para permitir validar el flujo de persistencia y consulta.
@@ -437,7 +438,7 @@ El modelo de datos vigente se documenta de forma detallada en `specs/database-de
   - `tenant.company`: empresa contratante, identificacion DIAN numerica, estado y datos administrativos.
   - `tenant.company_license`: licencia parametrizable por vigencia, modulos, limites de usuarios y documentos.
 - `identity-service`:
-  - `identity.user_account`: usuario autenticable local/transitorio y puente hacia Cognito productivo.
+  - `identity.user_account`: usuario autenticable local/transitorio y puente hacia Cognito productivo mediante `cognito_subject`.
   - `identity.company_role`, `identity.role_permission`, `identity.user_company`, `identity.user_company_role`: RBAC empresarial modular.
   - `identity.global_user_role`: rol global `ROOT`.
 - `catalog-service`:
@@ -557,7 +558,7 @@ TASK-058 conecta el licenciamiento por empresa como politica de aplicacion en lo
 - Library/tool: Amazon Cognito (`/websites/aws_amazon_cognito`).
 - Topic consulted: Hosted UI Authorization Code Grant with PKCE, callback state and token endpoint.
 - Relevant finding: Cognito Hosted UI uses `/oauth2/authorize` with `code_challenge` and exchanges `code` with `code_verifier` at `/oauth2/token`; callback returns `code` and `state`.
-- Decision impact: `bff-service` now has `AUTH_MODE=cognito`, `/api/v1/auth/login-url`, `/api/v1/auth/callback`, PKCE S256, encrypted server-side session storage and production fail-closed guard. Internal identity/permission bridging remains pending.
+- Decision impact: `bff-service` has `AUTH_MODE=cognito`, `/api/v1/auth/login-url`, `/api/v1/auth/callback`, PKCE S256, encrypted server-side session storage and production fail-closed guard; `identity-service` links Cognito `sub` persistently after prior user provisioning.
 
 - Library/tool: Spring Security reference 6.5 (`/websites/spring_io_spring-security_reference_6_5`).
 - Topic consulted: CSRF for SPA and security headers.
@@ -2262,7 +2263,7 @@ Esta seccion normaliza la documentacion SDD para que cada task tenga una decisio
 - Componentes/capas: billing-service, dian-provider-service, thirdparty-service.
 
 ### TASK-151 - Preparar flujo tecnico DIAN real segun caja de herramientas
-- Estado: Pendiente.
+- Estado: Completada como preparacion tecnica. `dian-provider-service` incorpora un puerto de artefactos tecnicos DIAN y un adaptador filesystem que valida XSD UBL 2.1, Schematron DIAN, XSL compilado y lista de codigos configurables antes de aprobar pruebas en modo real. El envio DIAN real completo queda fuera de esta tarea y debera implementarse con generacion XML, firma, CUFE/CUDE productivo, validacion y transporte certificado.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
 - Componentes/capas: billing-service, dian-provider-service.
@@ -2274,31 +2275,31 @@ Esta seccion normaliza la documentacion SDD para que cada task tenga una decisio
 - Componentes/capas: billing-service, dian-provider-service, tenant-service.
 
 ### TASK-153 - Disenar autenticacion productiva con Cognito Hosted UI y PKCE
-- Estado: En progreso. Implementado modulo Cognito Terraform, modo `AUTH_MODE=cognito`, fail-closed productivo, PKCE S256, callback/token exchange y sesion cifrada local; falta puente definitivo Cognito -> identidad/permisos internos.
+- Estado: Completada. Implementado modulo Cognito Terraform, modo `AUTH_MODE=cognito`, fail-closed productivo, PKCE S256, callback/token exchange, puente Cognito -> identidad interna por `sub` persistente con alta previa por email y sesion cifrada local.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: identity-service, bff-service, thirdparty-service.
 
 ### TASK-154 - Reemplazar tokens en SPA por sesion BFF con cookie segura
-- Estado: En progreso. Implementados endpoint de sesion, cookies base y logout; falta sesion server-side completa para retirar bearer del modo productivo.
+- Estado: Completada. Implementados endpoint de sesion, cookies base, hidratacion SPA por cookie, proxy con autorizacion interna server-side, logout y sanitizacion de `sessionStorage` para sesiones Cognito/cookie. El bearer queda limitado a modo local/E2E.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: identity-service, bff-service, facturaelectronica-web.
 
 ### TASK-155 - Crear almacenamiento server-side de sesion cifrada
-- Estado: Pendiente.
+- Estado: Completada. `bff-service` usa `BffSessionStore` como puerto interno, `JdbcBffSessionStore` por defecto con PostgreSQL/Flyway en schema `bff` para ECS multi tarea y `BffEncryptedSessionStore` en memoria solo como fallback explicito (`BFF_SESSION_STORE=memory`). La cookie mantiene un identificador opaco, la base persiste su hash SHA-256 y los payloads de intentos OAuth/sesiones se cifran con AES-GCM antes de guardar.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: identity-service, bff-service.
 
 ### TASK-156 - Implementar logout seguro y revocacion
-- Estado: En progreso. Logout limpia cookies BFF, CSRF y OAuth attempt; falta revocacion Cognito real.
+- Estado: Completada. Logout limpia cookies BFF, CSRF y OAuth attempt, invalida sesion BFF, invoca `identity-service` para revocar el token interno y registrar auditoria `LOGOUT`, y revoca `refresh_token` Cognito de forma best-effort cuando existe.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
-- Componentes/capas: SDD/documentacion.
+- Componentes/capas: identity-service, bff-service.
 
 ### TASK-157 - Hardening frontend contra exposicion de datos sensibles
-- Estado: En progreso. Build productivo sin sourcemaps y fetch con cookies/CSRF; falta eliminar tokens del flujo Cognito completo.
+- Estado: Completada. Build productivo sin sourcemaps, fetch con cookies/CSRF, snapshots Cognito/cookie sin tokens e hidratacion productiva sin `Authorization` construido en JavaScript. El token local queda acotado a desarrollo/E2E.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: billing-service, dian-provider-service, facturaelectronica-web, bff-service.
@@ -2316,7 +2317,7 @@ Esta seccion normaliza la documentacion SDD para que cada task tenga una decisio
 - Componentes/capas: identity-service, bff-service.
 
 ### TASK-160 - MFA obligatorio para ROOT, administradores y acciones criticas
-- Estado: En progreso. Cognito User Pool habilita software token MFA y grupos base; falta enforcement por grupos/acciones.
+- Estado: Completada. Cognito User Pool habilita software token MFA y grupos base; BFF deriva `mfaAuthenticated` desde el `id_token` Cognito y bloquea mutaciones criticas de plataforma/empresa cuando falta MFA, manteniendo ventas POS sin MFA adicional.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: identity-service, bff-service.
@@ -2328,7 +2329,7 @@ Esta seccion normaliza la documentacion SDD para que cada task tenga una decisio
 - Componentes/capas: tenant-service, infra/aws, docker-compose.
 
 ### TASK-162 - Auditoria de seguridad transversal
-- Estado: En progreso. Mutaciones BFF cuentan con auditoria best-effort; faltan eventos dedicados OAuth/CSRF/MFA.
+- Estado: Completada. Mutaciones BFF cuentan con auditoria best-effort; CSRF y MFA generan eventos `BFF_SECURITY` company-scoped cuando existe `X-Company-Id`; identity audita `COGNITO_LOGIN`, `LINK_COGNITO_SUBJECT` y `LOGOUT`.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: audit-service.
@@ -2386,6 +2387,11 @@ Esta seccion normaliza la documentacion SDD para que cada task tenga una decisio
 - Topic consulted: controlled forms and effects for browser synchronization.
 - Relevant finding: React recommends controlled state for forms and `useEffect` with cleanup when synchronizing components with external browser systems.
 - Decision impact: La SPA aplicara branding, favicon y estado de filtros de reportes desde estado controlado y efectos acotados.
+
+- Library/tool: Spring Boot (`/spring-projects/spring-boot`).
+- Topic consulted: type-safe external configuration properties for custom application settings.
+- Relevant finding: Spring Boot recomienda `@ConfigurationProperties` para agrupar configuracion externa tipada en lugar de dispersar `@Value`.
+- Decision impact: `bff.auth.session-store` queda como configuracion externa controlada (`jdbc` por defecto, `memory` fallback) y el BFF conserva propiedades tipadas para sesion/Cognito.
 
 - Library/tool: Spring Boot (`/spring-projects/spring-boot`).
 - Topic consulted: multipart file upload.

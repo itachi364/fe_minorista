@@ -34,6 +34,7 @@
 | username | varchar(80) | Si | Nombre de usuario. |
 | email | varchar(150) | Si | Correo unico. |
 | password_hash | varchar(255) | Si | Hash de contrasena, nunca texto plano. |
+| cognito_subject | varchar(120) | No | Claim `sub` de Cognito para autenticacion productiva; unico cuando existe. |
 | status | varchar(30) | Si | ACTIVE, INACTIVE, LOCKED. |
 
 ## identity.role
@@ -54,48 +55,24 @@
 | role_id | ref | Si | Rol dentro de la empresa. |
 | status | varchar(30) | Si | ACTIVE, INACTIVE. |
 
-## bff.oauth_login_attempt
+## bff.secure_sessions
 
-Estado: tabla objetivo pendiente de TASK-153 a TASK-160; todavia no existe en Flyway del `bff-service`.
-
-| Campo | Tipo | Requerido | Descripcion |
-|---|---:|---:|---|
-| id | uuid | Si | Identificador del intento OAuth. |
-| state_hash | varchar(160) | Si | Hash del `state` enviado a Cognito; no guardar state en claro si no es necesario. |
-| nonce_hash | varchar(160) | Si | Hash del `nonce`. |
-| code_verifier_secret_reference | varchar(300) | No | Referencia segura o valor cifrado server-side del PKCE code verifier temporal. |
-| redirect_uri | varchar(500) | Si | URI de callback validada. |
-| ip_address_hash | varchar(160) | No | Huella de IP para auditoria sin exponer dato completo cuando aplique. |
-| user_agent_hash | varchar(160) | No | Huella de user-agent para auditoria. |
-| expires_at | timestamptz | Si | Expiracion corta del intento. |
-| consumed_at | timestamptz | No | Fecha en la que se uso el codigo. |
-| created_at | timestamptz | Si | Fecha de creacion. |
-
-## bff.web_session
-
-Estado: tabla objetivo pendiente de TASK-153 a TASK-160; todavia no existe en Flyway del `bff-service`.
+Estado: implementada por `bff-service` en `V001__create_bff_secure_sessions.sql`.
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---:|---:|---|
-| id | uuid | Si | Identificador interno de sesion. |
-| session_token_hash | varchar(160) | Si | Hash del identificador opaco enviado en cookie. |
-| user_id | uuid | Si | Usuario autenticado en identidad local. |
-| cognito_subject | varchar(160) | No | Claim `sub` de Cognito. |
-| encrypted_access_token | text | No | Token cifrado server-side; nunca en claro. |
-| encrypted_refresh_token | text | No | Refresh token cifrado server-side; nunca en claro. |
-| encrypted_id_token | text | No | ID token cifrado server-side; nunca en claro. |
-| csrf_token_hash | varchar(160) | Si | Hash del token CSRF asociado a la sesion. |
-| mfa_verified | boolean | Si | Indica si la sesion cumplio MFA cuando aplica. |
-| status | varchar(30) | Si | ACTIVE, EXPIRED, REVOKED. |
+| id | varchar(128) | Si | Hash SHA-256 Base64URL del identificador opaco enviado en cookie; no es el valor de cookie en claro. |
+| session_type | varchar(32) | Si | `OAUTH_ATTEMPT` o `USER_SESSION`. |
+| nonce | bytea | Si | Nonce AES-GCM usado para descifrar el payload. |
+| encrypted_payload | bytea | Si | Payload cifrado server-side. Para `OAUTH_ATTEMPT` contiene state, nonce y code verifier temporal; para `USER_SESSION` contiene usuario, claims minimos, token interno y tokens Cognito. |
 | expires_at | timestamptz | Si | Expiracion de sesion. |
-| last_activity_at | timestamptz | Si | Ultima actividad validada. |
-| revoked_at | timestamptz | No | Fecha de revocacion. |
 | created_at | timestamptz | Si | Fecha de creacion. |
 
 Reglas:
 
-- Los campos `encrypted_*_token` deben cifrarse con KMS/envelope encryption o almacenarse como referencia a un secreto temporal administrado.
-- La SPA nunca recibe estos campos.
+- La SPA nunca recibe `encrypted_payload`, tokens Cognito, refresh tokens ni token interno.
+- La revocacion elimina la fila de `USER_SESSION`; el consumo de intento OAuth elimina la fila `OAUTH_ATTEMPT`.
+- Las sesiones vencidas se ignoran y se eliminan en lectura.
 - Auditoria y logs solo pueden registrar `id`, `user_id`, `status`, fechas y correlation ID, nunca token/cookie/CSRF en claro.
 
 ## catalog.catalog_definition

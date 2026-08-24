@@ -176,6 +176,33 @@ export default function App() {
   }, [session, companyAccesses, activeCompanyId, rootCompanies, license, lastActivityAt]);
 
   useEffect(() => {
+    const authCallbackSuccess = new URLSearchParams(window.location.search).get('auth') === 'success';
+    if (session || (import.meta.env.MODE === 'test' && !authCallbackSuccess)) {
+      return undefined;
+    }
+    let ignore = false;
+    requestJson('/api/v1/auth/session')
+      .then(async (authSession) => {
+        if (ignore || !authSession?.authenticated) {
+          return;
+        }
+        await completeAuthenticatedLogin({
+          userId: authSession.userId,
+          email: authSession.email,
+          fullName: authSession.fullName,
+          expiresAt: authSession.expiresAt,
+          globalRoles: authSession.groups || [],
+          authMode: authSession.authMode || 'cognito',
+          cookieSession: true,
+        }, '');
+      })
+      .catch(() => undefined);
+    return () => {
+      ignore = true;
+    };
+  }, [session]);
+
+  useEffect(() => {
     if (!session || import.meta.env.MODE === 'test') {
       return undefined;
     }
@@ -396,11 +423,15 @@ export default function App() {
   }
 
   async function login() {
-    const loginResult = await requestJson('/api/v1/auth/login', {
+    const rawLoginResult = await requestJson('/api/v1/auth/login', {
       method: 'POST',
       body: loginForm,
     });
-    const tokenValue = loginResult.accessToken;
+    const loginResult = { ...rawLoginResult, authMode: rawLoginResult.authMode || 'local' };
+    return completeAuthenticatedLogin(loginResult, loginResult.accessToken || '');
+  }
+
+  async function completeAuthenticatedLogin(loginResult, tokenValue) {
     if (loginResult.globalRoles?.includes('ROOT')) {
       const companies = await loadRootCompanies(tokenValue);
       const firstCompany = companies[0] || null;
@@ -541,8 +572,10 @@ export default function App() {
   }
 
   function logout() {
+    const tokenToRevoke = token;
     clearSession();
     setLicenseModal(null);
+    requestJson('/api/v1/auth/logout', { method: 'POST', token: tokenToRevoke }).catch(() => undefined);
   }
 
   function requireCompany() {

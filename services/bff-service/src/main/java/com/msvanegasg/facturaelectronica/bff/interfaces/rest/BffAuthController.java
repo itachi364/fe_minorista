@@ -12,6 +12,8 @@ import java.util.Base64;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
@@ -27,13 +29,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.msvanegasg.facturaelectronica.bff.infrastructure.config.BffProperties;
 import com.msvanegasg.facturaelectronica.bff.infrastructure.config.BffAuthProperties;
-import com.msvanegasg.facturaelectronica.bff.infrastructure.security.BffEncryptedSessionStore;
 import com.msvanegasg.facturaelectronica.bff.infrastructure.security.BffCsrfFilter;
+import com.msvanegasg.facturaelectronica.bff.infrastructure.security.BffSessionStore;
 import com.msvanegasg.facturaelectronica.bff.infrastructure.security.BffUserSession;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -46,15 +52,24 @@ public class BffAuthController {
     public static final String OAUTH_ATTEMPT_COOKIE = "NF_OAUTH_ATTEMPT";
 
     private final BffAuthProperties properties;
-    private final BffEncryptedSessionStore sessionStore;
+    private final BffProperties serviceProperties;
+    private final BffSessionStore sessionStore;
     private final RestClient.Builder restClientBuilder;
+    private final ObjectMapper objectMapper;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public BffAuthController(BffAuthProperties properties, BffEncryptedSessionStore sessionStore,
+    public BffAuthController(BffAuthProperties properties, BffProperties serviceProperties, BffSessionStore sessionStore,
             RestClient.Builder restClientBuilder) {
+        this(properties, serviceProperties, sessionStore, restClientBuilder, new ObjectMapper().findAndRegisterModules());
+    }
+
+    BffAuthController(BffAuthProperties properties, BffProperties serviceProperties, BffSessionStore sessionStore,
+            RestClient.Builder restClientBuilder, ObjectMapper objectMapper) {
         this.properties = properties;
+        this.serviceProperties = serviceProperties;
         this.sessionStore = sessionStore;
         this.restClientBuilder = restClientBuilder;
+        this.objectMapper = objectMapper;
     }
 
     @GetMapping("/session")
@@ -67,8 +82,10 @@ public class BffAuthController {
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, csrfCookie(csrf).toString())
                     .body(Map.of("authenticated", true, "authMode", properties.resolvedMode(), "csrfToken", csrf,
-                            "email", valueOrEmpty(userSession.email()), "fullName", valueOrEmpty(userSession.fullName()),
-                            "groups", userSession.groups(), "expiresAt", userSession.expiresAt().toString()));
+                            "userId", userSession.userId().toString(), "email", valueOrEmpty(userSession.email()),
+                            "fullName", valueOrEmpty(userSession.fullName()),
+                            "groups", userSession.groups(), "expiresAt", userSession.expiresAt().toString(),
+                            "mfaAuthenticated", userSession.mfaAuthenticated()));
         }
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, csrfCookie(csrf).toString())
@@ -110,22 +127,66 @@ public class BffAuthController {
         }
         CognitoTokenResponse tokens = exchangeCode(code, attempt.get().codeVerifier());
         CognitoUserInfo userInfo = loadUserInfo(tokens.accessToken());
-        Instant expiresAt = Instant.now().plusSeconds(Math.max(60, tokens.expiresIn()));
-        String sessionId = sessionStore.createSession(new BffUserSession(userInfo.subject(), userInfo.email(),
-                userInfo.name(), userInfo.groups(), tokens.accessToken(), tokens.idToken(), tokens.refreshToken(),
-                expiresAt, Instant.now()));
+        InternalLoginResponse internalSession = issueInternalSession(userInfo);
+        Instant expiresAt = min(Instant.now().plusSeconds(Math.max(60, tokens.expiresIn())),
+                internalSession.expiresAt());
+        String sessionId = sessionStore.createSession(new BffUserSession(internalSession.userId(), userInfo.subject(),
+                internalSession.email(), internalSession.fullName(), stringRoles(internalSession.globalRoles()),
+                internalSession.accessToken(), tokens.idToken(), tokens.refreshToken(), expiresAt, Instant.now(),
+                mfaAuthenticated(tokens.idToken())));
         return redirect(frontendRedirect("auth", "success"), sessionCookie(sessionId, expiresAt),
                 expiredCookie(OAUTH_ATTEMPT_COOKIE));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(HttpServletRequest request) {
-        sessionStore.revokeSession(cookieValue(request, SESSION_COOKIE));
+        String sessionId = cookieValue(request, SESSION_COOKIE);
+        sessionStore.findSession(sessionId).ifPresent(session -> {
+            revokeIdentitySession(session);
+            revokeCognitoRefreshToken(session);
+        });
+        sessionStore.revokeSession(sessionId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, expiredCookie(SESSION_COOKIE).toString())
                 .header(HttpHeaders.SET_COOKIE, expiredCookie(OAUTH_ATTEMPT_COOKIE).toString())
                 .header(HttpHeaders.SET_COOKIE, expiredCookie(BffCsrfFilter.CSRF_COOKIE).toString())
                 .body(Map.of("status", "LOGGED_OUT"));
+    }
+
+    private void revokeIdentitySession(BffUserSession session) {
+        if (session.accessToken() == null || session.accessToken().isBlank()) {
+            return;
+        }
+        try {
+            identityClient()
+                    .post()
+                    .uri("/api/v1/auth/logout")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + session.accessToken())
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException exception) {
+            // La sesion BFF se invalida de todas formas; identity queda trazable por logs.
+        }
+    }
+
+    private void revokeCognitoRefreshToken(BffUserSession session) {
+        if (!properties.isCognitoMode() || session.refreshToken() == null || session.refreshToken().isBlank()) {
+            return;
+        }
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("token", session.refreshToken());
+        form.add("client_id", properties.cognitoClientId());
+        try {
+            cognitoClient()
+                    .post()
+                    .uri("/oauth2/revoke")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(form)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException exception) {
+            // The local BFF session is still revoked; upstream revocation will be traceable in service logs.
+        }
     }
 
     private CognitoTokenResponse exchangeCode(String code, String codeVerifier) {
@@ -161,8 +222,26 @@ public class BffAuthController {
         return response;
     }
 
+    private InternalLoginResponse issueInternalSession(CognitoUserInfo userInfo) {
+        InternalLoginResponse response = identityClient()
+                .post()
+                .uri("/api/v1/internal/auth/cognito/session")
+                .body(new CognitoSessionRequest(userInfo.subject(), userInfo.email(), userInfo.name(), userInfo.groups()))
+                .retrieve()
+                .body(InternalLoginResponse.class);
+        if (response == null || response.userId() == null || response.accessToken() == null
+                || response.accessToken().isBlank()) {
+            throw new IllegalStateException("Identity service did not issue an internal session.");
+        }
+        return response;
+    }
+
     private RestClient cognitoClient() {
         return restClientBuilder.clone().baseUrl(properties.cognitoBaseUrl()).build();
+    }
+
+    private RestClient identityClient() {
+        return restClientBuilder.clone().baseUrl(serviceProperties.identityUrl()).build();
     }
 
     private ResponseCookie csrfCookie(String value) {
@@ -250,11 +329,58 @@ public class BffAuthController {
         return value == null ? "" : value;
     }
 
+    private static Instant min(Instant first, Instant second) {
+        if (second == null) {
+            return first;
+        }
+        return first.isBefore(second) ? first : second;
+    }
+
+    private static Set<String> stringRoles(Set<String> roles) {
+        return roles == null ? Set.of() : roles.stream()
+                .filter(role -> role != null && !role.isBlank())
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    private boolean mfaAuthenticated(String idToken) {
+        if (idToken == null || idToken.isBlank()) {
+            return false;
+        }
+        String[] parts = idToken.split("\\.");
+        if (parts.length < 2) {
+            return false;
+        }
+        try {
+            byte[] payload = Base64.getUrlDecoder().decode(parts[1]);
+            JsonNode root = objectMapper.readTree(payload);
+            JsonNode amr = root.path("amr");
+            if (amr.isArray()) {
+                for (JsonNode value : amr) {
+                    String method = value.asText("");
+                    if ("mfa".equalsIgnoreCase(method) || method.toLowerCase(java.util.Locale.ROOT).contains("mfa")) {
+                        return true;
+                    }
+                }
+            }
+            String preferred = root.path("cognito:preferred_mfa_setting").asText("");
+            return !preferred.isBlank();
+        } catch (IllegalArgumentException | java.io.IOException exception) {
+            return false;
+        }
+    }
+
     private record CognitoTokenResponse(
             @JsonProperty("access_token") String accessToken,
             @JsonProperty("id_token") String idToken,
             @JsonProperty("refresh_token") String refreshToken,
             @JsonProperty("expires_in") long expiresIn) {
+    }
+
+    private record CognitoSessionRequest(String subject, String email, String fullName, Set<String> groups) {
+    }
+
+    private record InternalLoginResponse(UUID userId, String email, String fullName, String tokenType,
+            String accessToken, Instant expiresAt, Set<String> globalRoles) {
     }
 
     private record CognitoUserInfo(

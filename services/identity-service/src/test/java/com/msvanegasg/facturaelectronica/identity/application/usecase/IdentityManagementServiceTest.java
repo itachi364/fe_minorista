@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 
 import com.msvanegasg.facturaelectronica.identity.application.dto.AssignCompanyRolesCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.AssignRolesCommand;
+import com.msvanegasg.facturaelectronica.identity.application.dto.CognitoSessionCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CreateCompanyRoleCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.CreateUserCommand;
 import com.msvanegasg.facturaelectronica.identity.application.dto.LicensePolicy;
@@ -97,6 +98,63 @@ class IdentityManagementServiceTest {
         assertThat(result.expiresAt()).isEqualTo(NOW.plus(Duration.ofHours(12)));
         assertThat(sessions.byHash).containsKey("hash-plain-token");
         assertThat(audit.events).extracting(AccessAuditEvent::action).contains("LOGIN");
+    }
+
+    @Test
+    void logoutRevokesInternalSessionAndAuditsEvent() {
+        service.createUser(new CreateUserCommand("owner@example.com", "Owner User", "secret123"));
+        service.login(new LoginCommand("owner@example.com", "secret123"));
+
+        service.logout("Bearer plain-token");
+
+        assertThat(sessions.byHash.get("hash-plain-token").revokedAt()).isEqualTo(NOW);
+        assertThat(audit.events).extracting(AccessAuditEvent::action).contains("LOGOUT");
+    }
+
+    @Test
+    void logoutIsIdempotentWhenSessionDoesNotExist() {
+        service.logout("Bearer missing-token");
+
+        assertThat(audit.events).extracting(AccessAuditEvent::action).contains("LOGOUT");
+    }
+
+    @Test
+    void cognitoSessionIssuesInternalTokenForKnownActiveUser() {
+        var user = service.createUser(new CreateUserCommand("owner@example.com", "Owner User", "secret123"));
+
+        var result = service.issueCognitoSession(new CognitoSessionCommand("cognito-subject",
+                "OWNER@EXAMPLE.COM", "Owner User", Set.of("COMPANY_ADMIN")));
+
+        assertThat(result.userId()).isEqualTo(user.id());
+        assertThat(users.byId.get(user.id()).cognitoSubject()).isEqualTo("cognito-subject");
+        assertThat(result.accessToken()).isEqualTo("plain-token");
+        assertThat(result.expiresAt()).isEqualTo(NOW.plus(Duration.ofHours(12)));
+        assertThat(sessions.byHash).containsKey("hash-plain-token");
+        assertThat(audit.events).extracting(AccessAuditEvent::action)
+                .contains("LINK_COGNITO_SUBJECT", "COGNITO_LOGIN");
+    }
+
+    @Test
+    void cognitoSessionUsesPersistedSubjectWhenEmailChanges() {
+        service.createUser(new CreateUserCommand("owner@example.com", "Owner User", "secret123"));
+        var firstLogin = service.issueCognitoSession(new CognitoSessionCommand("cognito-subject",
+                "owner@example.com", "Owner User", Set.of()));
+
+        var secondLogin = service.issueCognitoSession(new CognitoSessionCommand("cognito-subject",
+                "new.owner@example.com", "Owner Changed", Set.of()));
+
+        assertThat(secondLogin.userId()).isEqualTo(firstLogin.userId());
+        assertThat(secondLogin.email()).isEqualTo("owner@example.com");
+        assertThat(audit.events).extracting(AccessAuditEvent::action)
+                .containsOnlyOnce("LINK_COGNITO_SUBJECT");
+    }
+
+    @Test
+    void cognitoSessionFailsForUnknownUser() {
+        assertThatThrownBy(() -> service.issueCognitoSession(new CognitoSessionCommand("cognito-subject",
+                "missing@example.com", "Missing User", Set.of())))
+                .isInstanceOf(AuthenticationFailedException.class);
+        assertThat(audit.events).extracting(AccessAuditEvent::action).contains("COGNITO_LOGIN");
     }
 
     @Test
@@ -271,12 +329,16 @@ class IdentityManagementServiceTest {
     private static final class InMemoryUsers implements UserAccountRepositoryPort {
         private final Map<UUID, UserAccount> byId = new HashMap<>();
         private final Map<String, UserAccount> byEmail = new HashMap<>();
+        private final Map<String, UserAccount> bySubject = new HashMap<>();
         private long companyUserCount;
 
         @Override
         public UserAccount save(UserAccount user) {
             byId.put(user.id(), user);
             byEmail.put(user.email(), user);
+            if (user.cognitoSubject() != null) {
+                bySubject.put(user.cognitoSubject(), user);
+            }
             return user;
         }
 
@@ -284,6 +346,10 @@ class IdentityManagementServiceTest {
         public Optional<UserAccount> findById(UUID id) { return Optional.ofNullable(byId.get(id)); }
         @Override
         public Optional<UserAccount> findByEmail(String email) { return Optional.ofNullable(byEmail.get(email)); }
+        @Override
+        public Optional<UserAccount> findByCognitoSubject(String cognitoSubject) {
+            return Optional.ofNullable(bySubject.get(cognitoSubject));
+        }
         @Override
         public List<UserAccount> findByCompanyIdAndEmailContaining(UUID companyId, String email) {
             String normalizedEmail = email == null ? "" : email.toLowerCase();

@@ -44,14 +44,18 @@ class IdentityPersistenceAdapterTest {
     void savesAndFindsUserAccount() {
         when(userRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(userEntity()));
+        when(userRepository.findByCognitoSubject("cognito-subject")).thenReturn(Optional.of(userEntity()));
         UserAccountPersistenceAdapter adapter = new UserAccountPersistenceAdapter(userRepository);
 
         UserAccount saved = adapter.save(user());
         Optional<UserAccount> found = adapter.findByEmail("owner@example.com");
+        Optional<UserAccount> foundBySubject = adapter.findByCognitoSubject("cognito-subject");
 
         assertThat(saved.id()).isEqualTo(USER_ID);
         assertThat(found).isPresent();
         assertThat(found.get().email()).isEqualTo("owner@example.com");
+        assertThat(foundBySubject).isPresent();
+        assertThat(foundBySubject.get().cognitoSubject()).isEqualTo("cognito-subject");
     }
 
     @Test
@@ -95,7 +99,8 @@ class IdentityPersistenceAdapterTest {
     }
 
     private static UserAccount user() {
-        return new UserAccount(USER_ID, "owner@example.com", "Owner User", "hashed", UserStatus.ACTIVE, NOW, NOW);
+        return new UserAccount(USER_ID, "owner@example.com", "Owner User", "hashed", "cognito-subject",
+                UserStatus.ACTIVE, NOW, NOW);
     }
 
     private static UserAccountJpaEntity userEntity() {
@@ -104,6 +109,7 @@ class IdentityPersistenceAdapterTest {
         entity.setEmail("owner@example.com");
         entity.setFullName("Owner User");
         entity.setPasswordHash("hashed");
+        entity.setCognitoSubject("cognito-subject");
         entity.setStatus(UserStatus.ACTIVE);
         entity.setCreatedAt(NOW);
         entity.setUpdatedAt(NOW);

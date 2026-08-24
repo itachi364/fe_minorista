@@ -9,5 +9,12 @@ public record DianProviderProperties(
         String mode,
         ProviderSubmissionStatus mockDefaultStatus,
         String mockErrorCode,
-        String mockErrorMessage) {
+        String mockErrorMessage,
+        String technicalArtifactsRoot,
+        String ublInvoiceXsdPath,
+        String ublCreditNoteXsdPath,
+        String ublDebitNoteXsdPath,
+        String dianModelSchematronPath,
+        String dianCompiledXslPath,
+        String codeListSchematronPath) {
 }

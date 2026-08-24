@@ -22,6 +22,7 @@ import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CompanyAcc
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CompanyRoleAssignmentsRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CompanyRoleRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CompanyRoleResponse;
+import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CognitoSessionRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.CreateUserRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.LoginRequest;
 import com.msvanegasg.facturaelectronica.identity.interfaces.rest.dto.LoginResponse;
@@ -54,6 +55,18 @@ public class IdentityController {
     @PostMapping("/auth/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         return IdentityRestMapper.toResponse(manageIdentityUseCase.login(IdentityRestMapper.toCommand(request)));
+    }
+
+    @PostMapping("/auth/logout")
+    public ResponseEntity<Void> logout(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
+        manageIdentityUseCase.logout(authorizationHeader);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/internal/auth/cognito/session")
+    public LoginResponse issueCognitoSession(@Valid @RequestBody CognitoSessionRequest request) {
+        return IdentityRestMapper.toResponse(
+                manageIdentityUseCase.issueCognitoSession(IdentityRestMapper.toCommand(request)));
     }
 
     @GetMapping("/me")

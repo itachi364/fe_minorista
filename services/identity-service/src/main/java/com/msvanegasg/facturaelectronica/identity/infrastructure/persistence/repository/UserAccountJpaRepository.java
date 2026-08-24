@@ -14,6 +14,8 @@ public interface UserAccountJpaRepository extends JpaRepository<UserAccountJpaEn
 
     Optional<UserAccountJpaEntity> findByEmail(String email);
 
+    Optional<UserAccountJpaEntity> findByCognitoSubject(String cognitoSubject);
+
     boolean existsByEmail(String email);
 
     boolean existsByEmailAndIdNot(String email, UUID id);

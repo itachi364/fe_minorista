@@ -36,6 +36,11 @@ public class UserAccountPersistenceAdapter implements UserAccountRepositoryPort 
     }
 
     @Override
+    public Optional<UserAccount> findByCognitoSubject(String cognitoSubject) {
+        return repository.findByCognitoSubject(cognitoSubject).map(UserAccountPersistenceAdapter::toDomain);
+    }
+
+    @Override
     public boolean existsByEmail(String email) {
         return repository.existsByEmail(email);
     }
@@ -67,6 +72,7 @@ public class UserAccountPersistenceAdapter implements UserAccountRepositoryPort 
         entity.setEmail(user.email());
         entity.setFullName(user.fullName());
         entity.setPasswordHash(user.passwordHash());
+        entity.setCognitoSubject(user.cognitoSubject());
         entity.setStatus(user.status());
         entity.setCreatedAt(user.createdAt());
         entity.setUpdatedAt(user.updatedAt());
@@ -75,6 +81,6 @@ public class UserAccountPersistenceAdapter implements UserAccountRepositoryPort 
 
     private static UserAccount toDomain(UserAccountJpaEntity entity) {
         return new UserAccount(entity.getId(), entity.getEmail(), entity.getFullName(), entity.getPasswordHash(),
-                entity.getStatus(), entity.getCreatedAt(), entity.getUpdatedAt());
+                entity.getCognitoSubject(), entity.getStatus(), entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }
