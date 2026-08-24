@@ -67,7 +67,7 @@ Target productivo aprobado:
 - Secretos y certificados en AWS Secrets Manager o Parameter Store, nunca en imagenes ni repositorio.
 - Assets empresariales, exportaciones de reportes y artefactos POS en S3 privado con KMS, metadata en PostgreSQL y acceso controlado por BFF/CloudFront.
 
-Estado de materializacion: `reporting-service` existe como artefacto fisico desde TASK-174. Orquesta catalogo, opciones y consultas de reportes avanzados sobre servicios duenos de datos; las proyecciones asincronas reconstruibles siguen correspondiendo a `reporting-projection-lambda` cuando el flujo event-driven se materialice.
+Estado de materializacion: `reporting-service` existe como artefacto fisico desde TASK-185. Orquesta catalogo, opciones y consultas de reportes avanzados sobre servicios duenos de datos; las proyecciones asincronas reconstruibles siguen correspondiendo a `reporting-projection-lambda` cuando el flujo event-driven se materialice.
 
 ## Marca NexoFiscal, branding y documentos
 
@@ -160,6 +160,9 @@ Usar ECS Fargate para servicios HTTP de larga vida que deben mantener healthchec
 - `inventory-service`
 - `billing-service`
 - `dian-provider-service`
+  - Mantiene el mock local y evoluciona como conector real DIAN parametrizable por empresa.
+  - No se crea un microservicio nuevo para DIAN real; se agregan puertos/adaptadores internos para XML UBL, CUFE/CUDE, QR, firma, validacion tecnica, transporte, respuestas y artefactos.
+  - Cada empresa usa su propia configuracion, certificado y secretos. La plataforma no opera como proveedor tecnologico DIAN.
 - `accounting-service`
 - `audit-service`
 - `reporting-service` cuando se materialice como servicio fisico
@@ -228,5 +231,6 @@ Reglas de migracion:
 
 - Microservicios prematuros pueden aumentar complejidad operacional.
 - La conexion DIAN real depende de configuracion, habilitacion/certificacion y certificados de cada empresa cliente.
+- Fase 20 cierra el backlog DIAN real en `TASK-145` a `TASK-163`; reportes asincronos avanzados no se ejecutan antes de ese cierre.
 - La normatividad cambia y requiere mantenimiento continuo.
 - El modelo contable debe ser validado por contador.

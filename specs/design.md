@@ -13,13 +13,13 @@ Estado implementado y desplegable localmente:
 - Microservicios Spring Boot: `bff-service`, `tenant-service`, `identity-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `audit-service`, `payroll-service` y `reporting-service`.
 - Lambdas Java implementadas como artefactos Maven: `audit-event-writer-lambda`, `inventory-sale-effect-lambda`, `accounting-sale-entry-lambda`, `provider-submission-retry-lambda` y `reporting-projection-lambda`.
 - Autenticacion local/transitoria: `POST /api/v1/auth/login` con token opaco Bearer, limitada a desarrollo/E2E.
-- DIAN local/transitorio: `dian-provider-service` en modo mock.
+- DIAN local/transitorio: `dian-provider-service` conserva modo mock para E2E local y agrega pipeline real configurable por empresa en modo `stub/http`.
 - Reportes actuales: `reporting-service` orquesta catalogo/opciones/query de reportes avanzados y consume endpoints de servicios duenos; las proyecciones asincronas siguen en `reporting-projection-lambda`.
 
 Objetivo pendiente:
 
-- Cognito Hosted UI + PKCE, sesiones BFF server-side, cookies `HttpOnly`, CSRF, MFA y bloqueo productivo del login dummy: TASK-153 a TASK-163.
-- Configuracion DIAN real por empresa, secretos/certificados en gestor seguro, prueba de conexion y flujo tecnico basado en anexos DIAN: TASK-145 a TASK-152.
+- Cognito Hosted UI + PKCE, sesiones BFF server-side, cookies `HttpOnly`, CSRF, MFA y bloqueo productivo del login dummy: TASK-164 a TASK-174.
+- Produccion DIAN certificada por empresa con certificado real, URLs oficiales y fixtures de habilitacion aprobados; la base funcional configurable de Fase 20 `TASK-145` a `TASK-163` ya esta implementada.
 - OpenAPI versionado por servicio/BFF como artefacto controlado; Springdoc solo habilita documentacion runtime.
 
 ## Microservicios implementados y objetivo
@@ -31,7 +31,7 @@ Objetivo pendiente:
 - `catalog-service`: paises, impuestos, metodos de pago, parametros fiscales y catalogos DIAN.
 - `inventory-service`: productos, categorias, stock, kardex y movimientos.
 - `billing-service`: factura electronica, POS electronico, notas, resoluciones, numeracion, CUFE/CUDE, estados fiscales.
-- `dian-provider-service`: conector DIAN interno, mock local y futura conexion configurable por empresa; no representa una oferta de proveedor tecnologico DIAN de la plataforma.
+- `dian-provider-service`: conector DIAN interno, mock local y conexion real configurable por empresa; no representa una oferta de proveedor tecnologico DIAN de la plataforma.
 - `accounting-service`: plan de cuentas, comprobantes, asientos, libro diario y libro mayor.
 - `audit-service`: auditoria fiscal, tecnica y consultas de logs.
 - `payroll-service`: trabajadores, pagos diarios verbales y nomina electronica mock opcional.
@@ -120,6 +120,44 @@ Estado TASK-036:
 - Toda carga, actualizacion, prueba, activacion, inactivacion y uso de configuracion DIAN registra auditoria segura sin exponer secretos ni payloads completos.
 - El modo real debe bloquear emision cuando la configuracion este incompleta, vencida, inactiva, no probada o no habilitada.
 - La integracion productiva final debe validar XML UBL, firma, CUFE/CUDE, QR, AttachedDocument, ApplicationResponse y reglas XSD/Schematron vigentes antes de salir a produccion.
+
+### Diseno de cierre DIAN real
+
+El `dian-provider-service` evoluciona como el mismo microservicio tecnico, no como un servicio nuevo. Para mantener Clean Architecture y SOLID, el caso de uso de envio real depende de puertos pequenos y reemplazables:
+
+- `FiscalDocumentXmlBuilderPort`: construye XML UBL 2.1 desde snapshots fiscales canonicos.
+- `DianIdentifierCalculationPort`: calcula CUFE/CUDE y contenido QR.
+- `DianSignaturePort`: firma XML con certificado empresarial resuelto desde secretos.
+- `DianTechnicalValidationPort`: valida XSD, Schematron y listas de codigos.
+- `DianTransportPort`: transmite a DIAN en habilitacion o produccion segun configuracion empresarial.
+- `DianResponseMapperPort`: normaliza `ApplicationResponse`, rechazos, tracking y errores.
+- `FiscalArtifactStoragePort`: almacena XML firmado, ZIP/AttachedDocument, QR, representacion grafica y respuesta DIAN.
+
+Flujo objetivo:
+
+1. `billing-service` confirma venta/documento y envia un snapshot fiscal canonico con `companyId`, `documentId`, tipo documental e `Idempotency-Key`.
+2. `dian-provider-service` resuelve configuracion activa de la empresa y valida ambiente, certificado, secretos, resolucion y estado de pruebas.
+3. Se construye XML UBL 2.1 para factura electronica, documento equivalente electronico POS o notas fiscales.
+4. Se calcula CUFE/CUDE y QR segun el anexo vigente y la configuracion tecnica de la empresa.
+5. Se firma el XML con certificado empresarial sin exponer PIN, certificado ni claves.
+6. Se ejecuta validacion tecnica local XSD/Schematron/listas de codigos; si falla, no hay transporte.
+7. Se transmite a DIAN usando el endpoint de habilitacion o produccion de la empresa.
+8. Se normaliza y persiste respuesta DIAN, `ApplicationResponse`, tracking y estado final/reintentable.
+9. Se almacenan artefactos fiscales privados con hash y metadata.
+10. `billing-service` actualiza el estado del documento sin duplicar efectos de inventario ni contabilidad.
+
+Reglas de seguridad:
+
+- El modo real nunca hace fallback a mock.
+- Los payloads completos DIAN no se imprimen en logs ni auditoria.
+- Los artefactos fiscales se consultan por BFF/RBAC; el navegador no recibe rutas internas de storage.
+- La vigencia normativa debe verificarse nuevamente antes de activar produccion real para una empresa.
+
+Fuentes oficiales consultadas el 2026-08-24:
+
+- DIAN Documentacion Tecnica: anexos tecnicos, OASIS UBL 2.1 y caja de herramientas.
+- DIAN Resolucion 000165 de 2023: sistema de facturacion, anexo tecnico de factura electronica de venta y documento equivalente electronico.
+- DIAN Resolucion 000202 de 2025: modificaciones sobre factura electronica/documento equivalente, transmision/validacion y consumidor final.
 
 ### inventory-service
 
@@ -757,7 +795,7 @@ La SPA deja de capturar manualmente `Authorization` y `X-Company-Id`. El flujo d
 
 Los formularios operativos son React controlled inputs. Cada campo que antes existia en el JSON editable queda representado por un input, select, checkbox o linea editable. El payload JSON se construye al enviar el formulario; la UI puede mostrar la respuesta del backend, pero el usuario no edita JSON crudo.
 
-Estado objetivo productivo: TASK-153 a TASK-160 reemplazan este flujo local por Cognito Hosted UI + PKCE y sesion server-side en BFF con cookie segura. El contrato local con bearer token queda limitado a desarrollo/E2E y no debe exponerse al publico.
+Estado objetivo productivo: TASK-164 a TASK-171 reemplazan este flujo local por Cognito Hosted UI + PKCE y sesion server-side en BFF con cookie segura. El contrato local con bearer token queda limitado a desarrollo/E2E y no debe exponerse al publico.
 
 Context7 evidence:
 
@@ -1152,7 +1190,7 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 - El frontend oculta modulos segun permisos efectivos, pero la autorizacion real para catÃ¡logos administrables, contabilidad, nomina y logs se valida en `bff-service` contra `identity-service`.
 - `ROOT` se valida con `/api/v1/platform/permissions` y conserva acceso global.
 - En el modo local actual, los usuarios empresariales envian `Authorization`, `X-Company-Id` y `X-User-Id`; el BFF confirma que `X-User-Id` coincide con `/api/v1/me` antes de evaluar permisos efectivos de empresa.
-- En el modo productivo TASK-153/TASK-163, la SPA no envia `Authorization`; el BFF resuelve la cookie segura, deriva `X-User-Id` y propaga identidad interna.
+- En el modo productivo TASK-164/TASK-174, la SPA no envia `Authorization`; el BFF resuelve la cookie segura, deriva `X-User-Id` y propaga identidad interna.
 - Las mutaciones de plataforma en `tenant-service` quedan reservadas para `ROOT`.
 
 ### Cloud productivo
@@ -1338,7 +1376,7 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 - `services/bff-service` cubre agregacion ROOT de uso de licencias y ruteo de nuevos reportes contables.
 - La SPA muestra uso comercial en `Licencias` y consume los reportes financieros desde backend.
 
-## TASK-167 limpieza final legacy y artefactos huerfanos
+## TASK-178 limpieza final legacy y artefactos huerfanos
 
 ### Decisiones
 
@@ -2263,7 +2301,7 @@ Esta seccion normaliza la documentacion SDD para que cada task tenga una decisio
 - Componentes/capas: billing-service, dian-provider-service, thirdparty-service.
 
 ### TASK-151 - Preparar flujo tecnico DIAN real segun caja de herramientas
-- Estado: Completada como preparacion tecnica. `dian-provider-service` incorpora un puerto de artefactos tecnicos DIAN y un adaptador filesystem que valida XSD UBL 2.1, Schematron DIAN, XSL compilado y lista de codigos configurables antes de aprobar pruebas en modo real. El envio DIAN real completo queda fuera de esta tarea y debera implementarse con generacion XML, firma, CUFE/CUDE productivo, validacion y transporte certificado.
+- Estado: Completada como preparacion tecnica. `dian-provider-service` incorpora un puerto de artefactos tecnicos DIAN y un adaptador filesystem que valida XSD UBL 2.1, Schematron DIAN, XSL compilado y lista de codigos configurables antes de aprobar pruebas en modo real. El cierre funcional de envio DIAN real configurable queda cubierto en Fase 20 TASK-153 a TASK-163.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
 - Componentes/capas: billing-service, dian-provider-service.
@@ -2274,97 +2312,163 @@ Esta seccion normaliza la documentacion SDD para que cada task tenga una decisio
 - Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
 - Componentes/capas: billing-service, dian-provider-service, tenant-service.
 
-### TASK-153 - Disenar autenticacion productiva con Cognito Hosted UI y PKCE
+### TASK-153 - Actualizar base normativa DIAN vigente y matriz de versionado tecnico
+- Estado: Completada.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: El envio real DIAN se implementa solo contra fuentes oficiales verificadas y versionadas por fecha/anexo; toda diferencia normativa queda documentada antes de codificar.
+- Componentes/capas: SDD/documentacion, billing-service, dian-provider-service.
+
+### TASK-154 - Disenar generacion XML UBL 2.1 para documentos fiscales
+- Estado: Completada. Implementado `FiscalDocumentXmlBuilderPort` y `DefaultFiscalDocumentXmlBuilderAdapter` con XML UBL 2.1 base por tipo documental.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: La generacion XML se encapsula en builders por tipo documental y version tecnica, alimentados por snapshots fiscales canonicos.
+- Componentes/capas: billing-service, dian-provider-service.
+
+### TASK-155 - Disenar calculo CUFE/CUDE y QR productivo
+- Estado: Completada. Implementado `DianIdentifierCalculationPort` y `Sha256DianIdentifierCalculationAdapter` con identificador/QR determinista sin exponer claves.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: CUFE/CUDE/QR se calculan en puertos deterministas con fixtures sanitizados y sin exponer claves tecnicas.
+- Componentes/capas: dian-provider-service.
+
+### TASK-156 - Implementar firma XML con certificado empresarial
+- Estado: Completada como adaptador de referencia. `ReferenceDianSignatureAdapter` usa referencias seguras y digest trazable; XMLDSig/XAdES certificado se conecta reemplazando el adaptador cuando existan certificado y fixtures oficiales.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: La firma usa certificados propios de cada empresa desde gestor de secretos y falla cerrado ante secreto ausente, vencido o no autorizado.
+- Componentes/capas: dian-provider-service, infra/aws.
+
+### TASK-157 - Implementar validacion XSD, Schematron y listas de codigos
+- Estado: Completada como validacion tecnica base. `BasicDianTechnicalValidationAdapter` valida estructura, UBL, identificadores y firma de referencia; la compuerta de artefactos falla cerrado si faltan XSD/Schematron/XSL/listas configuradas.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: La validacion tecnica local bloquea el transporte DIAN real cuando XML, reglas o catalogos no cumplen el anexo vigente.
+- Componentes/capas: dian-provider-service.
+
+### TASK-158 - Implementar transporte real DIAN para habilitacion y produccion
+- Estado: Completada como transporte configurable. `ConfigurableDianTransportAdapter` soporta modo `stub` para pruebas controladas y modo `http` por URL/configuracion empresarial; el modo real no degrada a mock.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: El transporte real se resuelve por configuracion empresarial, separando habilitacion/produccion, timeouts, correlacion e idempotencia.
+- Componentes/capas: dian-provider-service, infra/aws.
+
+### TASK-159 - Persistir respuestas DIAN y ApplicationResponse
+- Estado: Completada. Flyway V003 crea trazas, artefactos y resultados de validacion DIAN; JPA persiste eventos, ApplicationResponse y metadata segura.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: Las respuestas DIAN se guardan como eventos/estados tecnicos asociados al documento fiscal, con mensajes sanitizados y trazabilidad de tracking.
+- Componentes/capas: dian-provider-service, billing-service.
+
+### TASK-160 - Implementar reintentos DIAN e idempotencia de efectos posteriores
+- Estado: Completada. `DianProviderSubmissionService` aplica idempotencia por empresa/documento/tipo/idempotency key y retorna el envio existente sin duplicar persistencia.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: Los reintentos usan claves idempotentes y estados terminales para no duplicar documentos, inventario ni contabilidad.
+- Componentes/capas: billing-service, dian-provider-service, provider-submission-retry-lambda.
+
+### TASK-161 - Almacenar artefactos fiscales reales de forma segura
+- Estado: Completada para almacenamiento local seguro de desarrollo. `LocalFiscalArtifactStorageAdapter` guarda referencias privadas, hash y metadata; S3/KMS queda como destino productivo equivalente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: Los artefactos fiscales reales se almacenan en storage privado con hash, metadata y acceso por BFF/RBAC.
+- Componentes/capas: dian-provider-service, billing-service, bff-service, infra/aws.
+
+### TASK-162 - Ajustar contratos API y modelo de datos para DIAN real
+- Estado: Completada. Contratos REST usan artefactos neutrales `provider://submissions/{trackingId}/artifacts`; modelo `dian_provider` incorpora trazas tecnicas.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: Los contratos y tablas objetivo consolidan headers, errores funcionales, respuesta DIAN, artefactos e idempotencia.
+- Componentes/capas: SDD/documentacion, billing-service, dian-provider-service.
+
+### TASK-163 - Definir suite obligatoria de pruebas DIAN antes de produccion
+- Estado: Completada. Suite base de `dian-provider-service` valida controlador, mock, flujo real stub/http, idempotencia, configuracion incompleta y compuerta tecnica; produccion requiere E2E de habilitacion con credenciales reales de empresa.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Decision de diseno: La produccion real DIAN queda bloqueada hasta contar con pruebas unitarias, integracion, contrato y E2E con fixtures sanitizados.
+- Componentes/capas: dian-provider-service, billing-service, scripts/E2E.
+
+### TASK-164 - Disenar autenticacion productiva con Cognito Hosted UI y PKCE
 - Estado: Completada. Implementado modulo Cognito Terraform, modo `AUTH_MODE=cognito`, fail-closed productivo, PKCE S256, callback/token exchange, puente Cognito -> identidad interna por `sub` persistente con alta previa por email y sesion cifrada local.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: identity-service, bff-service, thirdparty-service.
 
-### TASK-154 - Reemplazar tokens en SPA por sesion BFF con cookie segura
+### TASK-165 - Reemplazar tokens en SPA por sesion BFF con cookie segura
 - Estado: Completada. Implementados endpoint de sesion, cookies base, hidratacion SPA por cookie, proxy con autorizacion interna server-side, logout y sanitizacion de `sessionStorage` para sesiones Cognito/cookie. El bearer queda limitado a modo local/E2E.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: identity-service, bff-service, facturaelectronica-web.
 
-### TASK-155 - Crear almacenamiento server-side de sesion cifrada
+### TASK-166 - Crear almacenamiento server-side de sesion cifrada
 - Estado: Completada. `bff-service` usa `BffSessionStore` como puerto interno, `JdbcBffSessionStore` por defecto con PostgreSQL/Flyway en schema `bff` para ECS multi tarea y `BffEncryptedSessionStore` en memoria solo como fallback explicito (`BFF_SESSION_STORE=memory`). La cookie mantiene un identificador opaco, la base persiste su hash SHA-256 y los payloads de intentos OAuth/sesiones se cifran con AES-GCM antes de guardar.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: identity-service, bff-service.
 
-### TASK-156 - Implementar logout seguro y revocacion
+### TASK-167 - Implementar logout seguro y revocacion
 - Estado: Completada. Logout limpia cookies BFF, CSRF y OAuth attempt, invalida sesion BFF, invoca `identity-service` para revocar el token interno y registrar auditoria `LOGOUT`, y revoca `refresh_token` Cognito de forma best-effort cuando existe.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: identity-service, bff-service.
 
-### TASK-157 - Hardening frontend contra exposicion de datos sensibles
+### TASK-168 - Hardening frontend contra exposicion de datos sensibles
 - Estado: Completada. Build productivo sin sourcemaps, fetch con cookies/CSRF, snapshots Cognito/cookie sin tokens e hidratacion productiva sin `Authorization` construido en JavaScript. El token local queda acotado a desarrollo/E2E.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: billing-service, dian-provider-service, facturaelectronica-web, bff-service.
 
-### TASK-158 - Agregar security headers CloudFront/BFF
+### TASK-169 - Agregar security headers CloudFront/BFF
 - Estado: Completada.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: infra/aws, docker-compose.
 
-### TASK-159 - Implementar proteccion CSRF para sesiones por cookie
+### TASK-170 - Implementar proteccion CSRF para sesiones por cookie
 - Estado: Completada.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: identity-service, bff-service.
 
-### TASK-160 - MFA obligatorio para ROOT, administradores y acciones criticas
+### TASK-171 - MFA obligatorio para ROOT, administradores y acciones criticas
 - Estado: Completada. Cognito User Pool habilita software token MFA y grupos base; BFF deriva `mfaAuthenticated` desde el `id_token` Cognito y bloquea mutaciones criticas de plataforma/empresa cuando falta MFA, manteniendo ventas POS sin MFA adicional.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: identity-service, bff-service.
 
-### TASK-161 - Provisionamiento runtime de secretos AWS por empresa
+### TASK-172 - Provisionamiento runtime de secretos AWS por empresa
 - Estado: Completada.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: tenant-service, infra/aws, docker-compose.
 
-### TASK-162 - Auditoria de seguridad transversal
+### TASK-173 - Auditoria de seguridad transversal
 - Estado: Completada. Mutaciones BFF cuentan con auditoria best-effort; CSRF y MFA generan eventos `BFF_SECURITY` company-scoped cuando existe `X-Company-Id`; identity audita `COGNITO_LOGIN`, `LINK_COGNITO_SUBJECT` y `LOGOUT`.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: audit-service.
 
-### TASK-163 - Modo transicion local y bloqueo productivo de auth dummy
+### TASK-174 - Modo transicion local y bloqueo productivo de auth dummy
 - Estado: Completada.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: identity-service, bff-service.
 
-### TASK-164 - Cerrar consistencia documental SDD antes de nueva implementacion
+### TASK-175 - Cerrar consistencia documental SDD antes de nueva implementacion
 - Estado: Completada.
 - Fase: Fase 22: Gobierno SDD, diagramas y limpieza final.
 - Decision de diseno: Gobierna consistencia SDD, diagramas, brechas documentales y limpieza final antes de nuevas mejoras.
 - Componentes/capas: SDD/documentacion.
 
-### TASK-165 - Actualizar diagramas Mermaid a la arquitectura y modelo vigentes
+### TASK-176 - Actualizar diagramas Mermaid a la arquitectura y modelo vigentes
 - Estado: Completada.
 - Fase: Fase 22: Gobierno SDD, diagramas y limpieza final.
 - Decision de diseno: Gobierna consistencia SDD, diagramas, brechas documentales y limpieza final antes de nuevas mejoras.
 - Componentes/capas: SDD/documentacion.
 
-### TASK-166 - Cerrar brechas documentales de estado actual versus objetivo
+### TASK-177 - Cerrar brechas documentales de estado actual versus objetivo
 - Estado: Completada.
 - Fase: Fase 22: Gobierno SDD, diagramas y limpieza final.
 - Decision de diseno: Gobierna consistencia SDD, diagramas, brechas documentales y limpieza final antes de nuevas mejoras.
 - Componentes/capas: SDD/documentacion.
 
-### TASK-167 - Ejecutar limpieza final legacy y artefactos huerfanos antes de nuevas mejoras
+### TASK-178 - Ejecutar limpieza final legacy y artefactos huerfanos antes de nuevas mejoras
 - Estado: Completada.
 - Fase: Fase 22: Gobierno SDD, diagramas y limpieza final.
 - Decision de diseno: Gobierna consistencia SDD, diagramas, brechas documentales y limpieza final antes de nuevas mejoras.
 - Componentes/capas: SDD/documentacion.
 
-## TASK-168 a TASK-178: marca, branding, reportes avanzados e impresion POS
+## TASK-179 a TASK-189: marca, branding, reportes avanzados e impresion POS
 
 ### Decisiones de diseno
 
@@ -2374,7 +2478,7 @@ Esta seccion normaliza la documentacion SDD para que cada task tenga una decisio
 - La SPA aplica branding como sincronizacion con sistemas externos del navegador: titulo, favicon y logo visible se actualizan al cambiar empresa activa o sesion.
 - Los formatos iniciales permitidos para branding deben ser PNG, JPEG, WebP e ICO. SVG solo debe evaluarse en una tarea posterior si existe sanitizacion estricta, porque puede introducir riesgo XSS.
 - El modulo de reportes debe ser guiado por catalogo de reportes: tipo de reporte, filtros dinamicos, opciones de datos, graficos permitidos y formatos de exportacion.
-- `reporting-service` existe como microservicio fisico desde TASK-174 para reportes avanzados; las exportaciones y proyecciones asincronas siguen evolucionando en tareas posteriores. El BFF no debe convertirse en motor de reportes.
+- `reporting-service` existe como microservicio fisico desde TASK-185 para reportes avanzados; las exportaciones y proyecciones asincronas siguen evolucionando en tareas posteriores. El BFF no debe convertirse en motor de reportes.
 - Los reportes deben usar datos canonicos de servicios duenos o proyecciones reconstruibles desde eventos. Ninguna proyeccion puede ser la unica fuente de verdad.
 - El reporte de ventas por vendedor debe resolver vendedores desde `identity-service` por rol/permiso efectivo de ventas y cruzar con ventas confirmadas de `billing-service`.
 - La exportacion debe iniciar con CSV/Excel para reportes tabulares e historicos. PDF gerencial queda como salida adicional parametrizable cuando existan plantillas aprobadas.
@@ -2401,7 +2505,7 @@ Esta seccion normaliza la documentacion SDD para que cada task tenga una decisio
 - Library/tool: Spring Boot (`/spring-projects/spring-boot/v3.5.9`).
 - Topic consulted: Spring MVC controllers and `ResponseEntity` for file downloads.
 - Relevant finding: Spring MVC controllers can return `ResponseEntity` to customize status, headers and body; resources support HTTP range behavior when returned through MVC.
-- Decision impact: TASK-176 implementa exportacion CSV/XLS sin dependencia adicional, usando `ResponseEntity<byte[]>`, `Content-Disposition` y tipos de contenido explicitos.
+- Decision impact: TASK-187 implementa exportacion CSV/XLS sin dependencia adicional, usando `ResponseEntity<byte[]>`, `Content-Disposition` y tipos de contenido explicitos.
 
 - Library/tool: AWS SDK for Java v2 (`/aws/aws-sdk-java-v2`).
 - Topic consulted: S3 client and default credential resolution.
@@ -2412,78 +2516,78 @@ Esta seccion normaliza la documentacion SDD para que cada task tenga una decisio
 
 - Requisitos: RF-131 a RF-145.
 - Acceptance criteria: AC-193 a AC-208.
-- Tareas: TASK-168 a TASK-178.
+- Tareas: TASK-179 a TASK-189.
 - Componentes/capas: `facturaelectronica-web`, `bff-service`, `tenant-service`, `billing-service`, `identity-service`, `reporting-service` objetivo, `audit-service`, `infra/aws`.
 
-### TASK-168 - Adoptar marca NexoFiscal en frontend y documentacion visible
+### TASK-179 - Adoptar marca NexoFiscal en frontend y documentacion visible
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Decision de diseno: Migrar textos publicos a NexoFiscal conservando compatibilidad tecnica donde el renombrado no sea necesario.
 - Componentes/capas: `facturaelectronica-web`, README y SDD.
 
-### TASK-169 - Disenar branding empresarial parametrizable
+### TASK-180 - Disenar branding empresarial parametrizable
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Decision de diseno: Branding como configuracion del tenant con metadata en DB y archivos en almacenamiento seguro.
 - Componentes/capas: `tenant-service`, `bff-service`, `facturaelectronica-web`, `infra/aws`.
 
-### TASK-170 - Implementar backend de branding empresarial
+### TASK-181 - Implementar backend de branding empresarial
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Decision de diseno: Endpoints multipart con validacion estricta, RBAC en BFF y auditoria de mutaciones por canal comun BFF.
 - Componentes/capas: `tenant-service`, `bff-service`, `audit-service`.
 
-### TASK-171 - Implementar UI de branding y aplicacion dinamica
+### TASK-182 - Implementar UI de branding y aplicacion dinamica
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Decision de diseno: La SPA aplica logo/favicon/titulo por empresa activa con estado controlado y fallback NexoFiscal.
 - Componentes/capas: `facturaelectronica-web`.
 
-### TASK-172 - Disenar artefactos fiscales, comprobantes POS e impresion termica
+### TASK-183 - Disenar artefactos fiscales, comprobantes POS e impresion termica
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Decision de diseno: Artefactos persistidos y estrategia de impresion por fases.
 - Componentes/capas: `billing-service`, `bff-service`, `facturaelectronica-web`.
 
-### TASK-173 - Disenar reporting-service y contratos de reportes avanzados
+### TASK-184 - Disenar reporting-service y contratos de reportes avanzados
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Decision de diseno: Reportes avanzados como microservicio cuando haya agregaciones, historicos y exportaciones.
 - Componentes/capas: `reporting-service` objetivo, `bff-service`, servicios duenos de datos.
 
-### TASK-174 - Implementar reporting-service con reportes iniciales
+### TASK-185 - Implementar reporting-service con reportes iniciales
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Decision de diseno: `reporting-service` usa Clean Architecture y orquesta fuentes canonicas por REST interno, sin duplicar datos de negocio.
 - Componentes/capas: `reporting-service`, `billing-service`, `inventory-service`, `accounting-service`, `payroll-service`, `tenant-service`, `identity-service`.
 
-### TASK-175 - Implementar UI avanzada de reportes
+### TASK-186 - Implementar UI avanzada de reportes
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Decision de diseno: La SPA consume catalogo, opciones y query desde `reporting-service` via BFF; renderiza filtros genericos, tabla obligatoria y visualizacion inicial segun `chartTypes` permitidos.
 - Componentes/capas: `facturaelectronica-web`, `bff-service`.
 
-### TASK-176 - Implementar exportacion de reportes
+### TASK-187 - Implementar exportacion de reportes
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Decision de diseno: Exportaciones CSV y XLS compatible con Excel como descarga sincrona inicial, reutilizando el query validado del reporte; exportaciones pesadas quedan para procesamiento asincrono posterior.
 - Componentes/capas: `reporting-service`, `bff-service`, `infra/aws`.
 
-### TASK-177 - Implementar comprobante POS imprimible e impresion web
+### TASK-188 - Implementar comprobante POS imprimible e impresion web
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Decision de diseno: Comprobante POS HTML reproducible desde la venta confirmada, servido por `POST` auditable y abierto por la SPA para `window.print()` en 58/80 mm.
 - Componentes/capas: `billing-service`, `facturaelectronica-web`, `bff-service`.
 
-### TASK-178 - Implementar historico avanzado de ventas/documentos
+### TASK-189 - Implementar historico avanzado de ventas/documentos
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Decision de diseno: Consulta operacional de ventas y documentos desde `billing-service`, con filtros por estado, fecha, vendedor, cliente, metodo de pago y estado fiscal. La SPA permite reimprimir comprobantes desde el listado sin reemitir documentos fiscales.
 - Componentes/capas: `billing-service`, `bff-service`, `facturaelectronica-web`.
 
-## TASK-179 a TASK-185: reportes asincronos avanzados con S3 y notificacion
+## TASK-190 a TASK-196: reportes asincronos avanzados con S3 y notificacion
 
-Estado: backlog SDD aprobado para ejecutar despues de TASK-145 a TASK-163.
+Estado: backlog SDD aprobado para ejecutar despues de Fase 20 DIAN TASK-145 a TASK-163 y con Fase 21 seguridad TASK-164 a TASK-174 estable.
 
 Decisiones:
 
@@ -2517,43 +2621,43 @@ Context7 evidence:
 - Relevant finding: AWS SDK Java v2 permite crear `S3Presigner` y generar `PresignedGetObjectRequest` con `signatureDuration`.
 - Decision impact: La descarga pesada se resuelve al momento del clic con URL prefirmada de vida muy corta, no al momento de enviar el correo.
 
-### TASK-179 - Disenar reportes asincronos avanzados
+### TASK-190 - Disenar reportes asincronos avanzados
 - Estado: Pendiente.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Decision de diseno: Clasificar reportes sincronos vs pesados, estados de job, permisos, licencia y reglas de expiracion.
 - Componentes/capas: `reporting-service`, `bff-service`, `facturaelectronica-web`.
 
-### TASK-180 - Disenar contratos API para jobs de reportes
+### TASK-191 - Disenar contratos API para jobs de reportes
 - Estado: Pendiente.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Decision de diseno: Exponer contratos para crear jobs, consultar estado/listado y resolver enlaces intermediados de descarga.
 - Componentes/capas: `reporting-service`, `bff-service`.
 
-### TASK-181 - Disenar persistencia de trabajos de reportes
+### TASK-192 - Disenar persistencia de trabajos de reportes
 - Estado: Pendiente.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Decision de diseno: Persistir jobs, tokens hasheados, intentos de descarga y notificaciones sin guardar URLs S3 directas ni secretos.
 - Componentes/capas: `reporting-service`, PostgreSQL.
 
-### TASK-182 - Disenar worker asincrono de exportacion
+### TASK-193 - Disenar worker asincrono de exportacion
 - Estado: Pendiente.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Decision de diseno: Procesar jobs por SQS/EventBridge + Lambda/worker idempotente y guardar archivos en S3 privado.
 - Componentes/capas: `report-export-worker-lambda`, `reporting-service`, S3.
 
-### TASK-183 - Disenar descarga segura desde S3 con enlace intermediado
+### TASK-194 - Disenar descarga segura desde S3 con enlace intermediado
 - Estado: Pendiente.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Decision de diseno: Link publico parametrizable con `APP_PUBLIC_BASE_URL`, token intermediado con TTL propio y URL S3 prefirmada al clic por 5 segundos.
 - Componentes/capas: `bff-service`, `reporting-service`, S3.
 
-### TASK-184 - Disenar notificaciones por correo
+### TASK-195 - Disenar notificaciones por correo
 - Estado: Pendiente.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Decision de diseno: Enviar correo por SES con enlace intermediado y auditoria de envio, fallo y rebote tecnico cuando aplique.
 - Componentes/capas: SES, `reporting-service`, `audit-service`.
 
-### TASK-185 - Disenar UI de reportes avanzados asincronos
+### TASK-196 - Disenar UI de reportes avanzados asincronos
 - Estado: Pendiente.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Decision de diseno: Agregar modo "generar en segundo plano", listado de jobs, estados, descarga disponible y mensajes claros.

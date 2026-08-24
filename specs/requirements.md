@@ -426,3 +426,17 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-153: El modulo de reportes debe mostrar jobs solicitados, estados, errores funcionales y descargas disponibles segun permisos, sin obligar al usuario a volver al modulo para descargar desde correo.
 - RF-154: ROOT puede consultar jobs de cualquier empresa; administradores empresariales solo jobs de su empresa; usuarios normales solo sus propios jobs salvo permiso delegado.
 - RF-155: Cada solicitud, procesamiento, fallo, expiracion, revocacion, envio de correo y descarga de reporte pesado debe quedar auditado sin datos sensibles.
+
+## Requisitos cierre DIAN real parametrizable por empresa
+
+- RF-156: El cierre de DIAN real debe permanecer dentro de la Fase 20 antes de ejecutar reportes asincronos avanzados, sin crear una fase nueva para el envio real.
+- RF-157: `dian-provider-service` debe generar XML UBL 2.1 para factura electronica de venta, documento equivalente electronico POS y notas fiscales usando la version/anexo DIAN vigente parametrizado.
+- RF-158: El sistema debe calcular CUFE/CUDE y contenido QR de forma deterministica segun tipo de documento, ambiente, numeracion, emisor, adquirente, totales, impuestos y claves tecnicas configuradas por empresa.
+- RF-159: El sistema debe firmar los XML con certificado digital de la empresa facturadora, referenciado desde gestor de secretos, sin exponer certificado, PIN ni claves en base de datos, logs, auditoria o respuestas.
+- RF-160: El sistema debe validar XSD, Schematron y listas de codigos antes de transmitir a DIAN y debe bloquear el envio real cuando exista una falla tecnica.
+- RF-161: El sistema debe soportar transporte real DIAN para habilitacion y produccion por empresa, con URLs, credenciales, ambiente y estado de pruebas configurables por `company_id`.
+- RF-162: El sistema debe registrar respuestas DIAN, `ApplicationResponse`, tracking, rechazos, errores, reintentos e idempotencia sin duplicar documentos ni repetir efectos de inventario o contabilidad.
+- RF-163: El sistema debe almacenar artefactos fiscales reales de forma segura: XML firmado, AttachedDocument/ZIP cuando aplique, QR, representacion grafica, hash, metadata y respuesta DIAN.
+- RF-164: El modo `MOCK` debe permanecer disponible para E2E local, pero separado del modo real; un envio real nunca debe degradar silenciosamente a mock.
+- RF-165: La documentacion DIAN debe citar fuentes oficiales y separar requisito normativo, decision tecnica, supuesto pendiente y validacion requerida.
+- RF-166: Antes de habilitar produccion DIAN real deben existir pruebas unitarias, de integracion y E2E con fixtures sanitizados del anexo tecnico vigente.

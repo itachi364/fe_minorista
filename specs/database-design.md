@@ -231,7 +231,7 @@ Ninguna tabla legacy debe eliminarse hasta que:
 
 ### Limpieza operativa de `public.*`
 
-Estado TASK-167: los microservicios activos ejecutan Flyway sobre sus esquemas propios (`tenant`, `identity`, `catalog`, `thirdparty`, `inventory`, `billing`, `accounting`, `audit`, `dian_provider`, `payroll`). Ningun microservicio activo gobierna el esquema `public`, por lo que la depuracion de tablas heredadas `public.*` se trata como operacion controlada de base local/ambiente, no como migracion de un bounded context.
+Estado TASK-178: los microservicios activos ejecutan Flyway sobre sus esquemas propios (`tenant`, `identity`, `catalog`, `thirdparty`, `inventory`, `billing`, `accounting`, `audit`, `dian_provider`, `payroll`). Ningun microservicio activo gobierna el esquema `public`, por lo que la depuracion de tablas heredadas `public.*` se trata como operacion controlada de base local/ambiente, no como migracion de un bounded context.
 
 Script operativo:
 
@@ -352,9 +352,57 @@ Reglas:
 - Cada descarga e impresion/reimpresion queda auditada.
 - Los conectores directos de impresora no se modelan como activos hasta completar tarea de hardware y seguridad.
 
+## DIAN Real Parametrizable por Empresa
+
+Estado: implementado en Fase 20 TASK-153 a TASK-163 mediante Flyway V003 de `dian-provider-service`, con alcance local seguro y destino productivo equivalente S3/KMS.
+
+Evolucion de tablas existentes:
+
+- `dian_provider.provider_submission` debe ampliar su alcance para soportar modo `MOCK` y `REAL`, ambiente, tipo documental, clave de idempotencia, estado tecnico, tracking DIAN, ultimo error sanitizado, contador de reintentos y timestamps de ciclo.
+- `billing.electronic_document` conserva el estado fiscal de negocio visible para ventas/historico; no almacena secretos ni payload completo DIAN.
+- `billing.electronic_document_artifact` conserva artefactos visibles de negocio, descargas y representaciones imprimibles; los artefactos tecnicos de transporte pueden vivir en `dian_provider`.
+
+Tablas objetivo en `dian-provider-service`:
+
+- `dian_provider.dian_submission_event`
+- `dian_provider.dian_submission_artifact`
+- `dian_provider.dian_technical_validation_result`
+
+Campos principales de `dian_submission_event`:
+
+- `id`, `company_id`, `submission_id`, `document_id`.
+- `event_type`: `XML_BUILT`, `IDENTIFIERS_CALCULATED`, `SIGNED`, `VALIDATED`, `TRANSMITTED`, `ACCEPTED`, `REJECTED`, `RETRY_SCHEDULED`, `FAILED`.
+- `status`: `SUCCESS`, `FAILURE`, `PENDING`.
+- `dian_code`, `dian_message`: codigos/mensajes sanitizados.
+- `correlation_id`, `created_at`.
+
+Campos principales de `dian_submission_artifact`:
+
+- `id`, `company_id`, `submission_id`, `document_id`.
+- `artifact_type`: `UNSIGNED_XML`, `SIGNED_XML`, `ATTACHED_DOCUMENT`, `ZIP`, `QR`, `GRAPHIC_REPRESENTATION`, `APPLICATION_RESPONSE`, `DIAN_RESPONSE`.
+- `storage_bucket_reference`, `storage_key`: referencias privadas, no URL publica.
+- `content_type`, `file_name`, `content_hash`, `size_bytes`.
+- `created_at`, `created_by`.
+
+Campos principales de `dian_technical_validation_result`:
+
+- `id`, `company_id`, `submission_id`, `document_id`.
+- `validation_type`: `XSD`, `SCHEMATRON`, `CODE_LIST`, `SIGNATURE`.
+- `result`: `PASSED`, `FAILED`, `SKIPPED`.
+- `rule_code`, `message`: detalle tecnico sanitizado.
+- `source_version`, `validated_at`.
+
+Reglas:
+
+- `company_id` es obligatorio en toda tabla DIAN real.
+- No se persisten certificado, PIN, claves tecnicas ni credenciales.
+- El storage de artefactos debe ser privado y cifrado.
+- `idempotency_key` debe evitar duplicados por documento fiscal/intento logico.
+- Reintentos no pueden duplicar movimientos de inventario ni asientos contables.
+
 ## Reportes Asincronos Avanzados
 
-Estado: modelo objetivo para Fase 24; no implementado hasta completar TASK-145 a TASK-163.
+Estado: modelo objetivo para Fase 24; no implementado en la API actual y dependiente de Fase 20 DIAN TASK-145 a TASK-163 cerrada y Fase 21 seguridad TASK-164 a TASK-174 estable.
 
 Tablas objetivo en `reporting-service`:
 

@@ -91,7 +91,8 @@ class MockProviderSubmissionServiceTest {
 
     private static DianProviderProperties properties(String mode, ProviderSubmissionStatus status, String errorCode,
             String errorMessage) {
-        return new DianProviderProperties(mode, status, errorCode, errorMessage, null, null, null, null, null, null,
+        return new DianProviderProperties(mode, status, errorCode, errorMessage, "stub",
+                ProviderSubmissionStatus.ACCEPTED, "build/test-dian-artifacts", null, null, null, null, null, null,
                 null);
     }
 

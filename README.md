@@ -38,11 +38,11 @@ La fase vigente de producto define la evolucion visual y operativa de NexoFiscal
 - Historico avanzado de ventas/documentos con detalle, vendedor, cliente/consumidor final, items, totales, estado DIAN/mock, artefactos, descargas y reimpresiones.
 - Comprobante POS imprimible con estrategia gradual: primero impresion web 58/80 mm; conectores ESC/POS, WebUSB, WebSerial o agente local quedan para una tarea posterior con hardware validado.
 
-Estado: `TASK-168` a `TASK-178` ya tienen implementacion inicial validada. Quedan evoluciones de volumen como paginacion avanzada, conectores directos de impresora y almacenamiento asincrono de artefactos pesados.
+Estado: `TASK-179` a `TASK-189` ya tienen implementacion inicial validada. Quedan evoluciones de volumen como paginacion avanzada, conectores directos de impresora y almacenamiento asincrono de artefactos pesados.
 
 ## Backlog Aprobado Fase 24
 
-La siguiente evolucion de reportes queda documentada para ejecutarse despues de `TASK-145` a `TASK-163`:
+La siguiente evolucion de reportes queda documentada para ejecutarse despues de cerrar Fase 20 DIAN (`TASK-145` a `TASK-163`) y mantener estable Fase 21 seguridad (`TASK-164` a `TASK-174`):
 
 - Reportes pesados asincronos con jobs `PENDING`, `PROCESSING`, `READY`, `FAILED`, `EXPIRED` y `REVOKED`.
 - Worker/Lambda para generar archivos pesados sin bloquear HTTP.
@@ -82,7 +82,7 @@ Estructura actual:
 - `services/thirdparty-service`: microservicio fisico para clientes/proveedores.
 - `services/inventory-service`: microservicio fisico para productos, costos, stock, compras y kardex.
 - `services/billing-service`: microservicio fisico para ventas POS, emisor fiscal, resoluciones, numeracion fiscal y emision electronica mock.
-- `services/dian-provider-service`: microservicio fisico para mock DIAN y futura conexion DIAN parametrizable por empresa.
+- `services/dian-provider-service`: microservicio fisico para mock DIAN y conexion real DIAN parametrizable por empresa.
 - `services/accounting-service`: microservicio fisico para PUC, reglas contables, asientos, libro diario y mayor.
 - `services/audit-service`: microservicio fisico para auditoria fiscal y tecnica.
 - `services/payroll-service`: microservicio fisico para trabajadores, pagos diarios verbales y nomina electronica mock opcional.
@@ -200,7 +200,7 @@ Reglas de seguridad aprobadas:
 - Certificados, PIN, claves y credenciales DIAN deben vivir en gestor de secretos; PostgreSQL solo guarda referencias, alias, huellas, vencimientos y estados.
 - En desarrollo local se usa `DIAN_PROVIDER_MODE=mock` para E2E sin llamadas externas.
 - El `dian-provider-service` ya valida una compuerta tecnica para modo real: existencia de XSD UBL 2.1, Schematron DIAN, XSL compilado y lista de codigos configurados por variables `DIAN_TECHNICAL_ARTIFACTS_ROOT`, `DIAN_UBL_*`, `DIAN_MODEL_SCHEMATRON_PATH`, `DIAN_COMPILED_XSL_PATH` y `DIAN_CODE_LIST_SCHEMATRON_PATH`.
-- El envio DIAN real con XML UBL firmado, CUFE/CUDE productivo, validacion completa y transporte SOAP/HTTP certificado sigue pendiente antes de habilitar operacion comercial real.
+- El pipeline DIAN real parametrizable por empresa quedo implementado en Fase 20 `TASK-153` a `TASK-163` con XML UBL base, CUFE/CUDE/QR deterministas, firma/validacion de referencia, transporte `stub/http`, respuestas y artefactos seguros. Antes de operacion comercial real debe reemplazarse la firma de referencia por XMLDSig/XAdES certificado y ejecutar habilitacion DIAN con credenciales reales de cada empresa.
 - El modo mock no valida cumplimiento tecnico DIAN productivo ni reemplaza el proceso de habilitacion/certificacion de cada empresa.
 - Antes de operacion comercial real, esta interpretacion debe validarse con asesor legal/tributario.
 
@@ -901,7 +901,7 @@ Fuentes vigentes:
 - No versionar `.env`.
 - No versionar certificados DIAN.
 - No versionar API keys ni passwords reales.
-- La conexion DIAN real por empresa esta pendiente.
+- La conexion DIAN real por empresa existe como pipeline configurable `stub/http`; la habilitacion productiva requiere certificado real, URLs oficiales, secretos AWS y pruebas DIAN de cada empresa.
 - No exponer `AUTH_MODE=local` en produccion.
 - No guardar tokens productivos en storage del navegador.
 - No imprimir en consola passwords, tokens, cookies, headers sensibles ni payloads completos.
@@ -931,8 +931,7 @@ Pendiente:
 
 ## Pendientes Relevantes
 
-- Conexion DIAN real parametrizable por empresa.
-- Certificados digitales reales.
+- Certificados digitales reales y habilitacion DIAN por empresa.
 - Branding empresarial y adopcion visual completa de NexoFiscal en la SPA.
 - `reporting-service`, reportes avanzados, graficos y exportaciones CSV/Excel.
 - Historico avanzado de ventas/documentos, artefactos fiscales descargables y reimpresion POS.

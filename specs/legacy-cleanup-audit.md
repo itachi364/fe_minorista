@@ -50,7 +50,7 @@ Fecha local de auditoria: 2026-08-10.
 - `thirdparty.cliente` y `thirdparty.proveedor` se eliminaron mediante `services/thirdparty-service/src/main/resources/db/migration/V005__drop_legacy_thirdparty_tables.sql`; la migracion aborta si encuentra datos legacy con `company_id` no nulo.
 - Las migraciones Flyway historicas `V001/V002` no se reescriben para evitar romper checksums de bases existentes; la limpieza se expresa como migraciones nuevas.
 
-## Actualizacion TASK-167 - 2026-08-19
+## Actualizacion TASK-178 - 2026-08-19
 
 ### Repositorio
 

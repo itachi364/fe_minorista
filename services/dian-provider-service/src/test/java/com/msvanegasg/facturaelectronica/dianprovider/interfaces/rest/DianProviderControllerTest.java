@@ -66,7 +66,7 @@ class DianProviderControllerTest {
                 .andExpect(header().string(CorrelationId.HEADER_NAME, "corr-provider"))
                 .andExpect(jsonPath("$.trackingId").value("mock-tracking"))
                 .andExpect(jsonPath("$.status").value("ACCEPTED"))
-                .andExpect(jsonPath("$.artifacts[0].type").value("XML"));
+                .andExpect(jsonPath("$.artifacts[0].type").value("FISCAL_ARTIFACTS"));
     }
 
     @Test

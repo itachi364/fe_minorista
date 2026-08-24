@@ -50,6 +50,9 @@ erDiagram
   PROVIDER_CONFIGURATION ||--o{ PROVIDER_SUBMISSION : used_by
   ELECTRONIC_DOCUMENT ||--o{ PROVIDER_SUBMISSION : submitted
   PROVIDER_SUBMISSION ||--o{ PROVIDER_RESPONSE : receives
+  PROVIDER_SUBMISSION ||--o{ DIAN_SUBMISSION_EVENT : traces
+  PROVIDER_SUBMISSION ||--o{ DIAN_SUBMISSION_ARTIFACT : produces
+  PROVIDER_SUBMISSION ||--o{ DIAN_TECHNICAL_VALIDATION_RESULT : validates
 
   COMPANY ||--o{ ACCOUNTING_ACCOUNT : owns
   ACCOUNTING_ACCOUNT ||--o{ ACCOUNTING_ACCOUNT : parent
@@ -224,6 +227,37 @@ erDiagram
     varchar software_pin_secret_ref
     varchar technical_key_secret_ref
     varchar status
+  }
+
+  DIAN_SUBMISSION_EVENT {
+    uuid id PK
+    uuid company_id FK
+    uuid submission_id FK
+    uuid document_id FK
+    varchar event_type
+    varchar status
+    varchar dian_code
+    varchar correlation_id
+  }
+
+  DIAN_SUBMISSION_ARTIFACT {
+    uuid id PK
+    uuid company_id FK
+    uuid submission_id FK
+    uuid document_id FK
+    varchar artifact_type
+    varchar storage_key
+    varchar content_hash
+  }
+
+  DIAN_TECHNICAL_VALIDATION_RESULT {
+    uuid id PK
+    uuid company_id FK
+    uuid submission_id FK
+    uuid document_id FK
+    varchar validation_type
+    varchar result
+    varchar source_version
   }
 
   ACCOUNTING_ENTRY {

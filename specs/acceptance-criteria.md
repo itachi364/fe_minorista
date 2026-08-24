@@ -223,6 +223,17 @@
 - AC-173: Dado el modo `MOCK`, cuando se ejecute E2E local, entonces debe permitir pruebas internas sin llamadas externas y sin afirmar cumplimiento tecnico DIAN productivo.
 - AC-174: Dada la UI de Configuracion DIAN, cuando se active modo real, entonces debe mostrar declaracion de responsabilidad de la empresa facturadora y exigir confirmacion explicita.
 - AC-175: Dado el flujo futuro de integracion real, cuando se implemente, entonces debe validar XML UBL, firma, CUFE/CUDE, QR, XSD/Schematron y respuesta DIAN segun anexo vigente antes de habilitar produccion.
+- AC-217: Dada la Fase 20 DIAN, cuando se revise la documentacion, entonces debe citar fuentes oficiales DIAN vigentes y declarar la version/anexo tecnico usado para cada decision.
+- AC-218: Dado un documento fiscal soportado, cuando `dian-provider-service` genere el XML real, entonces debe producir UBL 2.1 valido para factura electronica, documento equivalente electronico POS o notas fiscales segun tipo.
+- AC-219: Dado el mismo snapshot fiscal, cuando se calcule CUFE/CUDE/QR, entonces el resultado debe ser deterministico y estar cubierto por pruebas con fixtures sanitizados.
+- AC-220: Dado un certificado empresarial configurado, cuando se firme un XML, entonces la firma debe usar solo secretos de la empresa y no debe exponer certificado, PIN ni claves en logs, auditoria o respuesta API.
+- AC-221: Dado un XML con error XSD, Schematron o lista de codigos, cuando se intente transmitir en modo real, entonces el sistema debe bloquear el envio y registrar error tecnico sanitizado.
+- AC-222: Dada una empresa con modo DIAN real, cuando transmita en habilitacion o produccion, entonces debe usar URLs, ambiente y credenciales propias de esa empresa, sin configuracion global compartida.
+- AC-223: Dada una respuesta DIAN o `ApplicationResponse`, cuando llegue al sistema, entonces debe persistirse estado, tracking, codigos/mensajes sanitizados y correlacion con el documento fiscal.
+- AC-224: Dado un error temporal DIAN, cuando se ejecute reintento, entonces debe ser idempotente y no duplicar documento fiscal, descuento de inventario ni asiento contable.
+- AC-225: Dado un documento validado o rechazado, cuando se almacenen artefactos fiscales, entonces deben quedar en storage privado con hash, metadata y acceso controlado por BFF/RBAC.
+- AC-226: Dado `DIAN_PROVIDER_MODE=REAL`, cuando falle una validacion o transporte real, entonces el sistema no debe cambiar automaticamente a mock.
+- AC-227: Dado el cierre de DIAN real, cuando se solicite habilitar produccion, entonces debe existir evidencia de pruebas unitarias, integracion y E2E con fixtures sanitizados del anexo tecnico vigente.
 
 ## Autenticacion productiva, sesion segura y proteccion del navegador
 

@@ -22,7 +22,8 @@ final class DianProviderRestMapper {
 
     static ProviderSubmissionResponse toResponse(ProviderSubmissionResult result) {
         List<ProviderArtifactResponse> artifacts = result.status().name().equals("ACCEPTED")
-                ? List.of(new ProviderArtifactResponse("XML", "mock://provider/" + result.trackingId() + ".xml",
+                ? List.of(new ProviderArtifactResponse("FISCAL_ARTIFACTS",
+                        "provider://submissions/" + result.trackingId() + "/artifacts",
                         "sha256:" + result.cufeCude()))
                 : List.of();
         return new ProviderSubmissionResponse(result.id(), result.companyId(), result.documentId(),

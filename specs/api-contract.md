@@ -36,7 +36,7 @@ Pendiente aprobado: generar, versionar y validar OpenAPI por servicio/BFF cuando
 | `thirdparty-service` | Clientes y proveedores | `services/thirdparty-service` |
 | `inventory-service` | Productos, costos, compras, stock y kardex | `services/inventory-service` |
 | `billing-service` | Ventas, POS, factura electronica, notas y numeracion | `services/billing-service` |
-| `dian-provider-service` | Mock DIAN y futura conexion DIAN parametrizable por empresa | `services/dian-provider-service` |
+| `dian-provider-service` | Mock DIAN y conexion real DIAN parametrizable por empresa | `services/dian-provider-service` |
 | `accounting-service` | PUC, reglas, asientos, libro diario y mayor | `services/accounting-service` |
 | `audit-service` | Auditoria fiscal y tecnica | `services/audit-service` |
 | `payroll-service` | Empleados, contratos, pagos diarios, liquidaciones y nomina electronica opcional | `services/payroll-service` |
@@ -51,7 +51,7 @@ Pendiente aprobado: generar, versionar y validar OpenAPI por servicio/BFF cuando
 | `X-Correlation-Id` | Si | Todas | Trazabilidad entre servicios. |
 | `Idempotency-Key` | Si | Comandos criticos | Evita duplicados por reintentos. |
 
-Nota productiva TASK-153/TASK-160:
+Nota productiva TASK-164/TASK-171:
 
 - El navegador no debe construir ni enviar `Authorization` en JavaScript. La autenticacion publica usa cookie opaca `HttpOnly` emitida por el BFF.
 - El BFF traduce la sesion publica a headers internos seguros hacia microservicios: `Authorization` de servicio cuando aplique, `X-User-Id`, `X-Company-Id`, `X-Correlation-Id` e `Idempotency-Key`.
@@ -1065,7 +1065,7 @@ Reglas:
 
 ## dian-provider-service
 
-Responsabilidad: encapsular el mock local y la futura conexion DIAN parametrizable por empresa. Este servicio no representa una oferta de proveedor tecnologico DIAN de la plataforma.
+Responsabilidad: encapsular el mock local y la conexion real DIAN parametrizable por empresa. Este servicio no representa una oferta de proveedor tecnologico DIAN de la plataforma.
 
 Estado TASK-036:
 
@@ -1074,7 +1074,7 @@ Estado TASK-036:
 - Persistencia de envios mock en `dian_provider.provider_submission`.
 - `billing-service` consume `POST /api/v1/provider/electronic-pos` por HTTP usando `DIAN_PROVIDER_SERVICE_URL`.
 - `GET /api/v1/provider/submissions/{trackingId}` permite consultar el resultado mock persistido y requiere `X-Company-Id`.
-- Estado objetivo TASK-145/TASK-152: cada request real debe resolver configuracion DIAN activa por `companyId`, validar secretos/referencias y rechazar emision si la configuracion esta incompleta, vencida, inactiva o no probada.
+- Estado objetivo TASK-145/TASK-163: cada request real debe resolver configuracion DIAN activa por `companyId`, validar secretos/referencias, generar XML UBL, calcular CUFE/CUDE/QR, firmar, validar tecnicamente, transmitir a DIAN, persistir respuesta/artefactos y rechazar emision si la configuracion esta incompleta, vencida, inactiva o no probada.
 
 ### Endpoints internos
 
@@ -1083,6 +1083,79 @@ Estado TASK-036:
 - `POST /api/v1/provider/credit-notes`
 - `POST /api/v1/provider/debit-notes`
 - `GET /api/v1/provider/submissions/{trackingId}`
+
+### Contrato objetivo DIAN real
+
+Implementado en Fase 20 sobre los endpoints internos existentes. El comportamiento mock/real se resuelve por configuracion DIAN de la empresa y variables del servicio; las rutas especializadas siguientes quedan como contrato productivo futuro si se decide separar validacion, consulta y artefactos en endpoints dedicados.
+
+- `POST /api/v1/provider/real-submissions`
+- `POST /api/v1/provider/real-submissions/{submissionId}/validate`
+- `GET /api/v1/provider/real-submissions/{submissionId}`
+- `GET /api/v1/provider/real-submissions/{submissionId}/artifacts`
+
+Headers obligatorios:
+
+- `X-Company-Id`: empresa propietaria de la configuracion DIAN.
+- `X-User-Id`: usuario que origina la operacion.
+- `X-Correlation-Id`: correlacion transversal.
+- `Idempotency-Key`: clave estable por documento fiscal/intento logico.
+
+`RealDianSubmissionRequest`:
+
+```json
+{
+  "companyId": "uuid",
+  "documentId": "uuid",
+  "documentType": "ELECTRONIC_POS",
+  "environment": "HABILITATION",
+  "fiscalSnapshot": {
+    "issuer": {},
+    "buyer": {},
+    "lines": [],
+    "totals": {},
+    "taxes": []
+  }
+}
+```
+
+`RealDianSubmissionResponse`:
+
+```json
+{
+  "submissionId": "uuid",
+  "documentId": "uuid",
+  "status": "ACCEPTED",
+  "dianTrackingId": "string",
+  "cufeCude": "string",
+  "qrContent": "string",
+  "validationSummary": {
+    "xsd": "PASSED",
+    "schematron": "PASSED",
+    "codeLists": "PASSED"
+  },
+  "artifacts": [
+    {
+      "artifactType": "SIGNED_XML",
+      "contentHash": "sha256:...",
+      "downloadAvailable": true
+    }
+  ],
+  "processedAt": "2026-08-24T10:00:00Z"
+}
+```
+
+Errores funcionales:
+
+- `DIAN_CONFIGURATION_INCOMPLETE`
+- `DIAN_CONFIGURATION_NOT_ACTIVE`
+- `DIAN_CERTIFICATE_EXPIRED`
+- `DIAN_ARTIFACT_VALIDATION_FAILED`
+- `DIAN_SIGNATURE_FAILED`
+- `DIAN_TECHNICAL_VALIDATION_FAILED`
+- `DIAN_TRANSPORT_FAILED`
+- `DIAN_REJECTED`
+- `DIAN_RESPONSE_UNAVAILABLE`
+- `DIAN_REAL_MODE_NOT_AVAILABLE`
 
 ### Configuracion DIAN por empresa
 
@@ -1187,7 +1260,7 @@ Reglas:
 
 - No guardar secretos en payloads ni logs.
 - Todo error externo debe mapearse a `EXTERNAL_PROVIDER_ERROR` con detalle seguro.
-- La integracion real de envio queda pendiente hasta implementar el conector DIAN real configurable por empresa.
+- La integracion real de envio queda implementada como pipeline configurable `stub/http` en Fase 20 TASK-153 a TASK-163, con XML UBL base, firma/validacion de referencia, CUFE/CUDE, QR, transporte, respuestas, artefactos e idempotencia.
 - En desarrollo local se usa el microservicio mock sin llamadas externas y solo sirve para probar el flujo interno.
 - Variables locales del mock:
   - `DIAN_PROVIDER_MODE=mock`.
@@ -1195,7 +1268,7 @@ Reglas:
   - `DIAN_MOCK_ERROR_CODE`.
   - `DIAN_MOCK_ERROR_MESSAGE`.
 - El servicio cuenta con compuerta tecnica para modo real: verifica artefactos DIAN locales/configurados (`DIAN_TECHNICAL_ARTIFACTS_ROOT`, XSD UBL 2.1, Schematron DIAN, XSL compilado y lista de codigos) antes de aprobar una prueba de configuracion real.
-- El envio de documentos sigue cerrado a `mock` hasta implementar el adaptador real de generacion XML, firma, validacion y transporte; un intento de envio real no debe degradar silenciosamente a mock.
+- El envio de documentos en modo real no debe degradar silenciosamente a mock; si falla configuracion, artefactos tecnicos o transporte, retorna error funcional sanitizado.
 - El request de configuracion DIAN no puede incluir secretos en claro; solo referencias seguras o datos no sensibles. Si una UI necesita cargar un certificado, debe enviarlo a un endpoint seguro que lo almacene en Secrets Manager/almacen equivalente y retorne referencia no sensible.
 - Las respuestas API nunca retornan certificado, PIN, claves, tokens ni credenciales; solo banderas `*Configured`, alias, huella, vencimiento y estado.
 - Activar modo real exige `responsibilityAccepted=true` para confirmar que la empresa entiende que opera su propia habilitacion/certificacion DIAN.
@@ -1585,7 +1658,7 @@ Reglas:
 - El BFF no debe implementar reglas de negocio que pertenezcan a billing, inventory, accounting, tenant, identity, catalog, thirdparty o audit.
 - Un fallo de servicio interno debe responder como error publico estructurado sin stack trace ni detalles de infraestructura.
 - Estado TASK-065: `/api/v1/auth/**` y `/api/v1/me/**` se enrutan a `identity-service`; `/api/v1/companies/{companyId}/license/**` se enruta a `tenant-service`; `/api/v1/companies/{companyId}/memberships`, `/api/v1/companies/{companyId}/users/{userId}/roles` y `/api/v1/companies/{companyId}/permissions` se enrutan a `identity-service`.
-- Estado objetivo TASK-153/TASK-163: en produccion, el BFF no recibe `Authorization` desde la SPA; resuelve cookie segura server-side y genera headers internos.
+- Estado objetivo TASK-164/TASK-174: en produccion, el BFF no recibe `Authorization` desde la SPA; resuelve cookie segura server-side y genera headers internos.
 
 ### Reglas RBAC billing via BFF
 
@@ -1656,7 +1729,7 @@ Estado TASK-058 licencia consumidores:
 ### Reportes minimos por servicio dueno del dato
 
 TASK-054 implementa los reportes minimos como endpoints de lectura en los servicios duenos del dato.
-Desde TASK-174 existe `reporting-service` como microservicio fisico para catalogo/opciones/query de reportes avanzados. Los reportes minimos se conservan en `billing-service`, `inventory-service` y `accounting-service` como fuentes canonicas; las proyecciones event-driven viven en `reporting-projection-lambda`.
+Desde TASK-185 existe `reporting-service` como microservicio fisico para catalogo/opciones/query de reportes avanzados. Los reportes minimos se conservan en `billing-service`, `inventory-service` y `accounting-service` como fuentes canonicas; las proyecciones event-driven viven en `reporting-projection-lambda`.
 
 #### billing-service
 
@@ -1752,7 +1825,7 @@ Cuando los servicios existan fisicamente, cada contrato debe tener:
 
 ## Pendientes
 
-- Implementar conector DIAN real parametrizable por empresa con XML UBL, firma, CUFE/CUDE, QR, validaciones tecnicas y respuestas DIAN.
+- Reemplazar firma/validacion de referencia DIAN por XMLDSig/XAdES certificado y fixtures oficiales de habilitacion por empresa antes de operacion comercial real.
 - Formalizar OpenAPI por servicio despues de estabilizar DTOs publicos y contratos BFF; Springdoc ya permite generar documentacion runtime, pero falta versionarla como artefacto controlado.
 - Completar endpoints objetivo de actualizacion/inactivacion donde hoy existe solo contrato documentado.
 
@@ -2461,7 +2534,7 @@ Regla: la exportacion reutiliza las mismas validaciones y filtros de `/api/v1/re
 
 ### Reportes asincronos avanzados
 
-Estado: diseno objetivo posterior a TASK-145 a TASK-163. No implementado en la API actual.
+Estado: diseno objetivo posterior a Fase 20 DIAN TASK-145 a TASK-163 y con Fase 21 seguridad TASK-164 a TASK-174 estable. No implementado en la API actual.
 
 Crear job de exportacion pesado:
 

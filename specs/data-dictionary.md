@@ -843,7 +843,59 @@ Tabla planificada para fase posterior. Todavia no existe en Flyway.
 | source_version | varchar(40) | Si | Version/corte de fuente. |
 | updated_at | timestamptz | Si | Fecha de ultima modificacion. |
 
-## Extensiones TASK-168 a TASK-178
+## Extensiones TASK-153 a TASK-163
+
+Estado: objetivo DIAN real pendiente de implementacion; no existe en Flyway hasta ejecutar Fase 20.
+
+### `dian_provider.dian_submission_event`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del evento tecnico DIAN. |
+| company_id | uuid | Si | Empresa propietaria del documento y configuracion DIAN. |
+| submission_id | uuid | Si | Envio DIAN asociado. |
+| document_id | uuid | Si | Documento fiscal de negocio asociado. |
+| event_type | varchar(40) | Si | XML_BUILT, SIGNED, VALIDATED, TRANSMITTED, ACCEPTED, REJECTED, RETRY_SCHEDULED o FAILED. |
+| status | varchar(20) | Si | SUCCESS, FAILURE o PENDING. |
+| dian_code | varchar(80) | No | Codigo DIAN o tecnico sanitizado. |
+| dian_message | varchar(500) | No | Mensaje DIAN sanitizado, sin payload completo ni secretos. |
+| correlation_id | varchar(120) | Si | Correlacion transversal. |
+| created_at | timestamptz | Si | Fecha del evento. |
+
+### `dian_provider.dian_submission_artifact`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del artefacto tecnico. |
+| company_id | uuid | Si | Empresa propietaria. |
+| submission_id | uuid | Si | Envio DIAN asociado. |
+| document_id | uuid | Si | Documento fiscal asociado. |
+| artifact_type | varchar(40) | Si | UNSIGNED_XML, SIGNED_XML, ATTACHED_DOCUMENT, ZIP, QR, GRAPHIC_REPRESENTATION, APPLICATION_RESPONSE o DIAN_RESPONSE. |
+| storage_bucket_reference | varchar(180) | No | Alias o referencia privada de bucket/storage. |
+| storage_key | varchar(500) | Si | Key privada cifrada o referencia interna; no es URL publica. |
+| content_type | varchar(120) | Si | Tipo MIME validado. |
+| file_name | varchar(220) | Si | Nombre sugerido para descarga. |
+| content_hash | varchar(120) | Si | Hash para integridad/trazabilidad. |
+| size_bytes | bigint | No | Tamano del artefacto. |
+| created_at | timestamptz | Si | Fecha de generacion. |
+| created_by | uuid | No | Usuario o proceso que origino el artefacto. |
+
+### `dian_provider.dian_technical_validation_result`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del resultado de validacion. |
+| company_id | uuid | Si | Empresa propietaria. |
+| submission_id | uuid | Si | Envio DIAN asociado. |
+| document_id | uuid | Si | Documento fiscal asociado. |
+| validation_type | varchar(40) | Si | XSD, SCHEMATRON, CODE_LIST o SIGNATURE. |
+| result | varchar(20) | Si | PASSED, FAILED o SKIPPED. |
+| rule_code | varchar(120) | No | Regla tecnica o codigo de validacion. |
+| message | varchar(500) | No | Mensaje sanitizado. |
+| source_version | varchar(80) | Si | Version/anexo/fuente tecnica usada. |
+| validated_at | timestamptz | Si | Fecha de validacion. |
+
+## Extensiones TASK-179 a TASK-189
 
 ### `tenant.company_branding`
 
@@ -872,7 +924,7 @@ Tabla implementada por Flyway `V005__create_company_branding.sql` para branding 
 
 ### `reporting.report_definition`
 
-Tabla objetivo para catalogo backend de reportes avanzados. Todavia no existe en Flyway hasta ejecutar TASK-174.
+Tabla objetivo para catalogo backend de reportes avanzados. Todavia no existe en Flyway hasta ejecutar TASK-185.
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -924,7 +976,7 @@ Tabla objetivo para catalogo backend de reportes avanzados. Todavia no existe en
 
 ### `billing.fiscal_document_artifact`
 
-Tabla objetivo para artefactos POS/documento fiscal. Todavia no existe en Flyway hasta ejecutar TASK-177.
+Tabla objetivo para artefactos POS/documento fiscal. Todavia no existe en Flyway hasta ejecutar TASK-188.
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|

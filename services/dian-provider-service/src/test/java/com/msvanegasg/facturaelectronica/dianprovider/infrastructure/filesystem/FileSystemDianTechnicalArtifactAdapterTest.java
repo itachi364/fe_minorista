@@ -45,7 +45,8 @@ class FileSystemDianTechnicalArtifactAdapterTest {
     }
 
     private DianProviderProperties properties() {
-        return new DianProviderProperties("mock", null, null, null, root.toString(), "invoice.xsd", "credit.xsd",
-                "debit.xsd", "model.sch", "compiled.xsl", "codes.sch");
+        return new DianProviderProperties("mock", null, null, null, "stub", null, "build/test-dian-artifacts",
+                root.toString(), "invoice.xsd", "credit.xsd", "debit.xsd", "model.sch", "compiled.xsl",
+                "codes.sch");
     }
 }

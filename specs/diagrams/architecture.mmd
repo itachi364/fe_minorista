@@ -52,6 +52,15 @@ flowchart TB
     DianPlatform[DIAN services configured by company]
   end
 
+  subgraph DianRealFlow["DIAN real flow inside dian-provider-service"]
+    UblBuilder[UBL 2.1 XML builder]
+    DianIdentifiers[CUFE / CUDE / QR calculator]
+    XmlSigner[Company certificate XML signer]
+    DianValidator[XSD / Schematron / code-list validator]
+    DianTransport[DIAN habilitation / production transport]
+    DianArtifacts[Private fiscal artifacts]
+  end
+
   Browser --> CloudFront
   CloudFront --> S3
   CloudFront --> ApiGateway
@@ -71,9 +80,12 @@ flowchart TB
   Bff --> Reporting
 
   Billing --> DianProvider
+  DianProvider --> UblBuilder --> DianIdentifiers --> XmlSigner --> DianValidator --> DianTransport
+  DianProvider --> DianArtifacts
   DianProvider --> Secrets
   DianProvider --> CompanyCertificate
-  DianProvider --> DianPlatform
+  DianTransport --> DianPlatform
+  DianArtifacts --> AssetBucket
 
   Bff --> Secrets
   Tenant --> Secrets

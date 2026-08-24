@@ -423,3 +423,52 @@ Flujos alternos:
 - Si AWS Secrets Manager falla, la empresa puede quedar creada con estado de provisionamiento pendiente y reintento auditable.
 
 Acceptance criteria: AC-170, AC-171, AC-186, AC-188.
+
+## UC-029: Emitir documento fiscal real ante DIAN
+
+Actor: Sistema, iniciado por vendedor/cajero o proceso fiscal autorizado.
+
+Precondiciones:
+- La empresa tiene configuracion DIAN real activa, completa, vigente y probada.
+- Existe resolucion de numeracion vigente para el tipo documental.
+- El documento fiscal tiene snapshot canonico, totales, impuestos y adquirente/consumidor final resueltos.
+
+Flujo principal:
+1. `billing-service` confirma el documento y genera una clave de idempotencia estable.
+2. `billing-service` solicita envio real a `dian-provider-service`.
+3. `dian-provider-service` resuelve configuracion y secretos de la empresa.
+4. El sistema genera XML UBL 2.1, CUFE/CUDE y QR.
+5. El sistema firma el XML con certificado empresarial.
+6. El sistema valida XSD, Schematron y listas de codigos.
+7. El sistema transmite a DIAN en ambiente de habilitacion o produccion.
+8. El sistema registra respuesta, tracking, artefactos y estado.
+9. `billing-service` actualiza el documento sin duplicar inventario ni contabilidad.
+
+Flujos alternos:
+- Si falta configuracion o certificado, el sistema falla cerrado antes de generar/transmitir.
+- Si falla validacion tecnica, no transmite a DIAN y registra error sanitizado.
+- Si DIAN rechaza, el documento queda `REJECTED` y requiere gestion fiscal autorizada.
+- Si el fallo es temporal, se programa reintento idempotente.
+
+Acceptance criteria: AC-218, AC-219, AC-220, AC-221, AC-222, AC-223, AC-224, AC-226, AC-227.
+
+## UC-030: Consultar artefactos fiscales reales
+
+Actor: ROOT, administrador empresarial, contador o usuario con permiso fiscal/documental.
+
+Precondiciones:
+- El documento fiscal existe en la empresa activa.
+- El usuario tiene permiso y modulo licenciado.
+
+Flujo principal:
+1. El usuario consulta historico de ventas o documentos.
+2. El BFF solicita metadata de artefactos al servicio dueno.
+3. El sistema valida empresa, permiso, licencia y estado del documento.
+4. El sistema entrega links controlados por BFF para XML firmado, representacion grafica, QR, ZIP/AttachedDocument o respuesta DIAN segun disponibilidad.
+5. Cada descarga queda auditada.
+
+Flujos alternos:
+- Si el artefacto no existe o no esta listo, se muestra mensaje funcional.
+- Si el usuario no tiene permiso, el backend rechaza aunque la UI oculte la accion.
+
+Acceptance criteria: AC-225, AC-158, AC-201, AC-207.

@@ -487,13 +487,16 @@ Campos minimos adicionales para orquestacion:
 - `dian_provider.provider_configuration`
 - `dian_provider.provider_submission`
 - `dian_provider.provider_response`
+- `dian_provider.dian_submission_event` objetivo TASK-159.
+- `dian_provider.dian_submission_artifact` objetivo TASK-161.
+- `dian_provider.dian_technical_validation_result` objetivo TASK-157.
 
 Estado TASK-036:
 
 - `dian-provider-service` fisico crea `dian_provider.provider_submission`.
 - La tabla registra empresa, documento, tipo de documento, clave de idempotencia, tracking ID, estado mock, CUFE/CUDE, QR, error seguro, fecha, request y response seguros.
 - `unique(company_id, document_id, document_type, idempotency_key)` evita duplicar envios por reintento.
-- La configuracion DIAN real, certificados, credenciales y respuestas oficiales quedan documentadas como configuracion parametrizable por empresa. Cada empresa es responsable de su habilitacion/certificacion DIAN; la plataforma no presta servicio de proveedor tecnologico.
+- La configuracion DIAN real, referencias de certificados/credenciales, respuestas oficiales, validaciones tecnicas y artefactos quedan implementadas/documentadas como configuracion parametrizable por empresa en Fase 20 TASK-145 a TASK-163. Cada empresa es responsable de su habilitacion/certificacion DIAN; la plataforma no presta servicio de proveedor tecnologico.
 
 ### Contabilidad
 
@@ -531,7 +534,7 @@ Antes de eliminar tablas publicas legacy se debe construir una matriz de reempla
 - Una `company` tiene muchos usuarios mediante `user_company`.
 - Una `company` tiene clientes, proveedores, productos, resoluciones, ventas, documentos electronicos, movimientos de inventario y asientos contables.
 - Una venta POS genera un documento electronico.
-- Un documento electronico puede tener multiples lineas, impuestos, artefactos y envios al proveedor.
+- Un documento electronico puede tener multiples lineas, impuestos, artefactos, envios DIAN y eventos/validaciones tecnicas del conector.
 - Una venta facturada descuenta inventario mediante movimientos.
 - Una compra confirmada incrementa inventario mediante movimientos.
 - Un documento fiscal confirmado o validado genera asiento contable.
@@ -597,7 +600,7 @@ Compra:
 
 ## Preguntas abiertas
 
-- Detalle final del modo tecnico DIAN real que configurara cada empresa facturadora.
+- Validacion productiva con certificado real, fixtures oficiales y habilitacion DIAN por empresa antes de operacion comercial.
 - Politica final de afectacion de inventario: al crear venta, al emitir, al validar proveedor o al recibir pago.
 - Bodegas multiples o unica bodega inicial.
 - Manejo de caja y cierres POS.

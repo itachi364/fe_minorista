@@ -178,7 +178,7 @@ Impacto de infraestructura:
 - `frontend` corre como contenedor Node/Vite solo para desarrollo local y E2E; produccion compila artefacto estatico para S3/CloudFront.
 - La SPA no consume microservicios internos directamente; todas las llamadas publicas pasan por `bff-service`.
 - `bff-service` propaga `X-Company-Id`, `X-Correlation-Id`, `X-User-Id` e `Idempotency-Key` hacia servicios internos.
-- El login local/transitorio usa `identity-service`; la autenticacion productiva con Cognito queda en TASK-153 a TASK-163.
+- El login local/transitorio usa `identity-service`; la autenticacion productiva con Cognito queda en TASK-164 a TASK-174.
 - ROOT local se usa solo para pruebas y administracion inicial; no requiere licencia empresarial.
 - RBAC y permisos efectivos se validan en backend/BFF, no solo en la SPA.
 - La modularizacion frontend no introduce catalogos de negocio locales ni secretos en el bundle.
@@ -350,7 +350,7 @@ Reglas no negociables:
 - Library/tool: AWS (`/websites/aws_amazon`).
 - Topic consulted: CloudFront security headers.
 - Relevant finding: CloudFront Functions/Response Headers pueden agregar HSTS, CSP, `X-Content-Type-Options`, frame protection y `Referrer-Policy`.
-- Decision impact: TASK-158 queda trazada a CloudFront/BFF para hardening HTTP productivo.
+- Decision impact: TASK-169 queda trazada a CloudFront/BFF para hardening HTTP productivo.
 - Library/tool: AWS (`/websites/aws_amazon`).
 - Topic consulted: SQS-triggered Lambda partial batch failures and DLQ.
 - Relevant finding: Lambda con SQS puede devolver `batchItemFailures` para reintentar solo mensajes fallidos; SQS soporta redrive policy hacia DLQ.
@@ -366,9 +366,9 @@ Reglas:
 - La autorizacion real permanece en BFF/identity-service.
 - No se agregan endpoints directos desde la SPA hacia microservicios internos.
 
-## TASK-145 a TASK-152 DIAN real parametrizable por empresa
+## TASK-145 a TASK-163 DIAN real parametrizable por empresa
 
-Estas tareas evolucionan `dian-provider-service` como conector DIAN parametrizable por empresa, manteniendo el modo mock para local/E2E y dejando una compuerta tecnica para validar artefactos DIAN antes del futuro envio real certificado.
+Estas tareas evolucionan `dian-provider-service` como conector DIAN parametrizable por empresa, manteniendo el modo mock para local/E2E y cerrando dentro de la misma fase el diseno e implementacion objetivo del envio real certificado.
 
 Impacto de infraestructura:
 
@@ -376,24 +376,34 @@ Impacto de infraestructura:
 - KMS cifra secretos por ambiente; IAM limita lectura/escritura por servicio y prefijo.
 - Terraform crea KMS, policies, roles y estructura base, pero no crea secretos por empresa de forma estatica.
 - La creacion/rotacion de secretos por empresa ocurre en runtime desde servicios autorizados, con auditoria y sin exponer valores.
-- `dian-provider-service` debe poder operar en `MOCK` y, cuando se implemente, en modo real por empresa sin compartir certificado global.
+- `dian-provider-service` puede operar en `MOCK` y en pipeline real configurable por empresa sin compartir certificado global.
 - Las pruebas de conexion DIAN real deben ejecutarse sin registrar certificados, PIN, tokens ni payload sensible.
 - En produccion, la salida hacia DIAN debe controlarse por subnets privadas con NAT Gateway o VPC endpoints/egress aprobado segun el destino tecnico disponible.
 
 Estado:
 
-- `dian-provider-service` existe como microservicio fisico y conector mock.
+- `dian-provider-service` existe como microservicio fisico, conector mock y pipeline real configurable `stub/http`.
 - La persistencia objetivo de configuracion DIAN por empresa esta documentada en `database-design.md` y `data-dictionary.md`.
-- La configuracion DIAN por empresa y la compuerta tecnica quedan cubiertas por TASK-145 a TASK-152; el envio DIAN real certificado queda como evolucion posterior.
+- La configuracion DIAN por empresa, la compuerta tecnica y el cierre funcional TASK-153 a TASK-163 quedan cubiertos por Fase 20.
+- La certificacion productiva final depende de certificados/credenciales reales por empresa, URLs oficiales, fixtures DIAN y validacion de habilitacion.
 
 Estado 2026-08-24:
 - `dian-provider-service` incluye tabla `dian_provider.dian_company_configuration` para metadata no sensible por empresa.
 - Los secretos se modelan como referencias bajo `/facturaelectronica/{env}/companies/{companyId}/...`.
 - `infra/aws/modules/secrets` crea KMS dedicado para Secrets Manager.
 - `infra/aws/modules/ecs` permite a runtime crear/actualizar secretos bajo el patron empresarial autorizado.
-- Pendiente: adaptador AWS SDK real para Secrets Manager y flujo UBL/firma/envio DIAN real.
+- Pendiente productivo: adaptador AWS SDK real para Secrets Manager, almacenamiento S3/KMS de artefactos, firma XMLDSig/XAdES certificada y E2E de habilitacion DIAN con credenciales reales empresariales.
 
-## TASK-153 a TASK-163 seguridad de autenticacion productiva
+Requerimientos cloud para cierre real:
+
+- Secrets Manager/KMS por empresa para certificado, PIN, clave tecnica y credenciales DIAN.
+- S3 privado/KMS para artefactos fiscales reales: XML firmado, ZIP/AttachedDocument, QR, representacion grafica y respuesta DIAN.
+- IAM minimo para que solo `dian-provider-service` lea secretos DIAN y solo servicios autorizados consulten artefactos por BFF.
+- Egress controlado desde subnets privadas hacia endpoints DIAN de habilitacion/produccion.
+- CloudWatch Logs con sanitizacion obligatoria; no registrar XML completo con datos sensibles, certificados, PIN, claves ni respuestas crudas.
+- SQS/EventBridge para reintentos de proveedor cuando el fallo sea temporal, preservando idempotencia por documento.
+
+## TASK-164 a TASK-174 seguridad de autenticacion productiva
 
 Estado 2026-08-24:
 - `bff-service` soporta `AUTH_MODE=local|cognito`, valida cierre seguro en produccion y emite headers de seguridad.
@@ -1341,97 +1351,163 @@ Esta seccion documenta de forma uniforme el impacto de infraestructura de cada t
 - Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
-### TASK-153 - Disenar autenticacion productiva con Cognito Hosted UI y PKCE
+### TASK-153 - Actualizar base normativa DIAN vigente y matriz de versionado tecnico
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: No crea recursos cloud; condiciona endpoints, artefactos tecnicos y versionado por ambiente.
+- Control operativo: documentar fuentes oficiales, fecha de consulta y version/anexo antes de habilitar recursos productivos.
+
+### TASK-154 - Disenar generacion XML UBL 2.1 para documentos fiscales
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: No requiere recurso nuevo; puede requerir empaquetar artefactos tecnicos validados con el contenedor o cargarlos desde storage seguro.
+- Control operativo: versionar artefactos tecnicos y fixtures sanitizados sin secretos.
+
+### TASK-155 - Disenar calculo CUFE/CUDE y QR productivo
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: No crea recursos cloud; depende de secretos empresariales ya administrados por KMS/Secrets Manager.
+- Control operativo: evitar logs de claves tecnicas y validar reproducibilidad por ambiente.
+
+### TASK-156 - Implementar firma XML con certificado empresarial
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: Usa Secrets Manager/KMS para certificado y PIN por empresa.
+- Control operativo: IAM minimo por servicio/prefijo, rotacion auditable y respuesta sin valores secretos.
+
+### TASK-157 - Implementar validacion XSD, Schematron y listas de codigos
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: Requiere disponibilidad confiable de XSD/Schematron/listas en runtime.
+- Control operativo: fallar cerrado si faltan artefactos o version esperada.
+
+### TASK-158 - Implementar transporte real DIAN para habilitacion y produccion
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: Requiere egress controlado desde servicios privados hacia endpoints DIAN y configuracion de timeouts/reintentos.
+- Control operativo: separar habilitacion/produccion y nunca hacer fallback a mock en modo real.
+
+### TASK-159 - Persistir respuestas DIAN y ApplicationResponse
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: Agrega migraciones en `dian-provider-service` y almacenamiento de metadata tecnica.
+- Control operativo: persistir solo mensajes sanitizados y referencias a artefactos privados.
+
+### TASK-160 - Implementar reintentos DIAN e idempotencia de efectos posteriores
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: Usa SQS/EventBridge/provider retry Lambda cuando el fallo sea temporal.
+- Control operativo: DLQ, reintento con idempotencia y estados terminales claros.
+
+### TASK-161 - Almacenar artefactos fiscales reales de forma segura
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: Usa S3 privado/KMS o storage cloud equivalente para artefactos fiscales.
+- Control operativo: acceso por BFF/RBAC, hash, retencion y auditoria de descarga.
+
+### TASK-162 - Ajustar contratos API y modelo de datos para DIAN real
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: Puede requerir nuevas migraciones, variables de entorno y permisos IAM.
+- Control operativo: contratos deben declarar headers, errores, idempotencia y storage seguro.
+
+### TASK-163 - Definir suite obligatoria de pruebas DIAN antes de produccion
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: No crea recursos permanentes; puede usar stubs locales y entornos de habilitacion DIAN.
+- Control operativo: bloquear despliegue real si no existe evidencia de pruebas con fixtures sanitizados.
+
+### TASK-164 - Disenar autenticacion productiva con Cognito Hosted UI y PKCE
 - Estado: Completada. Modulo Cognito Terraform, variables BFF, PKCE S256, callback/token exchange, puente Cognito -> identidad interna por `sub` persistente y sesion cifrada server-side implementados.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta infraestructura productiva AWS objetivo y debe reflejarse en Terraform/IAM/red/seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
-### TASK-154 - Reemplazar tokens en SPA por sesion BFF con cookie segura
+### TASK-165 - Reemplazar tokens en SPA por sesion BFF con cookie segura
 - Estado: Completada. Cookie/CSRF base, endpoints de sesion/logout, hidratacion SPA por cookie, proxy con autorizacion interna server-side y sanitizacion de storage para sesiones Cognito/cookie implementados. El bearer queda limitado a modo local/E2E.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
-### TASK-155 - Crear almacenamiento server-side de sesion cifrada
+### TASK-166 - Crear almacenamiento server-side de sesion cifrada
 - Estado: Completada. `BFF_SESSION_STORE=jdbc` persiste sesiones cifradas en PostgreSQL; `memory` queda como fallback local/test explicito.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
-### TASK-156 - Implementar logout seguro y revocacion
+### TASK-167 - Implementar logout seguro y revocacion
 - Estado: Completada. Logout limpia cookies, invalida sesion server-side, revoca sesion interna, audita `LOGOUT` y revoca `refresh_token` Cognito best-effort.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
-### TASK-157 - Hardening frontend contra exposicion de datos sensibles
+### TASK-168 - Hardening frontend contra exposicion de datos sensibles
 - Estado: Completada. Sourcemaps productivos deshabilitados, fetch con cookies/CSRF, snapshots Cognito/cookie sin tokens e hidratacion productiva sin `Authorization` construido por la SPA. El bearer queda limitado a modo local/E2E.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
-### TASK-158 - Agregar security headers CloudFront/BFF
+### TASK-169 - Agregar security headers CloudFront/BFF
 - Estado: Completada.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
-### TASK-159 - Implementar proteccion CSRF para sesiones por cookie
+### TASK-170 - Implementar proteccion CSRF para sesiones por cookie
 - Estado: Completada.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta infraestructura productiva AWS objetivo y debe reflejarse en Terraform/IAM/red/seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
-### TASK-160 - MFA obligatorio para ROOT, administradores y acciones criticas
+### TASK-171 - MFA obligatorio para ROOT, administradores y acciones criticas
 - Estado: Completada. Cognito habilita MFA software token y el BFF bloquea mutaciones criticas sin evidencia MFA en la sesion.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta infraestructura productiva AWS objetivo y debe reflejarse en Terraform/IAM/red/seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
-### TASK-161 - Provisionamiento runtime de secretos AWS por empresa
+### TASK-172 - Provisionamiento runtime de secretos AWS por empresa
 - Estado: Completada.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta entorno local Docker/Compose, variables de entorno y gestion de secretos dummy.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
-### TASK-162 - Auditoria de seguridad transversal
+### TASK-173 - Auditoria de seguridad transversal
 - Estado: Completada. El BFF emite auditoria best-effort para mutaciones company-scoped, CSRF invalido y MFA faltante; identity audita login Cognito, vinculo de sujeto Cognito y logout.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta contratos de eventos, Outbox/Inbox, auditoria y procesamiento asincrono.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
-### TASK-163 - Modo transicion local y bloqueo productivo de auth dummy
+### TASK-174 - Modo transicion local y bloqueo productivo de auth dummy
 - Estado: Completada. `AUTH_MODE=local` queda local/E2E y el BFF falla cerrado en produccion si no usa Cognito.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
-### TASK-164 - Cerrar consistencia documental SDD antes de nueva implementacion
+### TASK-175 - Cerrar consistencia documental SDD antes de nueva implementacion
 - Estado: Completada.
 - Fase: Fase 22: Gobierno SDD, diagramas y limpieza final.
 - Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
-### TASK-165 - Actualizar diagramas Mermaid a la arquitectura y modelo vigentes
+### TASK-176 - Actualizar diagramas Mermaid a la arquitectura y modelo vigentes
 - Estado: Completada.
 - Fase: Fase 22: Gobierno SDD, diagramas y limpieza final.
 - Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
-### TASK-166 - Cerrar brechas documentales de estado actual versus objetivo
+### TASK-177 - Cerrar brechas documentales de estado actual versus objetivo
 - Estado: Completada.
 - Fase: Fase 22: Gobierno SDD, diagramas y limpieza final.
 - Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
-### TASK-167 - Ejecutar limpieza final legacy y artefactos huerfanos antes de nuevas mejoras
+### TASK-178 - Ejecutar limpieza final legacy y artefactos huerfanos antes de nuevas mejoras
 - Estado: Completada.
 - Fase: Fase 22: Gobierno SDD, diagramas y limpieza final.
 - Impacto de infraestructura: Sin cambio directo de infraestructura; se ejecuta en servicios existentes, base de datos ya definida o documentacion SDD.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
-## TASK-168 a TASK-178 infraestructura objetivo
+## TASK-179 a TASK-189 infraestructura objetivo
 
 ### Branding y archivos empresariales
 
@@ -1443,7 +1519,7 @@ Esta seccion documenta de forma uniforme el impacto de infraestructura de cada t
 
 ### Reporting-service y exportaciones
 
-- `reporting-service` es ECS Fargate privado desde TASK-174 y orquesta consultas hacia servicios duenos.
+- `reporting-service` es ECS Fargate privado desde TASK-185 y orquesta consultas hacia servicios duenos.
 - El BFF sera el unico borde publico para reportes.
 - Exportaciones pequenas pueden generarse sincronicamente; exportaciones grandes deben poder pasar a flujo asincrono con EventBridge/SQS/Lambda o worker interno del servicio.
 - Los archivos exportados se almacenan en S3 privado con expiracion y metadata de auditoria.
@@ -1460,78 +1536,78 @@ Esta seccion documenta de forma uniforme el impacto de infraestructura de cada t
 
 - Requisitos: RF-131 a RF-145.
 - Acceptance criteria: AC-193 a AC-208.
-- Tareas: TASK-168 a TASK-178.
+- Tareas: TASK-179 a TASK-189.
 - Modulos/servicios: `frontend`, `ecs`, `secrets`, `messaging`, futuro almacenamiento S3 de artefactos, `tenant-service`, `billing-service`, `reporting-service`.
 
-### TASK-168 - Adoptar marca NexoFiscal en frontend y documentacion visible
+### TASK-179 - Adoptar marca NexoFiscal en frontend y documentacion visible
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Sin cambio directo; afecta SPA y metadata publica.
 - Control operativo: validar build frontend y cache de CloudFront cuando exista despliegue cloud.
 
-### TASK-169 - Disenar branding empresarial parametrizable
+### TASK-180 - Disenar branding empresarial parametrizable
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Define storage local/S3 privado para assets empresariales.
 - Control operativo: revisar IAM, KMS, prefijos por empresa y lifecycle.
 
-### TASK-170 - Implementar backend de branding empresarial
+### TASK-181 - Implementar backend de branding empresarial
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Agrega limites multipart configurables y storage local parametrizable para desarrollo mediante `TENANT_BRANDING_STORAGE_PATH`.
 - Control operativo: en AWS debe evolucionar a S3 privado/KMS por empresa usando el puerto de storage sin exponer buckets.
 
-### TASK-171 - Implementar UI de branding y aplicacion dinamica
+### TASK-182 - Implementar UI de branding y aplicacion dinamica
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: La SPA consume URLs de assets versionadas por hash para favicon/logo.
 - Control operativo: CloudFront debe respetar cache por hash y servir fallback NexoFiscal cuando no exista branding.
 
-### TASK-172 - Disenar artefactos fiscales, comprobantes POS e impresion termica
+### TASK-183 - Disenar artefactos fiscales, comprobantes POS e impresion termica
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Define storage de artefactos POS y eventual canal de impresion.
 - Control operativo: separar fase web print de conectores directos.
 
-### TASK-173 - Disenar reporting-service y contratos de reportes avanzados
+### TASK-184 - Disenar reporting-service y contratos de reportes avanzados
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Define futuro servicio ECS privado y posibles colas/eventos para exportaciones.
 - Control operativo: mantener BFF como unico borde publico.
 
-### TASK-174 - Implementar reporting-service con reportes iniciales
+### TASK-185 - Implementar reporting-service con reportes iniciales
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Agrega `reporting-service` a Docker Compose y Terraform ECS dev con URL interna hacia BFF.
 - Control operativo: las consultas iniciales orquestan fuentes canonicas; exportaciones y consultas pesadas deben evolucionar con paginacion/asincronia en tareas posteriores.
 
-### TASK-175 - Implementar UI avanzada de reportes
+### TASK-186 - Implementar UI avanzada de reportes
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Sin cambio directo; consume BFF.
 - Control operativo: la UI usa catalogo backend, filtros dinamicos y visualizacion cliente inicial; consultas pesadas/exportaciones quedan para tareas posteriores.
 
-### TASK-176 - Implementar exportacion de reportes
+### TASK-187 - Implementar exportacion de reportes
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Sin storage adicional en fase inicial; CSV/XLS se generan sincronicamente desde `reporting-service`.
 - Control operativo: BFF audita la descarga sincrona como `POST`; archivos pesados, expiracion, storage privado y procesamiento asincrono quedan para evolucion posterior.
 
-### TASK-177 - Implementar comprobante POS imprimible e impresion web
+### TASK-188 - Implementar comprobante POS imprimible e impresion web
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Sin cambio cloud inicial; usa navegador e imprime desde cliente.
 - Control operativo: `POST /sales/{saleId}/receipt` permite auditoria BFF; conectores directos quedan para fase posterior con hardware validado.
 
-### TASK-178 - Implementar historico avanzado de ventas/documentos
+### TASK-189 - Implementar historico avanzado de ventas/documentos
 - Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Sin nuevo contenedor; consulta sobre `billing-service` con filtros multiempresa y reimpresion auditada por BFF.
 - Control operativo: vigilar performance, agregar paginacion/indices dedicados si el volumen de ventas crece y mantener aislamiento por `company_id`.
 
-## TASK-179 a TASK-185 infraestructura objetivo
+## TASK-190 a TASK-196 infraestructura objetivo
 
-Estado: backlog SDD aprobado; ejecutar despues de TASK-145 a TASK-163.
+Estado: backlog SDD aprobado; ejecutar despues de Fase 20 DIAN TASK-145 a TASK-163 y con Fase 21 seguridad TASK-164 a TASK-174 estable.
 
 Componentes AWS objetivo:
 
@@ -1566,43 +1642,43 @@ Reglas:
 - Los objetos exportados deben tener retencion configurable y limpieza automatica.
 - Las Lambdas deben ser idempotentes y usar DLQ/reintentos sin bloquear `reporting-service`.
 
-### TASK-179 - Disenar reportes asincronos avanzados
+### TASK-190 - Disenar reportes asincronos avanzados
 - Estado: Pendiente.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Impacto de infraestructura: Define umbrales y modo de ejecucion sincrono/asincrono.
 - Control operativo: separar reportes interactivos de trabajos batch.
 
-### TASK-180 - Disenar contratos API para jobs de reportes
+### TASK-191 - Disenar contratos API para jobs de reportes
 - Estado: Pendiente.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Impacto de infraestructura: BFF sigue siendo unica entrada publica; `reporting-service` queda privado.
 - Control operativo: contratos deben soportar retries, idempotencia y errores funcionales.
 
-### TASK-181 - Disenar persistencia de trabajos de reportes
+### TASK-192 - Disenar persistencia de trabajos de reportes
 - Estado: Pendiente.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Impacto de infraestructura: PostgreSQL requiere tablas e indices por empresa, usuario, estado y expiracion.
 - Control operativo: no guardar secretos ni URLs S3 prefirmadas persistentes.
 
-### TASK-182 - Disenar worker asincrono de exportacion
+### TASK-193 - Disenar worker asincrono de exportacion
 - Estado: Pendiente.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Impacto de infraestructura: Lambda/worker, cola, DLQ, permisos S3/KMS minimos.
 - Control operativo: idempotencia por job y reintentos seguros.
 
-### TASK-183 - Disenar descarga segura desde S3 con enlace intermediado
+### TASK-194 - Disenar descarga segura desde S3 con enlace intermediado
 - Estado: Pendiente.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Impacto de infraestructura: BFF necesita permiso limitado para presign de objetos autorizados.
 - Control operativo: TTL S3 de 5 segundos desde el clic; token de correo con TTL independiente.
 
-### TASK-184 - Disenar notificaciones por correo
+### TASK-195 - Disenar notificaciones por correo
 - Estado: Pendiente.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Impacto de infraestructura: SES, dominio/correo verificado y auditoria de envio.
 - Control operativo: no incluir datos sensibles ni adjuntos pesados en correo.
 
-### TASK-185 - Disenar UI de reportes avanzados asincronos
+### TASK-196 - Disenar UI de reportes avanzados asincronos
 - Estado: Pendiente.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Impacto de infraestructura: Sin nuevo recurso cloud; consume BFF.
