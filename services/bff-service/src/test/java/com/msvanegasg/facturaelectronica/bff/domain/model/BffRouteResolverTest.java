@@ -20,6 +20,9 @@ class BffRouteResolverTest {
         assertThat(resolver.resolve("/api/v1/sales/123/confirm")).isEqualTo(TargetService.BILLING);
         assertThat(resolver.resolve("/api/v1/accounting-rules")).isEqualTo(TargetService.ACCOUNTING);
         assertThat(resolver.resolve("/api/v1/payroll/workers")).isEqualTo(TargetService.PAYROLL);
+        assertThat(resolver.resolve("/api/v1/dian-configuration/companies/11111111-1111-1111-1111-111111111111"))
+                .isEqualTo(TargetService.DIAN_PROVIDER);
+        assertThat(resolver.resolve("/api/v1/provider/electronic-pos")).isEqualTo(TargetService.DIAN_PROVIDER);
         assertThat(resolver.resolve("/api/v1/audit-events")).isEqualTo(TargetService.AUDIT);
     }
 
@@ -62,7 +65,7 @@ class BffRouteResolverTest {
 
     @Test
     void rejectsUnsupportedRoutes() {
-        assertThatThrownBy(() -> resolver.resolve("/api/v1/provider/electronic-pos"))
+        assertThatThrownBy(() -> resolver.resolve("/api/v1/unknown/electronic-pos"))
                 .isInstanceOf(UnsupportedBffRouteException.class);
     }
 }

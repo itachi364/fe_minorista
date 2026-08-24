@@ -159,17 +159,17 @@ Reglas:
 
 Tablas objetivo:
 
-- `dian_provider.provider_configuration`
+- `dian_provider.dian_company_configuration`
 - `dian_provider.provider_submission`
 - `dian_provider.provider_response`
 
 Reglas:
 
-- `provider_configuration.company_id` es obligatorio y aisla cada configuracion por empresa.
+- `dian_company_configuration.company_id` es obligatorio y aisla cada configuracion por empresa.
 - `operation_mode` debe soportar `MOCK` y `SOFTWARE_PROPIO_CLIENTE`; otros modos requieren aprobacion SDD.
 - `environment` debe diferenciar `HABILITACION` y `PRODUCCION`.
 - La base de datos no almacena certificados, PIN tecnico, claves, tokens ni credenciales en claro.
-- La base de datos solo almacena referencias seguras (`certificate_secret_reference`, `software_pin_secret_reference`, `technical_key_secret_reference`), alias, huella, vencimiento, estado, ultima prueba y metadata no sensible.
+- La base de datos solo almacena referencias seguras (`certificate_secret_ref`, `software_pin_secret_ref`, `technical_key_secret_ref`), alias, huella, vencimiento, estado, ultima prueba y metadata no sensible.
 - Una configuracion activa en modo real exige certificado vigente, referencias seguras completas, resolucion vigente compatible y prueba exitosa o estado de habilitacion aprobado.
 - Cada mutacion de configuracion DIAN registra auditoria y nunca incluye secretos en `audit.detail`.
 - El modo `MOCK` conserva pruebas locales/E2E, pero no habilita operacion productiva ni valida cumplimiento tecnico DIAN.
@@ -344,3 +344,66 @@ Reglas:
 - Las reimpresiones no recrean documentos fiscales; solo registran nuevo `pos_print_job`.
 - Cada descarga e impresion/reimpresion queda auditada.
 - Los conectores directos de impresora no se modelan como activos hasta completar tarea de hardware y seguridad.
+
+## Reportes Asincronos Avanzados
+
+Estado: modelo objetivo para Fase 24; no implementado hasta completar TASK-145 a TASK-163.
+
+Tablas objetivo en `reporting-service`:
+
+- `reporting.report_export_job`
+- `reporting.report_export_download_token`
+- `reporting.report_export_download_attempt`
+- `reporting.report_export_notification`
+
+Campos principales de `report_export_job`:
+
+- `id`: UUID del job.
+- `company_id`: empresa propietaria.
+- `requested_by`: usuario solicitante.
+- `report_code`: codigo tecnico del reporte.
+- `format`: `CSV`, `XLSX`, `PDF` cuando aplique.
+- `chart_type`: tipo de visualizacion solicitada si aplica.
+- `filters_json`: filtros normalizados sin secretos ni payloads excesivos.
+- `status`: `PENDING`, `PROCESSING`, `READY`, `FAILED`, `EXPIRED`, `REVOKED`.
+- `storage_bucket_reference`: alias/referencia de bucket, no URL publica.
+- `storage_key`: key privada del objeto S3 o referencia cifrada equivalente.
+- `content_type`, `file_name`, `content_hash`, `size_bytes`.
+- `requested_at`, `processing_started_at`, `ready_at`, `expires_at`, `revoked_at`.
+- `error_code`, `error_message`: error sanitizado para UI/soporte.
+- `correlation_id`.
+
+Campos principales de `report_export_download_token`:
+
+- `id`: UUID interno.
+- `job_id`, `company_id`, `user_id`.
+- `token_hash`: hash del token enviado al usuario; el token en claro no se almacena.
+- `status`: `ACTIVE`, `USED`, `EXPIRED`, `REVOKED`.
+- `expires_at`: TTL del enlace intermediado configurado por `REPORT_LINK_TOKEN_TTL_HOURS`.
+- `created_at`, `used_at`, `revoked_at`.
+- `last_correlation_id`.
+
+Campos principales de `report_export_download_attempt`:
+
+- `id`, `job_id`, `company_id`, `token_id`.
+- `requested_by` cuando se pueda resolver.
+- `result`: `SUCCESS`, `DENIED`, `EXPIRED`, `REVOKED`, `FAILED`.
+- `requested_at`, `ip_hash`, `user_agent_hash`, `correlation_id`.
+- `failure_code`: motivo funcional sanitizado.
+
+Campos principales de `report_export_notification`:
+
+- `id`, `job_id`, `company_id`, `recipient_user_id`, `recipient_email_hash`.
+- `channel`: `EMAIL`.
+- `status`: `PENDING`, `SENT`, `FAILED`.
+- `provider_message_id`: referencia tecnica no sensible.
+- `sent_at`, `error_code`, `correlation_id`.
+
+Reglas:
+
+- El enlace publico se construye con `APP_PUBLIC_BASE_URL`, no se persiste como URL canonica obligatoria.
+- La URL prefirmada S3 se genera solo al hacer clic y no se guarda como dato permanente.
+- El TTL inicial de la URL prefirmada es `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS=5`.
+- Los archivos quedan en S3 privado con KMS y politica de retencion configurable.
+- Las tablas deben indexarse por `company_id`, `requested_by`, `status`, `report_code`, `requested_at` y `expires_at`.
+- Los jobs y tokens deben respetar aislamiento multiempresa y RBAC.

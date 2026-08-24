@@ -15,7 +15,9 @@ export function RolesPanel({
   onTogglePermission,
   busy,
 }) {
-  const groupedPermissions = permissions.reduce((groups, permission) => {
+  const safePermissions = Array.isArray(permissions) ? permissions : [];
+  const safeRoles = Array.isArray(roles) ? roles : [];
+  const groupedPermissions = safePermissions.reduce((groups, permission) => {
     const key = permission.module || 'general';
     return { ...groups, [key]: [...(groups[key] || []), permission] };
   }, {});
@@ -31,9 +33,9 @@ export function RolesPanel({
           <button className="secondary" disabled={busy} onClick={onNew} type="button">Nuevo rol</button>
         </header>
         <div className="summary-strip">
-          <StatusBadge label="Permisos" value={permissions.length || 0} />
-          <StatusBadge label="Roles" value={roles.length || 0} />
-          <StatusBadge label="Activos" value={roles.filter((role) => role.active !== false).length || 0} />
+          <StatusBadge label="Permisos" value={safePermissions.length || 0} />
+          <StatusBadge label="Roles" value={safeRoles.length || 0} />
+          <StatusBadge label="Activos" value={safeRoles.filter((role) => role.active !== false).length || 0} />
         </div>
       </section>
 
@@ -56,8 +58,8 @@ export function RolesPanel({
           columns={['Rol', 'Permisos', 'Estado', 'Acciones']}
           emptyMessage="No hay roles creados para esta empresa."
           pageSize={8}
-          rowKey={(_, index) => roles[index]?.id ?? index}
-          rows={roles.map((role) => roleRow(role, busy, onEdit, onToggleActive))}
+          rowKey={(_, index) => safeRoles[index]?.id ?? index}
+          rows={safeRoles.map((role) => roleRow(role, busy, onEdit, onToggleActive))}
           sectionClassName="embedded-table"
         />
       </section>
@@ -77,7 +79,9 @@ export function UsersPanel({
   onToggleActive,
   busy,
 }) {
-  const activeRoles = roles.filter((role) => role.active !== false);
+  const safeUsers = Array.isArray(users) ? users : [];
+  const safeRoles = Array.isArray(roles) ? roles : [];
+  const activeRoles = safeRoles.filter((role) => role.active !== false);
   return (
     <div className="stack identity-admin">
       <section className="tool-panel identity-overview">
@@ -89,8 +93,8 @@ export function UsersPanel({
           <button className="secondary" disabled={busy} onClick={onNew} type="button">Nuevo usuario</button>
         </header>
         <div className="summary-strip">
-          <StatusBadge label="Usuarios" value={users.length || 0} />
-          <StatusBadge label="Activos" value={users.filter((user) => user.status !== 'INACTIVE').length || 0} />
+          <StatusBadge label="Usuarios" value={safeUsers.length || 0} />
+          <StatusBadge label="Activos" value={safeUsers.filter((user) => user.status !== 'INACTIVE').length || 0} />
           <StatusBadge label="Roles activos" value={activeRoles.length || 0} />
         </div>
       </section>
@@ -121,8 +125,8 @@ export function UsersPanel({
           columns={['Usuario', 'Estado', 'Acciones']}
           emptyMessage="No hay usuarios creados para esta empresa."
           pageSize={8}
-          rowKey={(_, index) => users[index]?.id ?? index}
-          rows={users.map((user) => userRow(user, busy, onEdit, onToggleActive))}
+          rowKey={(_, index) => safeUsers[index]?.id ?? index}
+          rows={safeUsers.map((user) => userRow(user, busy, onEdit, onToggleActive))}
           sectionClassName="embedded-table"
         />
       </section>

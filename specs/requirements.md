@@ -218,6 +218,8 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RNF-029: Las cookies de sesion productivas deben ser `HttpOnly`, `Secure`, `SameSite=Lax` o `Strict`, con expiracion corta y rotacion/renovacion controlada.
 - RNF-030: La SPA productiva no debe generar sourcemaps publicos con codigo sensible ni exponer mensajes tecnicos detallados en consola.
 - RNF-031: La auditoria de seguridad debe registrar login, logout, callback OAuth, refresh, fallos de autenticacion, acceso denegado, cambios de MFA, creacion de secretos y cambios de rol/licencia sin registrar secretos.
+- RNF-032: Los reportes pesados deben ejecutarse de forma asincrona para evitar timeouts HTTP, usando colas administradas, workers idempotentes, almacenamiento privado y notificacion al usuario cuando el archivo este disponible.
+- RNF-033: Las descargas de reportes pesados deben usar enlace intermediado por la aplicacion y URL prefirmada generada al momento del clic, con TTL parametrizable y auditoria de cada intento.
 
 ## Reglas de negocio
 
@@ -297,6 +299,11 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RN-074: ROOT y administradores no pueden operar sin MFA activo en produccion.
 - RN-075: La creacion programatica de secretos AWS por empresa debe ser idempotente, auditable y restringida por prefijo de ruta del ambiente/empresa.
 - RN-076: La aplicacion no debe registrar en `console.log`, logs tecnicos, auditoria ni errores publicos valores de passwords, tokens, cookies, certificados, PIN, claves tecnicas o payloads completos con datos sensibles.
+- RN-077: Los reportes pequenos pueden generarse sincronicamente desde `reporting-service`; los reportes pesados deben registrarse como jobs asincronos y no bloquear la experiencia del usuario.
+- RN-078: El enlace enviado por correo para descargar un reporte pesado debe apuntar a la aplicacion usando `APP_PUBLIC_BASE_URL`; no debe exponer directamente URL de S3, bucket, key interna ni credenciales.
+- RN-079: La URL prefirmada real de S3 debe generarse solo cuando el usuario hace clic en el enlace intermediado y debe expirar inicialmente a los 5 segundos mediante `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS`.
+- RN-080: El token del enlace intermediado debe tener TTL independiente, configurable mediante `REPORT_LINK_TOKEN_TTL_HOURS`, y debe estar asociado a empresa, usuario, job de reporte, estado y auditoria.
+- RN-081: Si el token esta vencido, fue revocado, el reporte expiro o el job no esta listo, la aplicacion debe mostrar una pantalla clara sin filtrar informacion interna.
 
 ## Supuestos
 
@@ -406,3 +413,16 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-143: El sistema debe generar y conservar artefactos de comprobantes/documentos POS: representacion imprimible, XML/JSON tecnico cuando aplique, QR y metadata de hash/almacenamiento.
 - RF-144: El sistema debe permitir imprimir o reimprimir comprobantes POS en impresoras termicas mediante una estrategia gradual: primero impresion web 58/80 mm y luego conector ESC/POS/WebUSB/WebSerial/agente local si se aprueba por hardware real.
 - RF-145: El historico de ventas y documentos debe permitir consultar ventas emitidas, detalle, vendedor, cliente/consumidor final, items, totales, estado DIAN/mock, artefactos, descargas y reimpresiones, siempre aislado por empresa y permisos.
+
+## Requisitos fase reportes asincronos avanzados
+
+- RF-146: El sistema debe permitir solicitar reportes pesados en segundo plano desde el modulo de reportes sin bloquear el request HTTP.
+- RF-147: El sistema debe mantener un historico de jobs de reportes por empresa, usuario solicitante, reporte, filtros, formato, estado, fechas y error sanitizado cuando aplique.
+- RF-148: El sistema debe soportar estados de job `PENDING`, `PROCESSING`, `READY`, `FAILED`, `EXPIRED` y `REVOKED`.
+- RF-149: El sistema debe generar archivos de reportes pesados en almacenamiento privado S3/KMS o equivalente cloud, sin exponer bucket/key interna al navegador ni al correo.
+- RF-150: El sistema debe enviar una notificacion por correo cuando el reporte pesado este listo, usando un link intermediado por la aplicacion construido con `APP_PUBLIC_BASE_URL`.
+- RF-151: El sistema debe generar una URL prefirmada de S3 solo al momento del clic sobre el link intermediado y con expiracion inicial de 5 segundos.
+- RF-152: El sistema debe permitir parametrizar `APP_PUBLIC_BASE_URL`, `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS`, `REPORT_LINK_TOKEN_TTL_HOURS` y politica de retencion de archivos.
+- RF-153: El modulo de reportes debe mostrar jobs solicitados, estados, errores funcionales y descargas disponibles segun permisos, sin obligar al usuario a volver al modulo para descargar desde correo.
+- RF-154: ROOT puede consultar jobs de cualquier empresa; administradores empresariales solo jobs de su empresa; usuarios normales solo sus propios jobs salvo permiso delegado.
+- RF-155: Cada solicitud, procesamiento, fallo, expiracion, revocacion, envio de correo y descarga de reporte pesado debe quedar auditado sin datos sensibles.

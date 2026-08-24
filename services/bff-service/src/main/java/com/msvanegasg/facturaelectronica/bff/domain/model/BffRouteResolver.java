@@ -50,6 +50,9 @@ public final class BffRouteResolver {
         if (matchesAny(normalized, "audit-events")) {
             return TargetService.AUDIT;
         }
+        if (matchesAny(normalized, "dian-configuration", "provider")) {
+            return TargetService.DIAN_PROVIDER;
+        }
         throw new UnsupportedBffRouteException(path);
     }
 

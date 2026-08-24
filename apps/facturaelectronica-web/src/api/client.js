@@ -18,6 +18,10 @@ function baseHeaders({ token, companyId, userId, idempotencyKey } = {}) {
   if (idempotencyKey) {
     headers['Idempotency-Key'] = idempotencyKey;
   }
+  const csrfToken = cookieValue('NF_CSRF');
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
   return headers;
 }
 
@@ -27,6 +31,7 @@ export async function requestJson(path, { method = 'GET', body, token, companyId
   const response = await fetch(path, {
     method,
     headers,
+    credentials: 'same-origin',
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const text = await response.text();
@@ -45,6 +50,7 @@ export async function requestFormData(path, { method = 'POST', formData, token, 
   const response = await fetch(path, {
     method,
     headers: baseHeaders({ token, companyId, userId, idempotencyKey }),
+    credentials: 'same-origin',
     body: formData,
   });
   const text = await response.text();
@@ -63,6 +69,7 @@ export async function requestDownload(path, { method = 'GET', body, token, compa
   const response = await fetch(path, {
     method,
     headers: { ...baseHeaders({ token, companyId, userId, idempotencyKey }), 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) {
@@ -87,4 +94,15 @@ function filenameFromDisposition(disposition) {
 
 export function createIdempotencyKey(prefix) {
   return `${prefix}-${crypto.randomUUID()}`;
+}
+
+function cookieValue(name) {
+  if (typeof document === 'undefined' || !document.cookie) {
+    return '';
+  }
+  return document.cookie
+    .split(';')
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith(`${name}=`))
+    ?.slice(name.length + 1) || '';
 }

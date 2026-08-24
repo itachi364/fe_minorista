@@ -125,20 +125,22 @@ Endpoints publicos objetivo:
 
 `GET /api/v1/auth/login-url`:
 
-Respuesta:
+Respuesta en `AUTH_MODE=cognito`:
 
 ```json
 {
-  "loginUrl": "https://<cognito-domain>/oauth2/authorize?...",
-  "expiresAt": "2026-08-19T10:05:00Z"
+  "authMode": "cognito",
+  "url": "https://<cognito-domain>/oauth2/authorize?...",
+  "state": "opaque-login-state"
 }
 ```
 
 Reglas:
 
 - El BFF genera `state`, `nonce`, PKCE `code_verifier` y `code_challenge`.
-- El `code_verifier` se conserva server-side de forma temporal y no se retorna a la SPA.
+- El `code_verifier` se conserva de forma temporal en cookie opaca `NF_OAUTH_ATTEMPT`, `HttpOnly`, y no se retorna a la SPA.
 - La URL usa Authorization Code Grant con PKCE y scopes minimos `openid`, `email`, `profile` y los aprobados por arquitectura.
+- En `AUTH_MODE=local`, el endpoint retorna `{ "authMode": "local" }` para desarrollo/E2E y no crea cookie OAuth.
 
 `GET /api/v1/auth/callback`:
 
@@ -149,6 +151,7 @@ Reglas:
 - Crea sesion server-side con tokens cifrados.
 - Emite cookie opaca `HttpOnly; Secure; SameSite=Lax|Strict`.
 - Redirige a la SPA sin incluir tokens en query string, fragment, storage ni response body.
+- Estado actual: el BFF implementa intercambio contra `/oauth2/token`, consulta `/oauth2/userInfo`, guarda la sesion cifrada en memoria y emite `NF_SESSION`. La persistencia distribuida para ECS multi tarea queda pendiente.
 
 `GET /api/v1/auth/session`:
 
@@ -178,6 +181,7 @@ Reglas:
 - No retorna `accessToken`, `refreshToken`, `idToken`, bearer token interno, cookie ni secretos.
 - `csrfToken` no es secreto de autenticacion; solo protege mutaciones contra CSRF.
 - El BFF puede renovar tokens server-side sin exponerlos al navegador.
+- Estado actual transitorio: mientras se completa el mapeo Cognito -> identidad interna, el endpoint retorna `authenticated`, `authMode`, `csrfToken`, `email`, `fullName`, `groups` y `expiresAt` cuando existe `NF_SESSION` valida.
 
 `POST /api/v1/auth/logout`:
 
@@ -1036,28 +1040,29 @@ Estado TASK-036:
 
 Endpoints publicos via BFF, visibles para ROOT y administradores empresariales con permiso fiscal/configuracion:
 
-- `GET /api/v1/companies/{companyId}/dian-configuration`
-- `POST /api/v1/companies/{companyId}/dian-configuration`
-- `PUT /api/v1/companies/{companyId}/dian-configuration/{configurationId}`
-- `PUT /api/v1/companies/{companyId}/dian-configuration/{configurationId}/activate`
-- `PUT /api/v1/companies/{companyId}/dian-configuration/{configurationId}/deactivate`
-- `POST /api/v1/companies/{companyId}/dian-configuration/{configurationId}/test`
+- `GET /api/v1/dian-configuration/companies/{companyId}`
+- `PUT /api/v1/dian-configuration/companies/{companyId}`
+- `POST /api/v1/dian-configuration/companies/{companyId}/test`
+- `POST /api/v1/dian-configuration/companies/{companyId}/activate`
+- `POST /api/v1/dian-configuration/companies/{companyId}/deactivate`
 
 `DianConfigurationRequest`:
 
 ```json
 {
-  "operationMode": "SOFTWARE_PROPIO_CLIENTE",
-  "environment": "HABILITACION",
+  "mode": "REAL",
+  "environment": "TEST",
   "softwareId": "uuid-o-identificador-dian",
-  "softwarePinSecretReference": "aws-secretsmanager://tenant/company/software-pin",
-  "technicalKeySecretReference": "aws-secretsmanager://tenant/company/technical-key",
-  "certificateSecretReference": "aws-secretsmanager://tenant/company/certificate-p12",
+  "softwarePin": "valor-sensible-solo-entrada",
+  "technicalKey": "valor-sensible-solo-entrada",
+  "certificatePayload": "base64-o-pem-solo-entrada",
+  "certificatePassword": "valor-sensible-solo-entrada",
   "certificateAlias": "certificado empresa",
-  "certificateExpiresAt": "2027-08-19",
-  "authorizationUrl": "https://catalogo-vpfe-hab.dian.gov.co/...",
-  "productionUrl": "https://catalogo-vpfe.dian.gov.co/...",
-  "responsibilityAccepted": true
+  "certificateFingerprint": "sha256:...",
+  "certificateExpiresAt": "2027-08-19T00:00:00Z",
+  "serviceBaseUrl": "https://catalogo-vpfe-hab.dian.gov.co/...",
+  "testSetId": "set-pruebas",
+  "acceptedResponsibility": true
 }
 ```
 
@@ -1067,19 +1072,22 @@ Endpoints publicos via BFF, visibles para ROOT y administradores empresariales c
 {
   "id": "uuid",
   "companyId": "uuid",
-  "operationMode": "SOFTWARE_PROPIO_CLIENTE",
-  "environment": "HABILITACION",
-  "softwareIdConfigured": true,
+  "mode": "REAL",
+  "environment": "TEST",
+  "softwareId": "uuid-o-identificador-dian",
   "softwarePinConfigured": true,
   "technicalKeyConfigured": true,
   "certificateConfigured": true,
   "certificateAlias": "certificado empresa",
   "certificateFingerprint": "sha256:...",
-  "certificateExpiresAt": "2027-08-19",
-  "status": "PENDING_TEST",
-  "lastTestStatus": "NOT_EXECUTED",
-  "active": false,
-  "disclaimer": "La empresa facturadora es responsable de su habilitacion y certificacion ante DIAN. La plataforma no presta servicio de proveedor tecnologico DIAN."
+  "certificateExpiresAt": "2027-08-19T00:00:00Z",
+  "serviceBaseUrl": "https://catalogo-vpfe-hab.dian.gov.co/...",
+  "testSetId": "set-pruebas",
+  "acceptedResponsibility": true,
+  "status": "READY_FOR_TEST",
+  "lastTestStatus": "NOT_TESTED",
+  "lastTestAt": null,
+  "lastTestMessage": null
 }
 ```
 
@@ -1087,11 +1095,12 @@ Endpoints publicos via BFF, visibles para ROOT y administradores empresariales c
 
 ```json
 {
-  "configurationId": "uuid",
-  "status": "SUCCESS",
-  "testedAt": "2026-08-19T10:00:00Z",
-  "message": "Configuracion validada para ambiente de habilitacion.",
-  "correlationId": "uuid"
+  "id": "uuid",
+  "companyId": "uuid",
+  "status": "TESTED",
+  "lastTestStatus": "SUCCESS",
+  "lastTestAt": "2026-08-19T10:00:00Z",
+  "lastTestMessage": "Configuracion real lista para pruebas controladas DIAN."
 }
 ```
 
@@ -2400,6 +2409,92 @@ Content-Type: text/csv; charset=UTF-8
 ```
 
 Regla: la exportacion reutiliza las mismas validaciones y filtros de `/api/v1/reports/query`. El BFF debe reenviar `Content-Disposition` y auditar la descarga como accion `POST`. Exportaciones pesadas, `exportId`, expiracion, descargas diferidas y storage privado quedan como evolucion asincrona posterior sobre S3/EventBridge/SQS.
+
+### Reportes asincronos avanzados
+
+Estado: diseno objetivo posterior a TASK-145 a TASK-163. No implementado en la API actual.
+
+Crear job de exportacion pesado:
+
+```http
+POST /api/v1/reports/export-jobs
+X-Company-Id: {companyId}
+Idempotency-Key: {key}
+Content-Type: application/json
+```
+
+```json
+{
+  "reportCode": "SALES_BY_SELLER",
+  "format": "XLSX",
+  "chartType": "TABLE",
+  "filters": {
+    "from": "2026-08-01",
+    "to": "2026-08-31",
+    "sellerId": "uuid"
+  },
+  "notifyByEmail": true
+}
+```
+
+Respuesta:
+
+```json
+{
+  "jobId": "uuid",
+  "status": "PENDING",
+  "reportCode": "SALES_BY_SELLER",
+  "format": "XLSX",
+  "requestedAt": "2026-08-24T15:00:00Z",
+  "downloadAvailable": false
+}
+```
+
+Consultar jobs autorizados:
+
+```http
+GET /api/v1/reports/export-jobs?status=READY&from=2026-08-01&to=2026-08-31
+X-Company-Id: {companyId}
+```
+
+Consultar detalle:
+
+```http
+GET /api/v1/reports/export-jobs/{jobId}
+X-Company-Id: {companyId}
+```
+
+Generar enlace intermediado para correo o UI:
+
+```http
+POST /api/v1/reports/export-jobs/{jobId}/download-link
+X-Company-Id: {companyId}
+```
+
+Respuesta:
+
+```json
+{
+  "downloadLink": "{APP_PUBLIC_BASE_URL}/reportes/descarga/{token}",
+  "tokenExpiresAt": "2026-08-27T15:00:00Z"
+}
+```
+
+Resolver descarga desde link intermediado:
+
+```http
+GET /reportes/descarga/{token}
+```
+
+Reglas:
+
+- El dominio no se hardcodea; se construye con `APP_PUBLIC_BASE_URL`.
+- El correo nunca incluye URL directa de S3.
+- Al hacer clic, el BFF valida token, job, empresa, usuario/alcance y estado.
+- Si el job esta `READY`, el BFF genera una URL prefirmada de S3 con TTL `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS`, inicialmente `5`.
+- El BFF responde con redireccion temporal hacia S3 o streaming controlado segun decision de seguridad/producto.
+- `REPORT_LINK_TOKEN_TTL_HOURS` gobierna la vida del token intermediado; no gobierna la URL prefirmada de S3.
+- Cada clic exitoso o fallido genera auditoria.
 
 ### Historico de ventas y documentos
 

@@ -262,3 +262,14 @@
 - AC-206: Dado un comprobante POS, cuando el usuario solicite impresion o reimpresion, entonces la fase inicial debe usar impresion web 58/80 mm y registrar intento/resultado; conectores ESC/POS, WebUSB, WebSerial o agente local requieren tarea posterior con hardware aprobado.
 - AC-207: Dado el historico de ventas/documentos, cuando el usuario consulte por fecha, vendedor, cliente, estado fiscal o metodo de pago, entonces debe ver ventas emitidas, detalle, items, totales, estado DIAN/mock, artefactos, descargas y reimpresiones segun permisos.
 - AC-208: Dado un negocio que requiere reportes de compras, inventario, rentabilidad, cuentas, nomina o licencia, cuando el modulo de reportes este implementado, entonces debe ofrecer esos reportes como opciones parametrizadas y exportables segun alcance licenciado.
+
+## Reportes asincronos avanzados con S3 y notificacion
+
+- AC-209: Dado un reporte marcado como pesado, cuando el usuario solicite exportacion, entonces el API debe crear un job `PENDING` y responder sin esperar la generacion del archivo.
+- AC-210: Dado un job de reporte, cuando el worker lo procese, entonces debe pasar por `PROCESSING` y terminar en `READY` con referencia privada de S3 o en `FAILED` con error sanitizado.
+- AC-211: Dado un reporte listo, cuando se envie correo al usuario, entonces el link debe construirse con `APP_PUBLIC_BASE_URL` y no debe contener URL directa de S3, bucket, key interna ni credenciales.
+- AC-212: Dado un link de descarga valido, cuando el usuario haga clic, entonces el BFF debe validar token, empresa, usuario, estado del job y auditoria antes de generar una URL prefirmada de S3.
+- AC-213: Dada la URL prefirmada generada por el BFF, entonces debe expirar inicialmente a los 5 segundos desde el clic mediante `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS`.
+- AC-214: Dado un token vencido, revocado, reutilizado fuera de politica o asociado a un job no disponible, entonces la aplicacion debe mostrar mensaje funcional claro sin exponer detalles de S3 ni secretos.
+- AC-215: Dado ROOT, administrador empresarial o usuario normal, cuando consulte jobs de reportes, entonces solo debe ver los jobs permitidos por alcance, empresa, RBAC y licencia.
+- AC-216: Dada cualquier solicitud, procesamiento, fallo, expiracion, revocacion, envio de correo o descarga de reporte pesado, entonces debe existir auditoria segura con correlation ID y sin filtros sensibles completos.

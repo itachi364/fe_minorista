@@ -10,5 +10,6 @@ public enum TargetService {
     ACCOUNTING,
     PAYROLL,
     REPORTING,
+    DIAN_PROVIDER,
     AUDIT
 }

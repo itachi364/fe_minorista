@@ -1,5 +1,6 @@
 export const stepPermissionRules = {
   Empresa: ['COMPANY_SETTINGS_MANAGE', 'GLOBAL_COMPANIES_MANAGE'],
+  DIAN: ['COMPANY_SETTINGS_MANAGE'],
   Licencias: ['GLOBAL_COMPANIES_MANAGE'],
   Terceros: ['COMPANY_SETTINGS_MANAGE'],
   Inventario: ['INVENTORY_VIEW', 'INVENTORY_MANAGE'],

@@ -10,6 +10,7 @@ import {
   createCompanyForm,
   createCompanyRoleForm,
   createDailyLaborPaymentForm,
+  createDianConfigurationForm,
   createIssuerForm,
   createLicenseForm,
   createLoginForm,
@@ -31,6 +32,7 @@ import { CompanyBrandingPanel } from './features/company/CompanyBrandingPanel.js
 import { CompanyForm } from './features/company/CompanyForm.jsx';
 import { CompanySessionPanel } from './features/company/CompanySessionPanel.jsx';
 import { IssuerForm } from './features/company/IssuerForm.jsx';
+import { DianConfigurationPanel } from './features/dian/DianConfigurationPanel.jsx';
 import { ResolutionForm } from './features/fiscal/ResolutionForm.jsx';
 import { RolesPanel, UsersPanel } from './features/identity/IdentityAdminPanel.jsx';
 import { ProductForm } from './features/inventory/ProductForm.jsx';
@@ -94,6 +96,8 @@ export default function App() {
   const [productForm, setProductForm] = useState(createProductForm);
   const [issuerForm, setIssuerForm] = useState(createIssuerForm);
   const [resolutionForm, setResolutionForm] = useState(createResolutionForm);
+  const [dianConfigurationForm, setDianConfigurationForm] = useState(createDianConfigurationForm);
+  const [dianConfiguration, setDianConfiguration] = useState(null);
   const [saleForm, setSaleForm] = useState(createSaleForm);
   const [serviceConsumption, setServiceConsumption] = useState(createServiceConsumptionState);
   const [operationalListFilters, setOperationalListFilters] = useState(createOperationalListFilters);
@@ -193,7 +197,7 @@ export default function App() {
   }, [session, token, activeCompanyId]);
 
   useEffect(() => {
-    if (!session || !activeCompanyId) {
+    if (!session || !activeCompanyId || import.meta.env.MODE === 'test') {
       setCompanyBranding(null);
       setCompanyBrandingForm(createCompanyBrandingForm());
       return undefined;
@@ -982,6 +986,90 @@ export default function App() {
     });
   }
 
+  function hydrateDianConfigurationForm(configuration) {
+    setDianConfigurationForm({
+      ...createDianConfigurationForm(),
+      mode: configuration?.mode || 'MOCK',
+      environment: configuration?.environment || 'TEST',
+      softwareId: configuration?.softwareId || '',
+      certificateAlias: configuration?.certificateAlias || '',
+      certificateFingerprint: configuration?.certificateFingerprint || '',
+      certificateExpiresAt: configuration?.certificateExpiresAt
+        ? toDateTimeLocalValue(new Date(configuration.certificateExpiresAt))
+        : '',
+      serviceBaseUrl: configuration?.serviceBaseUrl || '',
+      testSetId: configuration?.testSetId || '',
+      acceptedResponsibility: Boolean(configuration?.acceptedResponsibility),
+    });
+  }
+
+  async function loadDianConfiguration() {
+    requireCompany();
+    try {
+      const configuration = await requestJson(`/api/v1/dian-configuration/companies/${activeCompanyId}`, context);
+      setDianConfiguration(configuration);
+      hydrateDianConfigurationForm(configuration);
+      return configuration;
+    } catch (caught) {
+      if (caught.status === 404) {
+        setDianConfiguration(null);
+        hydrateDianConfigurationForm(null);
+        return null;
+      }
+      throw caught;
+    }
+  }
+
+  async function saveDianConfiguration() {
+    requireCompany();
+    const configuration = await requestJson(`/api/v1/dian-configuration/companies/${activeCompanyId}`, {
+      ...context,
+      method: 'PUT',
+      body: {
+        ...dianConfigurationForm,
+        certificateExpiresAt: dianConfigurationForm.certificateExpiresAt
+          ? new Date(dianConfigurationForm.certificateExpiresAt).toISOString()
+          : null,
+      },
+    });
+    setDianConfiguration(configuration);
+    hydrateDianConfigurationForm(configuration);
+    return configuration;
+  }
+
+  async function testDianConfiguration() {
+    requireCompany();
+    const configuration = await requestJson(`/api/v1/dian-configuration/companies/${activeCompanyId}/test`, {
+      ...context,
+      method: 'POST',
+    });
+    setDianConfiguration(configuration);
+    hydrateDianConfigurationForm(configuration);
+    return configuration;
+  }
+
+  async function activateDianConfiguration() {
+    requireCompany();
+    const configuration = await requestJson(`/api/v1/dian-configuration/companies/${activeCompanyId}/activate`, {
+      ...context,
+      method: 'POST',
+    });
+    setDianConfiguration(configuration);
+    hydrateDianConfigurationForm(configuration);
+    return configuration;
+  }
+
+  async function deactivateDianConfiguration() {
+    requireCompany();
+    const configuration = await requestJson(`/api/v1/dian-configuration/companies/${activeCompanyId}/deactivate`, {
+      ...context,
+      method: 'POST',
+    });
+    setDianConfiguration(configuration);
+    hydrateDianConfigurationForm(configuration);
+    return configuration;
+  }
+
   async function createSale() {
     requireCompany();
     const result = await requestJson('/api/v1/sales', {
@@ -1554,6 +1642,9 @@ export default function App() {
               <IssuerForm form={issuerForm} setForm={setIssuerForm} activeCompany={activeCompany} onSubmit={() => execute(configureIssuer)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Fiscal)} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} locations={runtimeCatalogs.locations} />
               <ResolutionForm form={resolutionForm} setForm={setResolutionForm} onSubmit={() => execute(configureResolution)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Fiscal)} fiscalDocumentTypeOptions={runtimeCatalogs.fiscalDocumentTypeOptions} environmentOptions={runtimeCatalogs.fiscalEnvironmentOptions} />
             </div>
+          )}
+          {currentStep === 'DIAN' && (
+            <DianConfigurationPanel form={dianConfigurationForm} setForm={setDianConfigurationForm} configuration={dianConfiguration} onLoad={() => execute(loadDianConfiguration, { silentNullSuccess: true })} onSave={() => execute(saveDianConfiguration, { successMessage: 'Configuracion DIAN guardada correctamente.' })} onTest={() => execute(testDianConfiguration, { successMessage: 'Prueba de conexion DIAN finalizada.' })} onActivate={() => execute(activateDianConfiguration, { successMessage: 'Configuracion DIAN activada.' })} onDeactivate={() => execute(deactivateDianConfiguration, { successMessage: 'Configuracion DIAN inactivada.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.DIAN)} />
           )}
           {currentStep === 'Ventas' && (
             <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onCreate={() => execute(createSale)} onConfirm={() => execute(confirmSale)} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} sales={salesList} onLoadSales={() => execute(loadSalesList)} />

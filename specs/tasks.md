@@ -3891,8 +3891,8 @@
 
 ## Fase 20: Backlog DIAN real parametrizable por empresa
 
-- [ ] TASK-145: Replantear alcance DIAN como software parametrizable por empresa
-  - Estado: TODO
+- [x] TASK-145: Replantear alcance DIAN como software parametrizable por empresa
+  - Estado: DONE
   - Requisitos: RF-062, RF-065, RNF-026, RN-063, RN-064, RN-068.
   - Acceptance criteria: AC-168, AC-173.
   - Descripcion: Ajustar lenguaje funcional, tecnico y comercial para que la plataforma no se presente como proveedor tecnologico DIAN, sino como software configurable por empresa facturadora.
@@ -3908,8 +3908,8 @@
   - Validacion:
     - Revision documental por `rg "proveedor tecnologico"` para ubicar textos que requieran precision semantica.
 
-- [ ] TASK-146: Disenar modulo de configuracion DIAN por empresa
-  - Estado: TODO
+- [x] TASK-146: Disenar modulo de configuracion DIAN por empresa
+  - Estado: DONE
   - Requisitos: RF-062, RF-063, RF-064, RF-066.
   - Acceptance criteria: AC-169, AC-170, AC-171, AC-172, AC-174.
   - Descripcion: Definir modelo funcional y tecnico para configurar modo DIAN, ambiente, software ID/PIN, clave tecnica, certificado, URLs, estado de prueba y aceptacion de responsabilidad por empresa.
@@ -3927,8 +3927,8 @@
     - Pruebas de dominio para configuracion completa/incompleta.
     - Pruebas de controlador para creacion, actualizacion, activacion, inactivacion y prueba.
 
-- [ ] TASK-147: Persistencia segura de certificados y secretos DIAN por empresa
-  - Estado: TODO
+- [x] TASK-147: Persistencia segura de certificados y secretos DIAN por empresa
+  - Estado: DONE
   - Requisitos: RF-063, RNF-025, RN-064, RN-065, RN-066.
   - Acceptance criteria: AC-170, AC-171.
   - Descripcion: Implementar o preparar persistencia de metadata DIAN en PostgreSQL y referencias a Secrets Manager/gestor equivalente, sin almacenar secretos reales en tablas, logs o auditoria.
@@ -3945,8 +3945,8 @@
     - Tests de sanitizacion de respuesta/auditoria.
     - Revision de `rg` para evitar `password`, `pin`, `certificate` expuestos en logs o fixtures reales.
 
-- [ ] TASK-148: Ajustar contratos API para configuracion DIAN y prueba de conexion
-  - Estado: TODO
+- [x] TASK-148: Ajustar contratos API para configuracion DIAN y prueba de conexion
+  - Estado: DONE
   - Requisitos: RF-062, RF-063, RF-064, RF-066.
   - Acceptance criteria: AC-169, AC-172, AC-174.
   - Descripcion: Implementar endpoints BFF/backend para consultar, crear, actualizar, activar, inactivar y probar configuracion DIAN por empresa.
@@ -3962,8 +3962,8 @@
     - Tests BFF de ruteo/permisos.
     - Tests REST de configuracion y prueba.
 
-- [ ] TASK-149: Actualizar infraestructura AWS para secretos DIAN por empresa
-  - Estado: TODO
+- [x] TASK-149: Actualizar infraestructura AWS para secretos DIAN por empresa
+  - Estado: DONE
   - Requisitos: RNF-019, RNF-025, RN-064, RN-066.
   - Acceptance criteria: AC-170.
   - Descripcion: Ajustar Terraform para documentar/soportar Secrets Manager por empresa, KMS, IAM minimo y acceso runtime desde servicios autorizados.
@@ -3979,8 +3979,8 @@
   - Validacion:
     - `terraform fmt`, `terraform init -backend=false`, `terraform validate`.
 
-- [ ] TASK-150: Renombrar lenguaje funcional de proveedor a conector DIAN
-  - Estado: TODO
+- [x] TASK-150: Renombrar lenguaje funcional de proveedor a conector DIAN
+  - Estado: DONE
   - Requisitos: RF-065, RNF-026.
   - Acceptance criteria: AC-168.
   - Descripcion: Revisar textos visibles, README, specs, UI y nombres funcionales para que usen "Configuracion DIAN" o "Conector DIAN" cuando corresponda, manteniendo nombres tecnicos existentes solo si cambiarlos rompe compatibilidad.
@@ -3995,7 +3995,7 @@
     - `rg "proveedor tecnologico|Provider|provider"` revisado y clasificado.
 
 - [ ] TASK-151: Preparar flujo tecnico DIAN real segun caja de herramientas
-  - Estado: TODO
+  - Estado: TODO. Queda pendiente implementacion real de UBL/firma/validacion; la configuracion por empresa ya esta disponible para usarla como entrada.
   - Requisitos: RF-064, RF-066.
   - Acceptance criteria: AC-175.
   - Descripcion: Disenar e implementar progresivamente generacion XML UBL 2.1, firma XMLDSig/XAdES, CUFE/CUDE, QR, validacion XSD/Schematron, AttachedDocument, ApplicationResponse y set de pruebas, usando la configuracion de cada empresa.
@@ -4011,8 +4011,8 @@
     - Tests unitarios de CUFE/CUDE/firma/validacion.
     - Tests contra XML de ejemplo sanitizados.
 
-- [ ] TASK-152: Implementar UI de Configuracion DIAN por empresa
-  - Estado: TODO
+- [x] TASK-152: Implementar UI de Configuracion DIAN por empresa
+  - Estado: DONE
   - Requisitos: RF-062, RF-063, RF-064, RF-065, RF-066.
   - Acceptance criteria: AC-169, AC-170, AC-171, AC-172, AC-174.
   - Descripcion: Crear pantalla profesional de configuracion DIAN dentro de `Configuracion`, con estado de modo, ambiente, certificado, pruebas, vigencia, resoluciones relacionadas y declaracion de responsabilidad empresarial.
@@ -4032,7 +4032,7 @@
 ## Fase 21: Backlog autenticacion productiva y hardening
 
 - [ ] TASK-153: Disenar autenticacion productiva con Cognito Hosted UI y PKCE
-  - Estado: TODO
+  - Estado: IN_PROGRESS. Base `AUTH_MODE=cognito`, `login-url`, PKCE S256, cookie opaca de intento OAuth, callback/token exchange real y bloqueo productivo local implementados; falta vincular claims Cognito con identidad/permisos internos definitivos.
   - Requisitos: RF-078, RF-079, RF-088, RNF-027, RN-069, RN-070.
   - Acceptance criteria: AC-176, AC-177, AC-187.
   - Descripcion: Definir e implementar el flujo productivo de login usando Amazon Cognito Hosted UI, Authorization Code Grant y PKCE, dejando el login dummy solo para desarrollo local.
@@ -4049,7 +4049,7 @@
     - Tests de BFF para login-url, callback valido, state invalido y modo dummy bloqueado en profile productivo.
 
 - [ ] TASK-154: Reemplazar tokens en SPA por sesion BFF con cookie segura
-  - Estado: TODO
+  - Estado: IN_PROGRESS. `GET /api/v1/auth/session`, cookies BFF y logout base implementados; falta retirar bearer/local storage del modo productivo completo.
   - Requisitos: RF-080, RF-081, RF-082, RNF-029, RN-070, RN-071, RN-072.
   - Acceptance criteria: AC-178, AC-179, AC-180, AC-181.
   - Descripcion: Cambiar el modelo de sesion para que el navegador reciba solo cookie opaca `HttpOnly/Secure/SameSite` y la SPA consulte `/api/v1/auth/session`.
@@ -4066,7 +4066,7 @@
     - Tests BFF verifican atributos de cookie y logout.
 
 - [ ] TASK-155: Crear almacenamiento server-side de sesion cifrada
-  - Estado: TODO
+  - Estado: IN_PROGRESS. Store cifrado server-side en memoria implementado para intentos OAuth y sesiones web; falta persistencia distribuida productiva para ECS multi tarea.
   - Requisitos: RF-080, RF-081, RNF-028, RNF-029, RN-072.
   - Acceptance criteria: AC-177, AC-178, AC-188.
   - Descripcion: Implementar persistencia de intentos OAuth y sesiones web con tokens Cognito cifrados server-side y hashes para cookie/CSRF.
@@ -4084,7 +4084,7 @@
     - `rg` para asegurar que respuestas DTO no exponen tokens.
 
 - [ ] TASK-156: Implementar logout seguro y revocacion
-  - Estado: TODO
+  - Estado: IN_PROGRESS. Logout idempotente, revocacion de sesion server-side local y limpieza de cookies implementados; falta revocacion Cognito real y auditoria dedicada.
   - Requisitos: RF-082, RNF-031.
   - Acceptance criteria: AC-181.
   - Descripcion: Implementar logout productivo que invalide sesion local, limpie cookie, revoque tokens Cognito cuando aplique y registre auditoria segura.
@@ -4099,7 +4099,7 @@
     - Tests BFF de logout repetido, cookie expirada y auditoria.
 
 - [ ] TASK-157: Hardening frontend contra exposicion de datos sensibles
-  - Estado: TODO
+  - Estado: IN_PROGRESS. Fetch con cookies/CSRF y sourcemaps productivos deshabilitados; falta eliminar bearer/local storage al cerrar Cognito.
   - Requisitos: RF-079, RF-084, RNF-030, RN-071, RN-076.
   - Acceptance criteria: AC-179, AC-184, AC-188.
   - Descripcion: Eliminar almacenamiento/logging de tokens, passwords, headers sensibles y payloads completos; ajustar build productiva para no publicar sourcemaps sin control.
@@ -4114,8 +4114,8 @@
     - Tests frontend y busquedas `rg "console.log|accessToken|refreshToken|sessionStorage"`.
     - `npm run build`.
 
-- [ ] TASK-158: Agregar security headers CloudFront/BFF
-  - Estado: TODO
+- [x] TASK-158: Agregar security headers CloudFront/BFF
+  - Estado: DONE
   - Requisitos: RF-086, RNF-027, RNF-030.
   - Acceptance criteria: AC-185.
   - Descripcion: Configurar HSTS, CSP, `X-Content-Type-Options`, proteccion anti-frame y `Referrer-Policy` en CloudFront y/o BFF.
@@ -4131,8 +4131,8 @@
     - `terraform fmt/init/validate`.
     - Test BFF o verificacion HTTP de headers locales cuando aplique.
 
-- [ ] TASK-159: Implementar proteccion CSRF para sesiones por cookie
-  - Estado: TODO
+- [x] TASK-159: Implementar proteccion CSRF para sesiones por cookie
+  - Estado: DONE
   - Requisitos: RF-085, RN-073.
   - Acceptance criteria: AC-183.
   - Descripcion: Agregar token CSRF asociado a sesion y validacion obligatoria en mutaciones `POST`, `PUT`, `PATCH`, `DELETE`.
@@ -4148,7 +4148,7 @@
     - Tests frontend propagan CSRF en mutaciones.
 
 - [ ] TASK-160: MFA obligatorio para ROOT, administradores y acciones criticas
-  - Estado: TODO
+  - Estado: IN_PROGRESS. Modulo Terraform/Cognito base creado con MFA software token y grupos objetivo; falta enforcement por grupo/accion y validacion de claim en BFF.
   - Requisitos: RF-083, RN-074.
   - Acceptance criteria: AC-182.
   - Descripcion: Diseñar e implementar politica de MFA productiva para ROOT, administradores empresariales y acciones criticas como licencias, roles, secretos y configuracion DIAN.
@@ -4164,8 +4164,8 @@
     - Tests de permisos criticos sin MFA.
     - Terraform validate de Cognito/MFA.
 
-- [ ] TASK-161: Provisionamiento runtime de secretos AWS por empresa
-  - Estado: TODO
+- [x] TASK-161: Provisionamiento runtime de secretos AWS por empresa
+  - Estado: DONE
   - Requisitos: RF-087, RNF-025, RN-075.
   - Acceptance criteria: AC-186.
   - Descripcion: Permitir que el backend cree secretos por empresa al crear tenant o configurar DIAN, usando AWS SDK, rutas deterministicas, IAM minimo, KMS e idempotencia.
@@ -4183,7 +4183,7 @@
     - Terraform validate.
 
 - [ ] TASK-162: Auditoria de seguridad transversal
-  - Estado: TODO
+  - Estado: IN_PROGRESS. Auditoria BFF best-effort cubre mutaciones; faltan eventos dedicados de OAuth/CSRF/MFA.
   - Requisitos: RF-082, RF-087, RNF-031, RN-076.
   - Acceptance criteria: AC-181, AC-186, AC-188.
   - Descripcion: Extender auditoria para login, callback OAuth, refresh, logout, CSRF invalido, acceso denegado, MFA faltante, creacion de secretos y cambios de roles/licencias.
@@ -4198,8 +4198,8 @@
   - Validacion:
     - Tests de auditoria y sanitizacion.
 
-- [ ] TASK-163: Modo transicion local y bloqueo productivo de auth dummy
-  - Estado: TODO
+- [x] TASK-163: Modo transicion local y bloqueo productivo de auth dummy
+  - Estado: DONE
   - Requisitos: RF-088, RN-069, RN-070.
   - Acceptance criteria: AC-176, AC-187.
   - Descripcion: Mantener el login dummy/opaco para desarrollo local y E2E mientras se implementa Cognito, pero bloquearlo por perfil/configuracion en produccion.
@@ -4284,7 +4284,7 @@
     - `specs/legacy-cleanup-audit.md`
     - `scripts/legacy-data-audit.sql`
   - Criterios:
-    - Cognito, BFF session persistente, CSRF, MFA y modulo Terraform `auth` quedan identificados como objetivo pendiente de TASK-153 a TASK-163.
+    - Cognito, BFF session persistente, CSRF, MFA y modulo Terraform `auth` quedan identificados como objetivo de TASK-153 a TASK-163, diferenciando componentes ya implementados de pendientes productivos.
     - DIAN real, secretos/certificados por empresa y prueba de conexion quedan identificados como objetivo pendiente de TASK-145 a TASK-152.
     - `reporting-service` no se presenta como microservicio fisico implementado; el estado vigente usa `reporting-projection-lambda`.
     - OpenAPI queda documentado como dependencia Springdoc disponible, pero pendiente como artefacto versionado por servicio.
@@ -4620,3 +4620,134 @@
     - La SPA muestra una tabla profesional de ventas registradas con estado fiscal, documento, totales y accion de reimpresion.
     - La reimpresion desde historico reutiliza `POST /api/v1/sales/{saleId}/receipt?widthMm=80` sin reemitir documento fiscal.
     - Validado con `mvnw -pl services/billing-service -am "-Dtest=SaleManagementServiceTest,SaleControllerTest" "-Dsurefire.failIfNoSpecifiedTests=false" test` y `npm run build`.
+
+## Fase 24: Reportes asincronos avanzados con S3 y notificacion
+
+Nota de prioridad: esta fase queda documentada como backlog aprobado, pero no debe ejecutarse antes de completar `TASK-145` a `TASK-163`.
+
+- [ ] TASK-179: Disenar reportes asincronos avanzados
+  - Estado: TODO
+  - Requisitos: RF-146, RF-147, RF-148, RF-154, RF-155.
+  - Acceptance criteria: AC-209, AC-210, AC-215, AC-216.
+  - Descripcion: Definir reglas para clasificar reportes sincronos vs pesados, estados de job, RBAC, licencia, auditoria y expiracion.
+  - Archivos:
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/tasks.md`
+  - Dependencias:
+    - TASK-145 a TASK-163.
+    - TASK-174 a TASK-178.
+  - Criterios:
+    - No bloquear requests HTTP con reportes pesados.
+    - Estados aprobados: `PENDING`, `PROCESSING`, `READY`, `FAILED`, `EXPIRED`, `REVOKED`.
+    - ROOT, administradores y usuarios normales tienen alcance diferenciado.
+  - Validacion:
+    - Revision SDD y matriz RF/AC.
+
+- [ ] TASK-180: Disenar contratos API para jobs de reportes
+  - Estado: TODO
+  - Requisitos: RF-146, RF-147, RF-153, RF-154.
+  - Acceptance criteria: AC-209, AC-212, AC-215.
+  - Descripcion: Definir endpoints para crear jobs, listar jobs autorizados, consultar detalle y crear/usar enlaces intermediados de descarga.
+  - Archivos:
+    - `specs/api-contract.md`
+    - `specs/design.md`
+  - Dependencias:
+    - TASK-179.
+  - Criterios:
+    - `POST /api/v1/reports/export-jobs` debe ser idempotente.
+    - El BFF sigue siendo la unica entrada publica.
+    - La API no expone bucket/key S3 ni URL prefirmada persistente.
+  - Validacion:
+    - Revision de contrato API y escenarios de error.
+
+- [ ] TASK-181: Disenar persistencia de trabajos de reportes
+  - Estado: TODO
+  - Requisitos: RF-147, RF-148, RF-149, RF-152, RF-155.
+  - Acceptance criteria: AC-210, AC-214, AC-216.
+  - Descripcion: Definir tablas `report_export_job`, tokens, intentos de descarga y notificaciones con indices multiempresa.
+  - Archivos:
+    - `specs/database-design.md`
+    - `specs/data-dictionary.md`
+    - `specs/diagrams/entity-relationship.mmd`
+  - Dependencias:
+    - TASK-179, TASK-180.
+  - Criterios:
+    - Guardar hash de token, nunca token en claro.
+    - No persistir URL S3 prefirmada.
+    - Indexar por empresa, usuario, estado, reporte y expiracion.
+  - Validacion:
+    - Revision de modelo y diccionario.
+
+- [ ] TASK-182: Disenar worker asincrono de exportacion
+  - Estado: TODO
+  - Requisitos: RF-146, RF-149, RF-155.
+  - Acceptance criteria: AC-210, AC-216.
+  - Descripcion: Definir `report-export-worker-lambda` o worker equivalente para consumir eventos, generar archivos pesados y guardar en S3 privado.
+  - Archivos:
+    - `specs/design.md`
+    - `specs/infrastructure.md`
+    - `specs/architecture.md`
+  - Dependencias:
+    - TASK-181.
+  - Criterios:
+    - Worker idempotente por `jobId`.
+    - SQS/EventBridge con reintentos y DLQ.
+    - Archivos cifrados con KMS y retencion configurable.
+  - Validacion:
+    - Revision de arquitectura e infraestructura.
+
+- [ ] TASK-183: Disenar descarga segura desde S3 con enlace intermediado
+  - Estado: TODO
+  - Requisitos: RF-150, RF-151, RF-152, RF-153, RF-155.
+  - Acceptance criteria: AC-211, AC-212, AC-213, AC-214, AC-216.
+  - Descripcion: Definir descarga mediante link de aplicacion construido con `APP_PUBLIC_BASE_URL`, validacion BFF y URL S3 prefirmada al clic con TTL inicial de 5 segundos.
+  - Archivos:
+    - `specs/api-contract.md`
+    - `specs/design.md`
+    - `specs/infrastructure.md`
+  - Dependencias:
+    - TASK-180, TASK-181, TASK-182.
+  - Criterios:
+    - El correo nunca incluye URL directa de S3.
+    - `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS=5` por defecto.
+    - `REPORT_LINK_TOKEN_TTL_HOURS` controla solo el token intermediado.
+    - Token vencido/revocado muestra mensaje funcional claro.
+  - Validacion:
+    - Revision de seguridad y contrato de descarga.
+
+- [ ] TASK-184: Disenar notificaciones por correo
+  - Estado: TODO
+  - Requisitos: RF-150, RF-152, RF-155.
+  - Acceptance criteria: AC-211, AC-216.
+  - Descripcion: Definir envio de correo por SES con enlace intermediado y auditoria de envio/fallo.
+  - Archivos:
+    - `specs/design.md`
+    - `specs/infrastructure.md`
+    - `specs/api-contract.md`
+  - Dependencias:
+    - TASK-183.
+  - Criterios:
+    - Usar `APP_PUBLIC_BASE_URL`.
+    - No adjuntar archivos pesados ni datos sensibles.
+    - Registrar estado de notificacion y correlation ID.
+  - Validacion:
+    - Revision de flujo de notificacion y privacidad.
+
+- [ ] TASK-185: Disenar UI de reportes avanzados asincronos
+  - Estado: TODO
+  - Requisitos: RF-146, RF-153, RF-154.
+  - Acceptance criteria: AC-209, AC-214, AC-215.
+  - Descripcion: Definir experiencia de usuario para "generar en segundo plano", listado de jobs, estados, errores y descarga disponible desde UI/correo.
+  - Archivos:
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `README.md`
+  - Dependencias:
+    - TASK-179 a TASK-184.
+  - Criterios:
+    - El usuario puede salir del modulo sin perder la solicitud.
+    - El correo permite descargar sin volver obligatoriamente al modulo.
+    - La UI muestra estado y errores funcionales en espanol.
+  - Validacion:
+    - Revision UX y matriz de permisos.

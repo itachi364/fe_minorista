@@ -40,6 +40,26 @@ La fase vigente de producto define la evolucion visual y operativa de NexoFiscal
 
 Estado: `TASK-168` a `TASK-178` ya tienen implementacion inicial validada. Quedan evoluciones de volumen como paginacion avanzada, conectores directos de impresora y almacenamiento asincrono de artefactos pesados.
 
+## Backlog Aprobado Fase 24
+
+La siguiente evolucion de reportes queda documentada para ejecutarse despues de `TASK-145` a `TASK-163`:
+
+- Reportes pesados asincronos con jobs `PENDING`, `PROCESSING`, `READY`, `FAILED`, `EXPIRED` y `REVOKED`.
+- Worker/Lambda para generar archivos pesados sin bloquear HTTP.
+- Almacenamiento privado en S3/KMS o equivalente cloud.
+- Notificacion por correo cuando el reporte este listo.
+- Link de descarga intermediado por NexoFiscal usando `APP_PUBLIC_BASE_URL`, no URL directa de S3.
+- URL prefirmada S3 generada solo al hacer clic y con TTL inicial de `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS=5`.
+- Token de link parametrizable con `REPORT_LINK_TOKEN_TTL_HOURS`.
+- Auditoria de solicitud, procesamiento, envio, fallo, expiracion, revocacion y descarga.
+
+## Configuracion DIAN y seguridad productiva
+
+- El modulo `DIAN` permite configurar por empresa el modo mock/real, ambiente, Software ID, metadata de certificado, prueba y activacion. Los secretos se reciben solo como entrada y el backend guarda referencias seguras.
+- NexoFiscal se declara como software parametrizable por empresa; cada empresa es responsable de su habilitacion, certificado y credenciales DIAN.
+- El BFF soporta `AUTH_MODE=local|cognito`. El modo `local` queda para desarrollo/E2E; en entorno productivo el BFF falla cerrado si no usa `AUTH_MODE=cognito` y `BFF_SESSION_ENCRYPTION_KEY`.
+- El BFF agrega Hosted UI + PKCE, callback Cognito, sesion cifrada server-side local, headers de seguridad y token CSRF para sesiones por cookie. La SPA envia cookies same-origin y propaga `X-CSRF-Token` cuando existe cookie `NF_CSRF`.
+
 ## Arquitectura
 
 La estructura objetivo por microservicio es:
@@ -901,8 +921,8 @@ Pendiente:
 - `Dockerfile` productivo multi-stage.
 - Storage productivo para branding, exportaciones y artefactos POS en S3 privado/KMS.
 - `reporting-service` ECS/Fargate privado para reportes avanzados y exportaciones.
-- Modulo Terraform `auth` para Cognito Hosted UI + PKCE/MFA.
-- Configuracion cloud final por ambiente, dominio, certificados ACM y variables productivas.
+- Endurecimiento final de Cognito: dominio/custom domain, persistencia distribuida de sesiones, puente Cognito -> identidad/permisos internos, enforcement MFA por grupo/accion y revocacion.
+- Configuracion cloud final por ambiente, certificados ACM y variables productivas.
 - Pipeline CI/CD.
 - Escaneo de imagenes con Docker Scout, Trivy, Grype o herramienta equivalente.
 - Runbooks productivos para DLQ, reintentos DIAN, restauracion RDS, rotacion de secretos, incidentes de seguridad y vencimiento de licencias.

@@ -13,6 +13,7 @@ export const licenseModuleOptions = [
 
 export const stepLicenseModules = {
   Empresa: 'COMPANY',
+  DIAN: 'BILLING',
   Terceros: 'THIRDPARTY',
   Inventario: 'INVENTORY',
   Fiscal: 'BILLING',

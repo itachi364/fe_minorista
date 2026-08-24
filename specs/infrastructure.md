@@ -18,10 +18,11 @@ La infraestructura productiva se define con Terraform y servicios administrados 
 - `messaging`: EventBridge custom bus, SQS queues, DLQ, reglas y policies para eventos iniciales.
 - `event_consumers`: Lambdas event-driven conectadas a SQS con fallos parciales, VPC privada e IAM minimo.
 - `secrets`: Secrets Manager para secretos de aplicacion sin valores versionados.
+- `auth`: Amazon Cognito User Pool, App Client OAuth code flow + PKCE, dominio Hosted UI administrado, grupos base y MFA software token habilitado.
 
 Modulo objetivo pendiente:
 
-- `auth`: Amazon Cognito User Pool, App Client OAuth code flow + PKCE, dominio administrado/custom domain, MFA y politicas de password. Esta definido por TASK-153 a TASK-160, pero `infra/aws/modules/auth` todavia no existe en el repositorio.
+- `auth`: modulo Terraform Cognito base implementado; queda pendiente endurecer custom domain, politicas granulares de MFA por grupo/accion y puente definitivo Cognito -> identidad/permisos internos.
 
 ## Servicios ECS iniciales
 
@@ -113,7 +114,7 @@ La capacidad final del pool por servicio debe dimensionarse con metricas reales:
 - Agregar HTTPS/custom domain con ACM y Route 53 cuando exista dominio.
 - Agregar WAF, alarmas, dashboards y presupuestos.
 - Definir KMS key policy y rotacion para secretos DIAN por empresa antes de habilitar emision real.
-- Agregar modulo Terraform `auth` para Cognito User Pool/App Client con Authorization Code + PKCE, MFA para administradores y revocacion de tokens.
+- Endurecer modulo Terraform `auth` con custom domain ACM/Route 53, politicas granulares de MFA por grupo/accion y revocacion de tokens.
 - Agregar CloudFront Function/Response Headers Policy para security headers.
 - Definir si el store productivo de sesiones BFF usa PostgreSQL cifrado, DynamoDB con TTL o ElastiCache cifrado; PostgreSQL queda como opcion inicial por simplicidad operacional.
 - Formalizar runbooks productivos: investigacion de DLQ, rotacion de secretos, restauracion RDS, reintentos DIAN, vencimiento de licencias y respuesta ante incidentes de seguridad.
@@ -385,7 +386,23 @@ Estado:
 - La persistencia objetivo de configuracion DIAN por empresa esta documentada en `database-design.md` y `data-dictionary.md`.
 - La implementacion real DIAN queda pendiente de TASK-145 a TASK-152.
 
+Estado 2026-08-24:
+- `dian-provider-service` incluye tabla `dian_provider.dian_company_configuration` para metadata no sensible por empresa.
+- Los secretos se modelan como referencias bajo `/facturaelectronica/{env}/companies/{companyId}/...`.
+- `infra/aws/modules/secrets` crea KMS dedicado para Secrets Manager.
+- `infra/aws/modules/ecs` permite a runtime crear/actualizar secretos bajo el patron empresarial autorizado.
+- Pendiente: adaptador AWS SDK real para Secrets Manager y flujo UBL/firma/envio DIAN real.
+
 ## TASK-153 a TASK-163 seguridad de autenticacion productiva
+
+Estado 2026-08-24:
+- `bff-service` soporta `AUTH_MODE=local|cognito`, valida cierre seguro en produccion y emite headers de seguridad.
+- `GET /api/v1/auth/session`, `GET /api/v1/auth/login-url` y `POST /api/v1/auth/logout` preparan la transicion a cookie BFF.
+- `GET /api/v1/auth/login-url` genera `state`, `nonce`, `code_verifier`, `code_challenge` PKCE S256 y cookie transitoria `NF_OAUTH_ATTEMPT` `HttpOnly` de 5 minutos.
+- `infra/aws/modules/auth` crea Cognito User Pool, App Client sin secreto, Hosted UI domain, grupos `ROOT`, `COMPANY_ADMIN`, `SELLER`, `ACCOUNTANT` y MFA software token opcional.
+- `infra/aws/envs/dev` cablea Cognito hacia `bff-service` con `COGNITO_BASE_URL`, `COGNITO_CLIENT_ID`, `COGNITO_REDIRECT_URI` y `COGNITO_LOGOUT_URI`.
+- La SPA envia cookies `same-origin`, propaga `X-CSRF-Token` si existe `NF_CSRF` y deshabilita sourcemaps en build productivo.
+- Pendiente: almacenamiento cifrado persistente/distribuido de sesiones para ECS multi tarea, revocacion Cognito real, puente Cognito -> identidad/permisos internos y enforcement granular MFA por grupos/acciones criticas.
 
 Terraform debe crear infraestructura base de autenticacion y seguridad, no objetos por cada empresa:
 
@@ -1324,13 +1341,13 @@ Esta seccion documenta de forma uniforme el impacto de infraestructura de cada t
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-153 - Disenar autenticacion productiva con Cognito Hosted UI y PKCE
-- Estado: Pendiente.
+- Estado: En progreso. Modulo Cognito Terraform, variables BFF, PKCE S256, callback/token exchange y sesion cifrada local implementados; falta puente definitivo Cognito -> identidad/permisos internos.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta infraestructura productiva AWS objetivo y debe reflejarse en Terraform/IAM/red/seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-154 - Reemplazar tokens en SPA por sesion BFF con cookie segura
-- Estado: Pendiente.
+- Estado: En progreso. Cookie/CSRF base y endpoints de sesion/logout implementados; falta retirar bearer/local storage en modo Cognito completo.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
@@ -1342,13 +1359,13 @@ Esta seccion documenta de forma uniforme el impacto de infraestructura de cada t
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-156 - Implementar logout seguro y revocacion
-- Estado: Pendiente.
+- Estado: En progreso. Logout limpia cookies de sesion, OAuth attempt y CSRF; falta revocacion Cognito real.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-157 - Hardening frontend contra exposicion de datos sensibles
-- Estado: Pendiente.
+- Estado: En progreso. Sourcemaps productivos deshabilitados y fetch con cookies/CSRF implementado; falta eliminar token visible del flujo productivo final.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta borde BFF/SPA local; no expone microservicios internos directamente.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
@@ -1366,7 +1383,7 @@ Esta seccion documenta de forma uniforme el impacto de infraestructura de cada t
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-160 - MFA obligatorio para ROOT, administradores y acciones criticas
-- Estado: Pendiente.
+- Estado: En progreso. Cognito User Pool habilita MFA software token y grupos base; falta enforcement granular por grupo/accion en BFF/Cognito.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Afecta infraestructura productiva AWS objetivo y debe reflejarse en Terraform/IAM/red/seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
@@ -1384,7 +1401,7 @@ Esta seccion documenta de forma uniforme el impacto de infraestructura de cada t
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-163 - Modo transicion local y bloqueo productivo de auth dummy
-- Estado: Pendiente.
+- Estado: Completada. `AUTH_MODE=local` queda local/E2E y el BFF falla cerrado en produccion si no usa Cognito.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Impacto de infraestructura: Impacto productivo pendiente: secretos por empresa, auth administrada, hardening BFF/SPA y auditoria de seguridad.
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
@@ -1510,5 +1527,84 @@ Esta seccion documenta de forma uniforme el impacto de infraestructura de cada t
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Sin nuevo contenedor; consulta sobre `billing-service` con filtros multiempresa y reimpresion auditada por BFF.
 - Control operativo: vigilar performance, agregar paginacion/indices dedicados si el volumen de ventas crece y mantener aislamiento por `company_id`.
+
+## TASK-179 a TASK-185 infraestructura objetivo
+
+Estado: backlog SDD aprobado; ejecutar despues de TASK-145 a TASK-163.
+
+Componentes AWS objetivo:
+
+- `reporting-service` en ECS Fargate privado para API de jobs y consultas de estado.
+- `report-export-worker-lambda` para generar archivos pesados desde SQS/EventBridge.
+- EventBridge/SQS con DLQ para solicitudes de exportacion asincrona.
+- S3 privado con SSE-KMS para archivos exportados.
+- SES para notificaciones de reporte listo.
+- CloudWatch Logs/Metrics/Alarms para jobs, errores, expiraciones y volumen de descargas.
+- Secrets Manager/SSM Parameter Store para parametros de ambiente no sensibles o sensibles segun corresponda.
+
+Variables objetivo:
+
+```env
+APP_PUBLIC_BASE_URL=http://localhost:5173
+REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS=5
+REPORT_LINK_TOKEN_TTL_HOURS=72
+REPORT_EXPORT_RETENTION_DAYS=7
+REPORT_EXPORT_BUCKET_NAME=
+REPORT_EXPORT_KMS_KEY_ID=
+REPORT_EXPORT_QUEUE_URL=
+REPORT_EXPORT_DLQ_URL=
+REPORT_NOTIFICATION_EMAIL_FROM=
+```
+
+Reglas:
+
+- `APP_PUBLIC_BASE_URL` es obligatorio en ambientes desplegados y no se hardcodea en codigo.
+- La URL S3 prefirmada se genera solo al momento del clic y usa `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS`, inicialmente `5`.
+- El token intermediado usa `REPORT_LINK_TOKEN_TTL_HOURS`; puede vivir mas que la URL S3 porque no entrega el archivo directamente.
+- El bucket S3 no debe ser publico; todo acceso de usuario final pasa por BFF/link intermediado.
+- Los objetos exportados deben tener retencion configurable y limpieza automatica.
+- Las Lambdas deben ser idempotentes y usar DLQ/reintentos sin bloquear `reporting-service`.
+
+### TASK-179 - Disenar reportes asincronos avanzados
+- Estado: Pendiente.
+- Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
+- Impacto de infraestructura: Define umbrales y modo de ejecucion sincrono/asincrono.
+- Control operativo: separar reportes interactivos de trabajos batch.
+
+### TASK-180 - Disenar contratos API para jobs de reportes
+- Estado: Pendiente.
+- Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
+- Impacto de infraestructura: BFF sigue siendo unica entrada publica; `reporting-service` queda privado.
+- Control operativo: contratos deben soportar retries, idempotencia y errores funcionales.
+
+### TASK-181 - Disenar persistencia de trabajos de reportes
+- Estado: Pendiente.
+- Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
+- Impacto de infraestructura: PostgreSQL requiere tablas e indices por empresa, usuario, estado y expiracion.
+- Control operativo: no guardar secretos ni URLs S3 prefirmadas persistentes.
+
+### TASK-182 - Disenar worker asincrono de exportacion
+- Estado: Pendiente.
+- Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
+- Impacto de infraestructura: Lambda/worker, cola, DLQ, permisos S3/KMS minimos.
+- Control operativo: idempotencia por job y reintentos seguros.
+
+### TASK-183 - Disenar descarga segura desde S3 con enlace intermediado
+- Estado: Pendiente.
+- Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
+- Impacto de infraestructura: BFF necesita permiso limitado para presign de objetos autorizados.
+- Control operativo: TTL S3 de 5 segundos desde el clic; token de correo con TTL independiente.
+
+### TASK-184 - Disenar notificaciones por correo
+- Estado: Pendiente.
+- Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
+- Impacto de infraestructura: SES, dominio/correo verificado y auditoria de envio.
+- Control operativo: no incluir datos sensibles ni adjuntos pesados en correo.
+
+### TASK-185 - Disenar UI de reportes avanzados asincronos
+- Estado: Pendiente.
+- Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
+- Impacto de infraestructura: Sin nuevo recurso cloud; consume BFF.
+- Control operativo: mostrar estados claros y no forzar retorno al modulo para descargar desde correo.
 
 <!-- END SDD TASK INFRASTRUCTURE TRACEABILITY -->

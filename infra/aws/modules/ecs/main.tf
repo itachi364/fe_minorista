@@ -130,6 +130,40 @@ resource "aws_iam_role" "task" {
   tags = var.tags
 }
 
+data "aws_iam_policy_document" "runtime_secrets" {
+  count = length(var.runtime_secret_arn_patterns) > 0 ? 1 : 0
+
+  statement {
+    actions = [
+      "secretsmanager:CreateSecret",
+      "secretsmanager:DescribeSecret",
+      "secretsmanager:PutSecretValue",
+      "secretsmanager:TagResource",
+      "secretsmanager:UpdateSecret"
+    ]
+    resources = var.runtime_secret_arn_patterns
+  }
+
+  dynamic "statement" {
+    for_each = length(var.kms_key_arns) > 0 ? [1] : []
+    content {
+      actions = [
+        "kms:Decrypt",
+        "kms:Encrypt",
+        "kms:GenerateDataKey"
+      ]
+      resources = var.kms_key_arns
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "runtime_secrets" {
+  count  = length(var.runtime_secret_arn_patterns) > 0 ? 1 : 0
+  name   = "${var.name_prefix}-runtime-secrets"
+  role   = aws_iam_role.task.id
+  policy = data.aws_iam_policy_document.runtime_secrets[0].json
+}
+
 resource "aws_security_group" "alb" {
   count       = local.public_service_enabled ? 1 : 0
   name        = "${var.name_prefix}-internal-alb-sg"

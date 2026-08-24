@@ -176,7 +176,8 @@ class RestClientInternalServiceGatewayTest {
         String inventoryUrl = serverUrl(inventoryServer, "http://inventory");
         String auditUrl = serverUrl(auditServer, "http://audit");
         BffProperties properties = new BffProperties(tenantUrl, identityUrl, "http://catalog", "http://thirdparty",
-                inventoryUrl, billingUrl, "http://accounting", payrollUrl, "http://reporting", auditUrl);
+                inventoryUrl, billingUrl, "http://accounting", payrollUrl, "http://reporting", "http://dian",
+                auditUrl);
         return new RestClientInternalServiceGateway(RestClient.builder(), properties, new ObjectMapper());
     }
 

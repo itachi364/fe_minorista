@@ -39,7 +39,7 @@ class LicenseUsageControllerTest {
         server = MockRestServiceServer.bindTo(builder).build();
         BffProperties properties = new BffProperties("http://tenant", "http://identity", "http://catalog",
                 "http://thirdparty", "http://inventory", "http://billing", "http://accounting", "http://payroll",
-                "http://reporting", "http://audit");
+                "http://reporting", "http://dian", "http://audit");
         mockMvc = MockMvcBuilders.standaloneSetup(new LicenseUsageController(builder, properties))
                 .setControllerAdvice(new BffExceptionHandler())
                 .build();

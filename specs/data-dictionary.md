@@ -536,28 +536,31 @@ Campos equivalentes a `billing.sale_line`, asociados a `electronic_document_id` 
 | created_by | ref | No | Usuario que crea la nota. |
 | created_at | timestamp | Si | Fecha de creacion. |
 
-## dian_provider.provider_configuration
+## dian_provider.dian_company_configuration
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---:|---:|---|
-| id | uuid/bigint | Si | Identificador. |
+| id | uuid | Si | Identificador. |
 | company_id | ref | Si | Empresa. |
-| operation_mode | varchar(40) | Si | MOCK, SOFTWARE_PROPIO_CLIENTE u otro modo aprobado por SDD. |
-| environment | varchar(30) | Si | HABILITACION, PRODUCCION o TEST local para mock. |
+| mode | varchar(20) | Si | MOCK o REAL. |
+| environment | varchar(20) | Si | TEST o PRODUCTION. |
 | software_id | varchar(120) | No | Identificador de software configurado por la empresa ante DIAN, si aplica. |
-| software_pin_secret_reference | varchar(300) | No | Referencia segura al PIN tecnico; nunca valor real. |
-| technical_key_secret_reference | varchar(300) | No | Referencia segura a clave tecnica; nunca valor real. |
-| certificate_secret_reference | varchar(300) | No | Referencia segura al certificado digital de la empresa; nunca certificado real. |
-| certificate_alias | varchar(160) | No | Alias funcional visible del certificado. |
-| certificate_fingerprint | varchar(160) | No | Huella criptografica para identificar certificado sin exponerlo. |
-| certificate_expires_at | date | No | Fecha de vencimiento del certificado. |
-| authorization_url | varchar(500) | No | URL de habilitacion/configuracion DIAN no sensible. |
-| production_url | varchar(500) | No | URL productiva DIAN no sensible. |
-| status | varchar(40) | Si | DRAFT, PENDING_TEST, TESTED, ACTIVE, INACTIVE, EXPIRED. |
-| last_test_status | varchar(40) | No | NOT_EXECUTED, SUCCESS, FAILED. |
+| software_pin_secret_ref | varchar(500) | No | Referencia segura al PIN tecnico; nunca valor real. |
+| technical_key_secret_ref | varchar(500) | No | Referencia segura a clave tecnica; nunca valor real. |
+| certificate_secret_ref | varchar(500) | No | Referencia segura al certificado digital de la empresa; nunca certificado real. |
+| certificate_alias | varchar(180) | No | Alias funcional visible del certificado. |
+| certificate_fingerprint | varchar(180) | No | Huella criptografica para identificar certificado sin exponerlo. |
+| certificate_expires_at | timestamptz | No | Fecha de vencimiento del certificado. |
+| service_base_url | varchar(500) | No | URL DIAN no sensible para pruebas o produccion. |
+| test_set_id | varchar(120) | No | Identificador del set de pruebas/habilitacion. |
+| accepted_responsibility | boolean | Si | Confirma que la empresa asume habilitacion/certificacion DIAN. |
+| status | varchar(30) | Si | DRAFT, READY_FOR_TEST, TESTED, ACTIVE, INACTIVE. |
+| last_test_status | varchar(30) | Si | NOT_TESTED, SUCCESS, FAILED. |
 | last_test_at | timestamptz | No | Fecha de ultima prueba controlada. |
-| responsibility_accepted | boolean | Si | Confirma que la empresa asume habilitacion/certificacion DIAN. |
-| active | boolean | Si | Estado. |
+| last_test_message | varchar(500) | No | Resultado funcional de la ultima prueba sin datos sensibles. |
+| updated_by | ref | No | Usuario que ejecuto la ultima mutacion. |
+| created_at | timestamptz | Si | Fecha de creacion. |
+| updated_at | timestamptz | Si | Fecha de actualizacion. |
 
 Reglas:
 

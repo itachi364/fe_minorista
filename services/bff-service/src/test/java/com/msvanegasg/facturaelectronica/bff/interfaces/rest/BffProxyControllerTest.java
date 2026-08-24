@@ -81,7 +81,7 @@ class BffProxyControllerTest {
 
     @Test
     void rejectsRoutesNotExposedByBff() throws Exception {
-        mockMvc.perform(get("/api/v1/provider/submissions/123")
+        mockMvc.perform(get("/api/v1/unknown/submissions/123")
                 .header(CorrelationId.HEADER_NAME, "corr-bff"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"))

@@ -35,6 +35,18 @@ variable "secret_arns" {
   default     = []
 }
 
+variable "runtime_secret_arn_patterns" {
+  type        = list(string)
+  description = "Secrets Manager ARN patterns that ECS task code may create or update at runtime."
+  default     = []
+}
+
+variable "kms_key_arns" {
+  type        = list(string)
+  description = "KMS key ARNs that ECS task code may use for runtime secret encryption."
+  default     = []
+}
+
 variable "common_secrets" {
   type        = map(string)
   description = "Secrets injected into every ECS container."

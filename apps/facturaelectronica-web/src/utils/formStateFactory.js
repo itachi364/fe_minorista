@@ -125,6 +125,24 @@ export function createResolutionForm() {
   };
 }
 
+export function createDianConfigurationForm() {
+  return {
+    mode: 'MOCK',
+    environment: 'TEST',
+    softwareId: '',
+    softwarePin: '',
+    technicalKey: '',
+    certificatePayload: '',
+    certificatePassword: '',
+    certificateAlias: '',
+    certificateFingerprint: '',
+    certificateExpiresAt: '',
+    serviceBaseUrl: '',
+    testSetId: '',
+    acceptedResponsibility: false,
+  };
+}
+
 export function createSaleForm() {
   return {
     buyerIdentificationMode: 'FINAL_CONSUMER',

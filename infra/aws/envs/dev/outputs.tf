@@ -6,6 +6,18 @@ output "api_endpoint" {
   value = module.api.api_endpoint
 }
 
+output "cognito_user_pool_id" {
+  value = module.auth.user_pool_id
+}
+
+output "cognito_web_client_id" {
+  value = module.auth.web_client_id
+}
+
+output "cognito_hosted_ui_base_url" {
+  value = module.auth.hosted_ui_base_url
+}
+
 output "ecs_cluster_name" {
   value = module.ecs.cluster_name
 }

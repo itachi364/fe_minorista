@@ -40,6 +40,8 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
                     Set.of("INVENTORY_MANAGE")),
             TargetService.PAYROLL, new AccessRule(Set.of("PAYROLL_VIEW", "PAYROLL_MANAGE"), Set.of("PAYROLL_MANAGE")),
             TargetService.REPORTING, new AccessRule(Set.of("REPORTS_VIEW"), Set.of("REPORTS_VIEW")),
+            TargetService.DIAN_PROVIDER, new AccessRule(Set.of("COMPANY_SETTINGS_MANAGE", "FISCAL_DOCUMENTS_ISSUE"),
+                    Set.of("COMPANY_SETTINGS_MANAGE")),
             TargetService.AUDIT, new AccessRule(Set.of("AUDIT_VIEW", "GLOBAL_AUDIT_VIEW"), Set.of("AUDIT_VIEW",
                     "GLOBAL_AUDIT_VIEW")));
 
@@ -58,6 +60,7 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         this.clients.put(TargetService.ACCOUNTING, builder.clone().baseUrl(properties.accountingUrl()).build());
         this.clients.put(TargetService.PAYROLL, builder.clone().baseUrl(properties.payrollUrl()).build());
         this.clients.put(TargetService.REPORTING, builder.clone().baseUrl(properties.reportingUrl()).build());
+        this.clients.put(TargetService.DIAN_PROVIDER, builder.clone().baseUrl(properties.dianProviderUrl()).build());
         this.clients.put(TargetService.AUDIT, builder.clone().baseUrl(properties.auditUrl()).build());
         this.objectMapper = objectMapper;
     }

@@ -554,6 +554,26 @@ TASK-058 conecta el licenciamiento por empresa como politica de aplicacion en lo
 
 ## Context7 evidence
 
+- Library/tool: Amazon Cognito (`/websites/aws_amazon_cognito`).
+- Topic consulted: Hosted UI Authorization Code Grant with PKCE, callback state and token endpoint.
+- Relevant finding: Cognito Hosted UI uses `/oauth2/authorize` with `code_challenge` and exchanges `code` with `code_verifier` at `/oauth2/token`; callback returns `code` and `state`.
+- Decision impact: `bff-service` now has `AUTH_MODE=cognito`, `/api/v1/auth/login-url`, `/api/v1/auth/callback`, PKCE S256, encrypted server-side session storage and production fail-closed guard. Internal identity/permission bridging remains pending.
+
+- Library/tool: Spring Security reference 6.5 (`/websites/spring_io_spring-security_reference_6_5`).
+- Topic consulted: CSRF for SPA and security headers.
+- Relevant finding: SPA requests should carry CSRF in a header and servers should emit browser hardening headers such as HSTS, frame options and content type options.
+- Decision impact: BFF implements security headers and conditional CSRF validation for cookie sessions without breaking local bearer-token E2E mode.
+
+- Library/tool: AWS SDK for Java v2 (`/aws/aws-sdk-java-v2`).
+- Topic consulted: Secrets Manager runtime handling and exception discipline.
+- Relevant finding: runtime clients must handle AWS failures explicitly and avoid exposing secret values.
+- Decision impact: `dian-provider-service` now uses `SecretVaultPort` and metadata-only persistence; Terraform grants KMS/Secrets Manager permissions for company-scoped runtime secret paths.
+
+- Library/tool: Testing Library (`/testing-library/testing-library-docs`).
+- Topic consulted: pruebas asincronas de UI con `waitFor`, `findBy` y aserciones orientadas al usuario.
+- Relevant finding: las pruebas deben esperar cambios visibles del DOM en vez de acoplarse a detalles internos de render o tiempos.
+- Decision impact: la suite React valida busqueda de clientes, metodos de pago y reportes con eventos de usuario y esperas asincronas estables.
+
 - Library/tool: Context7 MCP.
 - Topic consulted: TASK-059 legacy cleanup.
 - Relevant finding: Context7 tools were not available in this Codex session after tool discovery; no framework, library, API or runtime behavior decision was introduced in this cleanup batch.
@@ -2206,37 +2226,37 @@ Esta seccion normaliza la documentacion SDD para que cada task tenga una decisio
 - Componentes/capas: identity-service, bff-service, facturaelectronica-web.
 
 ### TASK-145 - Replantear alcance DIAN como software parametrizable por empresa
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
 - Componentes/capas: billing-service, dian-provider-service, tenant-service.
 
 ### TASK-146 - Disenar modulo de configuracion DIAN por empresa
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
 - Componentes/capas: billing-service, dian-provider-service, tenant-service.
 
 ### TASK-147 - Persistencia segura de certificados y secretos DIAN por empresa
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
 - Componentes/capas: billing-service, dian-provider-service, tenant-service, infra/aws, docker-compose.
 
 ### TASK-148 - Ajustar contratos API para configuracion DIAN y prueba de conexion
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
 - Componentes/capas: billing-service, dian-provider-service.
 
 ### TASK-149 - Actualizar infraestructura AWS para secretos DIAN por empresa
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
 - Componentes/capas: billing-service, dian-provider-service, tenant-service, infra/aws, docker-compose.
 
 ### TASK-150 - Renombrar lenguaje funcional de proveedor a conector DIAN
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
 - Componentes/capas: billing-service, dian-provider-service, thirdparty-service.
@@ -2248,19 +2268,19 @@ Esta seccion normaliza la documentacion SDD para que cada task tenga una decisio
 - Componentes/capas: billing-service, dian-provider-service.
 
 ### TASK-152 - Implementar UI de Configuracion DIAN por empresa
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Decision de diseno: Define evolucion de dian-provider-service como conector DIAN parametrizable por empresa, sin rol de proveedor tecnologico.
 - Componentes/capas: billing-service, dian-provider-service, tenant-service.
 
 ### TASK-153 - Disenar autenticacion productiva con Cognito Hosted UI y PKCE
-- Estado: Pendiente.
+- Estado: En progreso. Implementado modulo Cognito Terraform, modo `AUTH_MODE=cognito`, fail-closed productivo, PKCE S256, callback/token exchange y sesion cifrada local; falta puente definitivo Cognito -> identidad/permisos internos.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: identity-service, bff-service, thirdparty-service.
 
 ### TASK-154 - Reemplazar tokens en SPA por sesion BFF con cookie segura
-- Estado: Pendiente.
+- Estado: En progreso. Implementados endpoint de sesion, cookies base y logout; falta sesion server-side completa para retirar bearer del modo productivo.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: identity-service, bff-service, facturaelectronica-web.
@@ -2272,49 +2292,49 @@ Esta seccion normaliza la documentacion SDD para que cada task tenga una decisio
 - Componentes/capas: identity-service, bff-service.
 
 ### TASK-156 - Implementar logout seguro y revocacion
-- Estado: Pendiente.
+- Estado: En progreso. Logout limpia cookies BFF, CSRF y OAuth attempt; falta revocacion Cognito real.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: SDD/documentacion.
 
 ### TASK-157 - Hardening frontend contra exposicion de datos sensibles
-- Estado: Pendiente.
+- Estado: En progreso. Build productivo sin sourcemaps y fetch con cookies/CSRF; falta eliminar tokens del flujo Cognito completo.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: billing-service, dian-provider-service, facturaelectronica-web, bff-service.
 
 ### TASK-158 - Agregar security headers CloudFront/BFF
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: infra/aws, docker-compose.
 
 ### TASK-159 - Implementar proteccion CSRF para sesiones por cookie
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: identity-service, bff-service.
 
 ### TASK-160 - MFA obligatorio para ROOT, administradores y acciones criticas
-- Estado: Pendiente.
+- Estado: En progreso. Cognito User Pool habilita software token MFA y grupos base; falta enforcement por grupos/acciones.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: identity-service, bff-service.
 
 ### TASK-161 - Provisionamiento runtime de secretos AWS por empresa
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: tenant-service, infra/aws, docker-compose.
 
 ### TASK-162 - Auditoria de seguridad transversal
-- Estado: Pendiente.
+- Estado: En progreso. Mutaciones BFF cuentan con auditoria best-effort; faltan eventos dedicados OAuth/CSRF/MFA.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: audit-service.
 
 ### TASK-163 - Modo transicion local y bloqueo productivo de auth dummy
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 21: Backlog autenticacion productiva y hardening.
 - Decision de diseno: Define autenticacion productiva con Cognito, sesion BFF segura, MFA, CSRF, headers y manejo de secretos runtime.
 - Componentes/capas: identity-service, bff-service.
@@ -2454,5 +2474,83 @@ Esta seccion normaliza la documentacion SDD para que cada task tenga una decisio
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Decision de diseno: Consulta operacional de ventas y documentos desde `billing-service`, con filtros por estado, fecha, vendedor, cliente, metodo de pago y estado fiscal. La SPA permite reimprimir comprobantes desde el listado sin reemitir documentos fiscales.
 - Componentes/capas: `billing-service`, `bff-service`, `facturaelectronica-web`.
+
+## TASK-179 a TASK-185: reportes asincronos avanzados con S3 y notificacion
+
+Estado: backlog SDD aprobado para ejecutar despues de TASK-145 a TASK-163.
+
+Decisiones:
+
+- Los reportes pequenos siguen usando consulta/exportacion sincrona desde `reporting-service`.
+- Los reportes pesados se modelan como jobs asincronos para evitar timeouts HTTP y permitir experiencia de usuario no bloqueante.
+- El usuario podra solicitar el reporte desde la SPA y recibir correo cuando este listo.
+- El correo contendra un enlace intermediado por NexoFiscal construido con `APP_PUBLIC_BASE_URL`, por ejemplo `{APP_PUBLIC_BASE_URL}/reportes/descarga/{token}`.
+- El enlace de correo no sera una URL directa de S3.
+- Al hacer clic, el BFF valida token, usuario/alcance, empresa, estado del job, licencia y RBAC; luego genera una URL prefirmada de S3 con TTL `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS`, inicialmente `5`.
+- `REPORT_LINK_TOKEN_TTL_HOURS` gobierna la vida del token enviado al correo; es independiente del TTL de S3.
+- Los archivos quedan en S3 privado con KMS y retencion configurable.
+- `reporting-projection-lambda` mantiene proyecciones reconstruibles; un `report-export-worker-lambda` o worker equivalente generara archivos pesados bajo demanda.
+- SES queda como canal objetivo de notificacion por correo en AWS.
+- Toda solicitud, procesamiento, error, expiracion, revocacion, envio y descarga queda auditada sin exponer filtros sensibles completos, URLs S3, bucket/key publica ni secretos.
+
+Flujo objetivo:
+
+1. La SPA solicita `POST /api/v1/reports/export-jobs`.
+2. El BFF valida sesion, RBAC, licencia y empresa activa.
+3. `reporting-service` crea `report_export_job` en `PENDING` y publica evento.
+4. El worker toma el evento, marca `PROCESSING`, genera el archivo y lo guarda en S3 privado.
+5. Si termina bien, marca `READY`, crea token de descarga y solicita notificacion por correo.
+6. El usuario abre el enlace `{APP_PUBLIC_BASE_URL}/reportes/descarga/{token}`.
+7. El BFF valida el token y genera URL prefirmada S3 con expiracion de 5 segundos.
+8. La respuesta redirige o entrega la descarga de forma controlada.
+
+Context7 evidence:
+
+- Library/tool: AWS SDK for Java v2.
+- Topic consulted: S3 presigned GetObject URL.
+- Relevant finding: AWS SDK Java v2 permite crear `S3Presigner` y generar `PresignedGetObjectRequest` con `signatureDuration`.
+- Decision impact: La descarga pesada se resuelve al momento del clic con URL prefirmada de vida muy corta, no al momento de enviar el correo.
+
+### TASK-179 - Disenar reportes asincronos avanzados
+- Estado: Pendiente.
+- Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
+- Decision de diseno: Clasificar reportes sincronos vs pesados, estados de job, permisos, licencia y reglas de expiracion.
+- Componentes/capas: `reporting-service`, `bff-service`, `facturaelectronica-web`.
+
+### TASK-180 - Disenar contratos API para jobs de reportes
+- Estado: Pendiente.
+- Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
+- Decision de diseno: Exponer contratos para crear jobs, consultar estado/listado y resolver enlaces intermediados de descarga.
+- Componentes/capas: `reporting-service`, `bff-service`.
+
+### TASK-181 - Disenar persistencia de trabajos de reportes
+- Estado: Pendiente.
+- Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
+- Decision de diseno: Persistir jobs, tokens hasheados, intentos de descarga y notificaciones sin guardar URLs S3 directas ni secretos.
+- Componentes/capas: `reporting-service`, PostgreSQL.
+
+### TASK-182 - Disenar worker asincrono de exportacion
+- Estado: Pendiente.
+- Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
+- Decision de diseno: Procesar jobs por SQS/EventBridge + Lambda/worker idempotente y guardar archivos en S3 privado.
+- Componentes/capas: `report-export-worker-lambda`, `reporting-service`, S3.
+
+### TASK-183 - Disenar descarga segura desde S3 con enlace intermediado
+- Estado: Pendiente.
+- Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
+- Decision de diseno: Link publico parametrizable con `APP_PUBLIC_BASE_URL`, token intermediado con TTL propio y URL S3 prefirmada al clic por 5 segundos.
+- Componentes/capas: `bff-service`, `reporting-service`, S3.
+
+### TASK-184 - Disenar notificaciones por correo
+- Estado: Pendiente.
+- Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
+- Decision de diseno: Enviar correo por SES con enlace intermediado y auditoria de envio, fallo y rebote tecnico cuando aplique.
+- Componentes/capas: SES, `reporting-service`, `audit-service`.
+
+### TASK-185 - Disenar UI de reportes avanzados asincronos
+- Estado: Pendiente.
+- Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
+- Decision de diseno: Agregar modo "generar en segundo plano", listado de jobs, estados, descarga disponible y mensajes claros.
+- Componentes/capas: `facturaelectronica-web`, `bff-service`.
 
 <!-- END SDD TASK DESIGN TRACEABILITY -->

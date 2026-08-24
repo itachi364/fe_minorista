@@ -6,6 +6,10 @@ provider "aws" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
+data "aws_partition" "current" {}
+
 locals {
   name_prefix = "${var.project}-${var.environment}"
 
@@ -15,8 +19,11 @@ locals {
     ManagedBy   = "terraform"
   }
 
-  db_password_secret = "${module.database.master_user_secret_arn}:password::"
-  service_domain     = "${local.name_prefix}.local"
+  db_password_secret   = "${module.database.master_user_secret_arn}:password::"
+  service_domain       = "${local.name_prefix}.local"
+  frontend_base_url    = var.frontend_base_url != "" ? var.frontend_base_url : "https://${module.frontend.cloudfront_domain_name}"
+  api_public_base_url  = var.api_public_base_url != "" ? trimsuffix(var.api_public_base_url, "/") : "https://api.${local.name_prefix}.example.com"
+  cognito_redirect_uri = "${local.api_public_base_url}/api/v1/auth/callback"
 
   db_secret_names = [
     "DB_PASSWORD",
@@ -40,6 +47,7 @@ locals {
     DB_URL       = module.database.jdbc_url
     DB_USERNAME  = var.db_username
     JPA_SHOW_SQL = "false"
+    APP_ENV      = var.environment
   }
 
   service_definitions = {
@@ -61,7 +69,18 @@ locals {
         PAYROLL_SERVICE_URL       = "http://payroll-service.${local.service_domain}:8093"
         REPORTING_SERVICE_URL     = "http://reporting-service.${local.service_domain}:8094"
         DIAN_PROVIDER_SERVICE_URL = "http://dian-provider-service.${local.service_domain}:8089"
+        AUTH_MODE                 = "cognito"
+        COGNITO_BASE_URL          = module.auth.hosted_ui_base_url
+        COGNITO_CLIENT_ID         = module.auth.web_client_id
+        COGNITO_REDIRECT_URI      = local.cognito_redirect_uri
+        COGNITO_LOGOUT_URI        = local.frontend_base_url
+        FRONTEND_BASE_URL         = local.frontend_base_url
+        BFF_CSRF_ENABLED          = "true"
+        BFF_COOKIE_SECURE         = "true"
       })
+      secrets = {
+        BFF_SESSION_ENCRYPTION_KEY = module.secrets.secret_arns["bff-session-encryption-key"]
+      }
     }
 
     tenant-service = {
@@ -142,10 +161,11 @@ locals {
       memory         = 512
       desired_count  = 0
       environment = merge(local.base_environment, {
-        SERVER_PORT              = "8089"
-        DIAN_PROVIDER_DB_URL     = module.database.jdbc_url
-        DIAN_PROVIDER_MODE       = "mock"
-        DIAN_MOCK_DEFAULT_STATUS = "ACCEPTED"
+        SERVER_PORT                       = "8089"
+        DIAN_PROVIDER_DB_URL              = module.database.jdbc_url
+        DIAN_PROVIDER_MODE                = "mock"
+        DIAN_PROVIDER_SECRETS_ENVIRONMENT = var.environment
+        DIAN_MOCK_DEFAULT_STATUS          = "ACCEPTED"
       })
     }
 
@@ -231,10 +251,12 @@ module "database" {
 module "secrets" {
   source = "../../modules/secrets"
 
-  name_prefix = local.name_prefix
+  name_prefix                = local.name_prefix
+  runtime_secret_environment = var.environment
   secret_names = [
     "dian-provider-api-key",
     "dian-certificate-password",
+    "bff-session-encryption-key",
     "jwt-signing-key"
   ]
   tags = local.tags
@@ -249,10 +271,14 @@ module "ecs" {
   subnet_ids            = module.network.private_subnet_ids
   app_security_group_id = module.network.app_security_group_id
   public_service_name   = "bff-service"
-  secret_arns           = [module.database.master_user_secret_arn]
-  common_secrets        = local.db_common_secrets
-  services              = local.service_definitions
-  tags                  = local.tags
+  secret_arns           = concat([module.database.master_user_secret_arn], values(module.secrets.secret_arns))
+  runtime_secret_arn_patterns = [
+    "arn:${data.aws_partition.current.partition}:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:/facturaelectronica/${var.environment}/companies/*"
+  ]
+  kms_key_arns   = [module.secrets.kms_key_arn]
+  common_secrets = local.db_common_secrets
+  services       = local.service_definitions
+  tags           = local.tags
 }
 
 module "api" {
@@ -270,6 +296,15 @@ module "frontend" {
 
   name_prefix = local.name_prefix
   tags        = local.tags
+}
+
+module "auth" {
+  source = "../../modules/auth"
+
+  name_prefix   = local.name_prefix
+  callback_urls = [local.cognito_redirect_uri]
+  logout_urls   = [local.frontend_base_url]
+  tags          = local.tags
 }
 
 module "messaging" {

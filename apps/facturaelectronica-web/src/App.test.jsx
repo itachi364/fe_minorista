@@ -202,7 +202,7 @@ test('company user sees only modules allowed by effective permissions', async ()
   expect(screen.getByRole('button', { name: 'Reportes' })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Empresa' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Usuarios' })).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Consultar' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Generar reporte' })).toBeInTheDocument();
 });
 
 test('sales user can access POS without fiscal advanced permission', async () => {
@@ -581,7 +581,7 @@ test('creates POS sale with controlled virtual wallet payment method', async () 
   await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
-  fireEvent.change(screen.getByLabelText('Metodo de pago'), { target: { value: 'VIRTUAL_WALLET' } });
+  fireEvent.change(screen.getAllByLabelText('Metodo de pago')[0], { target: { value: 'VIRTUAL_WALLET' } });
   expect(screen.getByLabelText('Billetera virtual')).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Billetera virtual'), { target: { value: 'NEQUI' } });
   fireEvent.click(screen.getByRole('button', { name: 'Crear venta' }));
@@ -669,7 +669,7 @@ test('loads operational lists for sales third parties products and purchases', a
   expect(fetchMock).toHaveBeenNthCalledWith(8, '/api/v1/purchases', expect.objectContaining({
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
-  expect(fetchMock).toHaveBeenNthCalledWith(9, '/api/v1/sales', expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(9, '/api/v1/sales/history', expect.objectContaining({
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
 });
@@ -690,6 +690,7 @@ test('searches customer by document and sends selected customer id in POS sale',
   await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
+  fireEvent.change(screen.getByLabelText('Comprador'), { target: { value: 'IDENTIFIED_CUSTOMER' } });
   fireEvent.change(screen.getByLabelText('Cliente por numero de documento'), { target: { value: '900123456' } });
   await waitFor(() => expect(screen.getByText('Cliente seleccionado: Cliente Demo SAS (900123456)')).toBeInTheDocument());
   fireEvent.click(screen.getByRole('button', { name: 'Crear venta' }));

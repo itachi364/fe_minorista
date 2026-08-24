@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.msvanegasg.facturaelectronica.dianprovider.application.usecase.ProviderSubmissionNotFoundException;
+import com.msvanegasg.facturaelectronica.dianprovider.application.usecase.DianCertificateExpiredException;
+import com.msvanegasg.facturaelectronica.dianprovider.application.usecase.DianConfigurationIncompleteException;
+import com.msvanegasg.facturaelectronica.dianprovider.application.usecase.DianConfigurationNotFoundException;
 import com.msvanegasg.facturaelectronica.dianprovider.observability.CorrelationId;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,13 +42,14 @@ public class DianProviderExceptionHandler {
                 "La solicitud no cumple las reglas de validacion.", List.of(), request);
     }
 
-    @ExceptionHandler(ProviderSubmissionNotFoundException.class)
+    @ExceptionHandler({ ProviderSubmissionNotFoundException.class, DianConfigurationNotFoundException.class })
     ResponseEntity<ApiErrorResponse> handleNotFound(RuntimeException exception, HttpServletRequest request) {
         return build(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, exception.getMessage(), List.of(),
                 request);
     }
 
-    @ExceptionHandler(IllegalStateException.class)
+    @ExceptionHandler({ IllegalStateException.class, DianConfigurationIncompleteException.class,
+            DianCertificateExpiredException.class })
     ResponseEntity<ApiErrorResponse> handleBusiness(RuntimeException exception, HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, ApiErrorCode.EXTERNAL_PROVIDER_ERROR, exception.getMessage(), List.of(),
                 request);
