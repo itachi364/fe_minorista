@@ -22,6 +22,7 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalNumberRes
 import com.msvanegasg.facturaelectronica.billing.application.dto.InventoryProductSnapshot;
 import com.msvanegasg.facturaelectronica.billing.application.dto.LicensePolicy;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ProviderSubmissionResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.PosReceiptResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
@@ -230,6 +231,15 @@ public class SaleManagementService implements ManageSaleUseCase {
     public SaleResult findById(UUID companyId, UUID saleId) {
         return BillingResultMapper.toSaleResult(saleRepository.findByCompanyIdAndId(companyId, saleId)
                 .orElseThrow(() -> new SaleNotFoundException(saleId)));
+    }
+
+    @Override
+    public PosReceiptResult printableReceipt(UUID companyId, UUID saleId, int widthMm) {
+        SaleResult sale = findById(companyId, saleId);
+        if (sale.electronicDocument() == null) {
+            throw new IllegalStateException("sale has no electronic document");
+        }
+        return PosReceiptRenderer.render(sale, widthMm);
     }
 
     private SaleResult createNew(CreateSaleCommand command) {

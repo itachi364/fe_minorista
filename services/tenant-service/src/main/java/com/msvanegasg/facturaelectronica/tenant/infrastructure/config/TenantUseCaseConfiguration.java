@@ -5,10 +5,14 @@ import org.springframework.context.annotation.Configuration;
 
 import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyLicenseUseCase;
 import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyUseCase;
+import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyBrandingUseCase;
+import com.msvanegasg.facturaelectronica.tenant.application.port.out.BrandingAssetStoragePort;
+import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyBrandingRepositoryPort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyLicenseRepositoryPort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyRepositoryPort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.IdGeneratorPort;
+import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyBrandingManagementService;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyLicenseManagementService;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyManagementService;
 
@@ -30,5 +34,14 @@ public class TenantUseCaseConfiguration {
             IdGeneratorPort idGenerator,
             ClockPort clock) {
         return new CompanyLicenseManagementService(companyRepository, licenseRepository, idGenerator, clock);
+    }
+
+    @Bean
+    ManageCompanyBrandingUseCase manageCompanyBrandingUseCase(
+            CompanyRepositoryPort companyRepository,
+            CompanyBrandingRepositoryPort brandingRepository,
+            BrandingAssetStoragePort storage,
+            ClockPort clock) {
+        return new CompanyBrandingManagementService(companyRepository, brandingRepository, storage, clock);
     }
 }

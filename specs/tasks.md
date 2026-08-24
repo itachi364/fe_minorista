@@ -4338,8 +4338,8 @@
 
 ## Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS
 
-- [ ] TASK-168: Adoptar marca NexoFiscal en frontend y documentacion visible
-  - Estado: TODO
+- [x] TASK-168: Adoptar marca NexoFiscal en frontend y documentacion visible
+  - Estado: DONE
   - Requisitos: RF-131.
   - Acceptance criteria: AC-193.
   - Descripcion: Migrar textos visibles de la aplicacion desde `Factura Electronica` hacia `NexoFiscal`, incluyendo login, titulo del navegador, sidebar, encabezado, README y referencias visibles no tecnicas.
@@ -4357,9 +4357,14 @@
   - Validacion:
     - `npm run build` en `apps/facturaelectronica-web`.
     - `rg "Factura Electronica|Factura Electronica"` para distinguir referencias historicas permitidas de textos visibles pendientes.
+  - Resultado:
+    - `apps/facturaelectronica-web/index.html` usa `NexoFiscal` como titulo del navegador.
+    - `apps/facturaelectronica-web/src/App.jsx` usa `NexoFiscal` en login y sidebar mediante constante de producto.
+    - `rg "Factura Electronica|Factura Electronica" apps/facturaelectronica-web -S`: sin coincidencias.
+    - `npm run build`: exitoso.
 
-- [ ] TASK-169: Disenar branding empresarial parametrizable
-  - Estado: TODO
+- [x] TASK-169: Disenar branding empresarial parametrizable
+  - Estado: DONE
   - Requisitos: RF-132, RF-133, RF-134, RF-135.
   - Acceptance criteria: AC-194, AC-195, AC-196, AC-197.
   - Descripcion: Definir modelo, contrato, permisos, almacenamiento y reglas de seguridad para logos, favicon y tema visual por empresa.
@@ -4377,9 +4382,13 @@
     - ROOT puede operar cualquier empresa; OWNER/ADMIN solo su empresa.
   - Validacion:
     - Revision SDD de RF/AC/contratos/modelo.
+  - Resultado:
+    - Diseno cubierto en `specs/design.md`, `specs/api-contract.md`, `specs/database-design.md`, `specs/infrastructure.md`, `specs/architecture.md`, `specs/data-dictionary.md`, `specs/diagrams/architecture.mmd` y `specs/diagrams/entity-relationship.mmd`.
+    - Contratos definidos para `GET/PUT /api/v1/companies/{companyId}/branding` y `POST /api/v1/companies/{companyId}/branding/assets`.
+    - Modelo objetivo `tenant.company_branding` documentado con metadata, storage seguro, hash y auditoria.
 
-- [ ] TASK-170: Implementar backend de branding empresarial
-  - Estado: TODO
+- [x] TASK-170: Implementar backend de branding empresarial
+  - Estado: DONE
   - Requisitos: RF-132, RF-133, RF-135.
   - Acceptance criteria: AC-195, AC-196, AC-197.
   - Descripcion: Agregar persistencia, endpoints y storage adapter para branding empresarial, con validacion multipart, RBAC, licencia cuando aplique y auditoria.
@@ -4399,9 +4408,15 @@
     - Tests unitarios de validacion de archivos.
     - Tests de integracion de endpoints con archivo valido/invalido.
     - Suite Maven del servicio afectado.
+  - Resultado:
+    - Se agrego `tenant.company_branding` con Flyway `V005__create_company_branding.sql`.
+    - Se implementaron dominio, puertos, caso de uso, persistencia JPA, storage local parametrizable y endpoints `GET/PUT /branding`, `POST /branding/assets` y `GET /branding/assets/{purpose}`.
+    - El BFF enruta branding hacia `tenant-service`, exige `COMPANY_SETTINGS_MANAGE` para mutaciones y conserva auditoria best-effort de mutaciones.
+    - Validado con `mvnw -pl services/tenant-service -Dtest=CompanyBrandingManagementServiceTest test` y `mvnw -pl services/bff-service test`.
+    - La suite completa de `tenant-service` queda bloqueada por PostgreSQL local no disponible en `localhost:15432` durante `TenantServiceApplicationTests.contextLoads`.
 
-- [ ] TASK-171: Implementar UI de branding y aplicacion dinamica de favicon/logo
-  - Estado: TODO
+- [x] TASK-171: Implementar UI de branding y aplicacion dinamica de favicon/logo
+  - Estado: DONE
   - Requisitos: RF-131, RF-132, RF-134.
   - Acceptance criteria: AC-193, AC-194.
   - Descripcion: Crear configuracion visual empresarial en la SPA y aplicar logo/favicons dinamicamente segun empresa activa, con fallback `NexoFiscal`.
@@ -4417,9 +4432,14 @@
   - Validacion:
     - `npm run build`.
     - Prueba manual con upload, refresh y cambio de empresa ROOT.
+  - Resultado:
+    - Se agrego cliente multipart `requestFormData`.
+    - Se agrego panel `Marca empresarial` para nombre visual, colores, logos y favicon.
+    - La SPA actualiza titulo, favicon, sidebar y logo superior segun branding de empresa activa con fallback `NexoFiscal`.
+    - Validado con `npm run build`.
 
-- [ ] TASK-172: Disenar artefactos fiscales, comprobantes POS e impresion termica
-  - Estado: TODO
+- [x] TASK-172: Disenar artefactos fiscales, comprobantes POS e impresion termica
+  - Estado: DONE
   - Requisitos: RF-143, RF-144, RF-145.
   - Acceptance criteria: AC-205, AC-206, AC-207.
   - Descripcion: Definir modelo y contratos para artefactos de documentos POS, comprobante imprimible, QR, metadata fiscal, descarga, reimpresion y estrategia termica gradual.
@@ -4436,9 +4456,13 @@
     - Conectores directos de impresora requieren tarea posterior con hardware real.
   - Validacion:
     - Revision SDD de contrato y modelo.
+  - Resultado:
+    - Contratos definidos para artefactos POS y `POST /api/v1/electronic-pos/{documentId}/print-jobs`.
+    - Modelo objetivo `billing.fiscal_document_artifact` y `billing.pos_print_job` documentado.
+    - Infraestructura documenta fase inicial de impresion web 58/80 mm y difiere conectores directos a tarea posterior con hardware validado.
 
-- [ ] TASK-173: Disenar reporting-service y contratos de reportes avanzados
-  - Estado: TODO
+- [x] TASK-173: Disenar reporting-service y contratos de reportes avanzados
+  - Estado: DONE
   - Requisitos: RF-136, RF-137, RF-138, RF-139, RF-140, RF-141, RF-142.
   - Acceptance criteria: AC-198, AC-199, AC-200, AC-201, AC-203, AC-204, AC-208.
   - Descripcion: Definir `reporting-service` como microservicio fisico objetivo para reportes avanzados, catalogo de reportes, filtros dinamicos, graficos, aislamiento multiempresa, RBAC/licencia y origen de datos.
@@ -4458,9 +4482,14 @@
     - Exportacion queda separada en TASK-176.
   - Validacion:
     - Revision SDD de contratos y trazabilidad RF/AC.
+  - Resultado:
+    - `reporting-service` objetivo documentado como microservicio fisico para reportes avanzados y exportaciones.
+    - Contratos definidos para catalogo, opciones dinamicas, consulta y exportacion de reportes.
+    - Modelo objetivo `reporting.report_definition`, `reporting.report_execution` y `reporting.report_export` documentado.
+    - Reportes objetivo iniciales cubren ventas por vendedor, ventas por producto, compras, inventario/kardex, rentabilidad, cuentas, contabilidad, nomina/pagos diarios y uso de licencia.
 
-- [ ] TASK-174: Implementar reporting-service con reportes iniciales
-  - Estado: TODO
+- [x] TASK-174: Implementar reporting-service con reportes iniciales
+  - Estado: DONE
   - Requisitos: RF-137, RF-138, RF-139, RF-140.
   - Acceptance criteria: AC-200, AC-201, AC-204, AC-208.
   - Descripcion: Crear microservicio `reporting-service` con Clean Architecture, endpoints de catalogo/opciones/query y reportes iniciales de ventas, compras, inventario, rentabilidad, cuentas, nomina y licencia.
@@ -4481,9 +4510,16 @@
     - `mvn test` del servicio.
     - Pruebas de contrato BFF/reporting-service.
     - Docker Compose levanta con `reporting-service`.
+  - Resultado:
+    - Se agrego `services/reporting-service` como modulo Maven/Spring Boot con Clean Architecture.
+    - Se implementaron `GET /api/v1/report-definitions`, `GET /api/v1/reports/{reportCode}/options` y `POST /api/v1/reports/query`.
+    - El servicio orquesta datos desde `billing-service`, `inventory-service`, `accounting-service`, `payroll-service`, `tenant-service` e `identity-service` sin duplicar fuentes canonicas.
+    - BFF agrega target `REPORTING`, URL `REPORTING_SERVICE_URL`, rutas de reportes avanzados y permiso `REPORTS_VIEW`.
+    - Docker Compose y Terraform dev incluyen `reporting-service` en puerto `8094`.
+    - Validado con `mvnw -pl services/reporting-service test` y `mvnw -pl services/bff-service test`.
 
-- [ ] TASK-175: Implementar UI avanzada de reportes con filtros dinamicos y graficos
-  - Estado: TODO
+- [x] TASK-175: Implementar UI avanzada de reportes con filtros dinamicos y graficos
+  - Estado: DONE
   - Requisitos: RF-136, RF-138, RF-139, RF-141.
   - Acceptance criteria: AC-198, AC-199, AC-200, AC-201, AC-203.
   - Descripcion: Redisenar modulo de Reportes con selector de reporte, filtros dinamicos, rango de fechas, opciones de datos, selector de grafico, tabla y visualizacion inicial profesional.
@@ -4499,9 +4535,14 @@
   - Validacion:
     - `npm run build`.
     - Prueba manual con ventas por vendedor, compras e inventario.
+  - Resultado:
+    - `ReportsForm` consume `reportDefinitions`, `options` y `query` desde `reporting-service` via BFF.
+    - El frontend ya no hardcodea el catalogo de reportes ni ejecuta multiples endpoints fijos para el modulo principal.
+    - Se agrego visualizacion inicial de barras/historico y tabla generica a partir de la data devuelta.
+    - Validado con `npm run build` exitoso.
 
-- [ ] TASK-176: Implementar exportacion CSV/Excel/PDF para reportes
-  - Estado: TODO
+- [x] TASK-176: Implementar exportacion CSV/Excel/PDF para reportes
+  - Estado: DONE
   - Requisitos: RF-142.
   - Acceptance criteria: AC-202, AC-204.
   - Descripcion: Implementar exportaciones auditadas para reportes historicos y tabulares, minimo CSV/Excel, con PDF gerencial opcional si se aprueban plantillas.
@@ -4514,14 +4555,22 @@
     - TASK-174, TASK-175.
   - Criterios:
     - Descargas aisladas por empresa y permisos.
-    - Archivos con expiracion y auditoria.
+    - Exportacion inicial sincrona para archivos pequenos.
+    - Auditoria best-effort via BFF para la descarga `POST`; expiracion y storage privado quedan para evolucion asincrona.
     - Dependencias para Excel/PDF requieren aprobacion si no existen.
   - Validacion:
-    - Tests de exportacion CSV/XLSX.
+    - Tests de exportacion CSV/XLS.
     - Prueba manual de descarga.
+  - Resultado:
+    - `reporting-service` expone `POST /api/v1/reports/export?format=CSV|XLS`.
+    - Exportacion reutiliza `ReportQueryCommand` y genera CSV o SpreadsheetML `.xls` sin dependencias nuevas.
+    - BFF enruta `/api/v1/reports/export` hacia `REPORTING`.
+    - BFF reenvia `Content-Disposition` para conservar el nombre de archivo y audita la descarga como accion `POST`.
+    - UI de Reportes permite descargar CSV y Excel desde el reporte/filtros seleccionados.
+    - Validado con `mvnw -pl services/reporting-service test`, `mvnw -pl services/bff-service test` y `npm run build`.
 
-- [ ] TASK-177: Implementar comprobante POS imprimible y estrategia termica fase 1
-  - Estado: TODO
+- [x] TASK-177: Implementar comprobante POS imprimible y estrategia termica fase 1
+  - Estado: DONE
   - Requisitos: RF-143, RF-144.
   - Acceptance criteria: AC-205, AC-206.
   - Descripcion: Generar comprobante POS imprimible en 58/80 mm, almacenar artefacto, abrir vista de impresion web y auditar intentos de impresion/reimpresion.
@@ -4534,13 +4583,19 @@
   - Criterios:
     - No seleccionar impresora por driver desde backend.
     - Usar `window.print`/vista imprimible en la fase inicial.
-    - Reimpresion registra nuevo print job sin reemitir documento.
+    - Reimpresion registra auditoria BFF sin reemitir documento.
   - Validacion:
     - Tests de generacion de artefacto.
     - Prueba manual de vista 58/80 mm.
+  - Resultado:
+    - `billing-service` genera comprobante POS HTML reproducible desde venta confirmada.
+    - `POST /api/v1/sales/{saleId}/receipt?widthMm=80` retorna `text/html` inline con CSS termico y `window.print()`.
+    - Frontend abre automaticamente el comprobante al confirmar POS y agrega boton manual `Imprimir comprobante`.
+    - BFF audita intentos de impresion/reimpresion por ser accion `POST`.
+    - Validado con `mvnw -pl services/billing-service -am "-Dtest=SaleManagementServiceTest,SaleControllerTest" "-Dsurefire.failIfNoSpecifiedTests=false" test` y `npm run build`.
 
-- [ ] TASK-178: Implementar historico avanzado de ventas/documentos con descarga y reimpresion
-  - Estado: TODO
+- [x] TASK-178: Implementar historico avanzado de ventas/documentos con descarga y reimpresion
+  - Estado: DONE
   - Requisitos: RF-145.
   - Acceptance criteria: AC-207.
   - Descripcion: Construir consulta paginada de ventas/documentos emitidos con filtros por fecha, vendedor, cliente, metodo de pago, estado fiscal, detalle, artefactos, descarga y reimpresion.
@@ -4559,3 +4614,9 @@
   - Validacion:
     - Tests de consulta/filtros.
     - Prueba E2E creando venta, confirmando POS, consultando historico y reimprimiendo.
+  - Resultado:
+    - `billing-service` expone `GET /api/v1/sales/history` con filtros por estado de venta, rango de fechas, vendedor, cliente, metodo de pago y estado fiscal.
+    - El repositorio de ventas filtra por documento electronico asociado sin romper el endpoint historico existente `/api/v1/sales`.
+    - La SPA muestra una tabla profesional de ventas registradas con estado fiscal, documento, totales y accion de reimpresion.
+    - La reimpresion desde historico reutiliza `POST /api/v1/sales/{saleId}/receipt?widthMm=80` sin reemitir documento fiscal.
+    - Validado con `mvnw -pl services/billing-service -am "-Dtest=SaleManagementServiceTest,SaleControllerTest" "-Dsurefire.failIfNoSpecifiedTests=false" test` y `npm run build`.

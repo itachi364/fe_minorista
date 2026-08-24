@@ -27,6 +27,10 @@ class BffRouteResolverTest {
     void resolvesTenantAndIdentityCompanyRoutes() {
         assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/license/validation"))
                 .isEqualTo(TargetService.TENANT);
+        assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/branding"))
+                .isEqualTo(TargetService.TENANT);
+        assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/branding/assets/HEADER_LOGO"))
+                .isEqualTo(TargetService.TENANT);
         assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/memberships"))
                 .isEqualTo(TargetService.IDENTITY);
         assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/users/22222222-2222-2222-2222-222222222222/roles"))
@@ -45,6 +49,10 @@ class BffRouteResolverTest {
 
     @Test
     void resolvesReportRoutesByOwningService() {
+        assertThat(resolver.resolve("/api/v1/report-definitions")).isEqualTo(TargetService.REPORTING);
+        assertThat(resolver.resolve("/api/v1/reports/query")).isEqualTo(TargetService.REPORTING);
+        assertThat(resolver.resolve("/api/v1/reports/export")).isEqualTo(TargetService.REPORTING);
+        assertThat(resolver.resolve("/api/v1/reports/SALES_BY_SELLER/options")).isEqualTo(TargetService.REPORTING);
         assertThat(resolver.resolve("/api/v1/reports/sales")).isEqualTo(TargetService.BILLING);
         assertThat(resolver.resolve("/api/v1/reports/inventory-stock")).isEqualTo(TargetService.INVENTORY);
         assertThat(resolver.resolve("/api/v1/reports/journal")).isEqualTo(TargetService.ACCOUNTING);

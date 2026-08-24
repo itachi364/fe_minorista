@@ -1,7 +1,9 @@
 package com.msvanegasg.facturaelectronica.billing.interfaces.rest;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -17,6 +19,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
@@ -24,8 +27,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.PosReceiptResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageSaleUseCase;
+import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleItemType;
@@ -95,6 +101,40 @@ class SaleControllerTest {
                 .header("X-Company-Id", COMPANY_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.total").value(35700));
+    }
+
+    @Test
+    void findsSalesHistoryWithOperationalFilters() throws Exception {
+        when(saleUseCase.find(any())).thenReturn(List.of(result(SaleStatus.CONFIRMED)));
+        ArgumentCaptor<SaleQuery> query = ArgumentCaptor.forClass(SaleQuery.class);
+
+        mockMvc.perform(get("/api/v1/sales/history")
+                .header("X-Company-Id", COMPANY_ID)
+                .param("status", "CONFIRMED")
+                .param("paymentMethodCode", "VIRTUAL_WALLET")
+                .param("documentStatus", "VALIDATED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].status").value("CONFIRMED"));
+
+        verify(saleUseCase).find(query.capture());
+        assertThat(query.getValue().companyId()).isEqualTo(COMPANY_ID);
+        assertThat(query.getValue().status()).isEqualTo(SaleStatus.CONFIRMED);
+        assertThat(query.getValue().paymentMethodCode()).isEqualTo(PaymentMethodCode.VIRTUAL_WALLET);
+        assertThat(query.getValue().documentStatus()).isEqualTo(ElectronicDocumentStatus.VALIDATED);
+    }
+
+    @Test
+    void returnsPrintableReceipt() throws Exception {
+        when(saleUseCase.printableReceipt(COMPANY_ID, SALE_ID, 80))
+                .thenReturn(new PosReceiptResult("nexofiscal-pos-POS100.html", "text/html; charset=UTF-8",
+                        "<html>POS</html>".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+
+        mockMvc.perform(post("/api/v1/sales/{saleId}/receipt", SALE_ID)
+                .header("X-Company-Id", COMPANY_ID))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.containsString("nexofiscal-pos-POS100.html")))
+                .andExpect(header().string("Content-Type", org.hamcrest.Matchers.containsString("text/html")));
     }
 
     @Test

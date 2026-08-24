@@ -59,6 +59,7 @@ locals {
         ACCOUNTING_SERVICE_URL    = "http://accounting-service.${local.service_domain}:8090"
         AUDIT_SERVICE_URL         = "http://audit-service.${local.service_domain}:8091"
         PAYROLL_SERVICE_URL       = "http://payroll-service.${local.service_domain}:8093"
+        REPORTING_SERVICE_URL     = "http://reporting-service.${local.service_domain}:8094"
         DIAN_PROVIDER_SERVICE_URL = "http://dian-provider-service.${local.service_domain}:8089"
       })
     }
@@ -179,6 +180,22 @@ locals {
         SERVER_PORT            = "8093"
         PAYROLL_DB_URL         = module.database.jdbc_url
         ACCOUNTING_SERVICE_URL = "http://accounting-service.${local.service_domain}:8090"
+      })
+    }
+
+    reporting-service = {
+      container_port = 8094
+      cpu            = 512
+      memory         = 1024
+      desired_count  = 0
+      environment = merge(local.base_environment, {
+        SERVER_PORT            = "8094"
+        IDENTITY_SERVICE_URL   = "http://identity-service.${local.service_domain}:8092"
+        INVENTORY_SERVICE_URL  = "http://inventory-service.${local.service_domain}:8087"
+        BILLING_SERVICE_URL    = "http://billing-service.${local.service_domain}:8088"
+        ACCOUNTING_SERVICE_URL = "http://accounting-service.${local.service_domain}:8090"
+        PAYROLL_SERVICE_URL    = "http://payroll-service.${local.service_domain}:8093"
+        TENANT_SERVICE_URL     = "http://tenant-service.${local.service_domain}:8084"
       })
     }
   }

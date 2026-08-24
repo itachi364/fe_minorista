@@ -8,7 +8,7 @@ El proyecto migro desde una estructura legacy CRUD hacia Clean Architecture por 
 
 - Arquitectura Clean Architecture implementada por modulos.
 - PostgreSQL con migraciones Flyway versionadas.
-- Docker Compose local para PostgreSQL, `bff-service`, frontend SPA, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `audit-service` y `payroll-service`.
+- Docker Compose local para PostgreSQL, `bff-service`, frontend SPA, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `audit-service`, `payroll-service` y `reporting-service`.
 - POS electronico con emisor/resolucion fiscal persistidos en `billing-service`, conector DIAN mock configurable como microservicio HTTP y efectos posteriores idempotentes sobre inventario/contabilidad.
 - Persistencia JPA y endpoints REST para billing/POS, accounting, audit y nomina.
 - Limpieza legacy en curso: monolito removido, catalogos/terceros legacy de microservicios retirados mediante migraciones nuevas y datos historicos `public.*` preservados hasta migracion aprobada.
@@ -22,7 +22,7 @@ El proyecto migro desde una estructura legacy CRUD hacia Clean Architecture por 
 - Billing/POS: emisor, resoluciones, emision POS electronico, consulta y envio a conector DIAN mock.
 - Contabilidad: cuentas PUC por empresa, reglas contables configurables, asientos `POSTED`, libro diario y libro mayor.
 - Nomina: configuracion por empresa, trabajadores, pagos diarios verbales, documento soporte electronico mock opcional y contabilizacion base de pagos diarios.
-- Reportes: ventas, inventario, gastos, cuentas por cobrar, cuentas por pagar, libro diario y libro mayor.
+- Reportes: catalogo backend avanzado, ventas, inventario, compras, rentabilidad, gastos, cuentas por cobrar, libro diario y libro mayor.
 - Errores API: contrato estandar con `timestamp`, `status`, `code`, `message`, `correlationId` y `details`.
 - Observabilidad HTTP: correlation ID por request y logs estructurados de inicio/fin.
 
@@ -38,7 +38,7 @@ La fase vigente de producto define la evolucion visual y operativa de NexoFiscal
 - Historico avanzado de ventas/documentos con detalle, vendedor, cliente/consumidor final, items, totales, estado DIAN/mock, artefactos, descargas y reimpresiones.
 - Comprobante POS imprimible con estrategia gradual: primero impresion web 58/80 mm; conectores ESC/POS, WebUSB, WebSerial o agente local quedan para una tarea posterior con hardware validado.
 
-Estado: estas capacidades estan especificadas en SDD como `TASK-168` a `TASK-178`; no deben asumirse implementadas hasta que sus tareas queden marcadas como `DONE`.
+Estado: `TASK-168` a `TASK-178` ya tienen implementacion inicial validada. Quedan evoluciones de volumen como paginacion avanzada, conectores directos de impresora y almacenamiento asincrono de artefactos pesados.
 
 ## Arquitectura
 
@@ -66,7 +66,7 @@ Estructura actual:
 - `services/accounting-service`: microservicio fisico para PUC, reglas contables, asientos, libro diario y mayor.
 - `services/audit-service`: microservicio fisico para auditoria fiscal y tecnica.
 - `services/payroll-service`: microservicio fisico para trabajadores, pagos diarios verbales y nomina electronica mock opcional.
-- `services/reporting-service`: microservicio objetivo pendiente para reportes avanzados; actualmente no existe como artefacto fisico.
+- `services/reporting-service`: microservicio fisico para catalogo/opciones/query de reportes avanzados, orquestando fuentes canonicas sin duplicar datos de negocio.
 
 
 La unidad de despliegue objetivo es un artefacto/contenedor por microservicio, no uno por endpoint individual.

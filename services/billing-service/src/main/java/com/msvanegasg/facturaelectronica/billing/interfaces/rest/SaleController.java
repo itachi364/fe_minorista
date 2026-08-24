@@ -4,7 +4,10 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,7 +19,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery;
+import com.msvanegasg.facturaelectronica.billing.application.dto.PosReceiptResult;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageSaleUseCase;
+import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
+import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.SaleRequest;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.SaleResponse;
@@ -57,8 +63,32 @@ public class SaleController {
                 .map(BillingRestMapper::toResponse).toList();
     }
 
+    @GetMapping("/history")
+    public List<SaleResponse> history(@RequestHeader("X-Company-Id") UUID companyId,
+            @RequestParam(required = false) SaleStatus status,
+            @RequestParam(required = false) LocalDate from,
+            @RequestParam(required = false) LocalDate to,
+            @RequestParam(required = false) UUID sellerId,
+            @RequestParam(required = false) UUID customerId,
+            @RequestParam(required = false) PaymentMethodCode paymentMethodCode,
+            @RequestParam(required = false) ElectronicDocumentStatus documentStatus) {
+        return saleUseCase.find(new SaleQuery(companyId, status, from, to, sellerId, customerId, paymentMethodCode,
+                documentStatus)).stream().map(BillingRestMapper::toResponse).toList();
+    }
+
     @GetMapping("/{saleId}")
     public SaleResponse findById(@RequestHeader("X-Company-Id") UUID companyId, @PathVariable UUID saleId) {
         return BillingRestMapper.toResponse(saleUseCase.findById(companyId, saleId));
+    }
+
+    @PostMapping("/{saleId}/receipt")
+    public ResponseEntity<byte[]> receipt(@RequestHeader("X-Company-Id") UUID companyId, @PathVariable UUID saleId,
+            @RequestParam(defaultValue = "80") int widthMm) {
+        PosReceiptResult receipt = saleUseCase.printableReceipt(companyId, saleId, widthMm);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(receipt.contentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.inline().filename(receipt.filename()).build().toString())
+                .body(receipt.content());
     }
 }

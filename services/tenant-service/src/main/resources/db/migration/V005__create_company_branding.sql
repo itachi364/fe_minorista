@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS tenant.company_branding (
+    company_id UUID PRIMARY KEY REFERENCES tenant.company(id),
+    display_name VARCHAR(180),
+    primary_color VARCHAR(20),
+    accent_color VARCHAR(20),
+    main_logo_storage_key VARCHAR(500),
+    header_logo_storage_key VARCHAR(500),
+    login_logo_storage_key VARCHAR(500),
+    favicon_storage_key VARCHAR(500),
+    main_logo_content_type VARCHAR(80),
+    header_logo_content_type VARCHAR(80),
+    login_logo_content_type VARCHAR(80),
+    favicon_content_type VARCHAR(80),
+    main_logo_hash VARCHAR(120),
+    header_logo_hash VARCHAR(120),
+    login_logo_hash VARCHAR(120),
+    favicon_hash VARCHAR(120),
+    updated_by UUID,
+    updated_at TIMESTAMPTZ NOT NULL
+);

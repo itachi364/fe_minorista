@@ -8,6 +8,7 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.ElectronicDocum
 import com.msvanegasg.facturaelectronica.billing.application.dto.ElectronicDocumentResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalArtifactResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalEventResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.PosReceiptResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
 
@@ -20,6 +21,8 @@ public interface ManageSaleUseCase {
     List<SaleResult> find(SaleQuery query);
 
     SaleResult findById(UUID companyId, UUID saleId);
+
+    PosReceiptResult printableReceipt(UUID companyId, UUID saleId, int widthMm);
 
     List<ElectronicDocumentResult> findElectronicDocuments(ElectronicDocumentQuery query);
 

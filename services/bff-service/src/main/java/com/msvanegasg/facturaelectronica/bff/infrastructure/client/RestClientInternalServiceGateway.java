@@ -28,7 +28,8 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
 
     private static final Set<String> FORWARDED_HEADERS = Set.of("authorization", "x-company-id", "x-correlation-id",
             "x-user-id", "idempotency-key", "content-type", "accept");
-    private static final Set<String> RESPONSE_HEADERS = Set.of("content-type", "x-correlation-id");
+    private static final Set<String> RESPONSE_HEADERS = Set.of("content-type", "content-disposition",
+            "x-correlation-id");
     private static final Set<String> MUTATING_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
     private static final Map<TargetService, AccessRule> ACCESS_RULES = Map.of(
             TargetService.CATALOG, new AccessRule(Set.of("COMPANY_CATALOGS_MANAGE", "COMPANY_SETTINGS_MANAGE"),
@@ -38,6 +39,7 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
             TargetService.INVENTORY, new AccessRule(Set.of("INVENTORY_VIEW", "INVENTORY_MANAGE", "SALES_CREATE"),
                     Set.of("INVENTORY_MANAGE")),
             TargetService.PAYROLL, new AccessRule(Set.of("PAYROLL_VIEW", "PAYROLL_MANAGE"), Set.of("PAYROLL_MANAGE")),
+            TargetService.REPORTING, new AccessRule(Set.of("REPORTS_VIEW"), Set.of("REPORTS_VIEW")),
             TargetService.AUDIT, new AccessRule(Set.of("AUDIT_VIEW", "GLOBAL_AUDIT_VIEW"), Set.of("AUDIT_VIEW",
                     "GLOBAL_AUDIT_VIEW")));
 
@@ -55,6 +57,7 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         this.clients.put(TargetService.BILLING, builder.clone().baseUrl(properties.billingUrl()).build());
         this.clients.put(TargetService.ACCOUNTING, builder.clone().baseUrl(properties.accountingUrl()).build());
         this.clients.put(TargetService.PAYROLL, builder.clone().baseUrl(properties.payrollUrl()).build());
+        this.clients.put(TargetService.REPORTING, builder.clone().baseUrl(properties.reportingUrl()).build());
         this.clients.put(TargetService.AUDIT, builder.clone().baseUrl(properties.auditUrl()).build());
         this.objectMapper = objectMapper;
     }
@@ -103,7 +106,7 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         if (isRoot(authorization)) {
             return;
         }
-        if (request.targetService() == TargetService.TENANT) {
+        if (request.targetService() == TargetService.TENANT && rule == null) {
             throw new BffAccessDeniedException("ROOT is required for platform administration");
         }
         UUID userId = currentUserId(authorization);
@@ -127,7 +130,18 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         if (request.targetService() == TargetService.BILLING) {
             return billingAccessRule(request.uri());
         }
+        if (request.targetService() == TargetService.TENANT) {
+            return tenantAccessRule(request.uri());
+        }
         return ACCESS_RULES.get(request.targetService());
+    }
+
+    private static AccessRule tenantAccessRule(URI uri) {
+        String normalized = normalizeApiPath(uri.getPath());
+        if (normalized.matches("companies/[^/]+/branding(/.*)?")) {
+            return new AccessRule(Set.of("COMPANY_SETTINGS_MANAGE"), Set.of("COMPANY_SETTINGS_MANAGE"));
+        }
+        return null;
     }
 
     private static AccessRule billingAccessRule(URI uri) {

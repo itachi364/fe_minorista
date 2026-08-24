@@ -1,9 +1,11 @@
 import { StatusBadge } from '../../components/forms.jsx';
 import { companyLabel } from '../../utils/company.js';
 
-export function CompanySessionPanel({ accesses, companies, activeCompanyId, activeCompany, activeAccess, license, session, isRoot, onCompanyChange, onLogout, busy }) {
+export function CompanySessionPanel({ companies, activeCompanyId, activeCompany, activeAccess, license, session, isRoot, onCompanyChange, onLogout, busy, branding, productName }) {
   const licenseAllowed = license?.validation?.allowed || license?.allowed;
   const licenseStatus = license?.status || license?.validation?.status || 'SIN VALIDAR';
+  const headerLogo = branding?.headerLogoUrl || branding?.mainLogoUrl;
+  const brandLabel = branding?.displayName || activeCompany?.tradeName || activeCompany?.legalName || productName;
 
   if (isRoot) {
     return (
@@ -23,6 +25,7 @@ export function CompanySessionPanel({ accesses, companies, activeCompanyId, acti
           <StatusBadge label="Alcance" value="PLATAFORMA" tone="ok" />
           <StatusBadge label="Rol" value="ROOT" />
         </div>
+        <BrandLogo label={brandLabel} url={headerLogo} />
         <button className="secondary" onClick={onLogout} type="button">Cerrar sesion</button>
       </section>
     );
@@ -42,7 +45,15 @@ export function CompanySessionPanel({ accesses, companies, activeCompanyId, acti
         <StatusBadge label="Licencia" value={licenseAllowed ? 'ACTIVA' : licenseStatus} tone={licenseAllowed || licenseStatus === 'ACTIVE' ? 'ok' : 'warn'} />
         <StatusBadge label="Roles" value={activeAccess?.roles?.join(', ') || 'N/A'} />
       </div>
+      <BrandLogo label={brandLabel} url={headerLogo} />
       <button className="secondary" onClick={onLogout} type="button">Cerrar sesion</button>
     </section>
   );
+}
+
+function BrandLogo({ label, url }) {
+  if (!url) {
+    return <div className="header-logo-placeholder">{label}</div>;
+  }
+  return <img alt={label} className="header-logo" src={url} />;
 }

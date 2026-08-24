@@ -1598,7 +1598,7 @@ Estado TASK-058 licencia consumidores:
 ### Reportes minimos por servicio dueno del dato
 
 TASK-054 implementa los reportes minimos como endpoints de lectura en los servicios duenos del dato.
-El `reporting-service` fisico no existe actualmente como artefacto. Los reportes minimos se consultan desde `billing-service`, `inventory-service`, `accounting-service` y agregaciones BFF; las proyecciones event-driven viven en `reporting-projection-lambda`.
+Desde TASK-174 existe `reporting-service` como microservicio fisico para catalogo/opciones/query de reportes avanzados. Los reportes minimos se conservan en `billing-service`, `inventory-service` y `accounting-service` como fuentes canonicas; las proyecciones event-driven viven en `reporting-projection-lambda`.
 
 #### billing-service
 
@@ -1679,7 +1679,7 @@ Publicado por: `accounting-service`.
 
 Consumidores:
 
-- `reporting-projection-lambda` para proyecciones asincronas; `reporting-service` solo si una tarea futura lo materializa como servicio fisico.
+- `reporting-service` para catalogo, opciones y consultas de reportes avanzados; `reporting-projection-lambda` queda reservado para proyecciones asincronas reconstruibles.
 - `audit-service`
 
 ## Contract tests futuros
@@ -2279,7 +2279,7 @@ Reglas:
 ### Catalogo de reportes
 
 ```http
-GET /api/v1/reports/catalog
+GET /api/v1/report-definitions
 X-Company-Id: {companyId}
 ```
 
@@ -2291,27 +2291,25 @@ Respuesta:
     "code": "SALES_BY_SELLER",
     "label": "Ventas por vendedor",
     "description": "Agrupa ventas confirmadas por vendedor.",
-    "requiredPermissions": ["REPORTS_VIEW"],
-    "requiredModules": ["REPORTING", "BILLING"],
-    "dateRangeRequired": true,
-    "allowedChartTypes": ["TABLE", "BAR", "LINE"],
-    "exportFormats": ["CSV", "XLSX"]
+    "category": "Ventas",
+    "filters": [
+      {"code": "from", "label": "Desde", "type": "DATE", "required": true},
+      {"code": "to", "label": "Hasta", "type": "DATE", "required": true},
+      {"code": "sellerId", "label": "Vendedor", "type": "SELECT", "required": false, "optionSource": "SELLERS"}
+    ],
+    "chartTypes": ["TABLE", "BAR", "LINE"]
   }
 ]
 ```
 
 Reportes objetivo iniciales:
 
-- `SALES_SUMMARY`: ventas por periodo.
 - `SALES_BY_SELLER`: ventas por usuarios con rol/permiso de ventas.
 - `SALES_BY_PRODUCT`: ventas por producto/servicio.
-- `SALES_BY_PAYMENT_METHOD`: ventas por medio de pago.
-- `PURCHASES_SUMMARY`: compras realizadas.
-- `INVENTORY_KARDEX`: movimientos y saldos de inventario.
-- `BASIC_PROFITABILITY`: ingresos, costos y margen basico.
+- `PURCHASES`: compras realizadas.
+- `INVENTORY_STOCK`: stock actual.
+- `PROFITABILITY`: ingresos, costos y margen basico.
 - `ACCOUNTS_RECEIVABLE`: cuentas por cobrar.
-- `ACCOUNTS_PAYABLE`: cuentas por pagar.
-- `ACCOUNTING_STATEMENTS`: estado de resultados y balance basico.
 - `PAYROLL_DAILY_PAYMENTS`: pagos diarios/nomina interna.
 - `LICENSE_USAGE`: uso de licencia por empresa.
 
@@ -2325,19 +2323,11 @@ Respuesta:
 ```json
 {
   "reportCode": "SALES_BY_SELLER",
-  "filters": [
-    {
-      "code": "sellerId",
-      "label": "Vendedor",
-      "type": "SELECT",
-      "required": false,
-      "options": [
-        {"value": "uuid", "label": "Ana Rojas"}
-      ]
-    }
-  ],
-  "allowedChartTypes": ["TABLE", "BAR", "LINE"],
-  "exportFormats": ["CSV", "XLSX"]
+  "options": {
+    "sellerId": [
+      {"value": "uuid", "label": "Ana Rojas"}
+    ]
+  }
 }
 ```
 
@@ -2365,27 +2355,23 @@ Respuesta:
 
 ```json
 {
+  "companyId": "uuid",
   "reportCode": "SALES_BY_SELLER",
-  "from": "2026-08-01",
-  "to": "2026-08-31",
   "chartType": "BAR",
-  "columns": [
-    {"key": "sellerName", "label": "Vendedor", "type": "TEXT"},
-    {"key": "totalSales", "label": "Total ventas", "type": "MONEY"}
-  ],
-  "rows": [
-    {"sellerName": "Ana Rojas", "totalSales": 1500000.00}
-  ],
-  "series": [
-    {"label": "Total ventas", "points": [{"x": "Ana Rojas", "y": 1500000.00}]}
-  ]
+  "appliedFilters": {
+    "from": "2026-08-01",
+    "to": "2026-08-31",
+    "sellerId": "uuid"
+  },
+  "data": [],
+  "generatedAt": "2026-08-24T15:00:00Z"
 }
 ```
 
 ### Exportacion de reportes
 
 ```http
-POST /api/v1/reports/export
+POST /api/v1/reports/export?format=CSV
 X-Company-Id: {companyId}
 Content-Type: application/json
 ```
@@ -2395,110 +2381,78 @@ Content-Type: application/json
   "reportCode": "SALES_BY_SELLER",
   "from": "2026-08-01",
   "to": "2026-08-31",
-  "format": "XLSX",
+  "chartType": "TABLE",
   "filters": {}
 }
 ```
 
-Respuesta sincrona para archivos pequenos:
+Formatos implementados:
 
-```json
-{
-  "exportId": "uuid",
-  "status": "READY",
-  "downloadUrl": "/api/v1/reports/exports/uuid/download",
-  "expiresAt": "2026-08-19T12:00:00Z"
-}
-```
+- `CSV`: `text/csv; charset=UTF-8`, extension `.csv`.
+- `XLS`: `application/vnd.ms-excel; charset=UTF-8`, extension `.xls` compatible con Excel mediante SpreadsheetML XML.
 
-Respuesta asincrona para archivos pesados:
-
-```json
-{
-  "exportId": "uuid",
-  "status": "PROCESSING"
-}
-```
+Respuesta:
 
 ```http
-GET /api/v1/reports/exports/{exportId}/download
-X-Company-Id: {companyId}
+200 OK
+Content-Disposition: attachment; filename="nexofiscal-sales_by_seller-2026-08-24.csv"
+Content-Type: text/csv; charset=UTF-8
 ```
+
+Regla: la exportacion reutiliza las mismas validaciones y filtros de `/api/v1/reports/query`. El BFF debe reenviar `Content-Disposition` y auditar la descarga como accion `POST`. Exportaciones pesadas, `exportId`, expiracion, descargas diferidas y storage privado quedan como evolucion asincrona posterior sobre S3/EventBridge/SQS.
 
 ### Historico de ventas y documentos
 
 ```http
-GET /api/v1/sales/history?from=2026-08-01&to=2026-08-31&sellerId={sellerId}&customerId={customerId}&paymentMethodCode=CASH&documentStatus=ACCEPTED&page=0&size=20
+GET /api/v1/sales/history?from=2026-08-01&to=2026-08-31&sellerId={sellerId}&customerId={customerId}&paymentMethodCode=CASH&documentStatus=VALIDATED
 X-Company-Id: {companyId}
 ```
 
-Respuesta:
+Respuesta fase 1:
 
 ```json
-{
-  "content": [
-    {
-      "saleId": "uuid",
-      "documentId": "uuid",
-      "saleDate": "2026-08-19T10:30:00Z",
-      "sellerName": "Ana Rojas",
-      "buyerLabel": "Consumidor final",
-      "paymentMethodLabel": "Efectivo",
-      "grossTotal": 100000.00,
-      "taxTotal": 19000.00,
-      "netTotal": 119000.00,
-      "documentStatus": "MOCK_ACCEPTED",
-      "canDownload": true,
-      "canReprint": true
+[
+  {
+    "id": "uuid",
+    "companyId": "uuid",
+    "customerId": "uuid",
+    "paymentMethodCode": "CASH",
+    "saleChannel": "POS",
+    "status": "CONFIRMED",
+    "subtotal": 100000.00,
+    "taxTotal": 19000.00,
+    "total": 119000.00,
+    "createdAt": "2026-08-19T10:30:00Z",
+    "electronicDocument": {
+      "status": "VALIDATED",
+      "prefix": "POS",
+      "documentNumber": "100"
     }
-  ],
-  "page": 0,
-  "size": 20,
-  "totalElements": 1,
-  "totalPages": 1
-}
+  }
+]
 ```
 
-```http
-GET /api/v1/sales/{saleId}/detail
-X-Company-Id: {companyId}
-```
+Regla: en la fase inicial la respuesta es una lista de `SaleResponse` filtrada por empresa. Paginacion, nombres enriquecidos de vendedor/cliente, descarga historica de artefactos y ordenamiento avanzado quedan como evolucion posterior cuando exista volumen real.
 
 ### Artefactos e impresion POS
 
 ```http
-GET /api/v1/electronic-pos/{documentId}/artifacts
+POST /api/v1/sales/{saleId}/receipt?widthMm=80
 X-Company-Id: {companyId}
 ```
 
-Respuesta:
-
-```json
-{
-  "documentId": "uuid",
-  "printableHtmlUrl": "/api/v1/electronic-pos/uuid/artifacts/printable",
-  "qrUrl": "/api/v1/electronic-pos/uuid/artifacts/qr",
-  "xmlUrl": "/api/v1/electronic-pos/uuid/artifacts/xml",
-  "jsonMetadataUrl": "/api/v1/electronic-pos/uuid/artifacts/metadata",
-  "hash": "sha256:..."
-}
-```
+Respuesta fase 1:
 
 ```http
-POST /api/v1/electronic-pos/{documentId}/print-jobs
-X-Company-Id: {companyId}
-Content-Type: application/json
-```
-
-```json
-{
-  "paperWidthMm": 80,
-  "strategy": "WEB_PRINT"
-}
+200 OK
+Content-Type: text/html; charset=UTF-8
+Content-Disposition: inline; filename="nexofiscal-pos-POS100.html"
 ```
 
 Reglas:
 
-- `WEB_PRINT` abre una vista imprimible controlada por la SPA/BFF.
+- El HTML incluye CSS `@page` para 58/80 mm y ejecuta `window.print()` al cargar.
+- La solicitud es `POST` para que el BFF audite intento de impresion/reimpresion sin reemitir documento fiscal.
+- El comprobante fase 1 es reproducible desde venta confirmada y documento electronico asociado; storage binario dedicado queda para evolucion posterior.
 - `ESC_POS`, `WEB_USB`, `WEB_SERIAL` o `LOCAL_AGENT` quedan reservados para tareas futuras con aprobacion de hardware y seguridad.
 - Cada solicitud de impresion/reimpresion debe auditarse.

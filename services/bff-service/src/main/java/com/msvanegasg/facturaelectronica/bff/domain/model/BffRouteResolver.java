@@ -38,6 +38,12 @@ public final class BffRouteResolver {
         if (matchesAny(normalized, "payroll")) {
             return TargetService.PAYROLL;
         }
+        if (matchesAny(normalized, "report-definitions")
+                || normalized.equals("reports/query")
+                || normalized.equals("reports/export")
+                || normalized.matches("reports/[^/]+/options")) {
+            return TargetService.REPORTING;
+        }
         if (normalized.startsWith("reports/")) {
             return resolveReport(normalized);
         }
@@ -60,6 +66,7 @@ public final class BffRouteResolver {
         return normalized.equals("companies")
                 || normalized.matches("companies/[^/]+")
                 || normalized.matches("companies/[^/]+/(activate|suspend)")
+                || normalized.matches("companies/[^/]+/branding(/.*)?")
                 || normalized.matches("companies/[^/]+/license(/.*)?");
     }
 

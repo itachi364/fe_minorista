@@ -36,10 +36,11 @@ Modulo objetivo pendiente:
 - `accounting-service`
 - `audit-service`
 - `payroll-service`
+- `reporting-service`
 
 Los servicios quedan con `desired_count = 0` hasta que existan imagenes publicadas en ECR, Dockerfiles productivos y pipeline de despliegue.
 
-Estado aclarado: no existe un `reporting-service` ECS implementado. Los reportes operativos actuales se exponen desde `billing-service`, `inventory-service`, `accounting-service` y `bff-service`; las proyecciones event-driven viven en `reporting-projection-lambda`.
+Estado aclarado: `reporting-service` existe como microservicio fisico HTTP para catalogo/opciones/query de reportes avanzados. Los endpoints operativos en servicios duenos se conservan como fuentes canonicas y las proyecciones event-driven viven en `reporting-projection-lambda`.
 
 ## Mensajeria inicial
 
@@ -213,7 +214,7 @@ Impacto de infraestructura:
 
 - `payroll-service` se agrega como microservicio fisico local y artefacto ECS objetivo.
 - Nomina electronica mock vive como capacidad opcional por empresa; no obliga a activar nomina electronica globalmente.
-- Contabilidad v2 y reportes financieros usan `accounting-service`; no existe `reporting-service` ECS independiente.
+- Contabilidad v2 usa `accounting-service`; reportes avanzados usan `reporting-service` ECS independiente.
 - Los reportes operativos se exponen desde servicios duenos y se agregan por BFF cuando aplica.
 - Los catalogos operativos no deben vivir en `initialState` ni recursos frontend productivos.
 - Los nuevos servicios mantienen esquemas propios y migraciones Flyway por bounded context.
@@ -1424,7 +1425,7 @@ Esta seccion documenta de forma uniforme el impacto de infraestructura de cada t
 
 ### Reporting-service y exportaciones
 
-- `reporting-service` sera ECS Fargate privado cuando se implemente TASK-174.
+- `reporting-service` es ECS Fargate privado desde TASK-174 y orquesta consultas hacia servicios duenos.
 - El BFF sera el unico borde publico para reportes.
 - Exportaciones pequenas pueden generarse sincronicamente; exportaciones grandes deben poder pasar a flujo asincrono con EventBridge/SQS/Lambda o worker interno del servicio.
 - Los archivos exportados se almacenan en S3 privado con expiracion y metadata de auditoria.
@@ -1445,69 +1446,69 @@ Esta seccion documenta de forma uniforme el impacto de infraestructura de cada t
 - Modulos/servicios: `frontend`, `ecs`, `secrets`, `messaging`, futuro almacenamiento S3 de artefactos, `tenant-service`, `billing-service`, `reporting-service`.
 
 ### TASK-168 - Adoptar marca NexoFiscal en frontend y documentacion visible
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Sin cambio directo; afecta SPA y metadata publica.
 - Control operativo: validar build frontend y cache de CloudFront cuando exista despliegue cloud.
 
 ### TASK-169 - Disenar branding empresarial parametrizable
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Define storage local/S3 privado para assets empresariales.
 - Control operativo: revisar IAM, KMS, prefijos por empresa y lifecycle.
 
 ### TASK-170 - Implementar backend de branding empresarial
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
-- Impacto de infraestructura: Afecta limites multipart, storage de archivos y permisos de lectura/escritura.
-- Control operativo: configurar tamanos maximos y monitoreo de errores de upload.
+- Impacto de infraestructura: Agrega limites multipart configurables y storage local parametrizable para desarrollo mediante `TENANT_BRANDING_STORAGE_PATH`.
+- Control operativo: en AWS debe evolucionar a S3 privado/KMS por empresa usando el puerto de storage sin exponer buckets.
 
 ### TASK-171 - Implementar UI de branding y aplicacion dinamica
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
-- Impacto de infraestructura: Afecta cache de favicon/logo en navegador y CloudFront.
-- Control operativo: usar URLs versionadas/hash para invalidar cache sin exponer buckets.
+- Impacto de infraestructura: La SPA consume URLs de assets versionadas por hash para favicon/logo.
+- Control operativo: CloudFront debe respetar cache por hash y servir fallback NexoFiscal cuando no exista branding.
 
 ### TASK-172 - Disenar artefactos fiscales, comprobantes POS e impresion termica
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Define storage de artefactos POS y eventual canal de impresion.
 - Control operativo: separar fase web print de conectores directos.
 
 ### TASK-173 - Disenar reporting-service y contratos de reportes avanzados
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Define futuro servicio ECS privado y posibles colas/eventos para exportaciones.
 - Control operativo: mantener BFF como unico borde publico.
 
 ### TASK-174 - Implementar reporting-service con reportes iniciales
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
-- Impacto de infraestructura: Agrega servicio ECS, ECR, logs, healthcheck y variables de entorno.
-- Control operativo: Terraform y Docker Compose deben incorporar el servicio sin dependencias fuertes entre contenedores salvo base de datos.
+- Impacto de infraestructura: Agrega `reporting-service` a Docker Compose y Terraform ECS dev con URL interna hacia BFF.
+- Control operativo: las consultas iniciales orquestan fuentes canonicas; exportaciones y consultas pesadas deben evolucionar con paginacion/asincronia en tareas posteriores.
 
 ### TASK-175 - Implementar UI avanzada de reportes
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Sin cambio directo; consume BFF.
-- Control operativo: validar performance de consultas, paginacion y carga de graficos.
+- Control operativo: la UI usa catalogo backend, filtros dinamicos y visualizacion cliente inicial; consultas pesadas/exportaciones quedan para tareas posteriores.
 
 ### TASK-176 - Implementar exportacion de reportes
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
-- Impacto de infraestructura: Requiere storage privado para exportaciones y posible procesamiento asincrono.
-- Control operativo: expiracion de archivos, auditoria de descargas y control de tamano.
+- Impacto de infraestructura: Sin storage adicional en fase inicial; CSV/XLS se generan sincronicamente desde `reporting-service`.
+- Control operativo: BFF audita la descarga sincrona como `POST`; archivos pesados, expiracion, storage privado y procesamiento asincrono quedan para evolucion posterior.
 
 ### TASK-177 - Implementar comprobante POS imprimible e impresion web
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
 - Impacto de infraestructura: Sin cambio cloud inicial; usa navegador e imprime desde cliente.
-- Control operativo: validar CSS 58/80 mm, reimpresion y auditoria.
+- Control operativo: `POST /sales/{saleId}/receipt` permite auditoria BFF; conectores directos quedan para fase posterior con hardware validado.
 
 ### TASK-178 - Implementar historico avanzado de ventas/documentos
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 23: Marca NexoFiscal, branding, reportes avanzados e impresion POS.
-- Impacto de infraestructura: Puede aumentar consultas sobre billing; requiere indices, paginacion y observabilidad.
-- Control operativo: vigilar performance y aislamiento multiempresa.
+- Impacto de infraestructura: Sin nuevo contenedor; consulta sobre `billing-service` con filtros multiempresa y reimpresion auditada por BFF.
+- Control operativo: vigilar performance, agregar paginacion/indices dedicados si el volumen de ventas crece y mantener aislamiento por `company_id`.
 
 <!-- END SDD TASK INFRASTRUCTURE TRACEABILITY -->

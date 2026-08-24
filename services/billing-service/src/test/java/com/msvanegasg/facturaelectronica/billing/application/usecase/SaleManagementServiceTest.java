@@ -346,6 +346,21 @@ class SaleManagementServiceTest {
         verify(auditEventPort, never()).register(any());
     }
 
+    @Test
+    void rendersPrintablePosReceiptForConfirmedSale() {
+        Sale confirmed = draftSale().confirm(validatedDocument(NOW, NOW), NOW);
+        when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(confirmed));
+
+        var receipt = service().printableReceipt(COMPANY_ID, SALE_ID, 80);
+
+        assertThat(receipt.filename()).contains("POS1");
+        assertThat(receipt.contentType()).contains("text/html");
+        assertThat(new String(receipt.content(), java.nio.charset.StandardCharsets.UTF_8))
+                .contains("Factura electronica POS")
+                .contains("mock-cude")
+                .contains("window.print");
+    }
+
     private SaleManagementService service() {
         return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
                 accountingEntryPort, auditEventPort, licenseValidationPort, assignFiscalNumberUseCase, idGenerator, clock);

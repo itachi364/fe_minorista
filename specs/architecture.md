@@ -67,7 +67,7 @@ Target productivo aprobado:
 - Secretos y certificados en AWS Secrets Manager o Parameter Store, nunca en imagenes ni repositorio.
 - Assets empresariales, exportaciones de reportes y artefactos POS en S3 privado con KMS, metadata en PostgreSQL y acceso controlado por BFF/CloudFront.
 
-Estado de materializacion: `reporting-service` no existe como artefacto fisico. Los reportes minimos se sirven desde los microservicios duenos de datos y las proyecciones asincronas se materializan con `reporting-projection-lambda`. Un `reporting-service` futuro requiere tarea, contrato y criterios propios antes de agregarse a ECS.
+Estado de materializacion: `reporting-service` existe como artefacto fisico desde TASK-174. Orquesta catalogo, opciones y consultas de reportes avanzados sobre servicios duenos de datos; las proyecciones asincronas reconstruibles siguen correspondiendo a `reporting-projection-lambda` cuando el flujo event-driven se materialice.
 
 ## Marca NexoFiscal, branding y documentos
 
@@ -80,7 +80,7 @@ Estado de materializacion: `reporting-service` no existe como artefacto fisico. 
 ## Reportes avanzados objetivo
 
 - El modulo actual de reportes minimos se mantiene sobre servicios duenos de datos.
-- Cuando se implemente TASK-174, `reporting-service` sera el owner de reportes avanzados, catalogo de reportes, filtros dinamicos, ejecuciones, exportaciones y descargas.
+- `reporting-service` es el owner de reportes avanzados, catalogo de reportes, filtros dinamicos, ejecuciones, exportaciones y descargas.
 - El BFF no ejecuta agregaciones pesadas; enruta, autoriza, normaliza errores y conserva borde publico.
 - `reporting-projection-lambda` sigue siendo una proyeccion reconstruible, no la fuente canonica unica.
 

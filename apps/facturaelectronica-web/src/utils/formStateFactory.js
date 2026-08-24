@@ -13,6 +13,14 @@ export function createCompanyForm() {
   };
 }
 
+export function createCompanyBrandingForm() {
+  return {
+    displayName: '',
+    primaryColor: '',
+    accentColor: '',
+  };
+}
+
 export function createCompanyAdminForm() {
   return { fullName: '', email: '', password: '', role: 'OWNER' };
 }
@@ -140,7 +148,14 @@ export function createServiceConsumptionState() {
 export function createReportsForm() {
   const today = new Date();
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-  return { status: '', from: toDateInputValue(firstDay), to: toDateInputValue(today), productId: '', accountCode: '' };
+  return {
+    reportCode: '',
+    chartType: 'TABLE',
+    filters: {
+      from: toDateInputValue(firstDay),
+      to: toDateInputValue(today),
+    },
+  };
 }
 
 export function createPayrollSettingsForm() {

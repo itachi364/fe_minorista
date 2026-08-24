@@ -30,6 +30,7 @@ class RestClientInternalServiceGatewayTest {
     private static final String SALE_ID = "33333333-3333-3333-3333-333333333333";
 
     private HttpServer identityServer;
+    private HttpServer tenantServer;
     private HttpServer payrollServer;
     private HttpServer billingServer;
     private HttpServer inventoryServer;
@@ -39,6 +40,9 @@ class RestClientInternalServiceGatewayTest {
     void tearDown() {
         if (identityServer != null) {
             identityServer.stop(0);
+        }
+        if (tenantServer != null) {
+            tenantServer.stop(0);
         }
         if (payrollServer != null) {
             payrollServer.stop(0);
@@ -117,6 +121,34 @@ class RestClientInternalServiceGatewayTest {
     }
 
     @Test
+    void allowsCompanyBrandingMutationWhenUserHasCompanySettingsPermission() throws IOException {
+        startIdentityServer("[\"COMPANY_SETTINGS_MANAGE\"]");
+        CapturingHandler tenantHandler = startTenantServer("/api/v1/companies/" + COMPANY_ID + "/branding");
+        RestClientInternalServiceGateway gateway = gateway();
+
+        ProxyResponse response = gateway.exchange(new ProxyRequest(TargetService.TENANT, HttpMethod.PUT,
+                URI.create("/api/v1/companies/" + COMPANY_ID + "/branding"), headers(),
+                "{\"displayName\":\"Necto Cafe\"}".getBytes(StandardCharsets.UTF_8)));
+
+        assertThat(response.status()).isEqualTo(HttpStatus.CREATED);
+        assertThat(tenantHandler.requestPath).isEqualTo("/api/v1/companies/" + COMPANY_ID + "/branding");
+        assertThat(tenantHandler.requestBody).contains("Necto Cafe");
+    }
+
+    @Test
+    void rejectsCompanyBrandingMutationWhenUserDoesNotHaveCompanySettingsPermission() throws IOException {
+        startIdentityServer("[\"SALES_CREATE\"]");
+        CapturingHandler tenantHandler = startTenantServer("/api/v1/companies/" + COMPANY_ID + "/branding");
+        RestClientInternalServiceGateway gateway = gateway();
+
+        assertThatThrownBy(() -> gateway.exchange(new ProxyRequest(TargetService.TENANT, HttpMethod.PUT,
+                URI.create("/api/v1/companies/" + COMPANY_ID + "/branding"), headers(),
+                "{}".getBytes(StandardCharsets.UTF_8))))
+                .isInstanceOf(BffAccessDeniedException.class);
+        assertThat(tenantHandler.requestBody).isNull();
+    }
+
+    @Test
     void writesAuditEventForSuccessfulMutationWithoutSensitiveHeaders() throws IOException {
         startIdentityServer("[\"SALES_CREATE\"]");
         CapturingHandler billingHandler = startBillingServer("/api/v1/sales");
@@ -138,12 +170,13 @@ class RestClientInternalServiceGatewayTest {
 
     private RestClientInternalServiceGateway gateway() {
         String identityUrl = "http://localhost:" + identityServer.getAddress().getPort();
+        String tenantUrl = serverUrl(tenantServer, "http://tenant");
         String payrollUrl = serverUrl(payrollServer, "http://payroll");
         String billingUrl = serverUrl(billingServer, "http://billing");
         String inventoryUrl = serverUrl(inventoryServer, "http://inventory");
         String auditUrl = serverUrl(auditServer, "http://audit");
-        BffProperties properties = new BffProperties("http://tenant", identityUrl, "http://catalog", "http://thirdparty",
-                inventoryUrl, billingUrl, "http://accounting", payrollUrl, auditUrl);
+        BffProperties properties = new BffProperties(tenantUrl, identityUrl, "http://catalog", "http://thirdparty",
+                inventoryUrl, billingUrl, "http://accounting", payrollUrl, "http://reporting", auditUrl);
         return new RestClientInternalServiceGateway(RestClient.builder(), properties, new ObjectMapper());
     }
 
@@ -183,6 +216,14 @@ class RestClientInternalServiceGatewayTest {
         CapturingHandler handler = new CapturingHandler();
         payrollServer.createContext("/api/v1/payroll/daily-payments", handler::handle);
         payrollServer.start();
+        return handler;
+    }
+
+    private CapturingHandler startTenantServer(String path) throws IOException {
+        tenantServer = HttpServer.create(new InetSocketAddress(0), 0);
+        CapturingHandler handler = new CapturingHandler();
+        tenantServer.createContext(path, handler::handle);
+        tenantServer.start();
         return handler;
     }
 

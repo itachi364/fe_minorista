@@ -867,7 +867,7 @@ Tabla planificada para fase posterior. Todavia no existe en Flyway.
 
 ### `tenant.company_branding`
 
-Tabla objetivo para branding empresarial. Todavia no existe en Flyway hasta ejecutar TASK-170.
+Tabla implementada por Flyway `V005__create_company_branding.sql` para branding empresarial por empresa.
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|

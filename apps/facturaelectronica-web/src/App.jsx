@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createIdempotencyKey, requestJson } from './api/client.js';
+import { createIdempotencyKey, requestDownload, requestFormData, requestJson } from './api/client.js';
 import { ActionStatusModal } from './components/ActionStatusModal.jsx';
 import { Modal } from './components/Modal.jsx';
 import { navigationGroups, steps } from './data/navigation.js';
 import {
   createCatalogItemForm,
+  createCompanyBrandingForm,
   createCompanyAdminForm,
   createCompanyForm,
   createCompanyRoleForm,
@@ -26,6 +27,7 @@ import { LoginPanel } from './features/auth/LoginPanel.jsx';
 import { AuditLogPanel } from './features/audit/AuditLogPanel.jsx';
 import { CatalogAdminPanel } from './features/catalogs/CatalogAdminPanel.jsx';
 import { AdminModal } from './features/company/AdminModal.jsx';
+import { CompanyBrandingPanel } from './features/company/CompanyBrandingPanel.jsx';
 import { CompanyForm } from './features/company/CompanyForm.jsx';
 import { CompanySessionPanel } from './features/company/CompanySessionPanel.jsx';
 import { IssuerForm } from './features/company/IssuerForm.jsx';
@@ -53,6 +55,9 @@ import { buildQuery } from './utils/query.js';
 import { emptyRuntimeCatalogs, loadRuntimeCatalogs } from './utils/runtimeCatalogs.js';
 import { clearStoredSession, loadStoredSession, saveStoredSession, SESSION_TIMEOUT_MS } from './utils/sessionStorage.js';
 import { stepLicenseModules } from './data/licenseModules.js';
+
+const PRODUCT_NAME = 'NexoFiscal';
+
 export default function App() {
   const [storedSnapshot] = useState(() => loadStoredSession());
   const [selectedStep, setSelectedStep] = useState('Ventas');
@@ -70,6 +75,8 @@ export default function App() {
   const lastActivityRef = useRef(lastActivityAt);
   const [licenseModal, setLicenseModal] = useState(null);
   const [companyForm, setCompanyForm] = useState(createCompanyForm);
+  const [companyBrandingForm, setCompanyBrandingForm] = useState(createCompanyBrandingForm);
+  const [companyBranding, setCompanyBranding] = useState(null);
   const [companyAdminForm, setCompanyAdminForm] = useState(createCompanyAdminForm);
   const [managedUserForm, setManagedUserForm] = useState(createManagedUserForm);
   const [companyRoleForm, setCompanyRoleForm] = useState(createCompanyRoleForm);
@@ -98,6 +105,8 @@ export default function App() {
   const [customerOptions, setCustomerOptions] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [reportsForm, setReportsForm] = useState(createReportsForm);
+  const [reportDefinitions, setReportDefinitions] = useState([]);
+  const [reportOptions, setReportOptions] = useState({});
   const [reportsData, setReportsData] = useState(null);
   const [payrollSettingsForm, setPayrollSettingsForm] = useState(createPayrollSettingsForm);
   const [payrollWorkerForm, setPayrollWorkerForm] = useState(createPayrollWorkerForm);
@@ -113,6 +122,7 @@ export default function App() {
   const [actionStatus, setActionStatus] = useState({ status: 'idle' });
   const autoAuditLoadKeyRef = useRef('');
   const autoIdentityLoadKeyRef = useRef('');
+  const autoReportsLoadKeyRef = useRef('');
 
   const token = session?.accessToken || '';
   const context = useMemo(() => ({ token, companyId: activeCompanyId, userId: session?.userId }), [token, activeCompanyId, session?.userId]);
@@ -137,6 +147,8 @@ export default function App() {
   const visibleSteps = steps.filter((step) => licenseAllowsStep(step) && (isRoot || isCompanyAdmin || hasAnyPermission(activeAccess, stepPermissionRules[step] || [])));
   const currentStep = visibleSteps.includes(selectedStep) ? selectedStep : visibleSteps[0] || 'Ventas';
   const availableCompanyPermissions = companyScopedPermissions(permissionCatalog);
+  const activeBrandName = companyBranding?.displayName || activeCompany?.tradeName || activeCompany?.legalName || PRODUCT_NAME;
+  const activeBrandLogo = companyBranding?.headerLogoUrl || companyBranding?.mainLogoUrl || '';
 
   function markActivity() {
     const now = Date.now();
@@ -179,6 +191,50 @@ export default function App() {
       ignore = true;
     };
   }, [session, token, activeCompanyId]);
+
+  useEffect(() => {
+    if (!session || !activeCompanyId) {
+      setCompanyBranding(null);
+      setCompanyBrandingForm(createCompanyBrandingForm());
+      return undefined;
+    }
+    let ignore = false;
+    requestJson(`/api/v1/companies/${activeCompanyId}/branding`, { token, companyId: activeCompanyId, userId: session.userId })
+      .then((branding) => {
+        if (!ignore) {
+          setCompanyBranding(branding);
+          hydrateBrandingForm(branding);
+        }
+      })
+      .catch(() => {
+        if (!ignore) {
+          setCompanyBranding(null);
+          setCompanyBrandingForm(createCompanyBrandingForm());
+        }
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [session, token, activeCompanyId]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    document.title = activeBrandName === PRODUCT_NAME ? PRODUCT_NAME : `${activeBrandName} | ${PRODUCT_NAME}`;
+    let favicon = document.querySelector('link[data-nexofiscal-favicon]');
+    if (!favicon) {
+      favicon = document.createElement('link');
+      favicon.setAttribute('data-nexofiscal-favicon', 'true');
+      favicon.rel = 'icon';
+      document.head.appendChild(favicon);
+    }
+    if (companyBranding?.faviconUrl) {
+      favicon.href = companyBranding.faviconUrl;
+    } else {
+      favicon.removeAttribute('href');
+    }
+  }, [activeBrandName, companyBranding?.faviconUrl]);
 
   useEffect(() => {
     if (!session || isRoot || !activeCompanyId || activeCompany) {
@@ -230,6 +286,18 @@ export default function App() {
       Promise.all(loaders).catch(() => undefined);
     }
   }, [currentStep, activeCompanyId, canManageRoles, canManageUsers, permissionCatalog.length, companyRoles.length]);
+
+  useEffect(() => {
+    if (currentStep !== 'Reportes' || !activeCompanyId || !canUse(stepPermissionRules.Reportes)) {
+      return;
+    }
+    const key = `reports|${activeCompanyId}`;
+    if (autoReportsLoadKeyRef.current === key) {
+      return;
+    }
+    autoReportsLoadKeyRef.current = key;
+    loadReportDefinitions().catch(() => undefined);
+  }, [currentStep, activeCompanyId, reportDefinitions.length]);
 
   useEffect(() => {
     if (!session) {
@@ -312,6 +380,14 @@ export default function App() {
       identificationNumber: company.identificationNumber || '',
       verificationDigit: company.verificationDigit || '',
       email: company.email || '',
+    });
+  }
+
+  function hydrateBrandingForm(branding) {
+    setCompanyBrandingForm({
+      displayName: branding?.displayName || '',
+      primaryColor: branding?.primaryColor || '',
+      accentColor: branding?.accentColor || '',
     });
   }
 
@@ -416,6 +492,8 @@ export default function App() {
     setActiveCompanyId('');
     setLicense(null);
     setLicenseForm(createLicenseForm());
+    setCompanyBranding(null);
+    setCompanyBrandingForm(createCompanyBrandingForm());
     setManagedLicense(null);
     setPermissionCatalog([]);
     setCompanyRoles([]);
@@ -524,6 +602,35 @@ export default function App() {
     storeKnownCompany(updated);
     hydrateCompanyForm(updated);
     return updated;
+  }
+
+  async function saveCompanyBranding() {
+    requireCompany();
+    const result = await requestJson(`/api/v1/companies/${activeCompanyId}/branding`, {
+      method: 'PUT',
+      body: companyBrandingForm,
+      ...context,
+      idempotencyKey: createIdempotencyKey('company-branding'),
+    });
+    setCompanyBranding(result);
+    hydrateBrandingForm(result);
+    return result;
+  }
+
+  async function uploadCompanyBrandingAsset(purpose, file) {
+    requireCompany();
+    const formData = new FormData();
+    formData.append('purpose', purpose);
+    formData.append('file', file);
+    const result = await requestFormData(`/api/v1/companies/${activeCompanyId}/branding/assets`, {
+      method: 'POST',
+      formData,
+      ...context,
+      idempotencyKey: createIdempotencyKey(`company-branding-${purpose.toLowerCase()}`),
+    });
+    setCompanyBranding(result);
+    hydrateBrandingForm(result);
+    return result;
   }
 
   function selectLicenseCompany(companyId) {
@@ -923,7 +1030,24 @@ export default function App() {
       idempotencyKey: createIdempotencyKey('confirm-sale'),
     });
     setSalesList((current) => [result, ...current.filter((item) => item.id !== result.id)]);
+    if (result?.id) {
+      await openSaleReceipt(result.id);
+    }
     return result;
+  }
+
+  async function openSaleReceipt(targetSaleId = saleId) {
+    requireCompany();
+    if (!targetSaleId) {
+      throw new Error('No hay una venta seleccionada para imprimir.');
+    }
+    const result = await requestDownload(`/api/v1/sales/${targetSaleId}/receipt${buildQuery({ widthMm: 80 })}`, {
+      method: 'POST',
+      ...context,
+      idempotencyKey: createIdempotencyKey('print-receipt'),
+    });
+    openBlob(result.blob);
+    return { filename: result.filename };
   }
 
   async function loadThirdPartyList() {
@@ -954,10 +1078,12 @@ export default function App() {
 
   async function loadSalesList() {
     requireCompany();
-    const items = await requestJson(`/api/v1/sales${buildQuery({
+    const items = await requestJson(`/api/v1/sales/history${buildQuery({
       status: operationalListFilters.saleStatus,
       from: operationalListFilters.saleFrom,
       to: operationalListFilters.saleTo,
+      paymentMethodCode: operationalListFilters.salePaymentMethodCode,
+      documentStatus: operationalListFilters.saleDocumentStatus,
     })}`, context);
     setSalesList(items || []);
     return items || [];
@@ -1019,20 +1145,100 @@ export default function App() {
 
   async function loadReports() {
     requireCompany();
-    const [sales, stock, journal, ledger, incomeStatement, balanceSheet, expenses, accountsReceivable, accountsPayable] = await Promise.all([
-      requestJson(`/api/v1/reports/sales${buildQuery({ status: reportsForm.status, from: reportsForm.from, to: reportsForm.to })}`, context),
-      requestJson(`/api/v1/reports/inventory-stock${buildQuery({ active: true })}`, context),
-      requestJson(`/api/v1/reports/journal${buildQuery({ from: reportsForm.from, to: reportsForm.to })}`, context),
-      requestJson(`/api/v1/reports/ledger${buildQuery({ from: reportsForm.from, to: reportsForm.to, accountCode: reportsForm.accountCode })}`, context),
-      requestJson(`/api/v1/reports/income-statement${buildQuery({ from: reportsForm.from, to: reportsForm.to })}`, context),
-      requestJson(`/api/v1/reports/balance-sheet${buildQuery({ from: reportsForm.from, to: reportsForm.to })}`, context),
-      requestJson(`/api/v1/reports/expenses${buildQuery({ status: reportsForm.status, from: reportsForm.from, to: reportsForm.to })}`, context),
-      requestJson(`/api/v1/reports/accounts-receivable${buildQuery({ status: reportsForm.status, from: reportsForm.from, to: reportsForm.to })}`, context),
-      requestJson(`/api/v1/accounts-payable${buildQuery({ status: reportsForm.status, from: reportsForm.from, to: reportsForm.to })}`, context),
-    ]);
-    const result = { sales, stock, journal, ledger, incomeStatement, balanceSheet, expenses, accountsReceivable, accountsPayable };
+    const definition = reportDefinitions.find((report) => report.code === reportsForm.reportCode);
+    if (!definition) {
+      throw new Error('Selecciona un reporte.');
+    }
+    const filters = reportsForm.filters || {};
+    for (const filter of definition.filters || []) {
+      if (filter.required && !filters[filter.code]) {
+        throw new Error(`El filtro ${filter.label || filter.code} es obligatorio.`);
+      }
+    }
+    const result = await requestJson('/api/v1/reports/query', {
+      method: 'POST',
+      body: {
+        reportCode: reportsForm.reportCode,
+        chartType: reportsForm.chartType || 'TABLE',
+        from: filters.from || null,
+        to: filters.to || null,
+        filters,
+      },
+      ...context,
+    });
     setReportsData(result);
     return result;
+  }
+
+  async function exportReport(format) {
+    requireCompany();
+    const definition = reportDefinitions.find((report) => report.code === reportsForm.reportCode);
+    if (!definition) {
+      throw new Error('Selecciona un reporte.');
+    }
+    const filters = reportsForm.filters || {};
+    const result = await requestDownload(`/api/v1/reports/export${buildQuery({ format })}`, {
+      method: 'POST',
+      body: {
+        reportCode: reportsForm.reportCode,
+        chartType: reportsForm.chartType || 'TABLE',
+        from: filters.from || null,
+        to: filters.to || null,
+        filters,
+      },
+      ...context,
+    });
+    downloadBlob(result.blob, result.filename);
+    return { filename: result.filename };
+  }
+
+  async function loadReportDefinitions() {
+    requireCompany();
+    const definitions = await requestJson('/api/v1/report-definitions', context);
+    const safeDefinitions = definitions || [];
+    setReportDefinitions(safeDefinitions);
+    if (safeDefinitions.length === 0) {
+      setReportOptions({});
+      return safeDefinitions;
+    }
+    const currentDefinition = safeDefinitions.find((report) => report.code === reportsForm.reportCode);
+    const selectedDefinition = currentDefinition || safeDefinitions[0];
+    if (!currentDefinition) {
+      await selectReportDefinition(selectedDefinition.code, safeDefinitions);
+    } else {
+      await loadReportOptions(selectedDefinition.code, safeDefinitions);
+    }
+    return safeDefinitions;
+  }
+
+  async function selectReportDefinition(reportCode, definitions = reportDefinitions) {
+    const definition = definitions.find((report) => report.code === reportCode);
+    if (!definition) {
+      setReportsForm(createReportsForm());
+      setReportOptions({});
+      setReportsData(null);
+      return null;
+    }
+    setReportsForm((current) => ({
+      reportCode: definition.code,
+      chartType: definition.chartTypes?.[0] || 'TABLE',
+      filters: defaultReportFilters(definition, current.filters),
+    }));
+    setReportsData(null);
+    await loadReportOptions(definition.code, definitions);
+    return null;
+  }
+
+  async function loadReportOptions(reportCode, definitions = reportDefinitions) {
+    requireCompany();
+    const definition = definitions.find((report) => report.code === reportCode);
+    if (!definition || !(definition.filters || []).some((filter) => filter.type === 'SELECT')) {
+      setReportOptions({});
+      return {};
+    }
+    const result = await requestJson(`/api/v1/reports/${reportCode}/options`, context);
+    setReportOptions(result?.options || {});
+    return result?.options || {};
   }
 
   async function initializeAccountingSetup() {
@@ -1274,7 +1480,8 @@ export default function App() {
       <main className="login-shell">
         <section className="login-card">
           <div className="login-brand">
-            <span>Factura Electronica</span>
+            {companyBranding?.loginLogoUrl && <img alt={activeBrandName} className="login-logo" src={companyBranding.loginLogoUrl} />}
+            <span>{PRODUCT_NAME}</span>
             <h1>Iniciar sesion</h1>
             <p>Acceso seguro al panel operativo de facturacion, inventario y contabilidad.</p>
           </div>
@@ -1289,7 +1496,10 @@ export default function App() {
   return (
     <main className="app-shell">
       <aside className="sidebar">
-        <div className="brand">Factura Electronica</div>
+        <div className="brand">
+          {activeBrandLogo && <img alt={activeBrandName} src={activeBrandLogo} />}
+          <span>{activeBrandName}</span>
+        </div>
         <nav aria-label="Flujo principal">
           {navigationGroups
             .map((group) => ({ ...group, items: group.items.filter((item) => visibleSteps.includes(item)) }))
@@ -1317,15 +1527,18 @@ export default function App() {
 
       <section className="workspace">
         <header className="topbar sessionbar">
-          <CompanySessionPanel accesses={companyAccesses} companies={rootCompanies} activeCompanyId={activeCompanyId} activeCompany={activeCompany} activeAccess={activeAccess} license={license} session={session} isRoot={isRoot} onCompanyChange={changeCompany} onLogout={logout} busy={busy} />
+          <CompanySessionPanel accesses={companyAccesses} companies={rootCompanies} activeCompanyId={activeCompanyId} activeCompany={activeCompany} activeAccess={activeAccess} license={license} session={session} isRoot={isRoot} onCompanyChange={changeCompany} onLogout={logout} busy={busy} branding={companyBranding} productName={PRODUCT_NAME} />
         </header>
 
         <section className="panel-grid">
           {currentStep === 'Empresa' && (
-            <CompanyForm form={companyForm} setForm={setCompanyForm} companies={rootCompanies} activeCompanyId={activeCompanyId} activeCompany={activeCompany} isRoot={isRoot} onCompanyChange={changeCompany} onSubmit={() => execute(isRoot ? createCompany : updateCompany)} onUpdate={() => execute(updateCompany)} onActivate={() => execute(activateCompany)} onSuspend={() => execute(suspendCompany)} onOpenAdminModal={() => {
-              setActionStatus({ status: 'idle' });
-              setAdminModalOpen(true);
-            }} busy={busy} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} />
+            <>
+              <CompanyForm form={companyForm} setForm={setCompanyForm} companies={rootCompanies} activeCompanyId={activeCompanyId} activeCompany={activeCompany} isRoot={isRoot} onCompanyChange={changeCompany} onSubmit={() => execute(isRoot ? createCompany : updateCompany)} onUpdate={() => execute(updateCompany)} onActivate={() => execute(activateCompany)} onSuspend={() => execute(suspendCompany)} onOpenAdminModal={() => {
+                setActionStatus({ status: 'idle' });
+                setAdminModalOpen(true);
+              }} busy={busy} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} />
+              <CompanyBrandingPanel form={companyBrandingForm} setForm={setCompanyBrandingForm} branding={companyBranding} onSave={() => execute(saveCompanyBranding)} onUploadAsset={(purpose, file) => execute(() => uploadCompanyBrandingAsset(purpose, file))} busy={busy} disabled={!activeCompanyId || !canUse(['COMPANY_SETTINGS_MANAGE'])} />
+            </>
           )}
           {currentStep === 'Licencias' && (
             <LicenseAdminPanel form={licenseForm} setForm={setLicenseForm} companies={rootCompanies} license={managedLicense} usage={licenseUsage} onCompanyChange={selectLicenseCompany} onLoad={() => execute(loadManagedLicense)} onSave={() => execute(saveManagedLicense)} onActivate={() => execute(activateManagedLicense)} onSuspend={() => execute(suspendManagedLicense)} busy={busy || !isRoot} />
@@ -1343,13 +1556,13 @@ export default function App() {
             </div>
           )}
           {currentStep === 'Ventas' && (
-            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onCreate={() => execute(createSale)} onConfirm={() => execute(confirmSale)} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} sales={salesList} onLoadSales={() => execute(loadSalesList)} />
+            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onCreate={() => execute(createSale)} onConfirm={() => execute(confirmSale)} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} sales={salesList} onLoadSales={() => execute(loadSalesList)} />
           )}
           {currentStep === 'Nomina' && (
             <PayrollPanel settingsForm={payrollSettingsForm} setSettingsForm={setPayrollSettingsForm} workerForm={payrollWorkerForm} setWorkerForm={setPayrollWorkerForm} paymentForm={dailyLaborPaymentForm} setPaymentForm={setDailyLaborPaymentForm} workers={payrollWorkers} payments={dailyLaborPayments} electronicDocuments={electronicPayrollDocuments} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} workerClassificationOptions={runtimeCatalogs.payrollWorkerClassificationOptions} paymentMethodOptions={runtimeCatalogs.paymentMethodOptions} onLoad={() => execute(loadPayrollData)} onSaveSettings={() => execute(savePayrollSettings)} onCreateWorker={() => execute(createPayrollWorker)} onCreateDailyPayment={() => execute(createDailyLaborPayment)} onIssueElectronicDocument={(paymentId) => execute(() => issueElectronicPayrollDocument(paymentId))} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Nomina)} />
           )}
           {currentStep === 'Reportes' && (
-            <ReportsForm form={reportsForm} setForm={setReportsForm} data={reportsData} onSubmit={() => execute(loadReports)} onInitializeAccounting={() => execute(initializeAccountingSetup)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Reportes)} />
+            <ReportsForm definitions={reportDefinitions} options={reportOptions} form={reportsForm} setForm={setReportsForm} data={reportsData} onReportChange={(reportCode) => execute(() => selectReportDefinition(reportCode), { silentNullSuccess: true })} onLoadDefinitions={() => execute(loadReportDefinitions)} onSubmit={() => execute(loadReports)} onExport={(format) => execute(() => exportReport(format), { successMessage: 'Reporte descargado correctamente.' })} onInitializeAccounting={() => execute(initializeAccountingSetup)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Reportes)} />
           )}
           {currentStep === 'Catalogos' && (
             <CatalogAdminPanel definitions={catalogDefinitions} selectedCatalogCode={selectedCatalogCode} setSelectedCatalogCode={setSelectedCatalogCode} items={catalogItems} form={catalogItemForm} setForm={setCatalogItemForm} onLoadDefinitions={() => execute(loadCatalogDefinitions)} onLoadItems={() => execute(() => loadCatalogItems())} onNew={startNewCatalogItem} onEdit={editCatalogItem} onSave={() => execute(saveCatalogItem)} onToggleActive={(item) => execute(() => toggleCatalogItemActive(item))} busy={busy || !canManageCatalogs} isRoot={isRoot} />
@@ -1379,6 +1592,39 @@ function toInstantQuery(value) {
   return new Date(value).toISOString();
 }
 
+function defaultReportFilters(definition, currentFilters = {}) {
+  const today = new Date();
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+  const defaults = {
+    from: currentFilters?.from || toDateInputValue(firstDay),
+    to: currentFilters?.to || toDateInputValue(today),
+  };
+  return (definition.filters || []).reduce((filters, filter) => ({
+    ...filters,
+    [filter.code]: currentFilters?.[filter.code] || defaults[filter.code] || '',
+  }), {});
+}
+
+function toDateInputValue(date) {
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function openBlob(blob) {
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank', 'noopener,noreferrer');
+  window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
 function todayAuditFilters(now = new Date()) {
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
@@ -1402,6 +1648,8 @@ function createOperationalListFilters() {
     saleStatus: '',
     saleFrom: '',
     saleTo: '',
+    salePaymentMethodCode: '',
+    saleDocumentStatus: '',
   };
 }
 

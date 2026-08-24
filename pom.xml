@@ -31,6 +31,7 @@
         <module>services/accounting-service</module>
         <module>services/payroll-service</module>
         <module>services/audit-service</module>
+        <module>services/reporting-service</module>
         <module>services/audit-event-writer-lambda</module>
         <module>services/inventory-sale-effect-lambda</module>
         <module>services/accounting-sale-entry-lambda</module>

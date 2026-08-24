@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyAlreadyExistsException;
+import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyBrandingAssetNotFoundException;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyLicenseNotFoundException;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyNotFoundException;
 import com.msvanegasg.facturaelectronica.tenant.observability.CorrelationId;
@@ -43,7 +44,11 @@ public class TenantExceptionHandler {
                 "La solicitud no cumple las reglas de validacion.", List.of(), request);
     }
 
-    @ExceptionHandler({ CompanyNotFoundException.class, CompanyLicenseNotFoundException.class })
+    @ExceptionHandler({
+            CompanyNotFoundException.class,
+            CompanyLicenseNotFoundException.class,
+            CompanyBrandingAssetNotFoundException.class
+    })
     public ResponseEntity<ApiErrorResponse> handleNotFound(RuntimeException exception,
             HttpServletRequest request) {
         return build(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, exception.getMessage(), List.of(),
