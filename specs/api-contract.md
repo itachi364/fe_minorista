@@ -2745,3 +2745,15 @@ Errores funcionales:
 ```
 
 Regla: estos errores son de configuracion fiscal, no de permisos. La SPA debe mostrarlos como accion requerida en el modulo Fiscal.
+
+### Administracion ROOT de empresas desde tabla
+
+Reglas de UI/contrato:
+
+- La tabla de empresas consume `GET /api/v1/companies` y cada accion usa el identificador de la fila seleccionada.
+- Crear empresa usa `POST /api/v1/companies` con formulario vacio/controlado; no debe reutilizar datos de la empresa activa.
+- Actualizar empresa usa `PUT /api/v1/companies/{companyId}` donde `{companyId}` proviene de la fila `Actualizar`.
+- Activar/inactivar usa `PUT /api/v1/companies/{companyId}/activate` o `PUT /api/v1/companies/{companyId}/suspend`.
+- Crear administrador usa `POST /api/v1/users` y luego `POST /api/v1/companies/{companyId}/memberships`; el `{companyId}` proviene de la fila `Crear administrador`.
+- Marca empresarial usa `PUT /api/v1/companies/{companyId}/branding` y `POST /api/v1/companies/{companyId}/branding/assets`; el `{companyId}` proviene de la fila `Crear marca empresarial`.
+- El campo `Empresa` en modales es informativo y bloqueado; no forma parte editable del payload.

@@ -1,4 +1,6 @@
+import { ActionModal } from '../../components/Modal.jsx';
 import { Field } from '../../components/forms.jsx';
+import { companyLabel } from '../../utils/company.js';
 
 const assetFields = [
   { purpose: 'MAIN_LOGO', label: 'Logo principal', hint: 'Usado como identificador general de la empresa.' },
@@ -55,6 +57,28 @@ export function CompanyBrandingPanel({ form, setForm, branding, onSave, onUpload
         </div>
       )}
     </section>
+  );
+}
+
+export function CompanyBrandingModal({ form, setForm, branding, company, companyId, onSave, onUploadAsset, onClose, busy }) {
+  return (
+    <ActionModal title="Crear marca empresarial" onClose={onClose}>
+      <div className="form-grid compact modal-form-grid">
+        <Field label="Empresa" value={companyLabel(company) || companyId} onChange={() => {}} readOnly />
+      </div>
+      <CompanyBrandingPanel
+        form={form}
+        setForm={setForm}
+        branding={branding}
+        onSave={onSave}
+        onUploadAsset={onUploadAsset}
+        busy={busy}
+        disabled={false}
+      />
+      <div className="modal-actions">
+        <button className="secondary" onClick={onClose} type="button">Cancelar</button>
+      </div>
+    </ActionModal>
   );
 }
 

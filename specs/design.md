@@ -2714,4 +2714,15 @@ Context7 evidence:
   - Relevant finding: Los formularios deben sincronizar estado controlado desde props/estado de aplicacion cuando cambia la entidad activa.
   - Decision impact: La SPA hidrata formularios de empresa/fiscal al cambiar empresa activa y evita que ROOT actualice datos equivocados.
 
+### TASK-201 - Separar creacion, edicion y acciones por empresa para ROOT
+- Estado: Completada.
+- Fase: Fase 25: Ajustes QA RBAC, POS e i18n.
+- Decision de diseno: Para `ROOT`, la empresa activa es contexto operativo y no debe hidratar automaticamente el formulario de creacion. El listado de empresas es la fuente de seleccion; `Actualizar`, `Crear administrador` y `Crear marca empresarial` se ejecutan desde acciones por fila con `company_id` fijado por la empresa seleccionada. Los modales muestran la empresa como campo bloqueado, pero mantienen editables los campos de administrador o branding.
+- Componentes/capas: `facturaelectronica-web`, BFF existente, `tenant-service`/`identity-service` existentes.
+- Context7 evidence:
+  - Library/tool: React.
+  - Topic consulted: Controlled form state for editable drafts selected from a table.
+  - Relevant finding: React recomienda separar datos fuente de estado borrador editable y resetear/hidratar el formulario solo cuando cambia explicitamente la entidad seleccionada para edicion.
+  - Decision impact: La SPA mantiene `companyForm` vacio para crear, usa un identificador de empresa en edicion para actualizar y usa identificadores de empresa objetivo separados para modales.
+
 <!-- END SDD TASK DESIGN TRACEABILITY -->

@@ -293,5 +293,9 @@
 - AC-231: Dada una empresa con varios emisores fiscales, cuando se cree o active un emisor, entonces todos los demas emisores de la empresa quedan inactivos y la tabla fiscal muestra el nuevo estado.
 - AC-232: Dada una empresa con varias resoluciones para el mismo tipo documental y ambiente, cuando se cree o active una resolucion, entonces las demas resoluciones del mismo alcance quedan inactivas.
 - AC-233: Dada una venta POS sin resolucion activa, cuando el backend responda el mensaje historico en ingles o el nuevo mensaje en espanol, entonces la SPA debe mostrar un error funcional de configuracion fiscal y llevar al usuario al modulo Fiscal.
-- AC-234: Dado `ROOT`, cuando seleccione una empresa existente en Configuracion > Empresa, entonces el formulario se precarga con sus datos y la accion principal dice `Actualizar empresa`; para crear otra empresa debe usar `Nueva empresa`.
+- AC-234: Dado `ROOT`, cuando ingrese a Configuracion > Empresa, entonces el formulario principal debe permanecer vacio para crear empresa y no debe precargarse por la empresa activa.
 - AC-235: Dado un intento de login con BFF no disponible, entonces la SPA debe informar indisponibilidad del servicio de autenticacion y no presentar el problema como credenciales invalidas.
+- AC-236: Dado `ROOT`, cuando consulte Configuracion > Empresa, entonces debe ver una tabla de empresas registradas con acciones por fila para actualizar, activar/inactivar, crear administrador y crear marca empresarial.
+- AC-237: Dado `ROOT`, cuando haga clic en `Actualizar` sobre una empresa, entonces el formulario principal debe cargarse con esa empresa y el boton principal debe cambiar a `Actualizar empresa`.
+- AC-238: Dado `ROOT`, cuando abra el modal de administrador inicial o marca empresarial desde una fila, entonces solo el campo de empresa debe estar bloqueado y los demas campos deben permanecer editables.
+- AC-239: Dado `ROOT`, cuando ejecute crear administrador o guardar marca empresarial desde un modal, entonces el request debe usar el `company_id` de la empresa seleccionada en la fila y no depender de datos escritos manualmente por el usuario.

@@ -308,6 +308,7 @@ test('login with missing company license shows license configuration message', a
 
 
 test('root login shows global panel without company or license validation', async () => {
+  const existingCompany = { id: COMPANY_ID, legalName: 'Empresa Demo SAS', tradeName: 'Tienda Demo', identificationTypeCode: 31, identificationNumber: '900123456', verificationDigit: '7', email: 'admin@example.com', status: 'ACTIVE' };
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(jsonResponse({
       ...LOGIN_RESPONSE,
@@ -315,7 +316,7 @@ test('root login shows global panel without company or license validation', asyn
       fullName: 'Root Platform User',
       globalRoles: ['ROOT'],
     }))
-    .mockResolvedValueOnce(jsonResponse([]));
+    .mockResolvedValueOnce(jsonResponse([existingCompany]));
   vi.stubGlobal('fetch', fetchMock);
 
   render(<App />);
@@ -326,9 +327,17 @@ test('root login shows global panel without company or license validation', asyn
   expect(screen.getByText('PLATAFORMA')).toBeInTheDocument();
   expect(screen.getByText('ROOT')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Empresa' }));
-  expect(screen.getByLabelText('Razon social')).toBeInTheDocument();
+  expect(screen.getByLabelText('Razon social')).toHaveValue('');
   expect(screen.getByText('Ventas')).toBeInTheDocument();
-  expect(screen.getByText('Administrador inicial')).toBeInTheDocument();
+  expect(screen.getByText('Empresas registradas')).toBeInTheDocument();
+  expect(screen.getAllByText('Empresa Demo SAS (900123456)').length).toBeGreaterThan(0);
+  expect(screen.getByRole('button', { name: 'Crear empresa' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Actualizar' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Crear administrador' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Crear marca empresarial' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Actualizar' }));
+  expect(screen.getByLabelText('Razon social')).toHaveValue('Empresa Demo SAS');
+  expect(screen.getByRole('button', { name: 'Actualizar empresa' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Usuarios' })).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(2);
   expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/companies', expect.objectContaining({

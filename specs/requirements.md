@@ -384,8 +384,11 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-168: El modulo Fiscal debe permitir registrar varios emisores fiscales por empresa, listar su estado y activar/inactivar emisores, garantizando que solo exista un emisor activo por empresa.
 - RF-169: El modulo Fiscal debe permitir registrar varias resoluciones de numeracion por empresa, listar su estado y activar/inactivar resoluciones, garantizando una sola resolucion activa por empresa, tipo de documento fiscal y ambiente.
 - RF-170: La SPA debe explicar funcionalmente que una resolucion de numeracion DIAN autoriza tipo documental, prefijo, rango, ambiente y vigencia, para evitar errores al confirmar POS.
-- RF-171: La configuracion de empresa debe hidratarse con los datos de la empresa activa. Para `ROOT`, seleccionar una empresa debe cargar sus datos y cambiar la accion principal a actualizacion; crear una empresa nueva debe ser una accion explicita separada.
+- RF-171: La configuracion de empresa del usuario empresarial debe hidratarse con los datos de su empresa activa. Para `ROOT`, el formulario de empresa debe permanecer vacio para creacion y solo debe hidratarse cuando se elija explicitamente `Actualizar` desde la tabla de empresas.
 - RF-172: El login local debe diferenciar credenciales invalidas de indisponibilidad del BFF/servicio de autenticacion, mostrando un mensaje funcional claro sin exponer detalles tecnicos.
+- RF-173: ROOT debe administrar empresas desde una tabla con acciones por fila para actualizar, activar/inactivar, crear administrador inicial y configurar marca empresarial.
+- RF-174: Los modales de administrador inicial y marca empresarial deben mostrar la empresa objetivo en un campo bloqueado, manteniendo editables los demas campos del formulario.
+- RF-175: Al seleccionar actualizar empresa desde la tabla, el formulario debe llenarse con la empresa elegida y la accion principal debe cambiar a `Actualizar empresa`.
 
 ## Requisitos fase productizacion operativa
 

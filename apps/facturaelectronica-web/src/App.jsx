@@ -29,7 +29,7 @@ import { LoginPanel } from './features/auth/LoginPanel.jsx';
 import { AuditLogPanel } from './features/audit/AuditLogPanel.jsx';
 import { CatalogAdminPanel } from './features/catalogs/CatalogAdminPanel.jsx';
 import { AdminModal } from './features/company/AdminModal.jsx';
-import { CompanyBrandingPanel } from './features/company/CompanyBrandingPanel.jsx';
+import { CompanyBrandingModal, CompanyBrandingPanel } from './features/company/CompanyBrandingPanel.jsx';
 import { CompanyForm } from './features/company/CompanyForm.jsx';
 import { CompanySessionPanel } from './features/company/CompanySessionPanel.jsx';
 import { IssuerForm } from './features/company/IssuerForm.jsx';
@@ -78,9 +78,15 @@ export default function App() {
   const lastActivityRef = useRef(lastActivityAt);
   const [licenseModal, setLicenseModal] = useState(null);
   const [companyForm, setCompanyForm] = useState(createCompanyForm);
+  const [editingCompanyId, setEditingCompanyId] = useState('');
   const [companyBrandingForm, setCompanyBrandingForm] = useState(createCompanyBrandingForm);
   const [companyBranding, setCompanyBranding] = useState(null);
+  const [brandingEditorForm, setBrandingEditorForm] = useState(createCompanyBrandingForm);
+  const [brandingEditor, setBrandingEditor] = useState(null);
+  const [brandingModalOpen, setBrandingModalOpen] = useState(false);
+  const [brandingTargetCompanyId, setBrandingTargetCompanyId] = useState('');
   const [companyAdminForm, setCompanyAdminForm] = useState(createCompanyAdminForm);
+  const [adminTargetCompanyId, setAdminTargetCompanyId] = useState('');
   const [managedUserForm, setManagedUserForm] = useState(createManagedUserForm);
   const [companyRoleForm, setCompanyRoleForm] = useState(createCompanyRoleForm);
   const [editingUserId, setEditingUserId] = useState('');
@@ -135,6 +141,8 @@ export default function App() {
   const context = useMemo(() => ({ token, companyId: activeCompanyId, userId: session?.userId }), [token, activeCompanyId, session?.userId]);
   const activeAccess = companyAccesses.find((access) => access.companyId === activeCompanyId);
   const activeCompany = rootCompanies.find((company) => company.id === activeCompanyId || company.companyId === activeCompanyId);
+  const adminTargetCompany = rootCompanies.find((company) => company.id === adminTargetCompanyId || company.companyId === adminTargetCompanyId);
+  const brandingTargetCompany = rootCompanies.find((company) => company.id === brandingTargetCompanyId || company.companyId === brandingTargetCompanyId);
   const companyMunicipalityCode = activeCompany?.municipalityCode || issuerForm.municipalityCode;
   const isRoot = session?.globalRoles?.includes('ROOT') || false;
   const isCompanyAdmin = hasAnyRole(activeAccess, ['OWNER', 'ADMIN']);
@@ -284,10 +292,12 @@ export default function App() {
 
   useEffect(() => {
     if (activeCompany) {
-      hydrateCompanyForm(activeCompany);
+      if (!isRoot) {
+        hydrateCompanyForm(activeCompany);
+      }
       setIssuerForm((current) => buildIssuerFromCompany(activeCompany, current));
     }
-  }, [activeCompany?.id]);
+  }, [activeCompany?.id, isRoot]);
 
   useEffect(() => {
     if (currentStep !== 'Logs' || !activeCompanyId || !canViewAudit) {
@@ -475,7 +485,8 @@ export default function App() {
       setCompanyAccesses(firstCompany ? [{ companyId: firstCompany.id, roles: ['ROOT'], permissions: ['GLOBAL_COMPANIES_MANAGE'] }] : []);
       setActiveCompanyId(firstCompany?.id || '');
       setLicenseForm((current) => ({ ...current, companyId: firstCompany?.id || '' }));
-      hydrateCompanyForm(firstCompany);
+      setCompanyForm(createCompanyForm());
+      setEditingCompanyId('');
       setIssuerForm((current) => buildIssuerFromCompany(firstCompany, current));
       setLicense(null);
       setSelectedStep('Ventas');
@@ -560,8 +571,13 @@ export default function App() {
     setActiveCompanyId('');
     setLicense(null);
     setLicenseForm(createLicenseForm());
+    setEditingCompanyId('');
     setCompanyBranding(null);
     setCompanyBrandingForm(createCompanyBrandingForm());
+    setBrandingEditor(null);
+    setBrandingEditorForm(createCompanyBrandingForm());
+    setBrandingModalOpen(false);
+    setBrandingTargetCompanyId('');
     setManagedLicense(null);
     setPermissionCatalog([]);
     setCompanyRoles([]);
@@ -598,6 +614,7 @@ export default function App() {
     setIssuerProfiles([]);
     setNumberingResolutions([]);
     setAdminModalOpen(false);
+    setAdminTargetCompanyId('');
     autoIdentityLoadKeyRef.current = '';
   }
 
@@ -619,17 +636,25 @@ export default function App() {
     }
   }
 
+  function requireTargetCompany(companyId) {
+    if (!companyId) {
+      throw new Error('Selecciona una empresa antes de ejecutar esta accion.');
+    }
+  }
+
   async function createCompany() {
     const created = await requestJson('/api/v1/companies', {
       method: 'POST',
       body: buildCompanyPayload(companyForm),
-      ...context,
+      token,
+      userId: session?.userId,
       idempotencyKey: createIdempotencyKey('company'),
     });
     if (isRoot && created?.id) {
       setRootCompanies((current) => [created, ...current.filter((company) => company.id !== created.id)]);
       setActiveCompanyId(created.id);
-      hydrateCompanyForm(created);
+      setCompanyForm(createCompanyForm());
+      setEditingCompanyId('');
       setLicenseForm((current) => ({ ...current, companyId: created.id }));
       setManagedLicense(null);
       setCompanyAccesses([{ companyId: created.id, roles: ['ROOT'], permissions: ['GLOBAL_COMPANIES_MANAGE'] }]);
@@ -639,80 +664,148 @@ export default function App() {
   }
 
   async function updateCompany() {
-    requireCompany();
-    const updated = await requestJson(`/api/v1/companies/${activeCompanyId}`, {
+    const targetCompanyId = isRoot ? editingCompanyId : activeCompanyId;
+    requireTargetCompany(targetCompanyId);
+    const updated = await requestJson(`/api/v1/companies/${targetCompanyId}`, {
       method: 'PUT',
       body: buildCompanyPayload(companyForm),
       ...context,
+      companyId: targetCompanyId,
       idempotencyKey: createIdempotencyKey('company-update'),
     });
     storeKnownCompany(updated);
-    hydrateCompanyForm(updated);
+    if (!isRoot || editingCompanyId) {
+      hydrateCompanyForm(updated);
+    }
     setIssuerForm((current) => buildIssuerFromCompany(updated, current));
     return updated;
   }
 
-  async function activateCompany() {
-    requireCompany();
-    const updated = await requestJson(`/api/v1/companies/${activeCompanyId}/activate`, {
+  async function activateCompany(companyId = activeCompanyId) {
+    requireTargetCompany(companyId);
+    const updated = await requestJson(`/api/v1/companies/${companyId}/activate`, {
       method: 'PUT',
       ...context,
+      companyId,
       idempotencyKey: createIdempotencyKey('company-activate'),
     });
     storeKnownCompany(updated);
-    hydrateCompanyForm(updated);
+    if (!isRoot || editingCompanyId === companyId) {
+      hydrateCompanyForm(updated);
+    }
     return updated;
   }
 
-  async function suspendCompany() {
-    requireCompany();
-    const updated = await requestJson(`/api/v1/companies/${activeCompanyId}/suspend`, {
+  async function suspendCompany(companyId = activeCompanyId) {
+    requireTargetCompany(companyId);
+    const updated = await requestJson(`/api/v1/companies/${companyId}/suspend`, {
       method: 'PUT',
       ...context,
+      companyId,
       idempotencyKey: createIdempotencyKey('company-suspend'),
     });
     storeKnownCompany(updated);
-    hydrateCompanyForm(updated);
+    if (!isRoot || editingCompanyId === companyId) {
+      hydrateCompanyForm(updated);
+    }
     return updated;
   }
 
   function startNewCompany() {
-    setActiveCompanyId('');
+    setEditingCompanyId('');
     setCompanyForm(createCompanyForm());
-    setLicenseForm((current) => ({ ...current, companyId: '' }));
-    setManagedLicense(null);
-    setLicenseUsage(null);
-    setIssuerForm(createIssuerForm());
-    setIssuerProfiles([]);
-    setNumberingResolutions([]);
   }
 
-  async function saveCompanyBranding() {
-    requireCompany();
-    const result = await requestJson(`/api/v1/companies/${activeCompanyId}/branding`, {
+  function editCompanyFromTable(company) {
+    const companyId = company?.id || company?.companyId || '';
+    requireTargetCompany(companyId);
+    setEditingCompanyId(companyId);
+    hydrateCompanyForm(company);
+  }
+
+  async function toggleCompanyActiveFromTable(company) {
+    const companyId = company?.id || company?.companyId || '';
+    requireTargetCompany(companyId);
+    return company.status === 'SUSPENDED' ? activateCompany(companyId) : suspendCompany(companyId);
+  }
+
+  function openAdminModalForCompany(company) {
+    const companyId = company?.id || company?.companyId || '';
+    requireTargetCompany(companyId);
+    setAdminTargetCompanyId(companyId);
+    setCompanyAdminForm(createCompanyAdminForm());
+    setActionStatus({ status: 'idle' });
+    setAdminModalOpen(true);
+  }
+
+  async function openBrandingModalForCompany(company) {
+    const companyId = company?.id || company?.companyId || '';
+    requireTargetCompany(companyId);
+    setBrandingTargetCompanyId(companyId);
+    setBrandingEditor(null);
+    setBrandingEditorForm(createCompanyBrandingForm());
+    setActionStatus({ status: 'idle' });
+    setBrandingModalOpen(true);
+    try {
+      const branding = await requestJson(`/api/v1/companies/${companyId}/branding`, { token, companyId, userId: session?.userId });
+      setBrandingEditor(branding);
+      setBrandingEditorForm({
+        displayName: branding?.displayName || '',
+        primaryColor: branding?.primaryColor || '',
+        accentColor: branding?.accentColor || '',
+      });
+      return branding;
+    } catch (error) {
+      if (error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async function saveCompanyBranding(companyId = activeCompanyId, form = companyBrandingForm, updateActiveBranding = true) {
+    requireTargetCompany(companyId);
+    const result = await requestJson(`/api/v1/companies/${companyId}/branding`, {
       method: 'PUT',
-      body: companyBrandingForm,
+      body: form,
       ...context,
+      companyId,
       idempotencyKey: createIdempotencyKey('company-branding'),
     });
-    setCompanyBranding(result);
-    hydrateBrandingForm(result);
+    if (updateActiveBranding || companyId === activeCompanyId) {
+      setCompanyBranding(result);
+      hydrateBrandingForm(result);
+    }
+    if (companyId === brandingTargetCompanyId) {
+      setBrandingEditor(result);
+      setBrandingEditorForm({
+        displayName: result?.displayName || '',
+        primaryColor: result?.primaryColor || '',
+        accentColor: result?.accentColor || '',
+      });
+    }
     return result;
   }
 
-  async function uploadCompanyBrandingAsset(purpose, file) {
-    requireCompany();
+  async function uploadCompanyBrandingAsset(purpose, file, companyId = activeCompanyId, updateActiveBranding = true) {
+    requireTargetCompany(companyId);
     const formData = new FormData();
     formData.append('purpose', purpose);
     formData.append('file', file);
-    const result = await requestFormData(`/api/v1/companies/${activeCompanyId}/branding/assets`, {
+    const result = await requestFormData(`/api/v1/companies/${companyId}/branding/assets`, {
       method: 'POST',
       formData,
       ...context,
+      companyId,
       idempotencyKey: createIdempotencyKey(`company-branding-${purpose.toLowerCase()}`),
     });
-    setCompanyBranding(result);
-    hydrateBrandingForm(result);
+    if (updateActiveBranding || companyId === activeCompanyId) {
+      setCompanyBranding(result);
+      hydrateBrandingForm(result);
+    }
+    if (companyId === brandingTargetCompanyId) {
+      setBrandingEditor(result);
+    }
     return result;
   }
 
@@ -815,21 +908,23 @@ export default function App() {
   }
 
   async function createInitialCompanyAdmin() {
-    requireCompany();
+    const companyId = adminTargetCompanyId || activeCompanyId;
+    requireTargetCompany(companyId);
     const user = await requestJson('/api/v1/users', {
       method: 'POST',
       body: buildCompanyAdminPayload(companyAdminForm),
       token,
       idempotencyKey: createIdempotencyKey('company-admin-user'),
     });
-    const membership = await requestJson(`/api/v1/companies/${activeCompanyId}/memberships`, {
+    const membership = await requestJson(`/api/v1/companies/${companyId}/memberships`, {
       method: 'POST',
       body: { userId: user.id, roles: [companyAdminForm.role || 'OWNER'] },
       token,
-      companyId: activeCompanyId,
+      companyId,
       idempotencyKey: createIdempotencyKey('company-admin-membership'),
     });
     setAdminModalOpen(false);
+    setAdminTargetCompanyId('');
     return { user, membership };
   }
 
@@ -1675,7 +1770,6 @@ export default function App() {
     setNumberingResolutions([]);
     const selectedCompany = rootCompanies.find((company) => company.id === companyId || company.companyId === companyId);
     if (selectedCompany) {
-      hydrateCompanyForm(selectedCompany);
       setIssuerForm((current) => buildIssuerFromCompany(selectedCompany, current));
       setCompanyAccesses([{ companyId, roles: ['ROOT'], permissions: ['GLOBAL_COMPANIES_MANAGE'] }]);
       return;
@@ -1741,11 +1835,24 @@ export default function App() {
         <section className="panel-grid">
           {currentStep === 'Empresa' && (
             <>
-              <CompanyForm form={companyForm} setForm={setCompanyForm} companies={rootCompanies} activeCompanyId={activeCompanyId} activeCompany={activeCompany} isRoot={isRoot} onCompanyChange={changeCompany} onSubmit={() => execute(isRoot && activeCompanyId ? updateCompany : isRoot ? createCompany : updateCompany)} onUpdate={() => execute(updateCompany)} onActivate={() => execute(activateCompany)} onSuspend={() => execute(suspendCompany)} onOpenAdminModal={() => {
-                setActionStatus({ status: 'idle' });
-                setAdminModalOpen(true);
-              }} onNew={startNewCompany} busy={busy} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} />
-              <CompanyBrandingPanel form={companyBrandingForm} setForm={setCompanyBrandingForm} branding={companyBranding} onSave={() => execute(saveCompanyBranding)} onUploadAsset={(purpose, file) => execute(() => uploadCompanyBrandingAsset(purpose, file))} busy={busy} disabled={!activeCompanyId || !canUse(['COMPANY_SETTINGS_MANAGE'])} />
+              <CompanyForm
+                form={companyForm}
+                setForm={setCompanyForm}
+                companies={rootCompanies}
+                activeCompanyId={activeCompanyId}
+                activeCompany={activeCompany}
+                editingCompanyId={editingCompanyId}
+                isRoot={isRoot}
+                onSubmit={() => execute(isRoot && editingCompanyId ? updateCompany : isRoot ? createCompany : updateCompany)}
+                onEditCompany={editCompanyFromTable}
+                onToggleCompanyActive={(company) => execute(() => toggleCompanyActiveFromTable(company))}
+                onOpenAdminModal={openAdminModalForCompany}
+                onOpenBrandingModal={(company) => execute(() => openBrandingModalForCompany(company), { silentNullSuccess: true })}
+                onNew={startNewCompany}
+                busy={busy}
+                documentTypeOptions={runtimeCatalogs.dianDocumentTypes}
+              />
+              {!isRoot && <CompanyBrandingPanel form={companyBrandingForm} setForm={setCompanyBrandingForm} branding={companyBranding} onSave={() => execute(saveCompanyBranding)} onUploadAsset={(purpose, file) => execute(() => uploadCompanyBrandingAsset(purpose, file))} busy={busy} disabled={!activeCompanyId || !canUse(['COMPANY_SETTINGS_MANAGE'])} />}
             </>
           )}
           {currentStep === 'Licencias' && (
@@ -1810,7 +1917,26 @@ export default function App() {
       </section>
       {licenseModal && <Modal title={licenseModal.title} message={licenseModal.message} onClose={() => setLicenseModal(null)} />}
       <ActionStatusModal state={actionStatus} onClose={() => setActionStatus({ status: 'idle' })} />
-      {adminModalOpen && <AdminModal form={companyAdminForm} setForm={setCompanyAdminForm} activeCompany={activeCompany} activeCompanyId={activeCompanyId} onSubmit={() => execute(createInitialCompanyAdmin)} onClose={() => setAdminModalOpen(false)} busy={busy || !activeCompanyId} />}
+      {adminModalOpen && <AdminModal form={companyAdminForm} setForm={setCompanyAdminForm} activeCompany={adminTargetCompany || activeCompany} activeCompanyId={adminTargetCompanyId || activeCompanyId} onSubmit={() => execute(createInitialCompanyAdmin)} onClose={() => {
+        setAdminModalOpen(false);
+        setAdminTargetCompanyId('');
+      }} busy={busy || !(adminTargetCompanyId || activeCompanyId)} />}
+      {brandingModalOpen && <CompanyBrandingModal
+        form={brandingEditorForm}
+        setForm={setBrandingEditorForm}
+        branding={brandingEditor}
+        company={brandingTargetCompany}
+        companyId={brandingTargetCompanyId}
+        onSave={() => execute(() => saveCompanyBranding(brandingTargetCompanyId, brandingEditorForm, false), { successMessage: 'Marca empresarial guardada correctamente.' })}
+        onUploadAsset={(purpose, file) => execute(() => uploadCompanyBrandingAsset(purpose, file, brandingTargetCompanyId, false))}
+        onClose={() => {
+          setBrandingModalOpen(false);
+          setBrandingTargetCompanyId('');
+          setBrandingEditor(null);
+          setBrandingEditorForm(createCompanyBrandingForm());
+        }}
+        busy={busy || !brandingTargetCompanyId}
+      />}
     </main>
   );
 }

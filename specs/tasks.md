@@ -5113,3 +5113,38 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - La SPA muestra tablas fiscales, hidrata empresa/fiscal desde la empresa activa y diferencia fallo de BFF/autenticacion no disponible en login.
     - `bff-service` arranca correctamente en Docker con store JDBC, auditoria best-effort y controlador de autenticacion cableados por Spring; se agrego prueba de contexto para evitar regresiones.
     - Validado con `.\mvnw.cmd -pl services/billing-service -am "-Dtest=IssuerAndNumberingConfigurationServiceTest,FiscalConfigurationControllerTest,FiscalConfigurationPersistenceAdapterTest" "-Dsurefire.failIfNoSpecifiedTests=false" test`, `.\mvnw.cmd -pl services/bff-service -am test`, `npm test -- --run App.test.jsx`, `npm run build`, `docker compose up -d --build bff-service`, healthcheck BFF `UP`, login ROOT por BFF `200 OK` y `.\mvnw.cmd test -q`.
+
+- [x] TASK-201: Separar creacion, edicion y acciones por empresa para ROOT
+  - Estado: DONE
+  - Requisitos: RF-171, RF-173, RF-174, RF-175.
+  - Acceptance criteria: AC-234, AC-236, AC-237, AC-238, AC-239.
+  - Descripcion: Ajustar Configuracion > Empresa para que ROOT cree empresas desde formulario vacio, administre empresas existentes desde tabla y abra acciones contextuales por empresa para actualizar, activar/inactivar, crear administrador y configurar marca empresarial.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+    - `apps/facturaelectronica-web/src/features/company/CompanyForm.jsx`
+    - `apps/facturaelectronica-web/src/features/company/AdminModal.jsx`
+    - `apps/facturaelectronica-web/src/features/company/CompanyBrandingPanel.jsx`
+    - `specs/requirements.md`
+    - `specs/acceptance-criteria.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/tasks.md`
+  - Dependencias:
+    - TASK-063, TASK-181, TASK-200.
+  - Criterios:
+    - El formulario ROOT de empresa inicia vacio y no se hidrata por empresa activa.
+    - La tabla de empresas muestra acciones por fila.
+    - `Actualizar` hidrata el formulario y cambia el boton principal a `Actualizar empresa`.
+    - Los modales de administrador y marca bloquean solo el campo Empresa.
+    - Los requests de modales usan el `company_id` de la fila seleccionada.
+  - Validacion:
+    - Pruebas frontend enfocadas en `App.test.jsx`.
+    - Build frontend.
+  - Resultado:
+    - ROOT inicia Configuracion > Empresa con formulario vacio para crear empresa, aunque exista una empresa activa.
+    - La tabla `Empresas registradas` muestra acciones por fila para actualizar, activar/inactivar, crear administrador y crear marca empresarial.
+    - `Actualizar` hidrata el formulario con la empresa seleccionada y cambia la accion principal a `Actualizar empresa`.
+    - Los modales de administrador inicial y marca empresarial muestran la empresa objetivo como campo bloqueado y mantienen editables los demas campos.
+    - Los requests de administrador y branding usan el `company_id` de la fila seleccionada.
+    - Validado con `npm test -- --run App.test.jsx` y `npm run build`.
