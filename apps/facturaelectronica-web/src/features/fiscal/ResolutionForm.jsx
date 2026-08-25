@@ -2,6 +2,7 @@ import { Field, FormPanel, SelectField } from '../../components/forms.jsx';
 
 export function ResolutionForm({ form, setForm, onSubmit, busy, fiscalDocumentTypeOptions = [], environmentOptions = [] }) {
   return <FormPanel title="Resolucion" submitLabel="Crear resolucion" onSubmit={onSubmit} busy={busy}>
+    <p className="hint">La resolucion de numeracion es la autorizacion de la DIAN para emitir documentos fiscales con un tipo, prefijo, rango de consecutivos, ambiente y vigencia especificos.</p>
     <div className="form-grid compact">
       <SelectField label="Tipo de documento fiscal" value={form.documentType} onChange={(value) => setForm({ ...form, documentType: value })} options={fiscalDocumentTypeOptions} />
       <Field label="Numero resolucion" value={form.resolutionNumber} onChange={(value) => setForm({ ...form, resolutionNumber: value })} />

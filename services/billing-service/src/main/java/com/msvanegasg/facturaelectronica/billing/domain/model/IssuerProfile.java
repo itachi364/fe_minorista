@@ -64,6 +64,22 @@ public final class IssuerProfile {
     public String address() { return address; }
     public boolean active() { return active; }
 
+    public IssuerProfile activate() {
+        if (active) {
+            return this;
+        }
+        return new IssuerProfile(id, companyId, legalName, nit, verificationDigit, taxResponsibilities,
+                municipalityCode, address, true);
+    }
+
+    public IssuerProfile deactivate() {
+        if (!active) {
+            return this;
+        }
+        return new IssuerProfile(id, companyId, legalName, nit, verificationDigit, taxResponsibilities,
+                municipalityCode, address, false);
+    }
+
     private static void requireNonNull(Object value, String fieldName) {
         Objects.requireNonNull(value, fieldName + " is required");
     }

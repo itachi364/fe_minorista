@@ -2,6 +2,7 @@ package com.msvanegasg.facturaelectronica.bff.infrastructure.security;
 
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -14,6 +15,7 @@ public class BffSecurityAuditClient {
 
     private final RestClient auditClient;
 
+    @Autowired
     public BffSecurityAuditClient(RestClient.Builder builder, BffProperties properties) {
         this(builder.clone().baseUrl(properties.auditUrl()).build());
     }

@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -58,6 +59,7 @@ public class BffAuthController {
     private final ObjectMapper objectMapper;
     private final SecureRandom secureRandom = new SecureRandom();
 
+    @Autowired
     public BffAuthController(BffAuthProperties properties, BffProperties serviceProperties, BffSessionStore sessionStore,
             RestClient.Builder restClientBuilder) {
         this(properties, serviceProperties, sessionStore, restClientBuilder, new ObjectMapper().findAndRegisterModules());

@@ -10,6 +10,8 @@ import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument
 public interface QueryFiscalConfigurationUseCase {
     IssuerProfileResult findCurrentIssuer(UUID companyId);
 
+    List<IssuerProfileResult> findIssuers(UUID companyId);
+
     List<NumberingResolutionResult> findNumberingResolutions(UUID companyId, ElectronicDocumentType documentType,
             Boolean active);
 }

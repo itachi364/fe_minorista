@@ -2,7 +2,7 @@ import { Field, FormPanel, SelectField } from '../../components/forms.jsx';
 import { companyLabel } from '../../utils/company.js';
 import { calculateNitVerificationDigit, isNit, onlyDigits } from '../../utils/nit.js';
 
-export function CompanyForm({ form, setForm, companies, activeCompanyId, activeCompany, isRoot, onCompanyChange, onSubmit, onUpdate, onActivate, onSuspend, onOpenAdminModal, busy, documentTypeOptions = [] }) {
+export function CompanyForm({ form, setForm, companies, activeCompanyId, activeCompany, isRoot, onCompanyChange, onSubmit, onUpdate, onActivate, onSuspend, onOpenAdminModal, onNew, busy, documentTypeOptions = [] }) {
   const nitDocument = isNit(form.identificationTypeCode);
   const verificationDigit = nitDocument ? calculateNitVerificationDigit(form.identificationNumber) : '';
 
@@ -17,17 +17,18 @@ export function CompanyForm({ form, setForm, companies, activeCompanyId, activeC
     setForm({ ...form, identificationNumber, verificationDigit: nitDocument ? calculateNitVerificationDigit(identificationNumber) : '' });
   }
 
-  const submitLabel = isRoot ? 'Crear empresa' : 'Actualizar empresa';
+  const submitLabel = isRoot && activeCompanyId ? 'Actualizar empresa' : isRoot ? 'Crear empresa' : 'Actualizar empresa';
   const canUpdateActiveCompany = Boolean(activeCompanyId);
 
   return <div className="stack">
     <FormPanel title="Empresa contratante" submitLabel={submitLabel} onSubmit={onSubmit} busy={busy || (!isRoot && !canUpdateActiveCompany)}>
-      {isRoot && activeCompany && (
+      {isRoot && (
         <div className="button-row company-actions">
-          <button className="secondary" disabled={busy || !canUpdateActiveCompany} onClick={onUpdate} type="button">Actualizar empresa</button>
-          {activeCompany.status === 'SUSPENDED'
+          {activeCompany && <button className="secondary" disabled={busy || !canUpdateActiveCompany} onClick={onUpdate} type="button">Actualizar empresa</button>}
+          <button className="secondary" disabled={busy || !activeCompanyId} onClick={onNew} type="button">Nueva empresa</button>
+          {activeCompany && (activeCompany.status === 'SUSPENDED'
             ? <button className="secondary" disabled={busy || !canUpdateActiveCompany} onClick={onActivate} type="button">Activar empresa</button>
-            : <button className="secondary" disabled={busy || !canUpdateActiveCompany} onClick={onSuspend} type="button">Inactivar empresa</button>}
+            : <button className="secondary" disabled={busy || !canUpdateActiveCompany} onClick={onSuspend} type="button">Inactivar empresa</button>)}
         </div>
       )}
       <div className="form-grid">

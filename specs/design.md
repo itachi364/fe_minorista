@@ -2698,6 +2698,20 @@ Context7 evidence:
 - Fase: Fase 25: Ajustes QA RBAC, POS e i18n.
 - Decision de diseno: Completar recursos `i18next` para todos los permisos actuales y mostrar nombres tecnicos de rol con etiqueta profesional en espanol cuando aplique.
 - Componentes/capas: `facturaelectronica-web`.
-- Componentes/capas: `facturaelectronica-web`, `bff-service`.
+
+### TASK-200 - Corregir activacion fiscal, precarga de empresa y errores de login
+- Estado: Completada.
+- Fase: Fase 25: Ajustes QA RBAC, POS e i18n.
+- Decision de diseno: Mantener historial fiscal mediante registros activos/inactivos, exponer activacion explicita por API y reflejarlo en la SPA con tablas operativas. La empresa seleccionada por ROOT o la empresa del usuario se usa para hidratar formularios, y los errores de login diferencian credenciales invalidas de BFF/autenticacion no disponible.
+- Componentes/capas: `billing-service`, `bff-service`, `facturaelectronica-web`.
+- Context7 evidence:
+  - Library/tool: Spring Boot.
+  - Topic consulted: REST controllers, mappings and validation.
+  - Relevant finding: Los controladores pueden exponer operaciones especializadas con `@GetMapping`, `@PostMapping`, `@PutMapping` y validacion de request body para separar comandos de consulta.
+  - Decision impact: Se agregan endpoints de activacion/inactivacion fiscal sin sobrecargar la creacion ni eliminar registros historicos.
+  - Library/tool: React.
+  - Topic consulted: Controlled form state.
+  - Relevant finding: Los formularios deben sincronizar estado controlado desde props/estado de aplicacion cuando cambia la entidad activa.
+  - Decision impact: La SPA hidrata formularios de empresa/fiscal al cambiar empresa activa y evita que ROOT actualice datos equivocados.
 
 <!-- END SDD TASK DESIGN TRACEABILITY -->

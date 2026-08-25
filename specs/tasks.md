@@ -5063,3 +5063,53 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - `translation.json` cubre permisos RBAC vigentes, incluido `SALES_CANCEL`.
     - La UI traduce roles internos como `OWNER` a `Administrador propietario`.
     - Validado con `npm test -- --run App.test.jsx`.
+
+- [x] TASK-200: Corregir activacion fiscal, precarga de empresa y errores de login
+  - Estado: DONE
+  - Requisitos: RF-168, RF-169, RF-170, RF-171, RF-172.
+  - Acceptance criteria: AC-231, AC-232, AC-233, AC-234, AC-235.
+  - Descripcion: Ajustar el modulo Fiscal y Empresa para que la configuracion operativa sea visible y accionable: emisores y resoluciones con tabla, activar/inactivar sin borrar historial, unica configuracion activa por alcance, ayuda funcional de resolucion DIAN, precarga de empresa seleccionada y errores de login distinguibles.
+  - Archivos:
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/IssuerProfile.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/domain/model/NumberingResolution.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/in/ConfigureIssuerProfileUseCase.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/in/CreateNumberingResolutionUseCase.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/in/QueryFiscalConfigurationUseCase.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/out/IssuerProfileRepositoryPort.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/out/NumberingResolutionRepositoryPort.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/application/usecase/ConfigureIssuerProfileService.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/application/usecase/CreateNumberingResolutionService.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/application/usecase/QueryFiscalConfigurationService.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/infrastructure/persistence/IssuerProfilePersistenceAdapter.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/infrastructure/persistence/NumberingResolutionPersistenceAdapter.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/infrastructure/persistence/repository/IssuerProfileJpaRepository.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/infrastructure/persistence/repository/NumberingResolutionJpaRepository.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/interfaces/rest/FiscalConfigurationController.java`
+    - `services/bff-service/src/main/java/com/msvanegasg/facturaelectronica/bff/infrastructure/security/BffSecurityAuditClient.java`
+    - `services/bff-service/src/main/java/com/msvanegasg/facturaelectronica/bff/infrastructure/security/JdbcBffSessionStore.java`
+    - `services/bff-service/src/main/java/com/msvanegasg/facturaelectronica/bff/interfaces/rest/BffAuthController.java`
+    - `services/bff-service/src/test/java/com/msvanegasg/facturaelectronica/bff/BffServiceApplicationTests.java`
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/features/company/CompanyForm.jsx`
+    - `apps/facturaelectronica-web/src/features/fiscal/ResolutionForm.jsx`
+  - Dependencias:
+    - TASK-041, TASK-063, TASK-198.
+  - Criterios:
+    - Solo puede existir un emisor fiscal activo por empresa.
+    - Solo puede existir una resolucion activa por empresa, tipo documental y ambiente.
+    - Inactivar no elimina registros ni historico fiscal.
+    - ROOT puede seleccionar empresa, precargar datos, actualizarla o iniciar creacion de una nueva.
+    - Un error de BFF/autenticacion no disponible en login debe mostrarse distinto a credenciales invalidas.
+  - Validacion:
+    - Pruebas unitarias de `billing-service`.
+    - Pruebas REST de `billing-service`.
+    - Pruebas de contexto de `bff-service`.
+    - Pruebas frontend y build.
+    - Validacion Docker de BFF saludable y login ROOT por BFF.
+  - Resultado:
+    - `billing-service` lista emisores, activa/inactiva emisores y activa/inactiva resoluciones sin eliminar historico.
+    - La activacion de un emisor desactiva los demas emisores activos de la empresa.
+    - La activacion de una resolucion desactiva las demas resoluciones activas del mismo tipo documental y ambiente.
+    - La SPA muestra tablas fiscales, hidrata empresa/fiscal desde la empresa activa y diferencia fallo de BFF/autenticacion no disponible en login.
+    - `bff-service` arranca correctamente en Docker con store JDBC, auditoria best-effort y controlador de autenticacion cableados por Spring; se agrego prueba de contexto para evitar regresiones.
+    - Validado con `.\mvnw.cmd -pl services/billing-service -am "-Dtest=IssuerAndNumberingConfigurationServiceTest,FiscalConfigurationControllerTest,FiscalConfigurationPersistenceAdapterTest" "-Dsurefire.failIfNoSpecifiedTests=false" test`, `.\mvnw.cmd -pl services/bff-service -am test`, `npm test -- --run App.test.jsx`, `npm run build`, `docker compose up -d --build bff-service`, healthcheck BFF `UP`, login ROOT por BFF `200 OK` y `.\mvnw.cmd test -q`.

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.security.SecureRandom;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -30,6 +31,7 @@ public class JdbcBffSessionStore implements BffSessionStore {
     private final Clock clock;
     private final SecureRandom secureRandom = new SecureRandom();
 
+    @Autowired
     public JdbcBffSessionStore(JdbcTemplate jdbcTemplate, BffSessionCipher cipher) {
         this(jdbcTemplate, cipher, Clock.systemUTC());
     }

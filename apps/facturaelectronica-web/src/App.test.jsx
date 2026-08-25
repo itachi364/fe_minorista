@@ -636,7 +636,9 @@ test('shows fiscal setup guidance when POS confirmation lacks active issuer', as
       message: 'Debes configurar un emisor fiscal activo antes de confirmar ventas POS.',
       correlationId: 'corr-issuer',
       details: [],
-    }));
+    }))
+    .mockResolvedValueOnce(jsonResponse([]))
+    .mockResolvedValueOnce(jsonResponse([]));
 
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
@@ -650,7 +652,9 @@ test('shows fiscal setup guidance when POS confirmation lacks active issuer', as
   await waitFor(() => expect(screen.getByText(/Debes configurar un emisor fiscal activo/)).toBeInTheDocument());
   expect(screen.getByText(/Ve al modulo Fiscal/)).toBeInTheDocument();
   expect(screen.getByText('Emisor fiscal')).toBeInTheDocument();
-  expect(fetchMock).toHaveBeenCalledTimes(7);
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(9));
+  expect(fetchMock).toHaveBeenNthCalledWith(8, '/api/v1/issuers', expect.any(Object));
+  expect(fetchMock).toHaveBeenNthCalledWith(9, '/api/v1/numbering-resolutions', expect.any(Object));
 });
 
 test('loads operational lists for sales third parties products and purchases', async () => {

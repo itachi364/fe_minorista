@@ -381,6 +381,11 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-165: Cuando `ROOT` cree el administrador inicial de una empresa, el sistema debe crear de forma idempotente un rol empresarial `OWNER`, asignarlo al administrador y mostrarlo en su panel como `Administrador propietario`.
 - RF-166: La confirmacion POS debe distinguir falta de permisos de falta de configuracion fiscal. Si no existe emisor fiscal activo o resolucion activa, el backend debe retornar error funcional claro y la SPA debe guiar al usuario hacia configuracion fiscal.
 - RF-167: Todos los permisos y modulos RBAC visibles en frontend deben traducirse mediante recursos `i18next`; ningun permiso vigente debe mostrarse con fallback en ingles como `Sales Cancel`.
+- RF-168: El modulo Fiscal debe permitir registrar varios emisores fiscales por empresa, listar su estado y activar/inactivar emisores, garantizando que solo exista un emisor activo por empresa.
+- RF-169: El modulo Fiscal debe permitir registrar varias resoluciones de numeracion por empresa, listar su estado y activar/inactivar resoluciones, garantizando una sola resolucion activa por empresa, tipo de documento fiscal y ambiente.
+- RF-170: La SPA debe explicar funcionalmente que una resolucion de numeracion DIAN autoriza tipo documental, prefijo, rango, ambiente y vigencia, para evitar errores al confirmar POS.
+- RF-171: La configuracion de empresa debe hidratarse con los datos de la empresa activa. Para `ROOT`, seleccionar una empresa debe cargar sus datos y cambiar la accion principal a actualizacion; crear una empresa nueva debe ser una accion explicita separada.
+- RF-172: El login local debe diferenciar credenciales invalidas de indisponibilidad del BFF/servicio de autenticacion, mostrando un mensaje funcional claro sin exponer detalles tecnicos.
 
 ## Requisitos fase productizacion operativa
 

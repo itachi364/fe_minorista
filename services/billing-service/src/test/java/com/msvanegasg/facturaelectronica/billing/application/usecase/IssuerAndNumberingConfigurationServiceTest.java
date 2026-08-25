@@ -25,7 +25,9 @@ import com.msvanegasg.facturaelectronica.billing.domain.model.NumberingResolutio
 class IssuerAndNumberingConfigurationServiceTest {
 
     private static final UUID ISSUER_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
+    private static final UUID ISSUER_ID_2 = UUID.fromString("33333333-3333-3333-3333-333333333334");
     private static final UUID RESOLUTION_ID = UUID.fromString("44444444-4444-4444-4444-444444444444");
+    private static final UUID RESOLUTION_ID_2 = UUID.fromString("44444444-4444-4444-4444-444444444445");
     private static final UUID COMPANY_ID = UUID.fromString("55555555-5555-5555-5555-555555555555");
     private static final LocalDate DOCUMENT_DATE = LocalDate.of(2026, 5, 20);
 
@@ -44,6 +46,22 @@ class IssuerAndNumberingConfigurationServiceTest {
     }
 
     @Test
+    void configuringIssuerKeepsOnlyOneActiveIssuerPerCompany() {
+        InMemoryIssuerProfileRepository repository = new InMemoryIssuerProfileRepository();
+
+        repository.saveAsOnlyActive(IssuerProfile.configure(ISSUER_ID, COMPANY_ID, "ACME SAS", "900123456", "7",
+                List.of("O-13"), "11001", "Calle 1 # 2-3"));
+        repository.saveAsOnlyActive(IssuerProfile.configure(ISSUER_ID_2, COMPANY_ID, "ACME Renovada SAS",
+                "900123456", "7", List.of("O-13"), "11001", "Calle 4 # 5-6"));
+
+        assertThat(repository.findByCompanyId(COMPANY_ID)).hasSize(2);
+        assertThat(repository.findByCompanyIdAndId(COMPANY_ID, ISSUER_ID)).get().extracting(IssuerProfile::active)
+                .isEqualTo(false);
+        assertThat(repository.findActiveByCompanyId(COMPANY_ID)).get().extracting(IssuerProfile::id)
+                .isEqualTo(ISSUER_ID_2);
+    }
+
+    @Test
     void createsResolutionStartingBeforeFirstAuthorizedNumber() {
         var service = new CreateNumberingResolutionService(new InMemoryNumberingResolutionRepository(),
                 () -> RESOLUTION_ID);
@@ -55,6 +73,23 @@ class IssuerAndNumberingConfigurationServiceTest {
         assertThat(result.prefix()).isEqualTo("POS");
         assertThat(result.currentNumber()).isEqualTo(99);
         assertThat(result.active()).isTrue();
+    }
+
+    @Test
+    void activatingResolutionKeepsOnlyOneActiveResolutionForDocumentTypeAndEnvironment() {
+        InMemoryNumberingResolutionRepository repository = new InMemoryNumberingResolutionRepository();
+        NumberingResolution first = repository.saveAsOnlyActive(NumberingResolution.create(RESOLUTION_ID, COMPANY_ID,
+                ElectronicDocumentType.ELECTRONIC_POS, "18760000001", "POS", 100, 200,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), FiscalEnvironment.TEST));
+        repository.saveAsOnlyActive(NumberingResolution.create(RESOLUTION_ID_2, COMPANY_ID,
+                ElectronicDocumentType.ELECTRONIC_POS, "18760000002", "PE2", 201, 300,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), FiscalEnvironment.TEST));
+
+        assertThat(repository.findByCompanyIdAndId(COMPANY_ID, first.id())).get()
+                .extracting(NumberingResolution::active).isEqualTo(false);
+        assertThat(repository.findActiveResolution(COMPANY_ID, ElectronicDocumentType.ELECTRONIC_POS,
+                FiscalEnvironment.TEST, DOCUMENT_DATE)).get().extracting(NumberingResolution::id)
+                .isEqualTo(RESOLUTION_ID_2);
     }
 
     @Test
@@ -120,13 +155,35 @@ class IssuerAndNumberingConfigurationServiceTest {
 
         @Override
         public IssuerProfile save(IssuerProfile issuerProfile) {
-            issuerProfiles.put(issuerProfile.companyId(), issuerProfile);
+            issuerProfiles.put(issuerProfile.id(), issuerProfile);
             return issuerProfile;
         }
 
         @Override
+        public IssuerProfile saveAsOnlyActive(IssuerProfile issuerProfile) {
+            issuerProfiles.replaceAll((id, current) -> current.companyId().equals(issuerProfile.companyId())
+                    && !current.id().equals(issuerProfile.id()) ? current.deactivate() : current);
+            return save(issuerProfile);
+        }
+
+        @Override
         public Optional<IssuerProfile> findActiveByCompanyId(UUID companyId) {
-            return Optional.ofNullable(issuerProfiles.get(companyId)).filter(IssuerProfile::active);
+            return issuerProfiles.values().stream()
+                    .filter(issuer -> issuer.companyId().equals(companyId) && issuer.active())
+                    .findFirst();
+        }
+
+        @Override
+        public Optional<IssuerProfile> findByCompanyIdAndId(UUID companyId, UUID issuerId) {
+            return Optional.ofNullable(issuerProfiles.get(issuerId))
+                    .filter(issuer -> issuer.companyId().equals(companyId));
+        }
+
+        @Override
+        public List<IssuerProfile> findByCompanyId(UUID companyId) {
+            return issuerProfiles.values().stream()
+                    .filter(issuer -> issuer.companyId().equals(companyId))
+                    .toList();
         }
     }
 
@@ -142,6 +199,13 @@ class IssuerAndNumberingConfigurationServiceTest {
         }
 
         @Override
+        public NumberingResolution saveAsOnlyActive(NumberingResolution numberingResolution) {
+            resolutions.replaceAll((id, current) -> sameActivationScope(current, numberingResolution)
+                    && !current.id().equals(numberingResolution.id()) ? current.deactivate() : current);
+            return save(numberingResolution);
+        }
+
+        @Override
         public Optional<NumberingResolution> findActiveResolution(UUID companyId, ElectronicDocumentType documentType,
                 FiscalEnvironment environment, LocalDate documentDate) {
             return resolutions.values().stream()
@@ -153,11 +217,25 @@ class IssuerAndNumberingConfigurationServiceTest {
         public List<NumberingResolution> findByCompanyId(UUID companyId, ElectronicDocumentType documentType,
                 Boolean active) {
             return resolutions.values().stream().filter(resolution -> resolution.companyId().equals(companyId))
+                    .filter(resolution -> documentType == null || resolution.documentType() == documentType)
+                    .filter(resolution -> active == null || resolution.active() == active)
                     .toList();
+        }
+
+        @Override
+        public Optional<NumberingResolution> findByCompanyIdAndId(UUID companyId, UUID resolutionId) {
+            return Optional.ofNullable(resolutions.get(resolutionId))
+                    .filter(resolution -> resolution.companyId().equals(companyId));
         }
 
         NumberingResolution savedResolution() {
             return savedResolution;
+        }
+
+        private static boolean sameActivationScope(NumberingResolution current, NumberingResolution candidate) {
+            return current.companyId().equals(candidate.companyId())
+                    && current.documentType() == candidate.documentType()
+                    && current.environment() == candidate.environment();
         }
     }
 }

@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IssuerProfileRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.domain.model.IssuerProfile;
@@ -27,9 +28,31 @@ public class IssuerProfilePersistenceAdapter implements IssuerProfileRepositoryP
     }
 
     @Override
+    @Transactional
+    public IssuerProfile saveAsOnlyActive(IssuerProfile issuerProfile) {
+        if (issuerProfile.active()) {
+            repository.deactivateActiveExcept(issuerProfile.companyId(), issuerProfile.id());
+        }
+        return save(issuerProfile);
+    }
+
+    @Override
     public Optional<IssuerProfile> findActiveByCompanyId(UUID companyId) {
         return repository.findFirstByCompanyIdAndActiveTrueOrderByIdDesc(companyId)
                 .map(IssuerProfilePersistenceAdapter::toDomain);
+    }
+
+    @Override
+    public Optional<IssuerProfile> findByCompanyIdAndId(UUID companyId, UUID issuerId) {
+        return repository.findByCompanyIdAndId(companyId, issuerId)
+                .map(IssuerProfilePersistenceAdapter::toDomain);
+    }
+
+    @Override
+    public java.util.List<IssuerProfile> findByCompanyId(UUID companyId) {
+        return repository.findByCompanyIdOrderByActiveDescLegalNameAsc(companyId).stream()
+                .map(IssuerProfilePersistenceAdapter::toDomain)
+                .toList();
     }
 
     private static IssuerProfileJpaEntity toEntity(IssuerProfile issuerProfile) {

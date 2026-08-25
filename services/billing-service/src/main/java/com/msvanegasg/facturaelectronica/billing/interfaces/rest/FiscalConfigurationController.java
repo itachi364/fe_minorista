@@ -6,7 +6,9 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -55,6 +57,25 @@ public class FiscalConfigurationController {
         return BillingRestMapper.toResponse(queryFiscalConfigurationUseCase.findCurrentIssuer(companyId));
     }
 
+    @GetMapping("/issuers")
+    public List<IssuerProfileResponse> findIssuers(@RequestHeader(COMPANY_HEADER) UUID companyId) {
+        return queryFiscalConfigurationUseCase.findIssuers(companyId).stream()
+                .map(BillingRestMapper::toResponse)
+                .toList();
+    }
+
+    @PutMapping("/issuers/{issuerId}/activate")
+    public IssuerProfileResponse activateIssuer(@RequestHeader(COMPANY_HEADER) UUID companyId,
+            @PathVariable UUID issuerId) {
+        return BillingRestMapper.toResponse(configureIssuerProfileUseCase.activate(companyId, issuerId));
+    }
+
+    @PutMapping("/issuers/{issuerId}/deactivate")
+    public IssuerProfileResponse deactivateIssuer(@RequestHeader(COMPANY_HEADER) UUID companyId,
+            @PathVariable UUID issuerId) {
+        return BillingRestMapper.toResponse(configureIssuerProfileUseCase.deactivate(companyId, issuerId));
+    }
+
     @PostMapping("/numbering-resolutions")
     public ResponseEntity<NumberingResolutionResponse> createNumberingResolution(
             @RequestHeader(COMPANY_HEADER) UUID companyId, @Valid @RequestBody NumberingResolutionRequest request) {
@@ -70,5 +91,17 @@ public class FiscalConfigurationController {
         return queryFiscalConfigurationUseCase.findNumberingResolutions(companyId, documentType, active).stream()
                 .map(BillingRestMapper::toResponse)
                 .toList();
+    }
+
+    @PutMapping("/numbering-resolutions/{resolutionId}/activate")
+    public NumberingResolutionResponse activateNumberingResolution(@RequestHeader(COMPANY_HEADER) UUID companyId,
+            @PathVariable UUID resolutionId) {
+        return BillingRestMapper.toResponse(createNumberingResolutionUseCase.activate(companyId, resolutionId));
+    }
+
+    @PutMapping("/numbering-resolutions/{resolutionId}/deactivate")
+    public NumberingResolutionResponse deactivateNumberingResolution(@RequestHeader(COMPANY_HEADER) UUID companyId,
+            @PathVariable UUID resolutionId) {
+        return BillingRestMapper.toResponse(createNumberingResolutionUseCase.deactivate(companyId, resolutionId));
     }
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createIdempotencyKey, requestDownload, requestFormData, requestJson } from './api/client.js';
 import { ActionStatusModal } from './components/ActionStatusModal.jsx';
+import { DataTable } from './components/DataTable.jsx';
 import { Modal } from './components/Modal.jsx';
 import { navigationGroups, steps } from './data/navigation.js';
 import {
@@ -96,6 +97,8 @@ export default function App() {
   const [productForm, setProductForm] = useState(createProductForm);
   const [issuerForm, setIssuerForm] = useState(createIssuerForm);
   const [resolutionForm, setResolutionForm] = useState(createResolutionForm);
+  const [issuerProfiles, setIssuerProfiles] = useState([]);
+  const [numberingResolutions, setNumberingResolutions] = useState([]);
   const [dianConfigurationForm, setDianConfigurationForm] = useState(createDianConfigurationForm);
   const [dianConfiguration, setDianConfiguration] = useState(null);
   const [saleForm, setSaleForm] = useState(createSaleForm);
@@ -280,6 +283,13 @@ export default function App() {
   }, [session, isRoot, activeCompanyId, activeCompany, token]);
 
   useEffect(() => {
+    if (activeCompany) {
+      hydrateCompanyForm(activeCompany);
+      setIssuerForm((current) => buildIssuerFromCompany(activeCompany, current));
+    }
+  }, [activeCompany?.id]);
+
+  useEffect(() => {
     if (currentStep !== 'Logs' || !activeCompanyId || !canViewAudit) {
       return;
     }
@@ -317,6 +327,13 @@ export default function App() {
       Promise.all(loaders).catch(() => undefined);
     }
   }, [currentStep, activeCompanyId, canManageRoles, canManageUsers, permissionCatalog.length, companyRoles.length]);
+
+  useEffect(() => {
+    if (currentStep !== 'Fiscal' || !activeCompanyId || !canUse(stepPermissionRules.Fiscal)) {
+      return;
+    }
+    loadFiscalConfiguration().catch(() => undefined);
+  }, [currentStep, activeCompanyId]);
 
   useEffect(() => {
     if (currentStep !== 'Reportes' || !activeCompanyId || !canUse(stepPermissionRules.Reportes)) {
@@ -368,6 +385,8 @@ export default function App() {
         ? 'La empresa no tiene una licencia configurada. Contacta al administrador de la plataforma.'
         : isFiscalSetupRequiredError(caught)
         ? `${payload.message} Ve al modulo Fiscal y completa la configuracion antes de confirmar la venta.`
+        : options.authAction && !caught.status
+        ? 'No fue posible conectar con el servicio de autenticacion. Verifica que el BFF este levantado e intenta nuevamente.'
         : caught.status === 401 && options.authAction
         ? 'Credenciales invalidas. Verifica el correo y la contrasena.'
         : caught.status && caught.status >= 500
@@ -395,7 +414,10 @@ export default function App() {
   function isFiscalSetupRequiredError(error) {
     const message = String(error?.payload?.message || error?.message || '').toLowerCase();
     return error?.status === 400
-      && (message.includes('emisor fiscal activo') || message.includes('resolucion de numeracion activa'));
+      && (message.includes('emisor fiscal activo')
+        || message.includes('resolucion de numeracion activa')
+        || message.includes('active issuer profile')
+        || message.includes('active numbering resolution'));
   }
 
   async function loadRootCompanies(tokenValue = token) {
@@ -573,6 +595,8 @@ export default function App() {
     setElectronicPayrollDocuments([]);
     setSaleId('');
     setSaleForm(createSaleForm());
+    setIssuerProfiles([]);
+    setNumberingResolutions([]);
     setAdminModalOpen(false);
     autoIdentityLoadKeyRef.current = '';
   }
@@ -650,6 +674,17 @@ export default function App() {
     storeKnownCompany(updated);
     hydrateCompanyForm(updated);
     return updated;
+  }
+
+  function startNewCompany() {
+    setActiveCompanyId('');
+    setCompanyForm(createCompanyForm());
+    setLicenseForm((current) => ({ ...current, companyId: '' }));
+    setManagedLicense(null);
+    setLicenseUsage(null);
+    setIssuerForm(createIssuerForm());
+    setIssuerProfiles([]);
+    setNumberingResolutions([]);
   }
 
   async function saveCompanyBranding() {
@@ -1012,22 +1047,61 @@ export default function App() {
 
   async function configureIssuer() {
     requireCompany();
-    return requestJson('/api/v1/issuers', {
+    const result = await requestJson('/api/v1/issuers', {
       method: 'POST',
       body: buildIssuerPayload(issuerForm),
       ...context,
       idempotencyKey: createIdempotencyKey('issuer'),
     });
+    await loadFiscalConfiguration();
+    return result;
   }
 
   async function configureResolution() {
     requireCompany();
-    return requestJson('/api/v1/numbering-resolutions', {
+    const result = await requestJson('/api/v1/numbering-resolutions', {
       method: 'POST',
       body: buildResolutionPayload(resolutionForm),
       ...context,
       idempotencyKey: createIdempotencyKey('resolution'),
     });
+    await loadFiscalConfiguration();
+    return result;
+  }
+
+  async function loadFiscalConfiguration() {
+    requireCompany();
+    const [issuers, resolutions] = await Promise.all([
+      requestJson('/api/v1/issuers', context),
+      requestJson('/api/v1/numbering-resolutions', context),
+    ]);
+    setIssuerProfiles(issuers || []);
+    setNumberingResolutions(resolutions || []);
+    return { issuers, resolutions };
+  }
+
+  async function toggleIssuerActive(issuer) {
+    requireCompany();
+    const action = issuer.active ? 'deactivate' : 'activate';
+    const result = await requestJson(`/api/v1/issuers/${issuer.id}/${action}`, {
+      method: 'PUT',
+      ...context,
+      idempotencyKey: createIdempotencyKey(`issuer-${action}`),
+    });
+    await loadFiscalConfiguration();
+    return result;
+  }
+
+  async function toggleResolutionActive(resolution) {
+    requireCompany();
+    const action = resolution.active ? 'deactivate' : 'activate';
+    const result = await requestJson(`/api/v1/numbering-resolutions/${resolution.id}/${action}`, {
+      method: 'PUT',
+      ...context,
+      idempotencyKey: createIdempotencyKey(`resolution-${action}`),
+    });
+    await loadFiscalConfiguration();
+    return result;
   }
 
   function hydrateDianConfigurationForm(configuration) {
@@ -1597,6 +1671,8 @@ export default function App() {
     setSaleId('');
     setServiceConsumption(createServiceConsumptionState());
     setSaleForm((current) => ({ ...current, customerId: '' }));
+    setIssuerProfiles([]);
+    setNumberingResolutions([]);
     const selectedCompany = rootCompanies.find((company) => company.id === companyId || company.companyId === companyId);
     if (selectedCompany) {
       hydrateCompanyForm(selectedCompany);
@@ -1665,10 +1741,10 @@ export default function App() {
         <section className="panel-grid">
           {currentStep === 'Empresa' && (
             <>
-              <CompanyForm form={companyForm} setForm={setCompanyForm} companies={rootCompanies} activeCompanyId={activeCompanyId} activeCompany={activeCompany} isRoot={isRoot} onCompanyChange={changeCompany} onSubmit={() => execute(isRoot ? createCompany : updateCompany)} onUpdate={() => execute(updateCompany)} onActivate={() => execute(activateCompany)} onSuspend={() => execute(suspendCompany)} onOpenAdminModal={() => {
+              <CompanyForm form={companyForm} setForm={setCompanyForm} companies={rootCompanies} activeCompanyId={activeCompanyId} activeCompany={activeCompany} isRoot={isRoot} onCompanyChange={changeCompany} onSubmit={() => execute(isRoot && activeCompanyId ? updateCompany : isRoot ? createCompany : updateCompany)} onUpdate={() => execute(updateCompany)} onActivate={() => execute(activateCompany)} onSuspend={() => execute(suspendCompany)} onOpenAdminModal={() => {
                 setActionStatus({ status: 'idle' });
                 setAdminModalOpen(true);
-              }} busy={busy} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} />
+              }} onNew={startNewCompany} busy={busy} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} />
               <CompanyBrandingPanel form={companyBrandingForm} setForm={setCompanyBrandingForm} branding={companyBranding} onSave={() => execute(saveCompanyBranding)} onUploadAsset={(purpose, file) => execute(() => uploadCompanyBrandingAsset(purpose, file))} busy={busy} disabled={!activeCompanyId || !canUse(['COMPANY_SETTINGS_MANAGE'])} />
             </>
           )}
@@ -1682,10 +1758,29 @@ export default function App() {
             <ProductForm form={productForm} setForm={setProductForm} onSubmit={() => execute(createProduct)} busy={busy || !activeCompanyId || !canUse(['INVENTORY_MANAGE'])} taxOptions={runtimeCatalogs.salesTaxOptions} itemTypeCatalog={runtimeCatalogs.itemTypeCatalog} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} products={productList} purchases={purchaseList} onLoadProducts={() => execute(loadProductList)} onLoadPurchases={() => execute(loadPurchaseList)} />
           )}
           {currentStep === 'Fiscal' && (
-            <div className="split">
-              <IssuerForm form={issuerForm} setForm={setIssuerForm} activeCompany={activeCompany} onSubmit={() => execute(configureIssuer)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Fiscal)} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} locations={runtimeCatalogs.locations} />
-              <ResolutionForm form={resolutionForm} setForm={setResolutionForm} onSubmit={() => execute(configureResolution)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Fiscal)} fiscalDocumentTypeOptions={runtimeCatalogs.fiscalDocumentTypeOptions} environmentOptions={runtimeCatalogs.fiscalEnvironmentOptions} />
-            </div>
+            <>
+              <div className="split">
+                <IssuerForm form={issuerForm} setForm={setIssuerForm} activeCompany={activeCompany} onSubmit={() => execute(configureIssuer)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Fiscal)} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} locations={runtimeCatalogs.locations} />
+                <ResolutionForm form={resolutionForm} setForm={setResolutionForm} onSubmit={() => execute(configureResolution)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Fiscal)} fiscalDocumentTypeOptions={runtimeCatalogs.fiscalDocumentTypeOptions} environmentOptions={runtimeCatalogs.fiscalEnvironmentOptions} />
+              </div>
+              <div className="split">
+                <DataTable title="Emisores fiscales registrados" description="Solo un emisor fiscal puede estar activo por empresa." columns={['Razon social', 'NIT', 'Municipio', 'Estado', 'Acciones']} rows={issuerProfiles.map((issuer) => [
+                  issuer.legalName,
+                  `${issuer.nit}-${issuer.verificationDigit}`,
+                  issuer.municipalityCode || 'Sin municipio',
+                  issuer.active ? 'Activo' : 'Inactivo',
+                  { searchText: issuer.active ? 'activo' : 'inactivo', content: <button className="secondary" disabled={busy} onClick={() => execute(() => toggleIssuerActive(issuer))} type="button">{issuer.active ? 'Inactivar' : 'Activar'}</button> },
+                ])} rowKey={(row) => row[1]} pageSize={5} />
+                <DataTable title="Resoluciones registradas" description="La resolucion de numeracion autoriza prefijo, rango, vigencia y tipo de documento fiscal ante la DIAN." columns={['Tipo', 'Resolucion', 'Rango', 'Vigencia', 'Estado', 'Acciones']} rows={numberingResolutions.map((resolution) => [
+                  resolution.documentType,
+                  `${resolution.prefix || 'Sin prefijo'} ${resolution.resolutionNumber}`,
+                  `${resolution.fromNumber} - ${resolution.toNumber} actual ${resolution.currentNumber}`,
+                  `${resolution.validFrom} / ${resolution.validTo}`,
+                  resolution.active ? 'Activa' : 'Inactiva',
+                  { searchText: resolution.active ? 'activa' : 'inactiva', content: <button className="secondary" disabled={busy} onClick={() => execute(() => toggleResolutionActive(resolution))} type="button">{resolution.active ? 'Inactivar' : 'Activar'}</button> },
+                ])} rowKey={(row) => row[1]} pageSize={5} />
+              </div>
+            </>
           )}
           {currentStep === 'DIAN' && (
             <DianConfigurationPanel form={dianConfigurationForm} setForm={setDianConfigurationForm} configuration={dianConfiguration} onLoad={() => execute(loadDianConfiguration, { silentNullSuccess: true })} onSave={() => execute(saveDianConfiguration, { successMessage: 'Configuracion DIAN guardada correctamente.' })} onTest={() => execute(testDianConfiguration, { successMessage: 'Prueba de conexion DIAN finalizada.' })} onActivate={() => execute(activateDianConfiguration, { successMessage: 'Configuracion DIAN activada.' })} onDeactivate={() => execute(deactivateDianConfiguration, { successMessage: 'Configuracion DIAN inactivada.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.DIAN)} />

@@ -104,6 +104,22 @@ public final class NumberingResolution {
     public FiscalEnvironment environment() { return environment; }
     public boolean active() { return active; }
 
+    public NumberingResolution activate() {
+        if (active) {
+            return this;
+        }
+        return new NumberingResolution(id, companyId, documentType, resolutionNumber, prefix, fromNumber, toNumber,
+                currentNumber, validFrom, validTo, environment, true);
+    }
+
+    public NumberingResolution deactivate() {
+        if (!active) {
+            return this;
+        }
+        return new NumberingResolution(id, companyId, documentType, resolutionNumber, prefix, fromNumber, toNumber,
+                currentNumber, validFrom, validTo, environment, false);
+    }
+
     private static String normalizePrefix(String prefix) {
         if (prefix == null || prefix.isBlank()) {
             return "";

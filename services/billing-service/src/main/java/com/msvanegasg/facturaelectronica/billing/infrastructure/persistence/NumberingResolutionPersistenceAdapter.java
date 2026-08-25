@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.msvanegasg.facturaelectronica.billing.application.port.out.NumberingResolutionRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
@@ -26,6 +27,16 @@ public class NumberingResolutionPersistenceAdapter implements NumberingResolutio
     @Override
     public NumberingResolution save(NumberingResolution numberingResolution) {
         return toDomain(repository.save(toEntity(numberingResolution)));
+    }
+
+    @Override
+    @Transactional
+    public NumberingResolution saveAsOnlyActive(NumberingResolution numberingResolution) {
+        if (numberingResolution.active()) {
+            repository.deactivateActiveSameScopeExcept(numberingResolution.companyId(), numberingResolution.documentType(),
+                    numberingResolution.environment(), numberingResolution.id());
+        }
+        return save(numberingResolution);
     }
 
     @Override
@@ -52,6 +63,12 @@ public class NumberingResolutionPersistenceAdapter implements NumberingResolutio
             results = repository.findByCompanyIdOrderByValidToDesc(companyId);
         }
         return results.stream().map(NumberingResolutionPersistenceAdapter::toDomain).toList();
+    }
+
+    @Override
+    public Optional<NumberingResolution> findByCompanyIdAndId(UUID companyId, UUID resolutionId) {
+        return repository.findByCompanyIdAndId(companyId, resolutionId)
+                .map(NumberingResolutionPersistenceAdapter::toDomain);
     }
 
     private static NumberingResolutionJpaEntity toEntity(NumberingResolution resolution) {

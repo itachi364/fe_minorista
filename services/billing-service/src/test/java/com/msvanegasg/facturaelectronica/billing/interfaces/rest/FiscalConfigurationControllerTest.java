@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -87,6 +88,27 @@ class FiscalConfigurationControllerTest {
     }
 
     @Test
+    void listsIssuers() throws Exception {
+        when(queryFiscalConfigurationUseCase.findIssuers(COMPANY_ID)).thenReturn(List.of(issuer()));
+
+        mockMvc.perform(get("/api/v1/issuers")
+                .header("X-Company-Id", COMPANY_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(ISSUER_ID.toString()))
+                .andExpect(jsonPath("$[0].active").value(true));
+    }
+
+    @Test
+    void activatesIssuer() throws Exception {
+        when(configureIssuerProfileUseCase.activate(COMPANY_ID, ISSUER_ID)).thenReturn(issuer());
+
+        mockMvc.perform(put("/api/v1/issuers/{issuerId}/activate", ISSUER_ID)
+                .header("X-Company-Id", COMPANY_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true));
+    }
+
+    @Test
     void createsNumberingResolution() throws Exception {
         when(createNumberingResolutionUseCase.create(any())).thenReturn(resolution());
 
@@ -120,6 +142,19 @@ class FiscalConfigurationControllerTest {
                 .param("active", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].prefix").value("POS"));
+    }
+
+    @Test
+    void deactivatesNumberingResolution() throws Exception {
+        when(createNumberingResolutionUseCase.deactivate(COMPANY_ID, RESOLUTION_ID))
+                .thenReturn(new NumberingResolutionResult(RESOLUTION_ID, COMPANY_ID,
+                        ElectronicDocumentType.ELECTRONIC_POS, "18760000001", "POS", 100, 200, 99,
+                        LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), FiscalEnvironment.TEST, false));
+
+        mockMvc.perform(put("/api/v1/numbering-resolutions/{resolutionId}/deactivate", RESOLUTION_ID)
+                .header("X-Company-Id", COMPANY_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false));
     }
 
     private static IssuerProfileResult issuer() {

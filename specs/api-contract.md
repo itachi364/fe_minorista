@@ -859,16 +859,31 @@ Estado TASK-049:
 ### Emisor
 
 - `POST /api/v1/issuers`
+- `GET /api/v1/issuers`
 - `GET /api/v1/issuers/current`
+- `PUT /api/v1/issuers/{issuerId}/activate`
+- `PUT /api/v1/issuers/{issuerId}/deactivate`
 - `PUT /api/v1/issuers/{issuerId}` contrato objetivo para actualizacion auditada del emisor fiscal.
+
+Reglas:
+
+- `POST /api/v1/issuers` crea un emisor activo y desactiva otros emisores activos de la misma empresa.
+- `PUT /api/v1/issuers/{issuerId}/activate` activa el emisor indicado y desactiva otros emisores activos de la misma empresa.
+- `PUT /api/v1/issuers/{issuerId}/deactivate` inactiva el emisor indicado sin eliminar historial.
 
 ### Resoluciones
 
 - `POST /api/v1/numbering-resolutions`
 - `GET /api/v1/numbering-resolutions?documentType=&active=`
 - `GET /api/v1/numbering-resolutions/{resolutionId}` contrato objetivo para consulta por identificador.
-- `PUT /api/v1/numbering-resolutions/{resolutionId}/activate` contrato objetivo para activacion auditada.
-- `PUT /api/v1/numbering-resolutions/{resolutionId}/deactivate` contrato objetivo para inactivacion auditada.
+- `PUT /api/v1/numbering-resolutions/{resolutionId}/activate`
+- `PUT /api/v1/numbering-resolutions/{resolutionId}/deactivate`
+
+Reglas:
+
+- `POST /api/v1/numbering-resolutions` crea una resolucion activa y desactiva otras resoluciones activas de la misma empresa, tipo documental y ambiente.
+- `PUT /api/v1/numbering-resolutions/{resolutionId}/activate` activa la resolucion indicada y desactiva otras resoluciones activas del mismo alcance.
+- `PUT /api/v1/numbering-resolutions/{resolutionId}/deactivate` inactiva la resolucion indicada sin eliminar historial ni reutilizar consecutivos.
 
 ### Ventas POS
 

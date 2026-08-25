@@ -31,6 +31,13 @@ public class QueryFiscalConfigurationService implements QueryFiscalConfiguration
     }
 
     @Override
+    public List<IssuerProfileResult> findIssuers(UUID companyId) {
+        return issuerProfileRepository.findByCompanyId(companyId).stream()
+                .map(BillingResultMapper::toIssuerProfileResult)
+                .toList();
+    }
+
+    @Override
     public List<NumberingResolutionResult> findNumberingResolutions(UUID companyId,
             ElectronicDocumentType documentType, Boolean active) {
         return numberingResolutionRepository.findByCompanyId(companyId, documentType, active).stream()

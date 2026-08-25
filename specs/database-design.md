@@ -478,3 +478,11 @@ Reglas de persistencia:
 - `company_role_permission.permission_code` solo puede contener permisos `COMPANY`; la restriccion actual que evita `GLOBAL_%` se mantiene.
 - `company_user_role_assignment` debe asignar el rol `OWNER` materializado al administrador inicial de forma idempotente.
 - La membresia legacy `identity.company_membership.roles=["OWNER"]` se conserva temporalmente por compatibilidad hasta que se retire la ruta legacy completa.
+
+## Configuracion Fiscal Activa
+
+- `billing.issuer_profile.active` permite conservar historico de emisores fiscales por empresa.
+- Regla funcional: solo un `issuer_profile.active=true` por `company_id`. El caso de uso desactiva emisores hermanos antes de guardar o activar el nuevo emisor.
+- `billing.numbering_resolution.active` permite conservar historico de resoluciones y consecutivos usados.
+- Regla funcional: solo una resolucion activa por `company_id`, `document_type` y `environment`. El caso de uso desactiva resoluciones hermanas antes de guardar o activar la nueva resolucion.
+- No se eliminan registros al inactivar, porque soportan trazabilidad fiscal, historico de ventas y auditoria.
