@@ -284,3 +284,9 @@
 - AC-214: Dado un token vencido, revocado, reutilizado fuera de politica o asociado a un job no disponible, entonces la aplicacion debe mostrar mensaje funcional claro sin exponer detalles de S3 ni secretos.
 - AC-215: Dado ROOT, administrador empresarial o usuario normal, cuando consulte jobs de reportes, entonces solo debe ver los jobs permitidos por alcance, empresa, RBAC y licencia.
 - AC-216: Dada cualquier solicitud, procesamiento, fallo, expiracion, revocacion, envio de correo o descarga de reporte pesado, entonces debe existir auditoria segura con correlation ID y sin filtros sensibles completos.
+
+## Ajustes QA RBAC, POS e i18n
+
+- AC-228: Dado `ROOT`, cuando cree el administrador inicial de una empresa con rol `OWNER`, entonces debe existir un rol empresarial activo `OWNER` para esa empresa con todos los permisos `COMPANY`, asignado al administrador y visible en el panel de Roles.
+- AC-229: Dado un administrador empresarial `OWNER`, cuando intente confirmar una venta POS sin emisor fiscal activo o resolucion activa, entonces el backend debe responder un error funcional en espanol que indique la configuracion faltante y la SPA debe mostrarlo sin tratarlo como falta de permisos.
+- AC-230: Dado el catalogo de permisos RBAC vigente, cuando la SPA muestre permisos o modulos, entonces todos los codigos deben resolverse desde `i18next` a etiquetas/descripciones en espanol; ningun permiso vigente debe mostrarse como texto derivado en ingles.

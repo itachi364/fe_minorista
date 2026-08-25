@@ -1,6 +1,6 @@
 import { DataTable } from '../../components/DataTable.jsx';
 import { Field, FormPanel, StatusBadge } from '../../components/forms.jsx';
-import { moduleLabel, permissionDescription, permissionLabel } from '../../utils/permissionLabels.js';
+import { moduleLabel, permissionDescription, permissionLabel, roleLabel } from '../../utils/permissionLabels.js';
 
 export function RolesPanel({
   permissions,
@@ -108,7 +108,7 @@ export function UsersPanel({
             Rol obligatorio
             <select value={form.roleId} onChange={(event) => setForm({ ...form, roleId: event.target.value })}>
               <option value="">Selecciona un rol</option>
-              {activeRoles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+              {activeRoles.map((role) => <option key={role.id} value={role.id}>{roleLabel(role.name)}</option>)}
             </select>
           </label>
         </div>
@@ -138,7 +138,7 @@ function roleRow(role, busy, onEdit, onToggleActive) {
   const permissionCodes = role.permissionCodes || [];
   return [
     {
-      content: <EntityCell title={role.name} subtitle={role.description || 'Sin descripcion'} />,
+      content: <EntityCell title={roleLabel(role.name)} subtitle={role.description || 'Sin descripcion'} />,
       searchText: `${role.name} ${role.description || ''}`,
     },
     {

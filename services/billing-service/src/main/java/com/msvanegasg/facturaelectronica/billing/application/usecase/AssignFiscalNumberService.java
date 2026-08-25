@@ -25,10 +25,12 @@ public class AssignFiscalNumberService implements AssignFiscalNumberUseCase {
     public FiscalNumberResult assign(AssignFiscalNumberCommand command) {
         Objects.requireNonNull(command, "command is required");
         issuerProfileRepository.findActiveByCompanyId(command.companyId())
-                .orElseThrow(() -> new IllegalStateException("active issuer profile is required"));
+                .orElseThrow(() -> new IllegalStateException(
+                        "Debes configurar un emisor fiscal activo antes de confirmar ventas POS."));
         NumberingResolution resolution = numberingResolutionRepository.findActiveResolution(command.companyId(),
                 command.documentType(), command.environment(), command.documentDate())
-                .orElseThrow(() -> new IllegalStateException("active numbering resolution is required"));
+                .orElseThrow(() -> new IllegalStateException(
+                        "Debes configurar una resolucion de numeracion activa para POS electronico antes de confirmar ventas."));
         FiscalNumberAssignment assignment = resolution.assignNextNumber(command.companyId(), command.documentType(),
                 command.documentDate(), command.environment());
         numberingResolutionRepository.save(resolution);

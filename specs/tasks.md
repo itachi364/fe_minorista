@@ -4994,3 +4994,72 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - La UI muestra estado y errores funcionales en espanol.
   - Validacion:
     - Revision UX y matriz de permisos.
+
+## Fase 25: Ajustes QA RBAC, POS e i18n
+
+- [x] TASK-197: Materializar rol OWNER empresarial al crear administrador inicial
+  - Estado: DONE
+  - Requisitos: RF-106, RF-107, RF-110, RF-162.
+  - Acceptance criteria: AC-068, AC-078, AC-228.
+  - Descripcion: Al asignar el rol legacy `OWNER` por ROOT, crear/reutilizar un `company_role` visible con todos los permisos `COMPANY` y asignarlo al administrador inicial para que aparezca en el panel empresarial.
+  - Archivos:
+    - `services/identity-service/src/main/java/com/msvanegasg/facturaelectronica/identity/application/usecase/IdentityManagementService.java`
+    - `services/identity-service/src/main/java/com/msvanegasg/facturaelectronica/identity/application/port/out/CompanyRoleRepositoryPort.java`
+    - `services/identity-service/src/test/java/com/msvanegasg/facturaelectronica/identity/application/usecase/IdentityManagementServiceTest.java`
+  - Dependencias:
+    - RBAC modular existente.
+  - Criterios:
+    - Idempotente por empresa.
+    - Sin permisos `GLOBAL_*`.
+    - El rol aparece en `GET /api/v1/companies/{companyId}/roles`.
+  - Validacion:
+    - Pruebas unitarias de `identity-service`.
+  - Resultado:
+    - `identity-service` crea/reutiliza rol empresarial `OWNER` al asignar el administrador inicial.
+    - El rol queda activo, visible en roles de empresa, con permisos `COMPANY` y asignado al administrador.
+    - Validado con `mvnw -pl services/identity-service -Dtest=IdentityManagementServiceTest test`.
+
+- [x] TASK-198: Mejorar confirmacion POS ante configuracion fiscal faltante
+  - Estado: DONE
+  - Requisitos: RF-006, RF-125, RF-163.
+  - Acceptance criteria: AC-152, AC-156, AC-229.
+  - Descripcion: Reemplazar mensajes tecnicos `active issuer profile is required` y `active numbering resolution is required` por errores funcionales en espanol y guiar la SPA al modulo Fiscal.
+  - Archivos:
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/application/usecase/AssignFiscalNumberService.java`
+    - `services/billing-service/src/test/java/com/msvanegasg/facturaelectronica/billing/application/usecase/IssuerAndNumberingConfigurationServiceTest.java`
+    - `apps/facturaelectronica-web/src/App.jsx`
+  - Dependencias:
+    - Configuracion fiscal existente.
+  - Criterios:
+    - No relajar validaciones fiscales obligatorias.
+    - Mensajes en espanol y accionables.
+    - El error se presenta como configuracion faltante, no como permisos.
+  - Validacion:
+    - Pruebas unitarias de `billing-service`.
+    - Pruebas frontend del flujo de error.
+  - Resultado:
+    - `billing-service` retorna mensajes funcionales en espanol cuando falta emisor fiscal activo o resolucion de numeracion activa.
+    - La SPA muestra guia hacia `Fiscal` y no confunde el error con permisos.
+    - Validado con `mvnw -pl services/billing-service -am "-Dtest=IssuerAndNumberingConfigurationServiceTest" "-Dsurefire.failIfNoSpecifiedTests=false" test` y `npm test -- --run App.test.jsx`.
+
+- [x] TASK-199: Completar i18n de permisos y modulos RBAC
+  - Estado: DONE
+  - Requisitos: RF-126, RF-167.
+  - Acceptance criteria: AC-167, AC-230.
+  - Descripcion: Completar recursos `i18next` para todos los permisos vigentes y normalizar etiquetas de roles internos visibles.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/i18n/locales/es/translation.json`
+    - `apps/facturaelectronica-web/src/utils/permissionLabels.js`
+    - `apps/facturaelectronica-web/src/features/identity/IdentityAdminPanel.jsx`
+  - Dependencias:
+    - `react-i18next` instalado.
+  - Criterios:
+    - `SALES_CANCEL` y cualquier permiso vigente debe tener label/descripcion en espanol.
+    - Los grupos de permisos deben mostrarse en espanol.
+    - Los roles internos `OWNER`, `ADMIN`, `CASHIER`, `ACCOUNTANT`, `AUDITOR` deben tener etiqueta profesional cuando aparezcan en UI.
+  - Validacion:
+    - Pruebas frontend y build.
+  - Resultado:
+    - `translation.json` cubre permisos RBAC vigentes, incluido `SALES_CANCEL`.
+    - La UI traduce roles internos como `OWNER` a `Administrador propietario`.
+    - Validado con `npm test -- --run App.test.jsx`.

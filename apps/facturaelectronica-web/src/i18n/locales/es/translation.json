@@ -14,6 +14,13 @@
     "sales": "Ventas",
     "users": "Usuarios"
   },
+  "roles": {
+    "ADMIN": "Administrador",
+    "ACCOUNTANT": "Contador",
+    "AUDITOR": "Auditor",
+    "CASHIER": "Cajero",
+    "OWNER": "Administrador propietario"
+  },
   "permissions": {
     "ACCOUNTING_MANAGE": {
       "label": "Gestionar contabilidad",
@@ -51,6 +58,18 @@
       "label": "Gestionar documentos fiscales avanzados",
       "description": "Permite administrar emisor, resoluciones, notas, ajustes y reenvios fiscales."
     },
+    "GLOBAL_LICENSES_MANAGE": {
+      "label": "Gestionar licencias globales",
+      "description": "Permite administrar licencias de empresas contratantes."
+    },
+    "GLOBAL_ROLES_MANAGE": {
+      "label": "Gestionar roles globales",
+      "description": "Permite administrar roles de alcance plataforma."
+    },
+    "GLOBAL_USERS_MANAGE": {
+      "label": "Gestionar usuarios globales",
+      "description": "Permite administrar usuarios de alcance plataforma."
+    },
     "GLOBAL_AUDIT_VIEW": {
       "label": "Ver auditoria global",
       "description": "Permite consultar auditoria global de plataforma."
@@ -79,13 +98,25 @@
       "label": "Ver reportes",
       "description": "Permite consultar reportes operativos y financieros."
     },
+    "PURCHASES_MANAGE": {
+      "label": "Gestionar compras",
+      "description": "Permite registrar compras, proveedores, egresos y entradas de inventario."
+    },
     "ROLES_MANAGE": {
       "label": "Gestionar roles",
       "description": "Permite administrar roles heredados."
     },
+    "LICENSE_MANAGE": {
+      "label": "Gestionar licencia",
+      "description": "Permite administrar la licencia empresarial heredada."
+    },
     "SALES_CREATE": {
       "label": "Registrar ventas POS",
       "description": "Permite registrar ventas POS y emitir automaticamente el documento electronico asociado."
+    },
+    "SALES_CANCEL": {
+      "label": "Anular ventas",
+      "description": "Permite anular ventas segun reglas operativas y fiscales aplicables."
     },
     "USERS_MANAGE": {
       "label": "Gestionar usuarios",

@@ -168,6 +168,25 @@ class IdentityManagementServiceTest {
     }
 
     @Test
+    void bootstrapsVisibleEnterpriseOwnerRoleWhenAssigningInitialOwner() {
+        InMemoryCompanyRoles companyRoles = new InMemoryCompanyRoles();
+        IdentityManagementService rbacService = serviceWithCompanyRoles(companyRoles);
+        var owner = rbacService.createUser(new CreateUserCommand("owner@example.com", "Owner User", "secret123"));
+
+        rbacService.assignRoles(new AssignRolesCommand(COMPANY_ID, owner.id(), Set.of(RoleCode.OWNER), null));
+
+        var visibleRoles = companyRoles.findByCompanyId(COMPANY_ID);
+        assertThat(visibleRoles).hasSize(1);
+        CompanyRole ownerRole = visibleRoles.get(0);
+        assertThat(ownerRole.name()).isEqualTo("OWNER");
+        assertThat(ownerRole.description()).isEqualTo("Administrador propietario de la empresa");
+        assertThat(ownerRole.systemSeed()).isTrue();
+        assertThat(ownerRole.permissionCodes()).containsAll(RoleCode.OWNER.permissions());
+        assertThat(ownerRole.permissionCodes()).allMatch(PermissionCode::companyScoped);
+        assertThat(companyRoles.findActiveAssignedRoles(COMPANY_ID, owner.id())).containsExactly(ownerRole);
+    }
+
+    @Test
     void deniesRoleAssignmentWhenActorDoesNotHavePermission() {
         service.createUser(new CreateUserCommand("owner@example.com", "Owner User", "secret123"));
         service.assignRoles(new AssignRolesCommand(COMPANY_ID, USER_ID, Set.of(RoleCode.OWNER), null));
@@ -197,7 +216,9 @@ class IdentityManagementServiceTest {
                         UUID.fromString("77777777-7777-7777-7777-777777777777"),
                         UUID.fromString("88888888-8888-8888-8888-888888888888"),
                         UUID.fromString("99999999-9999-9999-9999-999999999999"),
-                        UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")),
+                        UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                        UUID.fromString("abababab-abab-abab-abab-abababababab"),
+                        UUID.fromString("acacacac-acac-acac-acac-acacacacacac")),
                 () -> NOW, Duration.ofHours(12));
 
         var root = rootAwareService.createUser(new CreateUserCommand("root@example.com", "Root User", "secret123"));

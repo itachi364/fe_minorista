@@ -446,6 +446,7 @@ test('root manages company roles users and assignments', async () => {
   const permissionCatalog = [
     { code: 'GLOBAL_COMPANIES_MANAGE', scope: 'GLOBAL', module: 'platform', description: 'Manage companies', active: true },
     { code: 'SALES_CREATE', scope: 'COMPANY', module: 'sales', description: 'Create sales', active: true },
+    { code: 'SALES_CANCEL', scope: 'COMPANY', module: 'sales', description: 'Cancel sales', active: true },
     { code: 'FISCAL_DOCUMENTS_ISSUE', scope: 'COMPANY', module: 'billing', description: 'Issue fiscal documents', active: true },
     { code: 'INVENTORY_VIEW', scope: 'COMPANY', module: 'inventory', description: 'View inventory', active: true },
   ];
@@ -496,6 +497,7 @@ test('root manages company roles users and assignments', async () => {
 
   fireEvent.click(screen.getByRole('button', { name: 'Roles' }));
   await waitFor(() => expect(screen.getByText('Registrar ventas POS')).toBeInTheDocument());
+  expect(screen.getByText('Anular ventas')).toBeInTheDocument();
   expect(screen.queryByText('Gestionar empresas de la plataforma')).not.toBeInTheDocument();
 
   fillCompanyRoleForm();
@@ -622,6 +624,33 @@ test('creates POS sale with controlled virtual wallet payment method', async () 
   expect(salePayload.paymentMethodCode).toBe('VIRTUAL_WALLET');
   expect(salePayload.virtualWalletCode).toBe('NEQUI');
   expect(salePayload.paymentMethodId).toBeUndefined();
+});
+
+test('shows fiscal setup guidance when POS confirmation lacks active issuer', async () => {
+  const saleId = '99999999-9999-9999-9999-999999999999';
+  const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
+    .mockResolvedValueOnce(jsonResponse({ id: saleId, paymentMethodCode: 'CASH' }))
+    .mockResolvedValueOnce(errorResponse(400, {
+      status: 400,
+      code: 'BUSINESS_RULE_VIOLATION',
+      message: 'Debes configurar un emisor fiscal activo antes de confirmar ventas POS.',
+      correlationId: 'corr-issuer',
+      details: [],
+    }));
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Crear venta' }));
+  await waitFor(() => expect(screen.getByText('Venta pendiente de confirmacion')).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: 'Confirmar POS' }));
+
+  await waitFor(() => expect(screen.getByText(/Debes configurar un emisor fiscal activo/)).toBeInTheDocument());
+  expect(screen.getByText(/Ve al modulo Fiscal/)).toBeInTheDocument();
+  expect(screen.getByText('Emisor fiscal')).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledTimes(7);
 });
 
 test('loads operational lists for sales third parties products and purchases', async () => {

@@ -2661,6 +2661,43 @@ Context7 evidence:
 - Estado: Pendiente.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Decision de diseno: Agregar modo "generar en segundo plano", listado de jobs, estados, descarga disponible y mensajes claros.
+
+## TASK-197 a TASK-199: ajustes QA RBAC, POS e i18n
+
+### Decisiones de diseno
+
+- `ROOT` conserva el rol global maximo de plataforma y no pertenece a una empresa.
+- `OWNER` se mantiene como rol interno maximo de empresa, pero al crear el administrador inicial tambien se materializa como `company_role` visible y asignable dentro de la empresa.
+- El rol empresarial `OWNER` debe ser idempotente por empresa: si ya existe, se reutiliza; si falta, se crea activo, `systemSeed=true`, con permisos `COMPANY` y sin permisos `GLOBAL_*`.
+- En UI, `OWNER` debe mostrarse como `Administrador propietario` para evitar confundirlo con `ROOT`.
+- Confirmar POS requiere permisos de venta y configuracion fiscal valida. Un administrador con todos los permisos no debe poder saltarse emisor fiscal activo ni resolucion activa.
+- La falta de emisor fiscal o numeracion debe responder como regla de negocio en espanol y la SPA debe mostrar una guia hacia `Fiscal`.
+- Los codigos tecnicos de permisos y modulos pueden seguir en ingles en backend/API/base de datos, pero toda presentacion debe usar `react-i18next`.
+
+### Context7 evidence
+
+- Library/tool: react-i18next (`/i18next/react-i18next`).
+- Topic consulted: `useTranslation` and JSON resource keys.
+- Relevant finding: `useTranslation()` returns `t`, which resolves keys from configured resources and can use a default value only as fallback.
+- Decision impact: La SPA debe centralizar etiquetas/descripciones en `translation.json`; los componentes no deben depender de descripciones inglesas del backend para permisos vigentes.
+
+### TASK-197 - Materializar rol OWNER empresarial al crear administrador inicial
+- Estado: Completada.
+- Fase: Fase 25: Ajustes QA RBAC, POS e i18n.
+- Decision de diseno: Crear/reutilizar rol empresarial `OWNER` visible, con permisos company-scoped, y asignarlo al administrador inicial junto con la membresia legacy necesaria para compatibilidad.
+- Componentes/capas: `identity-service`, `facturaelectronica-web`, BFF.
+
+### TASK-198 - Mejorar confirmacion POS ante configuracion fiscal faltante
+- Estado: Completada.
+- Fase: Fase 25: Ajustes QA RBAC, POS e i18n.
+- Decision de diseno: Diferenciar error funcional de configuracion fiscal de errores de permisos y traducir el mensaje operativo.
+- Componentes/capas: `billing-service`, `facturaelectronica-web`, BFF.
+
+### TASK-199 - Completar i18n de permisos y modulos RBAC
+- Estado: Completada.
+- Fase: Fase 25: Ajustes QA RBAC, POS e i18n.
+- Decision de diseno: Completar recursos `i18next` para todos los permisos actuales y mostrar nombres tecnicos de rol con etiqueta profesional en espanol cuando aplique.
+- Componentes/capas: `facturaelectronica-web`.
 - Componentes/capas: `facturaelectronica-web`, `bff-service`.
 
 <!-- END SDD TASK DESIGN TRACEABILITY -->

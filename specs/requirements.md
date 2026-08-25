@@ -304,6 +304,8 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RN-079: La URL prefirmada real de S3 debe generarse solo cuando el usuario hace clic en el enlace intermediado y debe expirar inicialmente a los 5 segundos mediante `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS`.
 - RN-080: El token del enlace intermediado debe tener TTL independiente, configurable mediante `REPORT_LINK_TOKEN_TTL_HOURS`, y debe estar asociado a empresa, usuario, job de reporte, estado y auditoria.
 - RN-081: Si el token esta vencido, fue revocado, el reporte expiro o el job no esta listo, la aplicacion debe mostrar una pantalla clara sin filtrar informacion interna.
+- RN-082: El rol empresarial `OWNER` materializado por empresa solo puede contener permisos de alcance `COMPANY`; no puede incluir permisos `GLOBAL_*` ni elevarse al alcance `ROOT`.
+- RN-083: Las validaciones fiscales obligatorias para emitir POS/factura no se omiten por rol administrativo; el administrador puede configurar lo faltante, pero la emision debe fallar si falta emisor o numeracion activa.
 
 ## Supuestos
 
@@ -376,6 +378,9 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-123: La administracion de empresa debe diferenciar alcance ROOT y alcance empresarial: ROOT puede crear, actualizar, activar e inactivar empresas; OWNER/ADMIN empresarial solo puede actualizar la empresa activa y no debe ver acciones de creacion de nuevas empresas.
 - RF-124: La UI debe mostrar nombres de empresa y etiquetas de permisos/modulos en espanol, sin exponer UUID como dato principal al usuario final; los codigos internos pueden permanecer en ingles en API, backend y base de datos.
 - RF-125: Antes de implementar nuevas mejoras, el proyecto debe quedar limpio de artefactos legacy/huerfanos: codigo runtime legacy sin uso, documentacion historica obsoleta, artefactos generados/IDE ignorados y tablas `public.*` vacias deben retirarse o quedar documentados con decision explicita.
+- RF-165: Cuando `ROOT` cree el administrador inicial de una empresa, el sistema debe crear de forma idempotente un rol empresarial `OWNER`, asignarlo al administrador y mostrarlo en su panel como `Administrador propietario`.
+- RF-166: La confirmacion POS debe distinguir falta de permisos de falta de configuracion fiscal. Si no existe emisor fiscal activo o resolucion activa, el backend debe retornar error funcional claro y la SPA debe guiar al usuario hacia configuracion fiscal.
+- RF-167: Todos los permisos y modulos RBAC visibles en frontend deben traducirse mediante recursos `i18next`; ningun permiso vigente debe mostrarse con fallback en ingles como `Sales Cancel`.
 
 ## Requisitos fase productizacion operativa
 

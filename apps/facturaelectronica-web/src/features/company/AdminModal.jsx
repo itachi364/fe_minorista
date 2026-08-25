@@ -9,7 +9,7 @@ export function AdminModal({ form, setForm, activeCompany, activeCompanyId, onSu
       <Field label="Nombre completo" value={form.fullName} onChange={(value) => setForm({ ...form, fullName: value })} />
       <Field label="Correo electronico" value={form.email} onChange={(value) => setForm({ ...form, email: value })} type="email" />
       <Field label="Password inicial" value={form.password} onChange={(value) => setForm({ ...form, password: value })} type="password" />
-      <Field label="Rol inicial" value="OWNER - Administrador empresarial" onChange={() => {}} readOnly />
+      <Field label="Rol inicial" value="Administrador propietario" onChange={() => {}} readOnly />
     </div>
     <div className="modal-actions">
       <button className="secondary" onClick={onClose} type="button">Cancelar</button>

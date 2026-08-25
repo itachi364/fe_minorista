@@ -462,3 +462,19 @@ Reglas:
 - Los archivos quedan en S3 privado con KMS y politica de retencion configurable.
 - Las tablas deben indexarse por `company_id`, `requested_by`, `status`, `report_code`, `requested_at` y `expires_at`.
 - Los jobs y tokens deben respetar aislamiento multiempresa y RBAC.
+
+## Ajustes RBAC Operativos
+
+El rol empresarial `OWNER` se persiste en las tablas existentes de `identity-service`:
+
+- `identity.company_role`
+- `identity.company_role_permission`
+- `identity.company_user_role_assignment`
+
+Reglas de persistencia:
+
+- Debe existir a lo sumo un rol activo/visible con `company_id` y nombre tecnico `OWNER` por empresa.
+- `system_seed=true` identifica que el rol fue creado por el sistema al provisionar el administrador inicial.
+- `company_role_permission.permission_code` solo puede contener permisos `COMPANY`; la restriccion actual que evita `GLOBAL_%` se mantiene.
+- `company_user_role_assignment` debe asignar el rol `OWNER` materializado al administrador inicial de forma idempotente.
+- La membresia legacy `identity.company_membership.roles=["OWNER"]` se conserva temporalmente por compatibilidad hasta que se retire la ruta legacy completa.

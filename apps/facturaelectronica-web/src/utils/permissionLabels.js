@@ -15,6 +15,10 @@ export function permissionDescription(permission) {
   });
 }
 
+export function roleLabel(roleCode) {
+  return i18n.t(`roles.${roleCode}`, { defaultValue: titleFromCode(roleCode) });
+}
+
 function titleFromCode(value) {
   return String(value || '')
     .toLowerCase()

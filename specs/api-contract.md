@@ -2673,3 +2673,60 @@ Reglas:
 - El comprobante fase 1 es reproducible desde venta confirmada y documento electronico asociado; storage binario dedicado queda para evolucion posterior.
 - `ESC_POS`, `WEB_USB`, `WEB_SERIAL` o `LOCAL_AGENT` quedan reservados para tareas futuras con aprobacion de hardware y seguridad.
 - Cada solicitud de impresion/reimpresion debe auditarse.
+
+### Ajustes RBAC y configuracion fiscal POS
+
+Crear administrador inicial:
+
+```http
+POST /api/v1/companies/{companyId}/memberships
+X-Company-Id: {companyId}
+Authorization: Bearer {rootToken}
+```
+
+Payload:
+
+```json
+{
+  "userId": "uuid",
+  "roles": ["OWNER"]
+}
+```
+
+Reglas:
+
+- Si el actor es `ROOT` y el rol solicitado contiene `OWNER`, `identity-service` debe crear o reutilizar el rol empresarial `OWNER` de la empresa.
+- El rol materializado debe tener permisos `COMPANY` y no debe exponer permisos `GLOBAL_*`.
+- La respuesta de roles empresariales debe incluir el `OWNER` materializado para que el administrador lo vea en el modulo Roles.
+
+Confirmar POS con configuracion fiscal faltante:
+
+```http
+POST /api/v1/sales/{saleId}/confirm
+X-Company-Id: {companyId}
+Idempotency-Key: {key}
+```
+
+Errores funcionales:
+
+```json
+{
+  "status": 400,
+  "code": "BUSINESS_RULE_VIOLATION",
+  "message": "Debes configurar un emisor fiscal activo antes de confirmar ventas POS.",
+  "correlationId": "uuid",
+  "details": []
+}
+```
+
+```json
+{
+  "status": 400,
+  "code": "BUSINESS_RULE_VIOLATION",
+  "message": "Debes configurar una resolucion de numeracion activa para POS electronico antes de confirmar ventas.",
+  "correlationId": "uuid",
+  "details": []
+}
+```
+
+Regla: estos errores son de configuracion fiscal, no de permisos. La SPA debe mostrarlos como accion requerida en el modulo Fiscal.

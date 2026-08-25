@@ -56,6 +56,8 @@ import com.msvanegasg.facturaelectronica.identity.domain.model.UserSession;
 public class IdentityManagementService implements ManageIdentityUseCase {
 
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String ENTERPRISE_OWNER_ROLE_NAME = "OWNER";
+    private static final String ENTERPRISE_OWNER_ROLE_DESCRIPTION = "Administrador propietario de la empresa";
 
     private final UserAccountRepositoryPort userRepository;
     private final CompanyMembershipRepositoryPort membershipRepository;
@@ -255,6 +257,9 @@ public class IdentityManagementService implements ManageIdentityUseCase {
                 .orElseGet(() -> CompanyMembership.create(idGenerator.nextId(), command.companyId(), target.id(),
                         command.roles(), clock.now()));
         CompanyMembership saved = membershipRepository.save(membership);
+        if (command.roles().contains(RoleCode.OWNER)) {
+            ensureEnterpriseOwnerRole(command.companyId(), target.id(), actor);
+        }
         audit(command.companyId(), target.id(), "ASSIGN_ROLES", "MEMBERSHIP", saved.id().toString(),
                 AccessAuditResult.SUCCESS, saved.roles().toString());
         return MembershipResult.from(saved);
@@ -594,6 +599,40 @@ public class IdentityManagementService implements ManageIdentityUseCase {
         return hasMembership || companyRoleRepository.findAssignedCompanyIds(userId).contains(companyId);
     }
 
+    private void ensureEnterpriseOwnerRole(UUID companyId, UUID userId, UserAccount actor) {
+        UUID actorId = actor == null ? userId : actor.id();
+        Set<PermissionCode> ownerPermissions = companyPermissions();
+        CompanyRole ownerRole = companyRoleRepository.findByCompanyId(companyId).stream()
+                .filter(role -> ENTERPRISE_OWNER_ROLE_NAME.equalsIgnoreCase(role.name()))
+                .findFirst()
+                .map(role -> normalizeEnterpriseOwnerRole(role, ownerPermissions))
+                .orElseGet(() -> CompanyRole.create(idGenerator.nextId(), companyId, ENTERPRISE_OWNER_ROLE_NAME,
+                        ENTERPRISE_OWNER_ROLE_DESCRIPTION, ownerPermissions, true, actorId, clock.now()));
+        CompanyRole savedRole = companyRoleRepository.save(ownerRole);
+        companyRoleRepository.replaceUserRoleAssignments(companyId, userId, Set.of(savedRole.id()), actorId,
+                clock.now());
+        audit(companyId, actorId, "BOOTSTRAP_ENTERPRISE_OWNER_ROLE", "COMPANY_ROLE", savedRole.id().toString(),
+                AccessAuditResult.SUCCESS, savedRole.permissionCodes().toString());
+    }
+
+    private CompanyRole normalizeEnterpriseOwnerRole(CompanyRole role, Set<PermissionCode> ownerPermissions) {
+        CompanyRole normalized = role.update(ENTERPRISE_OWNER_ROLE_NAME, ENTERPRISE_OWNER_ROLE_DESCRIPTION,
+                ownerPermissions, clock.now());
+        if (!normalized.active()) {
+            normalized = normalized.activate(clock.now());
+        }
+        return normalized;
+    }
+
+    private static Set<PermissionCode> companyPermissions() {
+        EnumSet<PermissionCode> permissions = EnumSet.noneOf(PermissionCode.class);
+        for (PermissionCode permission : PermissionCode.values()) {
+            if (permission.companyScoped()) {
+                permissions.add(permission);
+            }
+        }
+        return Set.copyOf(permissions);
+    }
 
     private CompanyRole findRole(UUID companyId, UUID roleId) {
         return companyRoleRepository.findByIdAndCompanyId(roleId, companyId)

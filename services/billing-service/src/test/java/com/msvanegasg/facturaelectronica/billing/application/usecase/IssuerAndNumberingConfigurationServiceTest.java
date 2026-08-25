@@ -77,7 +77,20 @@ class IssuerAndNumberingConfigurationServiceTest {
         assertThatThrownBy(() -> service.assign(new AssignFiscalNumberCommand(COMPANY_ID,
                 ElectronicDocumentType.ELECTRONIC_POS, DOCUMENT_DATE, FiscalEnvironment.TEST)))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("active issuer profile is required");
+                .hasMessage("Debes configurar un emisor fiscal activo antes de confirmar ventas POS.");
+    }
+
+    @Test
+    void assignFiscalNumberRequiresActiveNumberingResolution() {
+        InMemoryIssuerProfileRepository issuers = new InMemoryIssuerProfileRepository();
+        issuers.save(IssuerProfile.configure(ISSUER_ID, COMPANY_ID, "ACME SAS", "900123456", "7", List.of(),
+                "11001", "Calle 1 # 2-3"));
+        var service = new AssignFiscalNumberService(issuers, new InMemoryNumberingResolutionRepository());
+
+        assertThatThrownBy(() -> service.assign(new AssignFiscalNumberCommand(COMPANY_ID,
+                ElectronicDocumentType.ELECTRONIC_POS, DOCUMENT_DATE, FiscalEnvironment.TEST)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Debes configurar una resolucion de numeracion activa para POS electronico antes de confirmar ventas.");
     }
 
     @Test

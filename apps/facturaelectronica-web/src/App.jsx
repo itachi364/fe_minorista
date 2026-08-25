@@ -366,11 +366,16 @@ export default function App() {
         : caught.payload || { status: caught.status, message: caught.message };
       const message = isLicenseNotConfiguredError(caught)
         ? 'La empresa no tiene una licencia configurada. Contacta al administrador de la plataforma.'
+        : isFiscalSetupRequiredError(caught)
+        ? `${payload.message} Ve al modulo Fiscal y completa la configuracion antes de confirmar la venta.`
         : caught.status === 401 && options.authAction
         ? 'Credenciales invalidas. Verifica el correo y la contrasena.'
         : caught.status && caught.status >= 500
           ? 'Fallo interno en la aplicacion. Intenta nuevamente o revisa los logs.'
           : 'Hay un error al realizar la accion. Revisa Logs/Auditoria para mas detalle.';
+      if (isFiscalSetupRequiredError(caught)) {
+        setSelectedStep('Fiscal');
+      }
       setActionStatus({
         status: 'error',
         message,
@@ -385,6 +390,12 @@ export default function App() {
   function isLicenseNotConfiguredError(error) {
     const message = String(error?.payload?.message || error?.message || '').toLowerCase();
     return error?.status === 404 && message.includes('licencia') && message.includes('no existe');
+  }
+
+  function isFiscalSetupRequiredError(error) {
+    const message = String(error?.payload?.message || error?.message || '').toLowerCase();
+    return error?.status === 400
+      && (message.includes('emisor fiscal activo') || message.includes('resolucion de numeracion activa'));
   }
 
   async function loadRootCompanies(tokenValue = token) {
