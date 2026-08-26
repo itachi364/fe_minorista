@@ -389,6 +389,9 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-173: ROOT debe administrar empresas desde una tabla con acciones por fila para actualizar, activar/inactivar, crear administrador inicial y configurar marca empresarial.
 - RF-174: Los modales de administrador inicial y marca empresarial deben mostrar la empresa objetivo en un campo bloqueado, manteniendo editables los demas campos del formulario.
 - RF-175: Al seleccionar actualizar empresa desde la tabla, el formulario debe llenarse con la empresa elegida y la accion principal debe cambiar a `Actualizar empresa`.
+- RF-176: La SPA debe separar la pantalla operativa de venta POS de la consulta historica. `Ventas` debe enfocarse en registrar/confirmar ventas y `Registro de Ventas` debe mostrar ventas ya registradas como historico inmutable.
+- RF-177: El historico `Registro de Ventas` solo debe permitir visualizar ventas y abrir detalle fiscal/documental, incluyendo CUFE/CUDE cuando exista. No debe permitir modificar, eliminar, inactivar, anular ni reemitir ventas.
+- RF-178: Los modales de acciones empresariales deben tener una composicion visual profesional, sin desbordes, paneles anidados incoherentes ni campos cortados, conservando bloqueo solo del campo empresa objetivo cuando aplique.
 
 ## Requisitos fase productizacion operativa
 

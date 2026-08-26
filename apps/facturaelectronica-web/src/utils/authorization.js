@@ -6,6 +6,7 @@ export const stepPermissionRules = {
   Inventario: ['INVENTORY_VIEW', 'INVENTORY_MANAGE'],
   Fiscal: ['FISCAL_DOCUMENTS_ISSUE', 'COMPANY_SETTINGS_MANAGE'],
   Ventas: ['SALES_CREATE'],
+  'Registro de Ventas': ['SALES_CREATE'],
   Nomina: ['PAYROLL_VIEW', 'PAYROLL_MANAGE'],
   Reportes: ['REPORTS_VIEW', 'ACCOUNTING_VIEW'],
   Catalogos: ['COMPANY_CATALOGS_MANAGE', 'COMPANY_SETTINGS_MANAGE'],

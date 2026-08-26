@@ -5148,3 +5148,56 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - Los modales de administrador inicial y marca empresarial muestran la empresa objetivo como campo bloqueado y mantienen editables los demas campos.
     - Los requests de administrador y branding usan el `company_id` de la fila seleccionada.
     - Validado con `npm test -- --run App.test.jsx` y `npm run build`.
+
+## Fase 26: QA visual y flujo operativo POS
+
+- [x] TASK-202: Separar Registro de Ventas de la pantalla POS
+  - Estado: DONE
+  - Requisitos: RF-145, RF-176, RF-177.
+  - Acceptance criteria: AC-207, AC-240, AC-241, AC-242.
+  - Descripcion: Separar la pantalla `Ventas` del historico operacional, creando `Registro de Ventas` como vista de consulta inmutable con filtros y detalle fiscal/documental.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/data/navigation.js`
+    - `apps/facturaelectronica-web/src/data/licenseModules.js`
+    - `apps/facturaelectronica-web/src/utils/authorization.js`
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/features/sales/SaleForm.jsx`
+    - `apps/facturaelectronica-web/src/features/sales/SalesRegistryPanel.jsx`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+  - Dependencias:
+    - TASK-189.
+  - Criterios:
+    - `Ventas` no muestra tabla de ventas registradas.
+    - `Registro de Ventas` usa listado historico y detalle por ID.
+    - La tabla no ofrece acciones mutables ni reimpresion.
+    - El detalle muestra CUFE/CUDE, tracking, documento, estados, totales y lineas.
+  - Validacion:
+    - `npm test -- --run App.test.jsx` - OK, 22 pruebas.
+    - `npm run build` - OK.
+  - Resultado:
+    - `Ventas` queda como pantalla transaccional POS.
+    - `Registro de Ventas` queda como consulta historica inmutable con filtros y detalle fiscal/documental.
+
+- [x] TASK-203: Redisenar modales empresariales
+  - Estado: DONE
+  - Requisitos: RF-174, RF-178.
+  - Acceptance criteria: AC-238, AC-243.
+  - Descripcion: Ajustar modales de administrador inicial y marca empresarial para eliminar desbordes, paneles anidados incoherentes, campos cortados y mala alineacion.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/components/Modal.jsx`
+    - `apps/facturaelectronica-web/src/features/company/AdminModal.jsx`
+    - `apps/facturaelectronica-web/src/features/company/CompanyBrandingPanel.jsx`
+    - `apps/facturaelectronica-web/src/styles.css`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+  - Dependencias:
+    - TASK-201.
+  - Criterios:
+    - El modal queda centrado y acotado en desktop.
+    - El contenido usa scroll interno sin superposiciones.
+    - Solo el campo empresa queda bloqueado.
+    - La composicion de branding no usa `tool-panel` anidado dentro del modal.
+  - Validacion:
+    - `npm test -- --run App.test.jsx` - OK, 22 pruebas.
+    - `npm run build` - OK.
+  - Resultado:
+    - Los modales empresariales usan contenedores acotados, scroll interno y composicion dedicada para evitar campos cortados o paneles anidados.

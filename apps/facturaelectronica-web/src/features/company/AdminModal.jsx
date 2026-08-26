@@ -3,7 +3,7 @@ import { Field } from '../../components/forms.jsx';
 import { companyLabel } from '../../utils/company.js';
 
 export function AdminModal({ form, setForm, activeCompany, activeCompanyId, onSubmit, onClose, busy }) {
-  return <ActionModal title="Crear administrador inicial" onClose={onClose}>
+  return <ActionModal title="Crear administrador inicial" onClose={onClose} size="medium">
     <div className="form-grid compact modal-form-grid">
       <Field label="Empresa" value={companyLabel(activeCompany) || activeCompanyId} onChange={() => {}} readOnly />
       <Field label="Nombre completo" value={form.fullName} onChange={(value) => setForm({ ...form, fullName: value })} />

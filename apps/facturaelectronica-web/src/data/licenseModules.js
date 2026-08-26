@@ -18,6 +18,7 @@ export const stepLicenseModules = {
   Inventario: 'INVENTORY',
   Fiscal: 'BILLING',
   Ventas: 'BILLING',
+  'Registro de Ventas': 'BILLING',
   Nomina: 'PAYROLL',
   Reportes: 'REPORTS',
   Catalogos: 'CATALOGS',

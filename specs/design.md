@@ -2725,4 +2725,36 @@ Context7 evidence:
   - Relevant finding: React recomienda separar datos fuente de estado borrador editable y resetear/hidratar el formulario solo cuando cambia explicitamente la entidad seleccionada para edicion.
   - Decision impact: La SPA mantiene `companyForm` vacio para crear, usa un identificador de empresa en edicion para actualizar y usa identificadores de empresa objetivo separados para modales.
 
+### TASK-202 - Separar Registro de Ventas de la pantalla POS
+- Estado: Pendiente.
+- Fase: Fase 26: QA visual y flujo operativo POS.
+- Decision de diseno: `Ventas` queda como vista transaccional para registrar y confirmar POS; `Registro de Ventas` queda como vista de consulta historica inmutable con filtros y detalle fiscal/documental.
+- Componentes/capas: `facturaelectronica-web`, BFF existente, `billing-service` existente.
+- Criterios de diseno:
+  - No mezclar formulario POS con historico operativo.
+  - Usar `GET /api/v1/sales/history` para listado y `GET /api/v1/sales/{saleId}` para detalle.
+  - No exponer acciones mutables sobre ventas registradas desde el historico.
+  - Mostrar CUFE/CUDE, tracking y estado fiscal dentro del detalle cuando existan.
+- Context7 evidence:
+  - Library/tool: React.
+  - Topic consulted: Conditional rendering and lists with keys.
+  - Relevant finding: React recomienda renderizar listas desde arreglos usando identificadores estables del backend como `key` y separar vistas por condicion cuando representan estados/pantallas distintas.
+  - Decision impact: El historico se implementa como componente y pantalla propios, con `sale.id` como llave estable.
+
+### TASK-203 - Redisenar modales empresariales
+- Estado: Pendiente.
+- Fase: Fase 26: QA visual y flujo operativo POS.
+- Decision de diseno: Los modales de administrador inicial y marca empresarial deben usar un contenedor modal responsivo, con grid propio y sin anidar paneles de pagina dentro de modales.
+- Componentes/capas: `facturaelectronica-web`.
+- Criterios de diseno:
+  - El modal administra ancho maximo, alto maximo y scroll interno.
+  - El campo empresa permanece bloqueado y los campos de datos se mantienen editables.
+  - Branding usa formulario especifico para modal, no un `tool-panel` de pantalla completa incrustado.
+  - Los botones de accion quedan alineados y visibles en escritorio y movil.
+- Context7 evidence:
+  - Library/tool: React.
+  - Topic consulted: Controlled forms and local draft state.
+  - Relevant finding: React recomienda inputs controlados por estado para formularios y estados visuales claros durante submit/error.
+  - Decision impact: Los modales mantienen formularios controlados y separan composicion modal de paneles de pagina.
+
 <!-- END SDD TASK DESIGN TRACEABILITY -->

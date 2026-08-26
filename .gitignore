@@ -40,3 +40,10 @@ build/
 
 ### Docker local data ###
 postgres_data/
+
+### Quality reports ###
+.scannerwork/
+.sonar/
+coverage/
+**/coverage/
+**/target/site/jacoco/

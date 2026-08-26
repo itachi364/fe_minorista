@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { DataTable } from '../../components/DataTable.jsx';
 import { Field, SelectField } from '../../components/forms.jsx';
 
-export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSearch, customerOptions, selectedCustomer, onSearchCustomers, onSelectCustomer, updateItem, addItem, removeItem, onCreate, onConfirm, onPrintReceipt, onScanBarcode, serviceConsumption, onLoadServiceConsumption, onUpdateServiceConsumptionQuantity, onUpdateServiceConsumptionReason, onConfirmServiceConsumption, busy, paymentOptions = [], walletOptions = [], listFilters, setListFilters, sales = [], onLoadSales }) {
+export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSearch, customerOptions, selectedCustomer, onSearchCustomers, onSelectCustomer, updateItem, addItem, removeItem, onCreate, onConfirm, onPrintReceipt, onScanBarcode, serviceConsumption, onLoadServiceConsumption, onUpdateServiceConsumptionQuantity, onUpdateServiceConsumptionReason, onConfirmServiceConsumption, busy, paymentOptions = [], walletOptions = [] }) {
   const [barcodeScan, setBarcodeScan] = useState('');
   const barcodeRef = useRef(null);
   const serviceLines = form.items.filter((item) => item.productId && item.itemType === 'SERVICE');
@@ -197,37 +196,6 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
       </section>
       )}
     </section>
-    <section className="tool-panel">
-      <header className="panel-header">
-        <div>
-          <h1>Ventas registradas</h1>
-          <p className="hint">Consulta ventas, documentos emitidos y reimpresiones por empresa.</p>
-        </div>
-        <button className="secondary" disabled={busy} onClick={onLoadSales} type="button">Consultar ventas</button>
-      </header>
-      <div className="form-grid compact">
-        <SelectField label="Estado" value={listFilters.saleStatus} onChange={(value) => setListFilters({ ...listFilters, saleStatus: value })} options={[
-          { value: 'DRAFT', label: 'Borrador' },
-          { value: 'CONFIRMED', label: 'Confirmada' },
-          { value: 'VOIDED', label: 'Anulada' },
-        ]} placeholder="Todos" />
-        <Field label="Desde" value={listFilters.saleFrom} onChange={(value) => setListFilters({ ...listFilters, saleFrom: value })} type="date" />
-        <Field label="Hasta" value={listFilters.saleTo} onChange={(value) => setListFilters({ ...listFilters, saleTo: value })} type="date" />
-        <SelectField label="Metodo de pago" value={listFilters.salePaymentMethodCode} onChange={(value) => setListFilters({ ...listFilters, salePaymentMethodCode: value })} options={paymentOptions} placeholder="Todos" />
-        <SelectField label="Estado fiscal" value={listFilters.saleDocumentStatus} onChange={(value) => setListFilters({ ...listFilters, saleDocumentStatus: value })} options={[
-          { value: 'VALIDATED', label: 'Validado' },
-          { value: 'REJECTED', label: 'Rechazado' },
-          { value: 'PENDING', label: 'Pendiente' },
-        ]} placeholder="Todos" />
-      </div>
-      <DataTable
-        columns={['Fecha', 'Estado', 'Documento', 'Estado fiscal', 'Cliente', 'Metodo pago', 'Subtotal', 'IVA', 'Total', 'Acciones']}
-        rows={sales.map((sale) => saleRow(sale, onPrintReceipt, busy))}
-        rowKey={(_row, index) => sales[index]?.id || index}
-        emptyMessage="Sin ventas consultadas."
-        sectionClassName="embedded-table"
-      />
-    </section>
   </div>;
 }
 
@@ -243,43 +211,4 @@ function money(value) {
     return '';
   }
   return Number(value).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 2 });
-}
-
-function saleRow(sale, onPrintReceipt, busy) {
-  const document = sale.electronicDocument;
-  return [
-    shortDate(sale.createdAt || sale.saleDate),
-    labelSaleStatus(sale.status),
-    document ? `${document.prefix || ''}${document.documentNumber || ''}` : 'Sin documento',
-    labelDocumentStatus(document?.status),
-    sale.customerId || sale.buyerIdentificationMode || 'Consumidor final',
-    sale.paymentMethodCode || '',
-    money(sale.subtotal),
-    money(sale.taxTotal),
-    money(sale.total),
-    {
-      searchText: document ? 'imprimir comprobante' : '',
-      content: <button className="secondary compact-button" disabled={busy || !document} onClick={() => onPrintReceipt(sale.id)} type="button">Imprimir</button>,
-    },
-  ];
-}
-
-function labelSaleStatus(value) {
-  return {
-    DRAFT: 'Borrador',
-    CONFIRMED: 'Confirmada',
-    VOIDED: 'Anulada',
-  }[value] || value || '';
-}
-
-function labelDocumentStatus(value) {
-  return {
-    VALIDATED: 'Validado',
-    REJECTED: 'Rechazado',
-    PENDING: 'Pendiente',
-  }[value] || value || '';
-}
-
-function shortDate(value) {
-  return value ? String(value).slice(0, 10) : '';
 }

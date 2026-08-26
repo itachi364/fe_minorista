@@ -328,7 +328,7 @@ test('root login shows global panel without company or license validation', asyn
   expect(screen.getByText('ROOT')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Empresa' }));
   expect(screen.getByLabelText('Razon social')).toHaveValue('');
-  expect(screen.getByText('Ventas')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Ventas' })).toBeInTheDocument();
   expect(screen.getByText('Empresas registradas')).toBeInTheDocument();
   expect(screen.getAllByText('Empresa Demo SAS (900123456)').length).toBeGreaterThan(0);
   expect(screen.getByRole('button', { name: 'Crear empresa' })).toBeInTheDocument();
@@ -705,12 +705,34 @@ test('loads operational lists for sales third parties products and purchases', a
     subtotal: 15000,
     taxTotal: 2850,
     total: 17850,
+    electronicDocument: {
+      prefix: 'SETP',
+      documentNumber: 100,
+      status: 'VALIDATED',
+      providerTrackingId: 'track-100',
+      cufeCude: 'mock-cufe-100',
+    },
+    lines: [
+      {
+        id: '88888888-8888-8888-8888-888888888888',
+        productId: product.id,
+        productSku: product.sku,
+        productName: product.name,
+        itemType: 'PHYSICAL_GOOD',
+        quantity: 1,
+        unitPrice: 15000,
+        taxCode: 'IVA_19',
+        taxRate: 19,
+        total: 17850,
+      },
+    ],
   };
   const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
     .mockResolvedValueOnce(jsonResponse([customer]))
     .mockResolvedValueOnce(jsonResponse([product]))
     .mockResolvedValueOnce(jsonResponse([purchase]))
-    .mockResolvedValueOnce(jsonResponse([sale]));
+    .mockResolvedValueOnce(jsonResponse([sale]))
+    .mockResolvedValueOnce(jsonResponse(sale));
 
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
@@ -727,8 +749,14 @@ test('loads operational lists for sales third parties products and purchases', a
   await waitFor(() => expect(screen.getByText('66666666-6666-6666-6666-666666666666')).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
+  expect(screen.queryByText('Ventas registradas')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Registro de Ventas' }));
   fireEvent.click(screen.getByRole('button', { name: 'Consultar ventas' }));
   await waitFor(() => expect(screen.getByText('33333333-3333-3333-3333-333333333333')).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: 'Ver detalle' }));
+  await waitFor(() => expect(screen.getByText('mock-cufe-100')).toBeInTheDocument());
+  expect(screen.getByText('track-100')).toBeInTheDocument();
 
   expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/v1/customers?active=true', expect.objectContaining({
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
@@ -740,6 +768,9 @@ test('loads operational lists for sales third parties products and purchases', a
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
   expect(fetchMock).toHaveBeenNthCalledWith(9, '/api/v1/sales/history', expect.objectContaining({
+    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(fetchMock).toHaveBeenNthCalledWith(10, '/api/v1/sales/77777777-7777-7777-7777-777777777777', expect.objectContaining({
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
 });

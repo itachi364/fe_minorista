@@ -41,6 +41,7 @@ import { PayrollPanel } from './features/payroll/PayrollPanel.jsx';
 import { LicenseAdminPanel } from './features/licenses/LicenseAdminPanel.jsx';
 import { ReportsForm } from './features/reports/ReportsForm.jsx';
 import { SaleForm } from './features/sales/SaleForm.jsx';
+import { SalesRegistryPanel } from './features/sales/SalesRegistryPanel.jsx';
 import { ThirdPartyForm } from './features/thirdparties/ThirdPartyForm.jsx';
 import { companyScopedPermissions, hasAnyPermission, hasAnyRole, stepPermissionRules } from './utils/authorization.js';
 import { buildIssuerFromCompany } from './utils/company.js';
@@ -114,6 +115,7 @@ export default function App() {
   const [productList, setProductList] = useState([]);
   const [purchaseList, setPurchaseList] = useState([]);
   const [salesList, setSalesList] = useState([]);
+  const [selectedSaleDetail, setSelectedSaleDetail] = useState(null);
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerOptions, setCustomerOptions] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -1390,6 +1392,17 @@ export default function App() {
     return items || [];
   }
 
+  async function openSaleDetail(sale) {
+    requireCompany();
+    const saleIdToLoad = sale?.id;
+    if (!saleIdToLoad) {
+      throw new Error('No hay una venta seleccionada para consultar.');
+    }
+    const detail = await requestJson(`/api/v1/sales/${saleIdToLoad}`, context);
+    setSelectedSaleDetail(detail);
+    return detail;
+  }
+
   async function loadServiceConsumptionSuggestions(serviceProductId) {
     requireCompany();
     if (!saleId) {
@@ -1893,7 +1906,10 @@ export default function App() {
             <DianConfigurationPanel form={dianConfigurationForm} setForm={setDianConfigurationForm} configuration={dianConfiguration} onLoad={() => execute(loadDianConfiguration, { silentNullSuccess: true })} onSave={() => execute(saveDianConfiguration, { successMessage: 'Configuracion DIAN guardada correctamente.' })} onTest={() => execute(testDianConfiguration, { successMessage: 'Prueba de conexion DIAN finalizada.' })} onActivate={() => execute(activateDianConfiguration, { successMessage: 'Configuracion DIAN activada.' })} onDeactivate={() => execute(deactivateDianConfiguration, { successMessage: 'Configuracion DIAN inactivada.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.DIAN)} />
           )}
           {currentStep === 'Ventas' && (
-            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onCreate={() => execute(createSale)} onConfirm={() => execute(confirmSale)} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} sales={salesList} onLoadSales={() => execute(loadSalesList)} />
+            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onCreate={() => execute(createSale)} onConfirm={() => execute(confirmSale)} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
+          )}
+          {currentStep === 'Registro de Ventas' && (
+            <SalesRegistryPanel sales={salesList} selectedSale={selectedSaleDetail} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} onLoadSales={() => execute(loadSalesList)} onViewDetail={(sale) => execute(() => openSaleDetail(sale), { silentNullSuccess: true })} onCloseDetail={() => setSelectedSaleDetail(null)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Registro de Ventas'])} paymentOptions={runtimeCatalogs.paymentMethodOptions} />
           )}
           {currentStep === 'Nomina' && (
             <PayrollPanel settingsForm={payrollSettingsForm} setSettingsForm={setPayrollSettingsForm} workerForm={payrollWorkerForm} setWorkerForm={setPayrollWorkerForm} paymentForm={dailyLaborPaymentForm} setPaymentForm={setDailyLaborPaymentForm} workers={payrollWorkers} payments={dailyLaborPayments} electronicDocuments={electronicPayrollDocuments} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} workerClassificationOptions={runtimeCatalogs.payrollWorkerClassificationOptions} paymentMethodOptions={runtimeCatalogs.paymentMethodOptions} onLoad={() => execute(loadPayrollData)} onSaveSettings={() => execute(savePayrollSettings)} onCreateWorker={() => execute(createPayrollWorker)} onCreateDailyPayment={() => execute(createDailyLaborPayment)} onIssueElectronicDocument={(paymentId) => execute(() => issueElectronicPayrollDocument(paymentId))} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Nomina)} />

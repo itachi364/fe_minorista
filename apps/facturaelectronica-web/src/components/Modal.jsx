@@ -10,10 +10,10 @@ export function Modal({ title, message, onClose }) {
   );
 }
 
-export function ActionModal({ title, children, onClose }) {
+export function ActionModal({ title, children, onClose, size = 'default' }) {
   return <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="action-modal-title">
-    <section className="modal-card action-modal-card">
-      <header className="panel-header">
+    <section className={`modal-card action-modal-card modal-${size}`}>
+      <header className="modal-header">
         <h1 id="action-modal-title">{title}</h1>
         <button className="secondary" onClick={onClose} type="button">Cerrar</button>
       </header>

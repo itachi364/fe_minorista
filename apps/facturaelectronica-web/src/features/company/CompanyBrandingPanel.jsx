@@ -26,6 +26,43 @@ export function CompanyBrandingPanel({ form, setForm, branding, onSave, onUpload
         <Field label="Color principal" value={form.primaryColor} onChange={(value) => setForm({ ...form, primaryColor: value })} placeholder="#1f78a8" disabled={disabled} />
         <Field label="Color acento" value={form.accentColor} onChange={(value) => setForm({ ...form, accentColor: value })} placeholder="#2a7c61" disabled={disabled} />
       </div>
+      <BrandingAssets branding={branding} hasAssets={hasAssets} onUploadAsset={onUploadAsset} busy={busy} disabled={disabled} />
+    </section>
+  );
+}
+
+export function CompanyBrandingModal({ form, setForm, branding, company, companyId, onSave, onUploadAsset, onClose, busy }) {
+  const hasAssets = Boolean(branding?.mainLogoUrl || branding?.headerLogoUrl || branding?.loginLogoUrl || branding?.faviconUrl);
+  return (
+    <ActionModal title="Crear marca empresarial" onClose={onClose} size="wide">
+      <div className="form-grid compact modal-form-grid">
+        <Field label="Empresa" value={companyLabel(company) || companyId} onChange={() => {}} readOnly />
+      </div>
+      <section className="modal-section">
+        <header className="modal-section-header">
+          <div>
+            <h2>Marca empresarial</h2>
+            <p className="hint">Configura nombre visual, colores, logos y favicon de la empresa seleccionada.</p>
+          </div>
+          <button className="primary" disabled={busy} onClick={onSave} type="button">Guardar marca</button>
+        </header>
+        <div className="form-grid">
+          <Field label="Nombre visible" value={form.displayName} onChange={(value) => setForm({ ...form, displayName: value })} placeholder="Ej. Tienda Norte" />
+          <Field label="Color principal" value={form.primaryColor} onChange={(value) => setForm({ ...form, primaryColor: value })} placeholder="#1f78a8" />
+          <Field label="Color acento" value={form.accentColor} onChange={(value) => setForm({ ...form, accentColor: value })} placeholder="#2a7c61" />
+        </div>
+        <BrandingAssets branding={branding} hasAssets={hasAssets} onUploadAsset={onUploadAsset} busy={busy} disabled={false} />
+      </section>
+      <div className="modal-actions">
+        <button className="secondary" onClick={onClose} type="button">Cancelar</button>
+      </div>
+    </ActionModal>
+  );
+}
+
+function BrandingAssets({ branding, hasAssets, onUploadAsset, busy, disabled }) {
+  return (
+    <>
       <div className="asset-grid">
         {assetFields.map((asset) => (
           <label className="asset-upload-card" key={asset.purpose}>
@@ -56,29 +93,7 @@ export function CompanyBrandingPanel({ form, setForm, branding, onSave, onUpload
           {branding.faviconUrl && <BrandingPreview label="Favicon" url={branding.faviconUrl} compact />}
         </div>
       )}
-    </section>
-  );
-}
-
-export function CompanyBrandingModal({ form, setForm, branding, company, companyId, onSave, onUploadAsset, onClose, busy }) {
-  return (
-    <ActionModal title="Crear marca empresarial" onClose={onClose}>
-      <div className="form-grid compact modal-form-grid">
-        <Field label="Empresa" value={companyLabel(company) || companyId} onChange={() => {}} readOnly />
-      </div>
-      <CompanyBrandingPanel
-        form={form}
-        setForm={setForm}
-        branding={branding}
-        onSave={onSave}
-        onUploadAsset={onUploadAsset}
-        busy={busy}
-        disabled={false}
-      />
-      <div className="modal-actions">
-        <button className="secondary" onClick={onClose} type="button">Cancelar</button>
-      </div>
-    </ActionModal>
+    </>
   );
 }
 

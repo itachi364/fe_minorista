@@ -116,6 +116,38 @@ La unidad de despliegue objetivo es un artefacto/contenedor por microservicio, n
 - Git.
 - PowerShell en Windows para los comandos mostrados.
 
+## Calidad Y Cobertura Con SonarQube
+
+El proyecto incluye configuracion local para SonarQube en `http://localhost:9000` con cobertura Java por JaCoCo y cobertura frontend por LCOV.
+
+1. Crear un token en SonarQube: `My Account > Security > Generate Tokens`.
+2. Cargar el token solo en la terminal actual:
+
+```powershell
+$env:SONAR_TOKEN="tu_token"
+```
+
+3. Ejecutar cobertura y analisis completo:
+
+```powershell
+.\scripts\sonar-local.ps1
+```
+
+4. Consultar el resultado en:
+
+```text
+http://localhost:9000/dashboard?id=nexofiscal
+```
+
+Comandos utiles:
+
+```powershell
+.\scripts\sonar-local.ps1 -SkipAnalysis
+.\scripts\sonar-local.ps1 -SkipMavenCoverage -SkipFrontendCoverage
+```
+
+El token no debe guardarse en `.env`, `README.md`, `sonar-project.properties` ni en archivos versionados.
+
 ## Variables De Entorno
 
 El archivo seguro de referencia es `.env.example`.
