@@ -12,6 +12,8 @@ import {
   createCompanyRoleForm,
   createDailyLaborPaymentForm,
   createDianConfigurationForm,
+  createFiscalNoteForm,
+  createFiscalPolicyForm,
   createIssuerForm,
   createLicenseForm,
   createLoginForm,
@@ -34,6 +36,8 @@ import { CompanyForm } from './features/company/CompanyForm.jsx';
 import { CompanySessionPanel } from './features/company/CompanySessionPanel.jsx';
 import { IssuerForm } from './features/company/IssuerForm.jsx';
 import { DianConfigurationPanel } from './features/dian/DianConfigurationPanel.jsx';
+import { FiscalNotesPanel } from './features/fiscal/FiscalNotesPanel.jsx';
+import { FiscalPolicyForm } from './features/fiscal/FiscalPolicyForm.jsx';
 import { ResolutionForm } from './features/fiscal/ResolutionForm.jsx';
 import { RolesPanel, UsersPanel } from './features/identity/IdentityAdminPanel.jsx';
 import { ProductForm } from './features/inventory/ProductForm.jsx';
@@ -48,6 +52,7 @@ import { buildIssuerFromCompany } from './utils/company.js';
 import {
   buildCompanyAdminPayload,
   buildCompanyPayload,
+  buildFiscalNotePayload,
   buildIssuerPayload,
   buildLicensePayload,
   buildProductPayload,
@@ -64,13 +69,14 @@ const PRODUCT_NAME = 'NexoFiscal';
 
 export default function App() {
   const [storedSnapshot] = useState(() => loadStoredSession());
+  const storedSnapshotIsRoot = storedSnapshot?.session?.globalRoles?.includes('ROOT') || false;
   const [selectedStep, setSelectedStep] = useState('Ventas');
   const [loginForm, setLoginForm] = useState(createLoginForm);
   const [session, setSession] = useState(storedSnapshot?.session || null);
-  const [companyAccesses, setCompanyAccesses] = useState(storedSnapshot?.companyAccesses || []);
-  const [activeCompanyId, setActiveCompanyId] = useState(storedSnapshot?.activeCompanyId || '');
+  const [companyAccesses, setCompanyAccesses] = useState(storedSnapshotIsRoot ? [] : storedSnapshot?.companyAccesses || []);
+  const [activeCompanyId, setActiveCompanyId] = useState(storedSnapshotIsRoot ? '' : storedSnapshot?.activeCompanyId || '');
   const [rootCompanies, setRootCompanies] = useState(storedSnapshot?.rootCompanies || []);
-  const [license, setLicense] = useState(storedSnapshot?.license || null);
+  const [license, setLicense] = useState(storedSnapshotIsRoot ? null : storedSnapshot?.license || null);
   const [licenseForm, setLicenseForm] = useState(createLicenseForm);
   const [managedLicense, setManagedLicense] = useState(null);
   const [licenseUsage, setLicenseUsage] = useState(null);
@@ -104,6 +110,14 @@ export default function App() {
   const [productForm, setProductForm] = useState(createProductForm);
   const [issuerForm, setIssuerForm] = useState(createIssuerForm);
   const [resolutionForm, setResolutionForm] = useState(createResolutionForm);
+  const [fiscalPolicyForm, setFiscalPolicyForm] = useState(createFiscalPolicyForm);
+  const [fiscalPolicy, setFiscalPolicy] = useState(null);
+  const [fiscalNoteForms, setFiscalNoteForms] = useState(() => ({
+    credit: createFiscalNoteForm(),
+    debit: createFiscalNoteForm(),
+    posAdjustment: createFiscalNoteForm(),
+  }));
+  const [fiscalNoteResults, setFiscalNoteResults] = useState({});
   const [issuerProfiles, setIssuerProfiles] = useState([]);
   const [numberingResolutions, setNumberingResolutions] = useState([]);
   const [dianConfigurationForm, setDianConfigurationForm] = useState(createDianConfigurationForm);
@@ -425,7 +439,7 @@ export default function App() {
 
   function isFiscalSetupRequiredError(error) {
     const message = String(error?.payload?.message || error?.message || '').toLowerCase();
-    return error?.status === 400
+    return (error?.status === 400 || error?.status >= 500)
       && (message.includes('emisor fiscal activo')
         || message.includes('resolucion de numeracion activa')
         || message.includes('active issuer profile')
@@ -479,18 +493,19 @@ export default function App() {
   async function completeAuthenticatedLogin(loginResult, tokenValue) {
     if (loginResult.globalRoles?.includes('ROOT')) {
       const companies = await loadRootCompanies(tokenValue);
-      const firstCompany = companies[0] || null;
       const now = Date.now();
       lastActivityRef.current = now;
       setLastActivityAt(now);
       setSession(loginResult);
-      setCompanyAccesses(firstCompany ? [{ companyId: firstCompany.id, roles: ['ROOT'], permissions: ['GLOBAL_COMPANIES_MANAGE'] }] : []);
-      setActiveCompanyId(firstCompany?.id || '');
-      setLicenseForm((current) => ({ ...current, companyId: firstCompany?.id || '' }));
+      setCompanyAccesses([]);
+      setActiveCompanyId('');
+      setLicenseForm(createLicenseForm());
       setCompanyForm(createCompanyForm());
       setEditingCompanyId('');
-      setIssuerForm((current) => buildIssuerFromCompany(firstCompany, current));
+      setIssuerForm(createIssuerForm());
       setLicense(null);
+      setManagedLicense(null);
+      setLicenseUsage(null);
       setSelectedStep('Ventas');
       setLicenseModal(null);
       return { login: loginResult, companies, scope: 'ROOT' };
@@ -1166,15 +1181,63 @@ export default function App() {
     return result;
   }
 
+  async function configureFiscalPolicy() {
+    requireCompany();
+    const result = await requestJson('/api/v1/fiscal-policy', {
+      method: 'PUT',
+      body: {
+        defaultSaleDocumentType: fiscalPolicyForm.defaultSaleDocumentType || 'ELECTRONIC_INVOICE',
+        allowDocumentTypeOverride: Boolean(fiscalPolicyForm.allowDocumentTypeOverride),
+        requirePinForOverride: Boolean(fiscalPolicyForm.allowDocumentTypeOverride && fiscalPolicyForm.requirePinForOverride),
+      },
+      ...context,
+      idempotencyKey: createIdempotencyKey('fiscal-policy'),
+    });
+    hydrateFiscalPolicyForm(result);
+    return result;
+  }
+
+  function hydrateFiscalPolicyForm(policy) {
+    setFiscalPolicy(policy || null);
+    setFiscalPolicyForm({
+      ...createFiscalPolicyForm(),
+      defaultSaleDocumentType: policy?.defaultSaleDocumentType || 'ELECTRONIC_INVOICE',
+      allowDocumentTypeOverride: policy?.allowDocumentTypeOverride ?? true,
+      requirePinForOverride: policy?.requirePinForOverride ?? true,
+    });
+  }
+
+  async function createFiscalNote(noteType) {
+    requireCompany();
+    const form = fiscalNoteForms[noteType];
+    const payload = buildFiscalNotePayload(form);
+    const endpoint = noteType === 'credit'
+      ? '/api/v1/credit-notes'
+      : noteType === 'debit'
+        ? '/api/v1/debit-notes'
+        : `/api/v1/electronic-pos/${form.originalDocumentId}/adjustment-notes`;
+    const result = await requestJson(endpoint, {
+      method: 'POST',
+      body: payload,
+      ...context,
+      idempotencyKey: createIdempotencyKey(`fiscal-note-${noteType}`),
+    });
+    setFiscalNoteResults((current) => ({ ...current, [noteType]: result }));
+    setFiscalNoteForms((current) => ({ ...current, [noteType]: createFiscalNoteForm() }));
+    return result;
+  }
+
   async function loadFiscalConfiguration() {
     requireCompany();
-    const [issuers, resolutions] = await Promise.all([
+    const [issuers, resolutions, policy] = await Promise.all([
       requestJson('/api/v1/issuers', context),
       requestJson('/api/v1/numbering-resolutions', context),
+      requestJson('/api/v1/fiscal-policy', context),
     ]);
     setIssuerProfiles(issuers || []);
     setNumberingResolutions(resolutions || []);
-    return { issuers, resolutions };
+    hydrateFiscalPolicyForm(policy);
+    return { issuers, resolutions, policy };
   }
 
   async function toggleIssuerActive(issuer) {
@@ -1297,6 +1360,27 @@ export default function App() {
       setSaleId(result.id);
       setSalesList((current) => [result, ...current.filter((item) => item.id !== result.id)]);
     }
+    return result;
+  }
+
+  async function closeSale() {
+    requireCompany();
+    const result = await requestJson('/api/v1/sales/close', {
+      method: 'POST',
+      body: buildSalePayload(saleForm),
+      ...context,
+      idempotencyKey: createIdempotencyKey('close-sale'),
+    });
+    if (result?.id) {
+      setSalesList((current) => [result, ...current.filter((item) => item.id !== result.id)]);
+      await openSaleReceipt(result.id);
+    }
+    setSaleId('');
+    setSaleForm(createSaleForm());
+    setCustomerSearch('');
+    setSelectedCustomer(null);
+    setCustomerOptions([]);
+    setServiceConsumption(createServiceConsumptionState());
     return result;
   }
 
@@ -1879,6 +1963,7 @@ export default function App() {
           )}
           {currentStep === 'Fiscal' && (
             <>
+              <FiscalPolicyForm form={fiscalPolicyForm} setForm={setFiscalPolicyForm} policy={fiscalPolicy} onSubmit={() => execute(configureFiscalPolicy)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Fiscal)} fiscalDocumentTypeOptions={runtimeCatalogs.fiscalDocumentTypeOptions} />
               <div className="split">
                 <IssuerForm form={issuerForm} setForm={setIssuerForm} activeCompany={activeCompany} onSubmit={() => execute(configureIssuer)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Fiscal)} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} locations={runtimeCatalogs.locations} />
                 <ResolutionForm form={resolutionForm} setForm={setResolutionForm} onSubmit={() => execute(configureResolution)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Fiscal)} fiscalDocumentTypeOptions={runtimeCatalogs.fiscalDocumentTypeOptions} environmentOptions={runtimeCatalogs.fiscalEnvironmentOptions} />
@@ -1905,8 +1990,11 @@ export default function App() {
           {currentStep === 'DIAN' && (
             <DianConfigurationPanel form={dianConfigurationForm} setForm={setDianConfigurationForm} configuration={dianConfiguration} onLoad={() => execute(loadDianConfiguration, { silentNullSuccess: true })} onSave={() => execute(saveDianConfiguration, { successMessage: 'Configuracion DIAN guardada correctamente.' })} onTest={() => execute(testDianConfiguration, { successMessage: 'Prueba de conexion DIAN finalizada.' })} onActivate={() => execute(activateDianConfiguration, { successMessage: 'Configuracion DIAN activada.' })} onDeactivate={() => execute(deactivateDianConfiguration, { successMessage: 'Configuracion DIAN inactivada.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.DIAN)} />
           )}
+          {currentStep === 'Documentos fiscales' && (
+            <FiscalNotesPanel forms={fiscalNoteForms} setForms={setFiscalNoteForms} results={fiscalNoteResults} onSubmit={(noteType) => execute(() => createFiscalNote(noteType), { successMessage: 'Documento fiscal creado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Documentos fiscales'])} />
+          )}
           {currentStep === 'Ventas' && (
-            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onCreate={() => execute(createSale)} onConfirm={() => execute(confirmSale)} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
+            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onClose={() => execute(closeSale, { successMessage: 'Venta cerrada correctamente.' })} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
           )}
           {currentStep === 'Registro de Ventas' && (
             <SalesRegistryPanel sales={salesList} selectedSale={selectedSaleDetail} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} onLoadSales={() => execute(loadSalesList)} onViewDetail={(sale) => execute(() => openSaleDetail(sale), { silentNullSuccess: true })} onCloseDetail={() => setSelectedSaleDetail(null)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Registro de Ventas'])} paymentOptions={runtimeCatalogs.paymentMethodOptions} />

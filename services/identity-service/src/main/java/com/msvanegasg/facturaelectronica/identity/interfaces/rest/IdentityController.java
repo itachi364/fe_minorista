@@ -116,7 +116,7 @@ public class IdentityController {
     @GetMapping("/platform/permissions")
     public List<PermissionCatalogResponse> platformPermissions(
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
-        return manageIdentityUseCase.listPermissionCatalog(authorizationHeader).stream()
+        return manageIdentityUseCase.listPlatformPermissionCatalog(authorizationHeader).stream()
                 .map(IdentityRestMapper::toResponse)
                 .toList();
     }

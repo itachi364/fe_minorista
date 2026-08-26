@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Field, SelectField } from '../../components/forms.jsx';
 
-export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSearch, customerOptions, selectedCustomer, onSearchCustomers, onSelectCustomer, updateItem, addItem, removeItem, onCreate, onConfirm, onPrintReceipt, onScanBarcode, serviceConsumption, onLoadServiceConsumption, onUpdateServiceConsumptionQuantity, onUpdateServiceConsumptionReason, onConfirmServiceConsumption, busy, paymentOptions = [], walletOptions = [] }) {
+export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSearch, customerOptions, selectedCustomer, onSearchCustomers, onSelectCustomer, updateItem, addItem, removeItem, onClose, onPrintReceipt, onScanBarcode, serviceConsumption, onLoadServiceConsumption, onUpdateServiceConsumptionQuantity, onUpdateServiceConsumptionReason, onConfirmServiceConsumption, busy, paymentOptions = [], walletOptions = [] }) {
   const [barcodeScan, setBarcodeScan] = useState('');
   const barcodeRef = useRef(null);
   const serviceLines = form.items.filter((item) => item.productId && item.itemType === 'SERVICE');
@@ -48,6 +48,11 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
     window.setTimeout(() => barcodeRef.current?.focus(), 0);
   }
 
+  function submitClose(event) {
+    event.preventDefault();
+    onClose();
+  }
+
   function updatePaymentMethod(paymentMethodCode) {
     setForm({
       ...form,
@@ -77,13 +82,13 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
     }
   }
 
-  return <div className="stack">
+  return <form className="stack" onSubmit={submitClose}>
     <section className="tool-panel">
       <header className="panel-header">
         <h1>Ventas</h1>
         <div className="button-row">
           <button className="secondary" onClick={addItem} type="button">Agregar linea</button>
-          <button className="primary" disabled={busy} onClick={onCreate} type="button">Crear venta</button>
+          <button className="primary" disabled={busy} type="submit">Cerrar venta</button>
         </div>
       </header>
       <div className="form-grid compact">
@@ -118,7 +123,7 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
           }
         }} />
         <div className={saleId ? 'sale-state ready' : 'sale-state'}>
-          <span>{saleId ? 'Venta pendiente de confirmacion' : 'Crea la venta para habilitar la confirmacion POS'}</span>
+          <span>{saleId ? 'Venta pendiente de emision fiscal' : 'Agrega productos y cierra la venta en un solo paso'}</span>
           {saleId && <code>{saleId}</code>}
         </div>
       </div>
@@ -135,8 +140,8 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
         ))}
       </div>
       <div className="button-row">
-        <button className="primary" disabled={busy || !saleId} onClick={onConfirm} type="button">Confirmar POS</button>
-        <button className="secondary" disabled={busy || !saleId} onClick={() => onPrintReceipt(saleId)} type="button">Imprimir comprobante</button>
+        <button className="primary" disabled={busy} type="submit">Cerrar venta</button>
+        {saleId && <button className="secondary" disabled={busy} onClick={() => onPrintReceipt(saleId)} type="button">Imprimir comprobante</button>}
       </div>
       {saleId && serviceLines.length > 0 && (
       <section className="service-consumption-panel">
@@ -196,7 +201,7 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
       </section>
       )}
     </section>
-  </div>;
+  </form>;
 }
 
 function number(value) {

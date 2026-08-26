@@ -294,11 +294,21 @@ public class IdentityManagementService implements ManageIdentityUseCase {
     }
 
     @Override
-    public List<PermissionCatalogResult> listPermissionCatalog(String authorizationHeader) {
+    public List<PermissionCatalogResult> listPlatformPermissionCatalog(String authorizationHeader) {
         UserAccount actor = authenticate(authorizationHeader);
-        boolean rootActor = isRoot(actor);
+        if (!isRoot(actor)) {
+            throw new AccessDeniedException(null, PermissionCode.GLOBAL_ROLES_MANAGE);
+        }
         return companyRoleRepository.listActivePermissions().stream()
-                .filter(permission -> rootActor || permission.scope() == PermissionScope.COMPANY)
+                .map(PermissionCatalogResult::from)
+                .toList();
+    }
+
+    @Override
+    public List<PermissionCatalogResult> listPermissionCatalog(String authorizationHeader) {
+        authenticate(authorizationHeader);
+        return companyRoleRepository.listActivePermissions().stream()
+                .filter(permission -> permission.scope() == PermissionScope.COMPANY)
                 .map(PermissionCatalogResult::from)
                 .toList();
     }

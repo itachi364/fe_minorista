@@ -331,7 +331,7 @@ Root global:
 - `POST /api/v1/platform/root-users`
 - `POST /api/v1/platform/companies`
 - `POST /api/v1/platform/companies/{companyId}/admin`
-- `GET /api/v1/platform/permissions`
+- `GET /api/v1/platform/permissions` root-only; retorna catalogo completo de permisos globales y empresariales, y responde `403` para usuarios no ROOT.
 - `GET /api/v1/platform/audit-events?from=&to=&userId=`
 
 Roles y usuarios por empresa:
@@ -342,7 +342,7 @@ Roles y usuarios por empresa:
 - `PUT /api/v1/companies/{companyId}/roles/{roleId}`
 - `PUT /api/v1/companies/{companyId}/roles/{roleId}/activate`
 - `PUT /api/v1/companies/{companyId}/roles/{roleId}/deactivate`
-- `GET /api/v1/companies/{companyId}/permissions/catalog`
+- `GET /api/v1/companies/{companyId}/permissions/catalog` retorna solo permisos empresariales delegables.
 - `POST /api/v1/companies/{companyId}/users`
 - `GET /api/v1/companies/{companyId}/users?email=`
 - `PUT /api/v1/companies/{companyId}/users/{userId}`
@@ -2389,6 +2389,12 @@ GET /api/v1/platform/licenses/usage?companyId={companyId}
 }
 ```
 
+Reglas:
+- Uso reservado a `ROOT`.
+- `companyId` es obligatorio y debe venir de una empresa seleccionada explicitamente por `ROOT`.
+- `monthlyDocuments` se calcula con documentos electronicos emitidos del mes actual en `billing-service`.
+- La consulta de documentos electronicos debe aceptar filtros opcionales nulos; con solo `from`, `to` y empresa debe responder `200` con lista vacia o documentos reales.
+
 ### Pruebas de contrato BFF
 
 - El BFF debe reenviar `Authorization`, `X-Company-Id`, `X-Correlation-Id` e `Idempotency-Key` cuando aplique.
@@ -2781,6 +2787,46 @@ POST /api/v1/sales/{saleId}/confirm
 X-Company-Id: {companyId}
 Idempotency-Key: {key}
 ```
+
+Cerrar venta en un solo paso:
+
+```http
+POST /api/v1/sales/close
+X-Company-Id: {companyId}
+X-User-Id: {userId}
+Idempotency-Key: {key}
+Content-Type: application/json
+```
+
+Payload: igual a `POST /api/v1/sales`.
+
+Respuesta:
+
+```http
+200 OK
+Content-Type: application/json
+```
+
+```json
+{
+  "id": "uuid",
+  "status": "CONFIRMED",
+  "paymentMethodCode": "CASH",
+  "electronicDocument": {
+    "documentType": "ELECTRONIC_INVOICE",
+    "status": "VALIDATED",
+    "cufeCude": "string"
+  }
+}
+```
+
+Reglas:
+
+- La operacion crea la venta en borrador y la confirma fiscalmente en el mismo caso de uso.
+- La misma `Idempotency-Key` identifica el cierre completo y evita duplicar venta/documento en reintentos.
+- El vendedor ve la accion como `Cerrar venta`; no debe ejecutar manualmente `crear` y luego `confirmar`.
+- Si falta emisor fiscal o resolucion activa, retorna `400 BUSINESS_RULE_VIOLATION` con mensaje funcional.
+- Si falla el conector DIAN, retorna `502 EXTERNAL_PROVIDER_ERROR` con mensaje funcional y correlation ID.
 
 Errores funcionales:
 

@@ -27,7 +27,7 @@ public class QueryFiscalConfigurationService implements QueryFiscalConfiguration
         return issuerProfileRepository.findActiveByCompanyId(companyId)
                 .map(BillingResultMapper::toIssuerProfileResult)
                 .orElseThrow(() -> new IllegalStateException(
-                        "Debes configurar un emisor fiscal activo antes de confirmar ventas POS."));
+                        "Debes configurar un emisor fiscal activo antes de emitir documentos fiscales."));
     }
 
     @Override

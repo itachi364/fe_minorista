@@ -11,6 +11,7 @@ public enum PermissionCode {
     COMPANY_ROLES_MANAGE(PermissionScope.COMPANY, "users", "Manage company roles and permissions"),
     COMPANY_SETTINGS_MANAGE(PermissionScope.COMPANY, "settings", "Manage company settings"),
     COMPANY_CATALOGS_MANAGE(PermissionScope.COMPANY, "catalogs", "Manage company catalogs"),
+    OPERATIONAL_PIN_MANAGE(PermissionScope.COMPANY, "settings", "Manage operational PIN for fiscal overrides"),
     SALES_CREATE(PermissionScope.COMPANY, "sales", "Create sales and POS transactions"),
     SALES_CANCEL(PermissionScope.COMPANY, "sales", "Cancel sales"),
     FISCAL_DOCUMENTS_ISSUE(PermissionScope.COMPANY, "billing", "Issue fiscal electronic documents"),

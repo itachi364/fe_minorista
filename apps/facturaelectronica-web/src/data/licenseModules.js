@@ -17,6 +17,7 @@ export const stepLicenseModules = {
   Terceros: 'THIRDPARTY',
   Inventario: 'INVENTORY',
   Fiscal: 'BILLING',
+  'Documentos fiscales': 'BILLING',
   Ventas: 'BILLING',
   'Registro de Ventas': 'BILLING',
   Nomina: 'PAYROLL',

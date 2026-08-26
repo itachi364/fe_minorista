@@ -17,8 +17,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.msvanegasg.facturaelectronica.billing.application.port.in.ConfigureIssuerProfileUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.CreateNumberingResolutionUseCase;
+import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageCompanyFiscalPolicyUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.QueryFiscalConfigurationUseCase;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
+import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.CompanyFiscalPolicyRequest;
+import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.CompanyFiscalPolicyResponse;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.IssuerProfileRequest;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.IssuerProfileResponse;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.NumberingResolutionRequest;
@@ -35,13 +38,28 @@ public class FiscalConfigurationController {
     private final ConfigureIssuerProfileUseCase configureIssuerProfileUseCase;
     private final CreateNumberingResolutionUseCase createNumberingResolutionUseCase;
     private final QueryFiscalConfigurationUseCase queryFiscalConfigurationUseCase;
+    private final ManageCompanyFiscalPolicyUseCase manageCompanyFiscalPolicyUseCase;
 
     public FiscalConfigurationController(ConfigureIssuerProfileUseCase configureIssuerProfileUseCase,
             CreateNumberingResolutionUseCase createNumberingResolutionUseCase,
-            QueryFiscalConfigurationUseCase queryFiscalConfigurationUseCase) {
+            QueryFiscalConfigurationUseCase queryFiscalConfigurationUseCase,
+            ManageCompanyFiscalPolicyUseCase manageCompanyFiscalPolicyUseCase) {
         this.configureIssuerProfileUseCase = configureIssuerProfileUseCase;
         this.createNumberingResolutionUseCase = createNumberingResolutionUseCase;
         this.queryFiscalConfigurationUseCase = queryFiscalConfigurationUseCase;
+        this.manageCompanyFiscalPolicyUseCase = manageCompanyFiscalPolicyUseCase;
+    }
+
+    @GetMapping("/fiscal-policy")
+    public CompanyFiscalPolicyResponse findFiscalPolicy(@RequestHeader(COMPANY_HEADER) UUID companyId) {
+        return BillingRestMapper.toResponse(manageCompanyFiscalPolicyUseCase.findByCompanyId(companyId));
+    }
+
+    @PutMapping("/fiscal-policy")
+    public CompanyFiscalPolicyResponse configureFiscalPolicy(@RequestHeader(COMPANY_HEADER) UUID companyId,
+            @Valid @RequestBody CompanyFiscalPolicyRequest request) {
+        return BillingRestMapper.toResponse(manageCompanyFiscalPolicyUseCase.configure(
+                BillingRestMapper.toCommand(companyId, request)));
     }
 
     @PostMapping("/issuers")

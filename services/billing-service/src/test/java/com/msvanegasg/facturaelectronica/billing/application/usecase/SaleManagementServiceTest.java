@@ -11,9 +11,12 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,26 +31,32 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.CreateSaleComma
 import com.msvanegasg.facturaelectronica.billing.application.dto.InventoryProductSnapshot;
 import com.msvanegasg.facturaelectronica.billing.application.dto.LicensePolicy;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ProviderSubmissionResult;
+import com.msvanegasg.facturaelectronica.billing.application.dto.SaleDocumentTypeOverrideCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineCommand;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AuditEventPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.AssignFiscalNumberUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AccountingEntryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.CompanyFiscalPolicyRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ElectronicDocumentProviderPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalDocumentUsagePort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryAvailabilityPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryMovementPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.LicenseValidationPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.OperationalPinValidationPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.SaleRepositoryPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.SaleDocumentTypeOverrideRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
+import com.msvanegasg.facturaelectronica.billing.domain.model.CompanyFiscalPolicy;
 import com.msvanegasg.facturaelectronica.billing.domain.model.LicenseAction;
 import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
+import com.msvanegasg.facturaelectronica.billing.domain.model.SaleDocumentTypeOverride;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleItemType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
 import com.msvanegasg.facturaelectronica.eventing.DomainEventEnvelope;
@@ -99,6 +108,8 @@ class SaleManagementServiceTest {
 
     @Mock
     private DomainEventPublisherPort eventPublisher;
+    @Mock
+    private CompanyFiscalPolicyRepositoryPort companyFiscalPolicyRepository;
 
     @Test
     void createsSaleWhenStockIsAvailable() {
@@ -187,8 +198,9 @@ class SaleManagementServiceTest {
         when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
                 .thenReturn(LicensePolicy.unlimited());
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
+        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.empty());
         when(providerPort.submit(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
-                org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_POS),
+                org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_INVOICE),
                 org.mockito.ArgumentMatchers.eq("confirm-1")))
                 .thenReturn(new ProviderSubmissionResult(ProviderStatus.ACCEPTED, "mock-tracking", "mock-cude",
                         "mock-qr", null, null));
@@ -220,6 +232,45 @@ class SaleManagementServiceTest {
         assertThat(auditCaptor.getValue().result()).isEqualTo(AuditResult.SUCCESS);
         assertThat(auditCaptor.getValue().detail()).contains("\"documentId\":\"" + DOCUMENT_ID + "\"");
     }
+
+    @Test
+    void closesSaleByCreatingAndConfirmingInOneUseCase() {
+        SaleManagementService service = service();
+        AtomicReference<Sale> storedSale = new AtomicReference<>();
+        when(saleRepository.findByCompanyIdAndIdempotencyKey(COMPANY_ID, "close-1")).thenReturn(Optional.empty());
+        when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenAnswer(invocation -> Optional.of(storedSale.get()));
+        when(inventoryAvailability.findProduct(COMPANY_ID, PRODUCT_ID)).thenReturn(productSnapshot(PRODUCT_ID));
+        when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
+        when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
+                .thenReturn(LicensePolicy.unlimited());
+        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.empty());
+        when(providerPort.submit(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
+                org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_INVOICE),
+                org.mockito.ArgumentMatchers.eq("close-1")))
+                .thenReturn(new ProviderSubmissionResult(ProviderStatus.ACCEPTED, "mock-tracking", "mock-cude",
+                        "mock-qr", null, null));
+        when(assignFiscalNumberUseCase.assign(any()))
+                .thenReturn(new FiscalNumberResult(UUID.randomUUID(), "18760000001", "FE", 100));
+        when(idGenerator.newId()).thenReturn(LINE_ID, SALE_ID, DOCUMENT_ID, SALE_EVENT_ID, DOCUMENT_EVENT_ID,
+                AUDIT_EVENT_ID);
+        when(clock.now()).thenReturn(NOW);
+        when(saleRepository.save(any())).thenAnswer(invocation -> {
+            Sale sale = invocation.getArgument(0);
+            storedSale.set(sale);
+            return sale;
+        });
+
+        var result = service.close(command("close-1"));
+
+        assertThat(result.status()).isEqualTo(SaleStatus.CONFIRMED);
+        assertThat(result.id()).isEqualTo(SALE_ID);
+        assertThat(result.electronicDocument()).isNotNull();
+        assertThat(result.electronicDocument().documentType()).isEqualTo(ElectronicDocumentType.ELECTRONIC_INVOICE);
+        verify(providerPort).submit(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
+                org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_INVOICE),
+                org.mockito.ArgumentMatchers.eq("close-1"));
+    }
+
     @Test
     void confirmPublishesDurableOutboxEvents() {
         SaleManagementService service = service(eventPublisher);
@@ -227,8 +278,9 @@ class SaleManagementServiceTest {
         when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
                 .thenReturn(LicensePolicy.unlimited());
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
+        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.empty());
         when(providerPort.submit(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
-                org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_POS),
+                org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_INVOICE),
                 org.mockito.ArgumentMatchers.eq("confirm-1")))
                 .thenReturn(new ProviderSubmissionResult(ProviderStatus.ACCEPTED, "mock-tracking", "mock-cude",
                         "mock-qr", null, null));
@@ -252,14 +304,61 @@ class SaleManagementServiceTest {
     }
 
     @Test
+    void confirmUsesConfiguredPosDocumentTypeWhenCompanyPolicyOverridesDefault() {
+        SaleManagementService service = service();
+        when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
+        when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
+                .thenReturn(LicensePolicy.unlimited());
+        when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
+        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.of(
+                CompanyFiscalPolicy.configure(COMPANY_ID, ElectronicDocumentType.ELECTRONIC_POS, true, true, NOW)));
+        when(providerPort.submit(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
+                org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_POS),
+                org.mockito.ArgumentMatchers.eq("confirm-1")))
+                .thenReturn(new ProviderSubmissionResult(ProviderStatus.ACCEPTED, "mock-tracking", "mock-cude",
+                        "mock-qr", null, null));
+        when(idGenerator.newId()).thenReturn(DOCUMENT_ID);
+        when(clock.now()).thenReturn(NOW);
+        when(assignFiscalNumberUseCase.assign(any()))
+                .thenReturn(new FiscalNumberResult(UUID.randomUUID(), "18760000001", "POS", 100));
+        when(saleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service.confirm(COMPANY_ID, SALE_ID, "confirm-1");
+
+        assertThat(result.electronicDocument().documentType()).isEqualTo(ElectronicDocumentType.ELECTRONIC_POS);
+    }
+
+    @Test
+    void overridesDocumentTypeForDraftSaleWithOperationalPin() {
+        InMemorySaleDocumentTypeOverrideRepository overrideRepository = new InMemorySaleDocumentTypeOverrideRepository();
+        SaleManagementService service = service(overrideRepository,
+                (companyId, pin, authorizationHeader) -> new OperationalPinValidationPort.OperationalPinValidationResult(
+                        true, false, false, 3));
+        when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
+        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.of(
+                CompanyFiscalPolicy.configure(COMPANY_ID, ElectronicDocumentType.ELECTRONIC_INVOICE, true, true, NOW)));
+        when(idGenerator.newId()).thenReturn(UUID.fromString("99999999-9999-9999-9999-999999999999"));
+        when(clock.now()).thenReturn(NOW);
+
+        service.overrideDocumentType(new SaleDocumentTypeOverrideCommand(COMPANY_ID, SALE_ID,
+                ElectronicDocumentType.ELECTRONIC_POS, UUID.randomUUID(), "123456", "Caso autorizado",
+                "Bearer token"));
+
+        assertThat(overrideRepository.findActiveByCompanyIdAndSaleId(COMPANY_ID, SALE_ID))
+                .map(SaleDocumentTypeOverride::documentType)
+                .contains(ElectronicDocumentType.ELECTRONIC_POS);
+    }
+
+    @Test
     void confirmPublishesProviderRetryEventWhenProviderFails() {
         SaleManagementService service = service(eventPublisher);
         when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
         when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
                 .thenReturn(LicensePolicy.unlimited());
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
+        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.empty());
         when(providerPort.submit(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
-                org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_POS),
+                org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_INVOICE),
                 org.mockito.ArgumentMatchers.eq("confirm-1")))
                 .thenReturn(new ProviderSubmissionResult(ProviderStatus.FAILED, "mock-tracking", null, null,
                         "MOCK_FAILED", "Fallo tecnico simulado"));
@@ -363,12 +462,23 @@ class SaleManagementServiceTest {
 
     private SaleManagementService service() {
         return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
-                accountingEntryPort, auditEventPort, licenseValidationPort, assignFiscalNumberUseCase, idGenerator, clock);
+                accountingEntryPort, auditEventPort,
+                companyId -> Optional.of(new com.msvanegasg.facturaelectronica.billing.domain.model.FinalConsumerProfile(
+                        new UUID(0L, 222L), null, "FINAL_CONSUMER", 31, "222222222222", "Consumidor final",
+                        true, "TEST", "TEST", Instant.EPOCH)),
+                licenseValidationPort, FiscalDocumentUsagePort.noop(), companyFiscalPolicyRepository,
+                SaleDocumentTypeOverrideRepositoryPort.noop(), OperationalPinValidationPort.allowAll(),
+                assignFiscalNumberUseCase, eventPublisher, idGenerator, clock);
     }
     private SaleManagementService service(DomainEventPublisherPort publisher) {
         return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
-                accountingEntryPort, auditEventPort, licenseValidationPort, assignFiscalNumberUseCase, publisher,
-                idGenerator, clock);
+                accountingEntryPort, auditEventPort,
+                companyId -> Optional.of(new com.msvanegasg.facturaelectronica.billing.domain.model.FinalConsumerProfile(
+                        new UUID(0L, 222L), null, "FINAL_CONSUMER", 31, "222222222222", "Consumidor final",
+                        true, "TEST", "TEST", Instant.EPOCH)),
+                licenseValidationPort, FiscalDocumentUsagePort.noop(), companyFiscalPolicyRepository,
+                SaleDocumentTypeOverrideRepositoryPort.noop(), OperationalPinValidationPort.allowAll(),
+                assignFiscalNumberUseCase, publisher, idGenerator, clock);
     }
 
     private SaleManagementService service(FiscalDocumentUsagePort fiscalDocumentUsagePort) {
@@ -377,8 +487,38 @@ class SaleManagementServiceTest {
                 companyId -> Optional.of(new com.msvanegasg.facturaelectronica.billing.domain.model.FinalConsumerProfile(
                         new UUID(0L, 222L), null, "FINAL_CONSUMER", 31, "222222222222", "Consumidor final",
                         true, "TEST", "TEST", Instant.EPOCH)),
-                licenseValidationPort, fiscalDocumentUsagePort, assignFiscalNumberUseCase, eventPublisher,
+                licenseValidationPort, fiscalDocumentUsagePort, companyFiscalPolicyRepository,
+                SaleDocumentTypeOverrideRepositoryPort.noop(), OperationalPinValidationPort.allowAll(),
+                assignFiscalNumberUseCase, eventPublisher, idGenerator, clock);
+    }
+
+    private SaleManagementService service(SaleDocumentTypeOverrideRepositoryPort overrideRepository,
+            OperationalPinValidationPort operationalPinValidationPort) {
+        return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
+                accountingEntryPort, auditEventPort,
+                companyId -> Optional.of(new com.msvanegasg.facturaelectronica.billing.domain.model.FinalConsumerProfile(
+                        new UUID(0L, 222L), null, "FINAL_CONSUMER", 31, "222222222222", "Consumidor final",
+                        true, "TEST", "TEST", Instant.EPOCH)),
+                licenseValidationPort, FiscalDocumentUsagePort.noop(), companyFiscalPolicyRepository,
+                overrideRepository, operationalPinValidationPort, assignFiscalNumberUseCase, eventPublisher,
                 idGenerator, clock);
+    }
+
+    private static final class InMemorySaleDocumentTypeOverrideRepository
+            implements SaleDocumentTypeOverrideRepositoryPort {
+        private final Map<UUID, SaleDocumentTypeOverride> overrides = new HashMap<>();
+
+        @Override
+        public SaleDocumentTypeOverride save(SaleDocumentTypeOverride override) {
+            overrides.put(override.saleId(), override);
+            return override;
+        }
+
+        @Override
+        public Optional<SaleDocumentTypeOverride> findActiveByCompanyIdAndSaleId(UUID companyId, UUID saleId) {
+            return Optional.ofNullable(overrides.get(saleId))
+                    .filter(override -> override.companyId().equals(companyId) && override.active());
+        }
     }
 
     private static CreateSaleCommand command(String idempotencyKey) {

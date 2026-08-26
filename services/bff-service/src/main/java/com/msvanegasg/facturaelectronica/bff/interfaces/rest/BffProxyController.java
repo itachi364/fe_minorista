@@ -113,7 +113,7 @@ public class BffProxyController {
         return normalized.equals("companies")
                 || normalized.matches("companies/[^/]+(/(activate|suspend|branding|license).*)?")
                 || normalized.startsWith("platform")
-                || normalized.matches("companies/[^/]+/(memberships|users|roles|permissions)(/.*)?")
+                || normalized.matches("companies/[^/]+/(memberships|users|roles|permissions|operational-pin)(/.*)?")
                 || normalized.startsWith("catalog-definitions")
                 || normalized.startsWith("catalogs")
                 || normalized.startsWith("company-catalogs")
@@ -121,6 +121,7 @@ public class BffProxyController {
                 || normalized.startsWith("provider")
                 || normalized.startsWith("issuers")
                 || normalized.startsWith("numbering-resolutions")
+                || normalized.startsWith("fiscal-policy")
                 || normalized.startsWith("payroll");
     }
 

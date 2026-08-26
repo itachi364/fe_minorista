@@ -113,3 +113,14 @@ export function buildSalePayload(form) {
     })),
   });
 }
+
+export function buildFiscalNotePayload(form) {
+  return compactObject({
+    originalDocumentId: form.originalDocumentId,
+    adjustmentKind: form.adjustmentKind || undefined,
+    reason: form.reason,
+    subtotal: toNumber(form.subtotal),
+    taxTotal: toNumber(form.taxTotal),
+    total: toNumber(form.total),
+  });
+}

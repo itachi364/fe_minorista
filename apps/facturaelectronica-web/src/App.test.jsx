@@ -93,6 +93,7 @@ const TEST_RUNTIME_CATALOGS = {
     { value: 'DAVIPLATA', label: 'Daviplata' },
   ],
   fiscalDocumentTypeOptions: [
+    { value: 'ELECTRONIC_INVOICE', label: 'Factura electronica de venta' },
     { value: 'ELECTRONIC_POS', label: 'POS electronico' },
   ],
   fiscalEnvironmentOptions: [
@@ -118,6 +119,11 @@ const TEST_RUNTIME_CATALOGS = {
 beforeEach(() => {
   vi.stubGlobal('crypto', { randomUUID: () => '00000000-0000-4000-8000-000000000000' });
   vi.stubGlobal('__FACTURA_RUNTIME_CATALOGS__', TEST_RUNTIME_CATALOGS);
+  if (!URL.createObjectURL) {
+    Object.defineProperty(URL, 'createObjectURL', { value: vi.fn(), writable: true });
+  }
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:nexofiscal-receipt');
+  vi.spyOn(window, 'open').mockReturnValue(null);
   window.sessionStorage.clear();
 });
 
@@ -244,7 +250,7 @@ test('sales user can access POS without fiscal advanced permission', async () =>
   expect(screen.queryByRole('button', { name: 'Fiscal' })).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
-  expect(screen.getByRole('button', { name: 'Crear venta' })).toBeInTheDocument();
+  expect(screen.getAllByRole('button', { name: 'Cerrar venta' }).length).toBeGreaterThan(0);
 });
 
 test('company owner updates active company without create company action', async () => {
@@ -613,7 +619,8 @@ test('creates third party with municipality loaded from backend catalogs', async
 
 test('creates POS sale with controlled virtual wallet payment method', async () => {
   const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
-    .mockResolvedValueOnce(jsonResponse({ id: '99999999-9999-9999-9999-999999999999', paymentMethodCode: 'VIRTUAL_WALLET' }));
+    .mockResolvedValueOnce(jsonResponse({ id: '99999999-9999-9999-9999-999999999999', paymentMethodCode: 'VIRTUAL_WALLET' }))
+    .mockResolvedValueOnce(downloadResponse());
 
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
@@ -623,12 +630,12 @@ test('creates POS sale with controlled virtual wallet payment method', async () 
   fireEvent.change(screen.getAllByLabelText('Metodo de pago')[0], { target: { value: 'VIRTUAL_WALLET' } });
   expect(screen.getByLabelText('Billetera virtual')).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Billetera virtual'), { target: { value: 'NEQUI' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Crear venta' }));
+  fireEvent.click(screen.getAllByRole('button', { name: 'Cerrar venta' })[0]);
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(7));
   expect(screen.queryByLabelText('Venta creada')).not.toBeInTheDocument();
-  await waitFor(() => expect(screen.getByText('Venta pendiente de confirmacion')).toBeInTheDocument());
-  expect(screen.getByText('99999999-9999-9999-9999-999999999999')).toBeInTheDocument();
+  expect(screen.getByText('Agrega productos y cierra la venta en un solo paso')).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/v1/sales/close', expect.objectContaining({ method: 'POST' }));
   const salePayload = JSON.parse(fetchMock.mock.calls[5][1].body);
   expect(salePayload.paymentMethodCode).toBe('VIRTUAL_WALLET');
   expect(salePayload.virtualWalletCode).toBe('NEQUI');
@@ -636,34 +643,32 @@ test('creates POS sale with controlled virtual wallet payment method', async () 
 });
 
 test('shows fiscal setup guidance when POS confirmation lacks active issuer', async () => {
-  const saleId = '99999999-9999-9999-9999-999999999999';
   const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
-    .mockResolvedValueOnce(jsonResponse({ id: saleId, paymentMethodCode: 'CASH' }))
     .mockResolvedValueOnce(errorResponse(400, {
       status: 400,
       code: 'BUSINESS_RULE_VIOLATION',
-      message: 'Debes configurar un emisor fiscal activo antes de confirmar ventas POS.',
+      message: 'Debes configurar un emisor fiscal activo antes de emitir documentos fiscales.',
       correlationId: 'corr-issuer',
       details: [],
     }))
     .mockResolvedValueOnce(jsonResponse([]))
-    .mockResolvedValueOnce(jsonResponse([]));
+    .mockResolvedValueOnce(jsonResponse([]))
+    .mockResolvedValueOnce(jsonResponse({ defaultSaleDocumentType: 'ELECTRONIC_INVOICE' }));
 
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Crear venta' }));
-  await waitFor(() => expect(screen.getByText('Venta pendiente de confirmacion')).toBeInTheDocument());
-  fireEvent.click(screen.getByRole('button', { name: 'Confirmar POS' }));
+  fireEvent.click(screen.getAllByRole('button', { name: 'Cerrar venta' })[0]);
 
   await waitFor(() => expect(screen.getByText(/Debes configurar un emisor fiscal activo/)).toBeInTheDocument());
   expect(screen.getByText(/Ve al modulo Fiscal/)).toBeInTheDocument();
   expect(screen.getByText('Emisor fiscal')).toBeInTheDocument();
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(9));
-  expect(fetchMock).toHaveBeenNthCalledWith(8, '/api/v1/issuers', expect.any(Object));
-  expect(fetchMock).toHaveBeenNthCalledWith(9, '/api/v1/numbering-resolutions', expect.any(Object));
+  expect(fetchMock).toHaveBeenNthCalledWith(7, '/api/v1/issuers', expect.any(Object));
+  expect(fetchMock).toHaveBeenNthCalledWith(8, '/api/v1/numbering-resolutions', expect.any(Object));
+  expect(fetchMock).toHaveBeenNthCalledWith(9, '/api/v1/fiscal-policy', expect.any(Object));
 });
 
 test('loads operational lists for sales third parties products and purchases', async () => {
@@ -784,7 +789,8 @@ test('searches customer by document and sends selected customer id in POS sale',
   };
   const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
     .mockResolvedValueOnce(jsonResponse([customer]))
-    .mockResolvedValueOnce(jsonResponse({ id: '99999999-9999-9999-9999-999999999999', customerId: customer.id }));
+    .mockResolvedValueOnce(jsonResponse({ id: '99999999-9999-9999-9999-999999999999', customerId: customer.id }))
+    .mockResolvedValueOnce(downloadResponse());
 
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
@@ -794,14 +800,56 @@ test('searches customer by document and sends selected customer id in POS sale',
   fireEvent.change(screen.getByLabelText('Comprador'), { target: { value: 'IDENTIFIED_CUSTOMER' } });
   fireEvent.change(screen.getByLabelText('Cliente por numero de documento'), { target: { value: '900123456' } });
   await waitFor(() => expect(screen.getByText('Cliente seleccionado: Cliente Demo SAS (900123456)')).toBeInTheDocument());
-  fireEvent.click(screen.getByRole('button', { name: 'Crear venta' }));
+  fireEvent.click(screen.getAllByRole('button', { name: 'Cerrar venta' })[0]);
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(7));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(8));
   expect(fetchMock).toHaveBeenNthCalledWith(6, `/api/v1/customers?active=true&identificationNumberPrefix=900123456`, expect.objectContaining({
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
+  expect(fetchMock).toHaveBeenNthCalledWith(7, '/api/v1/sales/close', expect.objectContaining({ method: 'POST' }));
   const salePayload = JSON.parse(fetchMock.mock.calls[6][1].body);
   expect(salePayload.customerId).toBe(customer.id);
+});
+
+test('creates fiscal credit note from dedicated fiscal documents module', async () => {
+  const note = {
+    id: '99999999-9999-9999-9999-999999999999',
+    originalDocumentId: '88888888-8888-8888-8888-888888888888',
+    status: 'NUMBER_ASSIGNED',
+    prefix: 'NC',
+    documentNumber: 1,
+  };
+  const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
+    .mockResolvedValueOnce(jsonResponse(note));
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Documentos fiscales' }));
+  fireEvent.change(screen.getAllByLabelText('Documento original')[0], { target: { value: note.originalDocumentId } });
+  fireEvent.change(screen.getAllByLabelText('Motivo')[0], { target: { value: 'Devolucion parcial' } });
+  fireEvent.change(screen.getAllByLabelText('Subtotal')[0], { target: { value: '10000' } });
+  fireEvent.change(screen.getAllByLabelText('Impuesto')[0], { target: { value: '1900' } });
+  fireEvent.change(screen.getAllByLabelText('Total')[0], { target: { value: '11900' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Crear nota credito' }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
+  expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/v1/credit-notes', expect.objectContaining({
+    method: 'POST',
+    headers: expect.objectContaining({
+      'X-Company-Id': COMPANY_ID,
+      'Idempotency-Key': expect.stringContaining('fiscal-note-credit-'),
+    }),
+  }));
+  const notePayload = JSON.parse(fetchMock.mock.calls[5][1].body);
+  expect(notePayload).toMatchObject({
+    originalDocumentId: note.originalDocumentId,
+    reason: 'Devolucion parcial',
+    subtotal: 10000,
+    taxTotal: 1900,
+    total: 11900,
+  });
 });
 test('logout clears session and returns to login screen', async () => {
   mockLoginFlow(ACTIVE_LICENSE);
@@ -871,6 +919,19 @@ function errorResponse(status, payload) {
     ok: false,
     status,
     text: () => Promise.resolve(JSON.stringify(payload)),
+  };
+}
+
+function downloadResponse() {
+  return {
+    ok: true,
+    status: 200,
+    headers: {
+      get: (name) => name?.toLowerCase() === 'content-disposition'
+        ? 'inline; filename="nexofiscal-pos.html"'
+        : null,
+    },
+    blob: () => Promise.resolve(new Blob(['<html>POS</html>'], { type: 'text/html' })),
   };
 }
 

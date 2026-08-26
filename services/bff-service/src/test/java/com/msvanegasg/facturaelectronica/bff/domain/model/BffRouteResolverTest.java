@@ -17,6 +17,7 @@ class BffRouteResolverTest {
         assertThat(resolver.resolve("/api/v1/catalogs/countries")).isEqualTo(TargetService.CATALOG);
         assertThat(resolver.resolve("/api/v1/third-parties")).isEqualTo(TargetService.THIRDPARTY);
         assertThat(resolver.resolve("/api/v1/products/123/kardex")).isEqualTo(TargetService.INVENTORY);
+        assertThat(resolver.resolve("/api/v1/fiscal-policy")).isEqualTo(TargetService.BILLING);
         assertThat(resolver.resolve("/api/v1/sales/123/confirm")).isEqualTo(TargetService.BILLING);
         assertThat(resolver.resolve("/api/v1/accounting-rules")).isEqualTo(TargetService.ACCOUNTING);
         assertThat(resolver.resolve("/api/v1/payroll/workers")).isEqualTo(TargetService.PAYROLL);
@@ -39,6 +40,8 @@ class BffRouteResolverTest {
         assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/users/22222222-2222-2222-2222-222222222222/roles"))
                 .isEqualTo(TargetService.IDENTITY);
         assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/permissions"))
+                .isEqualTo(TargetService.IDENTITY);
+        assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/operational-pin"))
                 .isEqualTo(TargetService.IDENTITY);
         assertThat(resolver.resolve("/api/v1/platform/permissions"))
                 .isEqualTo(TargetService.IDENTITY);

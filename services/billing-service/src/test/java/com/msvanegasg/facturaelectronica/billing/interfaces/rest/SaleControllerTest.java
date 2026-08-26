@@ -94,6 +94,21 @@ class SaleControllerTest {
     }
 
     @Test
+    void closesSaleInSingleRequest() throws Exception {
+        when(saleUseCase.close(any())).thenReturn(result(SaleStatus.CONFIRMED));
+
+        mockMvc.perform(post("/api/v1/sales/close")
+                .header("X-Company-Id", COMPANY_ID)
+                .header("X-User-Id", UUID.fromString("55555555-5555-5555-5555-555555555555"))
+                .header("Idempotency-Key", "close-1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(saleJson()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.paymentMethodCode").value("VIRTUAL_WALLET"));
+    }
+
+    @Test
     void findsSale() throws Exception {
         when(saleUseCase.findById(COMPANY_ID, SALE_ID)).thenReturn(result(SaleStatus.DRAFT));
 

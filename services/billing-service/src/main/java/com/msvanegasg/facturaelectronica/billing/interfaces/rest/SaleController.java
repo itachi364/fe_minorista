@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery;
+import com.msvanegasg.facturaelectronica.billing.application.dto.SaleDocumentTypeOverrideCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.PosReceiptResult;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageSaleUseCase;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
@@ -26,6 +27,7 @@ import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.SaleRequest;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.SaleResponse;
+import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.SaleDocumentTypeOverrideRequest;
 
 import jakarta.validation.Valid;
 
@@ -48,10 +50,29 @@ public class SaleController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PostMapping("/close")
+    public SaleResponse close(@RequestHeader("X-Company-Id") UUID companyId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @RequestHeader("Idempotency-Key") String idempotencyKey, @Valid @RequestBody SaleRequest request) {
+        return BillingRestMapper.toResponse(saleUseCase.close(BillingRestMapper.toCommand(companyId, request, userId,
+                idempotencyKey)));
+    }
+
     @PostMapping("/{saleId}/confirm")
     public SaleResponse confirm(@RequestHeader("X-Company-Id") UUID companyId,
             @RequestHeader("Idempotency-Key") String idempotencyKey, @PathVariable UUID saleId) {
         return BillingRestMapper.toResponse(saleUseCase.confirm(companyId, saleId, idempotencyKey));
+    }
+
+    @PostMapping("/{saleId}/document-type-override")
+    public SaleResponse overrideDocumentType(@RequestHeader("X-Company-Id") UUID companyId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader,
+            @PathVariable UUID saleId, @Valid @RequestBody SaleDocumentTypeOverrideRequest request) {
+        UUID authorizedBy = request.authorizedBy() == null ? userId : request.authorizedBy();
+        return BillingRestMapper.toResponse(saleUseCase.overrideDocumentType(new SaleDocumentTypeOverrideCommand(
+                companyId, saleId, request.documentType(), authorizedBy, request.pin(), request.reason(),
+                authorizationHeader)));
     }
 
     @GetMapping

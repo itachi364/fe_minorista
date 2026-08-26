@@ -156,6 +156,10 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
             return new AccessRule(Set.of("SALES_CREATE", "REPORTS_VIEW", "FISCAL_DOCUMENTS_ISSUE"),
                     Set.of("SALES_CREATE"));
         }
+        if (matchesAny(normalized, "fiscal-policy")) {
+            return new AccessRule(Set.of("FISCAL_DOCUMENTS_ISSUE", "COMPANY_SETTINGS_MANAGE"),
+                    Set.of("FISCAL_DOCUMENTS_ISSUE", "COMPANY_SETTINGS_MANAGE"));
+        }
         if (normalized.matches("electronic-pos/[^/]+/adjustment-notes(/.*)?")) {
             return fiscalDocumentAccessRule();
         }

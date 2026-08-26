@@ -26,15 +26,26 @@ public class AssignFiscalNumberService implements AssignFiscalNumberUseCase {
         Objects.requireNonNull(command, "command is required");
         issuerProfileRepository.findActiveByCompanyId(command.companyId())
                 .orElseThrow(() -> new IllegalStateException(
-                        "Debes configurar un emisor fiscal activo antes de confirmar ventas POS."));
+                        "Debes configurar un emisor fiscal activo antes de emitir documentos fiscales."));
         NumberingResolution resolution = numberingResolutionRepository.findActiveResolution(command.companyId(),
                 command.documentType(), command.environment(), command.documentDate())
                 .orElseThrow(() -> new IllegalStateException(
-                        "Debes configurar una resolucion de numeracion activa para POS electronico antes de confirmar ventas."));
+                        "Debes configurar una resolucion de numeracion activa para "
+                                + documentTypeLabel(command.documentType()) + " antes de emitir el documento fiscal."));
         FiscalNumberAssignment assignment = resolution.assignNextNumber(command.companyId(), command.documentType(),
                 command.documentDate(), command.environment());
         numberingResolutionRepository.save(resolution);
         return new FiscalNumberResult(assignment.resolutionId(), assignment.resolutionNumber(), assignment.prefix(),
                 assignment.number());
+    }
+
+    private static String documentTypeLabel(com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType documentType) {
+        return switch (documentType) {
+            case ELECTRONIC_INVOICE -> "factura electronica de venta";
+            case ELECTRONIC_POS -> "POS electronico";
+            case CREDIT_NOTE -> "nota credito";
+            case DEBIT_NOTE -> "nota debito";
+            case POS_ADJUSTMENT_NOTE -> "nota de ajuste POS";
+        };
     }
 }

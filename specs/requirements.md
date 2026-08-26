@@ -405,6 +405,11 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-189: Los modulos de Nota credito, Nota debito y Nota de ajuste POS deben ser independientes del modulo de Ventas y tener pantallas, contratos, permisos, resoluciones y auditoria propios.
 - RF-190: Cuando una venta POS emita factura electronica de venta, la representacion imprimible debe identificarse como representacion grafica/tirilla de factura electronica de venta, no como documento equivalente POS.
 - RF-191: Si una venta requiere documento equivalente electronico POS, el backend debe validar que exista resolucion `ELECTRONIC_POS` activa y que el cambio haya sido permitido por politica de empresa o por override autorizado.
+- RF-193: El catalogo de permisos persistido y el enum backend `PermissionCode` deben permanecer sincronizados; cualquier permiso insertado por Flyway debe existir en codigo y tener prueba que impida romper `/api/v1/platform/permissions`.
+- RF-194: `GET /api/v1/platform/permissions` debe ser un contrato exclusivo de `ROOT`; usuarios empresariales consultan permisos disponibles mediante `/api/v1/companies/{companyId}/permissions/catalog`.
+- RF-195: El BFF debe reconocer `ROOT` solo mediante un contrato root-only de `identity-service`, nunca por un endpoint que tambien responda 200 a usuarios empresariales.
+- RF-196: El tablero ROOT de uso de licencia debe calcular documentos mensuales sin fallar cuando la consulta de documentos electronicos no recibe filtros opcionales distintos a fecha/empresa.
+- RF-197: Al iniciar sesion como `ROOT`, la SPA no debe precargar empresa activa ni formularios derivados; la seleccion de empresa debe ser explicita para evitar cambios accidentales.
 
 ## Requisitos fase productizacion operativa
 
@@ -469,3 +474,4 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-164: El modo `MOCK` debe permanecer disponible para E2E local, pero separado del modo real; un envio real nunca debe degradar silenciosamente a mock.
 - RF-165: La documentacion DIAN debe citar fuentes oficiales y separar requisito normativo, decision tecnica, supuesto pendiente y validacion requerida.
 - RF-166: Antes de habilitar produccion DIAN real deben existir pruebas unitarias, de integracion y E2E con fixtures sanitizados del anexo tecnico vigente.
+- RF-192: La pantalla operativa de ventas debe permitir cerrar una venta en una sola accion de usuario, creando la venta, emitiendo el documento fiscal, aplicando inventario/contabilidad y abriendo comprobante imprimible sin exigir un paso visible previo de "crear venta".

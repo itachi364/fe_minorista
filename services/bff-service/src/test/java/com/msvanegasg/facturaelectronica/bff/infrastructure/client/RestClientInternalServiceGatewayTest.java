@@ -35,6 +35,7 @@ class RestClientInternalServiceGatewayTest {
     private HttpServer billingServer;
     private HttpServer inventoryServer;
     private HttpServer auditServer;
+    private HttpServer catalogServer;
 
     @AfterEach
     void tearDown() {
@@ -55,6 +56,9 @@ class RestClientInternalServiceGatewayTest {
         }
         if (auditServer != null) {
             auditServer.stop(0);
+        }
+        if (catalogServer != null) {
+            catalogServer.stop(0);
         }
     }
 
@@ -168,6 +172,20 @@ class RestClientInternalServiceGatewayTest {
         assertThat(auditHandler.requestBody).doesNotContain("token");
     }
 
+    @Test
+    void allowsRootToReadGlobalCatalogsWithoutCompanyContext() throws IOException {
+        startRootIdentityServer();
+        CapturingHandler catalogHandler = startCatalogServer("/api/v1/catalogs/DIAN_DOCUMENT_TYPE/items");
+        RestClientInternalServiceGateway gateway = gateway();
+
+        ProxyResponse response = gateway.exchange(new ProxyRequest(TargetService.CATALOG, HttpMethod.GET,
+                URI.create("/api/v1/catalogs/DIAN_DOCUMENT_TYPE/items"), rootHeaders(), new byte[0]));
+
+        assertThat(response.status()).isEqualTo(HttpStatus.CREATED);
+        assertThat(catalogHandler.requestPath).isEqualTo("/api/v1/catalogs/DIAN_DOCUMENT_TYPE/items");
+        assertThat(catalogHandler.companyId).isNull();
+    }
+
     private RestClientInternalServiceGateway gateway() {
         String identityUrl = "http://localhost:" + identityServer.getAddress().getPort();
         String tenantUrl = serverUrl(tenantServer, "http://tenant");
@@ -175,7 +193,8 @@ class RestClientInternalServiceGatewayTest {
         String billingUrl = serverUrl(billingServer, "http://billing");
         String inventoryUrl = serverUrl(inventoryServer, "http://inventory");
         String auditUrl = serverUrl(auditServer, "http://audit");
-        BffProperties properties = new BffProperties(tenantUrl, identityUrl, "http://catalog", "http://thirdparty",
+        String catalogUrl = serverUrl(catalogServer, "http://catalog");
+        BffProperties properties = new BffProperties(tenantUrl, identityUrl, catalogUrl, "http://thirdparty",
                 inventoryUrl, billingUrl, "http://accounting", payrollUrl, "http://reporting", "http://dian",
                 auditUrl);
         return new RestClientInternalServiceGateway(RestClient.builder(), properties, new ObjectMapper());
@@ -204,6 +223,18 @@ class RestClientInternalServiceGatewayTest {
         identityServer.createContext("/api/v1/companies/" + COMPANY_ID + "/permissions", exchange -> {
             byte[] body = ("{\"companyId\":\"" + COMPANY_ID + "\",\"roles\":[\"VENDEDOR\"],\"permissions\":"
                     + permissionsJson + "}").getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        identityServer.start();
+    }
+
+    private void startRootIdentityServer() throws IOException {
+        identityServer = HttpServer.create(new InetSocketAddress(0), 0);
+        identityServer.createContext("/api/v1/platform/permissions", exchange -> {
+            byte[] body = "[]".getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, body.length);
             exchange.getResponseBody().write(body);
@@ -252,12 +283,27 @@ class RestClientInternalServiceGatewayTest {
         return handler;
     }
 
+    private CapturingHandler startCatalogServer(String path) throws IOException {
+        catalogServer = HttpServer.create(new InetSocketAddress(0), 0);
+        CapturingHandler handler = new CapturingHandler();
+        catalogServer.createContext(path, handler::handle);
+        catalogServer.start();
+        return handler;
+    }
+
     private static HttpHeaders headers() {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth("token");
         headers.set("X-Company-Id", COMPANY_ID);
         headers.set("X-User-Id", USER_ID);
         headers.set("X-Correlation-Id", "corr-bff-rbac");
+        return headers;
+    }
+
+    private static HttpHeaders rootHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth("root-token");
+        headers.set("X-Correlation-Id", "corr-bff-root");
         return headers;
     }
 

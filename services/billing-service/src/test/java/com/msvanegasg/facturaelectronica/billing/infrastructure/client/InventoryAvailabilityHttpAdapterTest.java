@@ -35,7 +35,8 @@ class InventoryAvailabilityHttpAdapterTest {
         server.start();
         String baseUrl = "http://localhost:" + server.getAddress().getPort();
         InventoryAvailabilityHttpAdapter adapter = new InventoryAvailabilityHttpAdapter(
-                new BillingProperties(baseUrl, "http://provider", "http://accounting", "http://audit", "http://tenant", "ACCEPTED"));
+                new BillingProperties(baseUrl, "http://provider", "http://accounting", "http://audit",
+                        "http://tenant", "http://identity", "ACCEPTED"));
 
         var result = adapter.findProduct(UUID.fromString("11111111-1111-1111-1111-111111111111"), productId);
 

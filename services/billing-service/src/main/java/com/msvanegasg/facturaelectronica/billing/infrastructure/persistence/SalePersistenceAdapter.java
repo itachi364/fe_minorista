@@ -51,7 +51,7 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
 
     @Override
     public List<Sale> findByElectronicDocument(ElectronicDocumentQuery query) {
-        return repository.findElectronicDocuments(query.companyId(), query.documentType(), query.status(),
+        return repository.findElectronicDocumentsDynamic(query.companyId(), query.documentType(), query.status(),
                 query.customerId(), startOfDay(query.from()), startOfNextDay(query.to()), blankToNull(query.prefix()),
                 query.number(), blankToNull(query.cufeCude())).stream().map(SalePersistenceAdapter::toDomain).toList();
     }

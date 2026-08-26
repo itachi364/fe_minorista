@@ -25,6 +25,7 @@ export function LicenseAdminPanel({
 }) {
   const selectedCompany = companies.find((company) => company.id === form.companyId);
   const selectedModules = new Set(form.enabledModules || []);
+  const licenseLoadedForSelectedCompany = Boolean(form.companyId && license?.companyId === form.companyId);
 
   function toggleModule(moduleCode, checked) {
     const nextModules = checked
@@ -62,7 +63,9 @@ export function LicenseAdminPanel({
           ))}
         </section>
         <footer className="panel-actions">
-          <button className="secondary" disabled={busy || !form.companyId} onClick={onLoad} type="button">Cargar licencia</button>
+          <button className="secondary" disabled={busy || !form.companyId || licenseLoadedForSelectedCompany} onClick={onLoad} type="button">
+            {licenseLoadedForSelectedCompany ? 'Licencia cargada' : 'Cargar licencia'}
+          </button>
           <button className="secondary" disabled={busy || !license?.id} onClick={onActivate} type="button">Activar</button>
           <button className="danger-button" disabled={busy || !license?.id} onClick={onSuspend} type="button">Suspender</button>
         </footer>

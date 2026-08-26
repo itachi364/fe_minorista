@@ -171,6 +171,18 @@ class IdentityControllerTest {
     }
 
     @Test
+    void listsPlatformPermissionsOnlyFromRootEndpoint() throws Exception {
+        org.mockito.Mockito.when(manageIdentityUseCase.listPlatformPermissionCatalog(eq("Bearer root-token")))
+                .thenReturn(List.of(new PermissionCatalogResult(PermissionCode.OPERATIONAL_PIN_MANAGE,
+                        PermissionScope.COMPANY, "settings", "Manage operational PIN", true)));
+
+        mockMvc.perform(get("/api/v1/platform/permissions")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer root-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].code").value("OPERATIONAL_PIN_MANAGE"));
+    }
+
+    @Test
     void returnsUnauthorizedForInvalidSession() throws Exception {
         org.mockito.Mockito.when(manageIdentityUseCase.currentUser(any())).thenThrow(new AuthenticationFailedException());
 

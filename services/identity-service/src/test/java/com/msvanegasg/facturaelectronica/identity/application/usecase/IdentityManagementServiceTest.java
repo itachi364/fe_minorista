@@ -235,6 +235,34 @@ class IdentityManagementServiceTest {
     }
 
     @Test
+    void rootCanListPlatformPermissionCatalogIncludingOperationalPin() {
+        InMemoryCompanyRoles companyRoles = new InMemoryCompanyRoles();
+        InMemoryGlobalRoles globalRoles = new InMemoryGlobalRoles();
+        IdentityManagementService rootAwareService = new IdentityManagementService(users, memberships, companyRoles,
+                sessions, audit, globalRoles, (companyId, action) -> { }, new FixedPasswordHasher(),
+                () -> "root-token", token -> "hash-" + token, UUID::randomUUID, () -> NOW, Duration.ofHours(12));
+        var root = rootAwareService.createUser(new CreateUserCommand("root@example.com", "Root User", "secret123"));
+        globalRoles.assignRole(root.id(), GlobalRoleCode.ROOT);
+        var login = rootAwareService.login(new LoginCommand("root@example.com", "secret123"));
+
+        var permissions = rootAwareService.listPlatformPermissionCatalog("Bearer " + login.accessToken());
+
+        assertThat(permissions).extracting(permission -> permission.code())
+                .contains(PermissionCode.OPERATIONAL_PIN_MANAGE);
+    }
+
+    @Test
+    void nonRootCannotListPlatformPermissionCatalog() {
+        InMemoryCompanyRoles companyRoles = new InMemoryCompanyRoles();
+        IdentityManagementService rbacService = serviceWithCompanyRoles(companyRoles);
+        rbacService.createUser(new CreateUserCommand("owner@example.com", "Owner User", "secret123"));
+        var login = rbacService.login(new LoginCommand("owner@example.com", "secret123"));
+
+        assertThatThrownBy(() -> rbacService.listPlatformPermissionCatalog("Bearer " + login.accessToken()))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
     void ownerCanCreateLowerCompanyRoleAndAssignIt() {
         InMemoryCompanyRoles companyRoles = new InMemoryCompanyRoles();
         IdentityManagementService rbacService = serviceWithCompanyRoles(companyRoles);

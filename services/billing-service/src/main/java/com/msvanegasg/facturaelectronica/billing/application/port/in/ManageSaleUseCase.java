@@ -10,13 +10,18 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalArtifactR
 import com.msvanegasg.facturaelectronica.billing.application.dto.FiscalEventResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.PosReceiptResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery;
+import com.msvanegasg.facturaelectronica.billing.application.dto.SaleDocumentTypeOverrideCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
 
 public interface ManageSaleUseCase {
 
     SaleResult create(CreateSaleCommand command);
 
+    SaleResult close(CreateSaleCommand command);
+
     SaleResult confirm(UUID companyId, UUID saleId, String idempotencyKey);
+
+    SaleResult overrideDocumentType(SaleDocumentTypeOverrideCommand command);
 
     List<SaleResult> find(SaleQuery query);
 

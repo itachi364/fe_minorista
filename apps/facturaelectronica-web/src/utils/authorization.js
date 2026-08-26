@@ -5,6 +5,7 @@ export const stepPermissionRules = {
   Terceros: ['COMPANY_SETTINGS_MANAGE'],
   Inventario: ['INVENTORY_VIEW', 'INVENTORY_MANAGE'],
   Fiscal: ['FISCAL_DOCUMENTS_ISSUE', 'COMPANY_SETTINGS_MANAGE'],
+  'Documentos fiscales': ['FISCAL_DOCUMENTS_ISSUE'],
   Ventas: ['SALES_CREATE'],
   'Registro de Ventas': ['SALES_CREATE'],
   Nomina: ['PAYROLL_VIEW', 'PAYROLL_MANAGE'],

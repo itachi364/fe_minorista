@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.msvanegasg.facturaelectronica.identity.application.port.in.ManageIdentityUseCase;
+import com.msvanegasg.facturaelectronica.identity.application.port.in.ManageOperationalPinUseCase;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.AccessAuditRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.CompanyMembershipRepositoryPort;
@@ -17,12 +18,14 @@ import com.msvanegasg.facturaelectronica.identity.application.port.out.CompanyRo
 import com.msvanegasg.facturaelectronica.identity.application.port.out.GlobalUserRoleRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.LicenseValidationPort;
+import com.msvanegasg.facturaelectronica.identity.application.port.out.OperationalPinRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.PasswordHasherPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.TokenGeneratorPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.TokenHashPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.UserAccountRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.application.port.out.UserSessionRepositoryPort;
 import com.msvanegasg.facturaelectronica.identity.application.usecase.IdentityManagementService;
+import com.msvanegasg.facturaelectronica.identity.application.usecase.OperationalPinManagementService;
 import com.msvanegasg.facturaelectronica.identity.domain.model.GlobalRoleCode;
 import com.msvanegasg.facturaelectronica.identity.domain.model.UserAccount;
 
@@ -48,6 +51,12 @@ public class IdentityUseCaseConfiguration {
         return new IdentityManagementService(userRepository, membershipRepository, companyRoleRepository,
                 sessionRepository, auditRepository, globalRoleRepository, licenseValidationPort, passwordHasher,
                 tokenGenerator, tokenHash, idGenerator, clock, Duration.ofHours(sessionDurationHours));
+    }
+
+    @Bean
+    ManageOperationalPinUseCase manageOperationalPinUseCase(OperationalPinRepositoryPort operationalPinRepository,
+            PasswordHasherPort passwordHasher, ClockPort clock) {
+        return new OperationalPinManagementService(operationalPinRepository, passwordHasher, clock);
     }
 
     @Bean

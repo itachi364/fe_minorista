@@ -114,7 +114,7 @@ export function createIssuerForm() {
 
 export function createResolutionForm() {
   return {
-    documentType: '',
+    documentType: 'ELECTRONIC_INVOICE',
     resolutionNumber: '',
     prefix: '',
     fromNumber: '',
@@ -122,6 +122,25 @@ export function createResolutionForm() {
     validFrom: '',
     validTo: '',
     environment: '',
+  };
+}
+
+export function createFiscalPolicyForm() {
+  return {
+    defaultSaleDocumentType: 'ELECTRONIC_INVOICE',
+    allowDocumentTypeOverride: true,
+    requirePinForOverride: true,
+  };
+}
+
+export function createFiscalNoteForm() {
+  return {
+    originalDocumentId: '',
+    adjustmentKind: 'CORRECTION',
+    reason: '',
+    subtotal: '',
+    taxTotal: '',
+    total: '',
   };
 }
 

@@ -86,6 +86,10 @@
       "label": "Ver inventario",
       "description": "Permite consultar productos, existencias y movimientos."
     },
+    "OPERATIONAL_PIN_MANAGE": {
+      "label": "Gestionar PIN operacional",
+      "description": "Permite crear, cambiar, desbloquear y administrar el PIN para autorizaciones operativas."
+    },
     "PAYROLL_MANAGE": {
       "label": "Gestionar nomina",
       "description": "Permite registrar trabajadores, pagos y documentos de nomina."

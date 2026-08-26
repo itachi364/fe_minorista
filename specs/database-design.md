@@ -489,14 +489,13 @@ Reglas de persistencia:
 
 ## Politica Fiscal, PIN Operacional y Override
 
-Estado: modelo objetivo para Fase 27.
+Estado: implementacion inicial de Fase 27.
 
-Tablas objetivo en `billing-service` o bounded context fiscal:
+Tablas implementadas o reutilizadas:
 
 - `billing.company_fiscal_policy`
 - `billing.sale_document_type_override`
-- `billing.operational_pin`
-- `billing.operational_pin_attempt`
+- `identity.operational_pin`
 - `billing.fiscal_note`
 
 Campos principales de `company_fiscal_policy`:
@@ -525,13 +524,6 @@ Campos principales de `operational_pin`:
 - `failed_attempts`: contador consecutivo maximo 3.
 - `created_at`, `changed_at`, `locked_at`, `unlocked_at`, `last_used_at`.
 - `unlocked_by`, `correlation_id`.
-
-Campos principales de `operational_pin_attempt`:
-
-- `id`, `company_id`, `user_id`, `requested_by`.
-- `resource_type`, `resource_id`, `action`.
-- `result`: `SUCCESS`, `FAILED`, `LOCKED`, `CHANGE_REQUIRED`, `DENIED`.
-- `attempted_at`, `correlation_id`.
 
 Campos principales de `fiscal_note`:
 

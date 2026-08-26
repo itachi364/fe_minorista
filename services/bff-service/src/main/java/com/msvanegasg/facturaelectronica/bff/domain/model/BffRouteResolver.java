@@ -27,7 +27,7 @@ public final class BffRouteResolver {
         if (matchesAny(normalized, "products", "purchases", "inventory-movements", "service-supply-references")) {
             return TargetService.INVENTORY;
         }
-        if (matchesAny(normalized, "issuers", "numbering-resolutions", "sales", "electronic-pos",
+        if (matchesAny(normalized, "fiscal-policy", "issuers", "numbering-resolutions", "sales", "electronic-pos",
                 "electronic-invoices", "credit-notes", "debit-notes")) {
             return TargetService.BILLING;
         }
@@ -61,6 +61,7 @@ public final class BffRouteResolver {
                 || normalized.matches("companies/[^/]+/users(/.*)?")
                 || normalized.matches("companies/[^/]+/users/[^/]+/role-assignments(/.*)?")
                 || normalized.matches("companies/[^/]+/users/[^/]+/effective-permissions(/.*)?")
+                || normalized.matches("companies/[^/]+/operational-pin(/.*)?")
                 || normalized.matches("companies/[^/]+/roles(/.*)?")
                 || normalized.matches("companies/[^/]+/permissions(/.*)?");
     }

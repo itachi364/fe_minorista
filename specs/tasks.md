@@ -5204,8 +5204,8 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
 
 ## Fase 27: Politica fiscal configurable, PIN operacional y documentos fiscales
 
-- [ ] TASK-204: Documentar politica fiscal por empresa
-  - Estado: TODO
+- [x] TASK-204: Documentar politica fiscal por empresa
+  - Estado: DONE
   - Requisitos: RF-179, RF-180, RF-181.
   - Acceptance criteria: AC-244, AC-245.
   - Descripcion: Formalizar que `POS` es canal operativo y que el tipo fiscal se resuelve por politica empresarial, con `ELECTRONIC_INVOICE` como default recomendado.
@@ -5223,9 +5223,11 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - La resolucion activa se mantiene por tipo documental y ambiente.
   - Validacion:
     - Revision SDD cruzada.
+  - Resultado:
+    - La fase 27 quedo documentada en requisitos, diseno, contratos API, base de datos, criterios y casos de uso.
 
-- [ ] TASK-205: Configurar documento fiscal por defecto para venta POS
-  - Estado: TODO
+- [x] TASK-205: Configurar documento fiscal por defecto para venta POS
+  - Estado: DONE
   - Requisitos: RF-179, RF-180, RF-190.
   - Acceptance criteria: AC-244, AC-252.
   - Descripcion: Implementar politica empresarial para que ventas POS emitan por defecto factura electronica de venta (`ELECTRONIC_INVOICE`) y generen tirilla como representacion grafica.
@@ -5243,9 +5245,12 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - Tests unitarios `billing-service`.
     - Tests HTTP adapter DIAN.
     - `npm test -- --run App.test.jsx`.
+  - Resultado:
+    - `billing-service` persiste `company_fiscal_policy` y resuelve `ELECTRONIC_INVOICE` por defecto para ventas POS.
+    - La SPA expone formulario de politica fiscal empresarial.
 
-- [ ] TASK-206: Mantener resolucion activa por tipo documental y ambiente
-  - Estado: TODO
+- [x] TASK-206: Mantener resolucion activa por tipo documental y ambiente
+  - Estado: DONE
   - Requisitos: RF-181, RF-191.
   - Acceptance criteria: AC-245, AC-253.
   - Descripcion: Reforzar que una empresa pueda tener simultaneamente resoluciones activas por factura electronica, POS electronico, nota credito, nota debito y nota de ajuste POS.
@@ -5260,9 +5265,11 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - La UI muestra claramente tipo documental y ambiente.
   - Validacion:
     - Tests de dominio, persistencia y REST de resoluciones.
+  - Resultado:
+    - La activacion/inactivacion de resoluciones mantiene la regla por empresa, tipo documental y ambiente.
 
-- [ ] TASK-207: Implementar PIN operacional de 6 digitos
-  - Estado: TODO
+- [x] TASK-207: Implementar PIN operacional de 6 digitos
+  - Estado: DONE
   - Requisitos: RF-184, RF-185.
   - Acceptance criteria: AC-248.
   - Descripcion: Crear modelo, API y UI para que administradores/supervisores configuren PIN operacional numerico de exactamente 6 digitos.
@@ -5279,9 +5286,11 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
   - Validacion:
     - Tests unitarios y REST de identity.
     - Tests frontend.
+  - Resultado:
+    - `identity-service` agrega modelo, puerto, caso de uso, persistencia y API para PIN operacional de 6 digitos con hash.
 
-- [ ] TASK-208: Bloquear PIN tras 3 intentos fallidos
-  - Estado: TODO
+- [x] TASK-208: Bloquear PIN tras 3 intentos fallidos
+  - Estado: DONE
   - Requisitos: RF-186, RF-187.
   - Acceptance criteria: AC-249, AC-256.
   - Descripcion: Registrar intentos fallidos consecutivos y bloquear PIN en el tercer fallo, con auditoria.
@@ -5296,9 +5305,11 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - Auditoria no expone PIN.
   - Validacion:
     - Tests de bloqueo, intentos y auditoria.
+  - Resultado:
+    - El tercer intento fallido bloquea el PIN y la validacion posterior rechaza el uso operacional.
 
-- [ ] TASK-209: Desbloqueo administrativo con cambio obligatorio
-  - Estado: TODO
+- [x] TASK-209: Desbloqueo administrativo con cambio obligatorio
+  - Estado: DONE
   - Requisitos: RF-186, RF-187.
   - Acceptance criteria: AC-250, AC-251, AC-256.
   - Descripcion: Permitir desbloqueo administrativo del PIN dejando estado `CHANGE_REQUIRED` hasta que el titular cambie el PIN.
@@ -5313,9 +5324,11 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - Cambio posterior deja PIN `ACTIVE`.
   - Validacion:
     - Tests REST y frontend.
+  - Resultado:
+    - Desbloquear el PIN deja estado `CHANGE_REQUIRED`; solo un nuevo cambio de PIN lo deja activo.
 
-- [ ] TASK-210: Override de tipo documental por venta con PIN
-  - Estado: TODO
+- [x] TASK-210: Override de tipo documental por venta con PIN
+  - Estado: DONE
   - Requisitos: RF-182, RF-183, RF-188, RF-191.
   - Acceptance criteria: AC-246, AC-247, AC-253, AC-256.
   - Descripcion: Permitir que un administrador/supervisor autorice con PIN el cambio puntual del tipo fiscal de una venta sin cerrar la sesion del vendedor.
@@ -5333,9 +5346,12 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - Valida resolucion activa del tipo destino.
   - Validacion:
     - Tests unitarios, REST, BFF y frontend.
+  - Resultado:
+    - `billing-service` registra override puntual por venta en borrador, valida politica empresarial y consulta PIN operacional en `identity-service`.
+    - BFF enruta y audita mutaciones de override sin exponer PIN.
 
-- [ ] TASK-211: Ajustar confirmacion POS para factura electronica por defecto
-  - Estado: TODO
+- [x] TASK-211: Ajustar confirmacion POS para factura electronica por defecto
+  - Estado: DONE
   - Requisitos: RF-180, RF-190.
   - Acceptance criteria: AC-244, AC-252.
   - Descripcion: Cambiar la confirmacion POS para resolver el tipo fiscal desde politica y usar `ELECTRONIC_INVOICE` por defecto.
@@ -5350,9 +5366,12 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - Error por resolucion faltante menciona factura electronica de venta si ese es el tipo resuelto.
   - Validacion:
     - Tests Maven de `billing-service`.
+  - Resultado:
+    - Confirmar una venta POS usa el tipo fiscal resuelto por politica u override activo.
+    - Los errores funcionales por emisor/resolucion faltante quedan en espanol.
 
-- [ ] TASK-212: Ajustar UI Fiscal/Ventas/Facturacion
-  - Estado: TODO
+- [x] TASK-212: Ajustar UI Fiscal/Ventas/Facturacion
+  - Estado: DONE
   - Requisitos: RF-179, RF-180, RF-182, RF-183, RF-190, RF-191.
   - Acceptance criteria: AC-244, AC-246, AC-247, AC-252, AC-253.
   - Descripcion: Ajustar UI para mostrar politica fiscal, resoluciones por tipo, selector informativo del tipo fiscal resuelto y modal de override con PIN.
@@ -5370,9 +5389,11 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
   - Validacion:
     - `npm test -- --run App.test.jsx`.
     - `npm run build`.
+  - Resultado:
+    - La UI Fiscal muestra politica de ventas y ventas usa textos genericos de emision fiscal, no solo POS electronico.
 
-- [ ] TASK-213: Crear modulo independiente de Nota credito
-  - Estado: TODO
+- [x] TASK-213: Crear modulo independiente de Nota credito
+  - Estado: DONE
   - Requisitos: RF-188, RF-189.
   - Acceptance criteria: AC-254, AC-255, AC-256.
   - Descripcion: Crear modulo fiscal independiente para notas credito con permiso, contrato, resolucion `CREDIT_NOTE` y auditoria.
@@ -5386,9 +5407,11 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - Usa resolucion `CREDIT_NOTE`.
   - Validacion:
     - Tests backend/frontend.
+  - Resultado:
+    - La SPA agrega `Documentos fiscales` con formulario independiente de nota credito contra `/api/v1/credit-notes`.
 
-- [ ] TASK-214: Crear modulo independiente de Nota debito
-  - Estado: TODO
+- [x] TASK-214: Crear modulo independiente de Nota debito
+  - Estado: DONE
   - Requisitos: RF-188, RF-189.
   - Acceptance criteria: AC-254, AC-255, AC-256.
   - Descripcion: Crear modulo fiscal independiente para notas debito con permiso, contrato, resolucion `DEBIT_NOTE` y auditoria.
@@ -5402,9 +5425,11 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - Usa resolucion `DEBIT_NOTE`.
   - Validacion:
     - Tests backend/frontend.
+  - Resultado:
+    - La SPA agrega formulario independiente de nota debito contra `/api/v1/debit-notes`.
 
-- [ ] TASK-215: Crear modulo independiente de Nota de ajuste POS
-  - Estado: TODO
+- [x] TASK-215: Crear modulo independiente de Nota de ajuste POS
+  - Estado: DONE
   - Requisitos: RF-188, RF-189, RF-191.
   - Acceptance criteria: AC-254, AC-255, AC-256.
   - Descripcion: Crear modulo fiscal independiente para nota de ajuste POS, aplicable a documentos equivalentes POS y con resolucion `POS_ADJUSTMENT_NOTE`.
@@ -5418,9 +5443,11 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - Usa resolucion `POS_ADJUSTMENT_NOTE`.
   - Validacion:
     - Tests backend/frontend.
+  - Resultado:
+    - La SPA agrega formulario independiente de nota de ajuste POS contra `/api/v1/electronic-pos/{documentId}/adjustment-notes`.
 
-- [ ] TASK-216: Auditoria completa de PIN, override y notas fiscales
-  - Estado: TODO
+- [x] TASK-216: Auditoria completa de PIN, override y notas fiscales
+  - Estado: DONE
   - Requisitos: RF-187, RF-188, RF-189.
   - Acceptance criteria: AC-247, AC-249, AC-250, AC-255, AC-256.
   - Descripcion: Centralizar eventos auditables de PIN operacional, override de documento fiscal y emision de notas.
@@ -5435,3 +5462,99 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - No registra PIN, hashes, passwords ni payload fiscal completo.
   - Validacion:
     - Tests de auditoria y busqueda de secretos en diffs/logs.
+  - Resultado:
+    - BFF trata `operational-pin`, `fiscal-policy` y override como rutas criticas/mutables y registra auditoria best-effort sanitizada.
+    - Los payloads publicos no retornan PIN ni hash.
+    - Validaciones ejecutadas: Maven targeted, Vitest y build frontend.
+
+- [x] TASK-217: Cierre de venta en un solo paso
+  - Estado: DONE
+  - Requisitos: RF-192.
+  - Acceptance criteria:
+    - AC-257: La pantalla Ventas muestra `Cerrar venta` como accion principal y no exige `Crear venta` seguido de `Emitir documento fiscal`.
+    - AC-258: `POST /api/v1/sales/close` crea y confirma la venta con una sola idempotency key.
+    - AC-259: El cierre exitoso abre el comprobante imprimible y reinicia el formulario operativo.
+    - AC-260: Faltantes de emisor fiscal/resolucion muestran mensaje funcional y llevan al modulo Fiscal.
+    - AC-261: Fallos del conector DIAN se mapean como `EXTERNAL_PROVIDER_ERROR`, no como `INTERNAL_ERROR` generico.
+  - Descripcion: Simplificar el flujo POS para que el vendedor agregue productos y cierre la venta en un solo clic, manteniendo por debajo creacion, emision fiscal, inventario, contabilidad, auditoria e impresion.
+  - Archivos:
+    - `services/billing-service/src/main/java/**`
+    - `services/billing-service/src/test/java/**`
+    - `apps/facturaelectronica-web/src/features/sales/SaleForm.jsx`
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+  - Dependencias:
+    - TASK-211.
+    - TASK-212.
+  - Validacion:
+    - Maven targeted de `billing-service`.
+    - Vitest frontend.
+    - Build frontend.
+  - Resultado:
+    - `billing-service` expone `POST /api/v1/sales/close` y reutiliza `create` + `confirm` con la misma idempotency key.
+    - La SPA muestra `Cerrar venta` como accion principal y reinicia el formulario al cerrar correctamente.
+    - Fallos del conector DIAN se mapean como `EXTERNAL_PROVIDER_ERROR`.
+    - Validaciones ejecutadas: `./mvnw.cmd -pl services/billing-service -am test`, `npm test -- --run App.test.jsx`, `npm run build`.
+
+- [x] TASK-218: Corregir reconocimiento ROOT y catalogo de permisos
+  - Estado: DONE
+  - Requisitos: RF-193, RF-194, RF-195.
+  - Acceptance criteria:
+    - AC-262: `identity.permission_catalog` no debe contener codigos activos ausentes de `PermissionCode`.
+    - AC-263: `GET /api/v1/platform/permissions` es root-only y no autentica falsamente usuarios empresariales como ROOT.
+    - AC-264: ROOT puede leer catalogos globales via BFF sin `X-Company-Id`.
+    - AC-265: El permiso `OPERATIONAL_PIN_MANAGE` aparece en el catalogo de permisos y no rompe `/platform/permissions`.
+  - Descripcion: Resolver el bug donde ROOT queda con todos los catalogos denegados por 500 en identity al leer un permiso persistido ausente del enum Java.
+  - Archivos:
+    - `services/identity-service/src/main/java/**`
+    - `services/identity-service/src/test/java/**`
+    - `services/bff-service/src/test/java/**`
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+  - Dependencias:
+    - TASK-207.
+    - TASK-216.
+  - Validacion:
+    - Maven targeted de `identity-service`.
+    - Maven targeted de `bff-service`.
+    - Prueba manual API: login ROOT, `/platform/permissions`, `/catalogs/DIAN_DOCUMENT_TYPE/items`.
+  - Resultado:
+    - `OPERATIONAL_PIN_MANAGE` queda sincronizado en enum/dominio.
+    - El catalogo global de permisos queda reservado a ROOT.
+    - BFF cubre lectura ROOT de catalogos globales sin empresa activa.
+
+- [x] TASK-219: Corregir uso de licencia y seleccion ROOT explicita
+  - Estado: DONE
+  - Requisitos: RF-196, RF-197, RF-094.
+  - Acceptance criteria:
+    - AC-266: Guardar una licencia empresarial no debe fallar al refrescar el tablero de uso por consulta de documentos electronicos sin filtros opcionales.
+    - AC-267: `GET /api/v1/reports/electronic-documents?from=...&to=...` debe responder `200` con lista vacia o documentos reales cuando solo recibe empresa y rango de fechas.
+    - AC-268: Al iniciar sesion como `ROOT`, la SPA debe mantener el selector de empresa en blanco y no hidratar formularios con la primera empresa registrada.
+    - AC-269: En el modulo `Licencias`, el boton `Cargar licencia` debe quedar deshabilitado despues de cargar o guardar la licencia de la empresa seleccionada.
+  - Descripcion: Resolver el 500 posterior a guardar licencia, causado por el conteo mensual de documentos en el BFF, y ajustar la experiencia ROOT para seleccion explicita de empresa.
+  - Archivos:
+    - `services/billing-service/src/main/java/**/SaleJpaRepository*.java`
+    - `services/billing-service/src/main/java/**/SalePersistenceAdapter.java`
+    - `services/billing-service/src/test/java/**/SalePersistenceAdapterTest.java`
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/features/licenses/LicenseAdminPanel.jsx`
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/tasks.md`
+  - Dependencias:
+    - TASK-116.
+    - TASK-134.
+    - TASK-218.
+  - Validacion:
+    - Maven targeted de `billing-service`.
+    - Vitest frontend.
+    - Prueba manual API: login ROOT, `/api/v1/reports/electronic-documents`, `/api/v1/platform/licenses/usage`.
+  - Resultado:
+    - `billing-service` usa Criteria API para documentos electronicos con filtros opcionales.
+    - `ROOT` inicia sin empresa activa ni formularios precargados.
+    - El boton `Cargar licencia` queda bloqueado al estar cargada la licencia seleccionada.

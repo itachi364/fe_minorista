@@ -1188,7 +1188,7 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 ### RBAC en BFF
 
 - El frontend oculta modulos segun permisos efectivos, pero la autorizacion real para catÃ¡logos administrables, contabilidad, nomina y logs se valida en `bff-service` contra `identity-service`.
-- `ROOT` se valida con `/api/v1/platform/permissions` y conserva acceso global.
+- `ROOT` se valida con `/api/v1/platform/permissions`, que debe ser root-only. Si identidad devuelve 403/401/error, el BFF no debe asumir alcance global.
 - En el modo local actual, los usuarios empresariales envian `Authorization`, `X-Company-Id` y `X-User-Id`; el BFF confirma que `X-User-Id` coincide con `/api/v1/me` antes de evaluar permisos efectivos de empresa.
 - En el modo productivo TASK-164/TASK-174, la SPA no envia `Authorization`; el BFF resuelve la cookie segura, deriva `X-User-Id` y propaga identidad interna.
 - Las mutaciones de plataforma en `tenant-service` quedan reservadas para `ROOT`.
@@ -2786,69 +2786,112 @@ Context7 evidence:
 - Decision impact: PIN, override y politica fiscal deben validar DTOs en interfaces y reglas de negocio en aplicacion/dominio, con errores funcionales auditables.
 
 ### TASK-204 - Documentar politica fiscal por empresa
-- Estado: Pendiente.
+- Estado: Implementado.
 - Fase: Fase 27: Politica fiscal configurable, PIN operacional y documentos fiscales.
 - Decision de diseno: Introducir `company_fiscal_policy` con `defaultPosDocumentType`, override permitido y PIN requerido.
 - Componentes/capas: `billing-service`, `facturaelectronica-web`, BFF.
 
 ### TASK-205 - Configurar documento fiscal por defecto para venta POS
-- Estado: Pendiente.
+- Estado: Implementado.
 - Fase: Fase 27.
 - Decision de diseno: Default recomendado `ELECTRONIC_INVOICE`; `ELECTRONIC_POS` es opcion avanzada por empresa.
 
 ### TASK-206 - Mantener resolucion activa por tipo documental y ambiente
-- Estado: Pendiente.
+- Estado: Implementado.
 - Fase: Fase 27.
 - Decision de diseno: Confirmar y reforzar la regla existente de `company_id + document_type + environment`, evitando cualquier resolucion global.
 
 ### TASK-207 - Disenar PIN operacional de 6 digitos
-- Estado: Pendiente.
+- Estado: Implementado.
 - Fase: Fase 27.
 - Decision de diseno: PIN numerico exacto de 6 digitos, hash fuerte, no reutilizable como password de login.
 
 ### TASK-208 - Bloquear PIN tras 3 intentos fallidos
-- Estado: Pendiente.
+- Estado: Implementado.
 - Fase: Fase 27.
 - Decision de diseno: Contador consecutivo, estado `LOCKED` y auditoria de intentos.
 
 ### TASK-209 - Desbloqueo administrativo con cambio obligatorio
-- Estado: Pendiente.
+- Estado: Implementado.
 - Fase: Fase 27.
 - Decision de diseno: Desbloqueo deja el PIN en `CHANGE_REQUIRED`; el titular debe cambiarlo antes de autorizar.
 
 ### TASK-210 - Override de tipo documental por venta con PIN
-- Estado: Pendiente.
+- Estado: Implementado.
 - Fase: Fase 27.
 - Decision de diseno: Autorizacion puntual con vendedor, autorizador, PIN, motivo, tipo anterior y tipo nuevo.
 
 ### TASK-211 - Ajustar confirmacion POS para factura electronica por defecto
-- Estado: Pendiente.
+- Estado: Implementado.
 - Fase: Fase 27.
 - Decision de diseno: `SaleChannel.POS` confirma por defecto `ELECTRONIC_INVOICE` y llama al flujo de factura electronica.
 
 ### TASK-212 - Ajustar UI Fiscal/Ventas/Facturacion
-- Estado: Pendiente.
+- Estado: Implementado.
 - Fase: Fase 27.
 - Decision de diseno: Mostrar politica fiscal, resoluciones por tipo, override con modal PIN y textos en espanol.
 
 ### TASK-213 - Crear modulo independiente de Nota credito
-- Estado: Pendiente.
+- Estado: Implementado.
 - Fase: Fase 27.
 - Decision de diseno: Pantalla/contrato/permiso/resolucion `CREDIT_NOTE`.
 
 ### TASK-214 - Crear modulo independiente de Nota debito
-- Estado: Pendiente.
+- Estado: Implementado.
 - Fase: Fase 27.
 - Decision de diseno: Pantalla/contrato/permiso/resolucion `DEBIT_NOTE`.
 
 ### TASK-215 - Crear modulo independiente de Nota de ajuste POS
-- Estado: Pendiente.
+- Estado: Implementado.
 - Fase: Fase 27.
 - Decision de diseno: Pantalla/contrato/permiso/resolucion `POS_ADJUSTMENT_NOTE`, solo sobre documento equivalente POS.
 
 ### TASK-216 - Auditoria completa de PIN, override y notas fiscales
-- Estado: Pendiente.
+- Estado: Implementado inicial.
 - Fase: Fase 27.
 - Decision de diseno: Auditar intentos, bloqueos, desbloqueos, cambios y emisiones sin secretos ni payloads completos.
+
+### TASK-217 - Cierre de venta en un solo paso
+- Estado: Implementado.
+- Fase: Fase 27.
+- Decision de diseno: Exponer `POST /api/v1/sales/close` para que el backend cree y confirme la venta con una sola idempotency key. La SPA usa el label `Cerrar venta` como accion principal y deja de exigir que el vendedor cree una venta antes de emitir el documento fiscal.
+- Componentes/capas: `billing-service` agrega caso de uso `close`, `bff-service` reutiliza la regla de acceso de ventas, `facturaelectronica-web` ejecuta el cierre y abre la tirilla/comprobante desde la venta confirmada.
+- Errores: Faltantes de emisor/resolucion siguen como `BUSINESS_RULE_VIOLATION` y redirigen a Fiscal; fallos del conector DIAN se mapean a `EXTERNAL_PROVIDER_ERROR` con mensaje funcional.
+
+### TASK-218 - Corregir reconocimiento ROOT y catalogo de permisos
+- Estado: Implementado.
+- Fase: Fase 27.
+- Decision de diseno: `identity-service` separa el catalogo global de permisos root-only del catalogo empresarial. El permiso `OPERATIONAL_PIN_MANAGE` se incorpora al enum `PermissionCode` para alinear Flyway, JPA y dominio. El BFF conserva `ROOT` solo cuando `/api/v1/platform/permissions` responde correctamente para un actor root real.
+- Componentes/capas: `identity-service` ajusta dominio, caso de uso y controlador; `bff-service` agrega prueba de lectura de catalogos globales sin empresa activa para ROOT.
+- Riesgo mitigado: Un permiso en base de datos que no exista en el enum Java rompe Hibernate al mapear `@Enumerated(EnumType.STRING)` y deja a ROOT sin acceso global.
+
+### Context7 evidence
+
+- Library/tool: React.
+- Topic consulted: Form submit events, state updates and conditional rendering.
+- Relevant finding: React recomienda manejar formularios con una accion de submit, prevenir el refresh y actualizar estado/renderizado segun el resultado.
+- Decision impact: `SaleForm` usa una accion principal `Cerrar venta` en vez de dos botones operativos para crear y emitir.
+- Library/tool: Spring Framework.
+- Topic consulted: `@ControllerAdvice` and `@ExceptionHandler`.
+- Relevant finding: Spring MVC permite centralizar mapeo de excepciones a `ResponseEntity` con status y body.
+- Decision impact: El conector DIAN se mapea como proveedor externo y no como error interno generico cuando falla la comunicacion.
+
+### TASK-219 - Correccion de uso de licencia y seleccion ROOT explicita
+- Estado: Implementado.
+- Fase: Fase 27.
+- Decision de diseno: `billing-service` reemplaza el JPQL de documentos electronicos con filtros opcionales nulos por una consulta Criteria dinamica que agrega predicados solo cuando hay valor real.
+- Decision de UX: `ROOT` inicia sesion sin empresa activa, aun si habia una empresa persistida en `sessionStorage`; la seleccion de empresa es explicita antes de hidratar formularios derivados.
+- Decision de licencias: El boton `Cargar licencia` se deshabilita cuando la licencia de la empresa seleccionada ya esta cargada o guardada.
+- Riesgo mitigado: Evita 500 en el refresco de uso de licencias y reduce modificaciones accidentales sobre empresas precargadas.
+
+#### Context7 evidence
+- Library/tool: Spring Data JPA.
+- Topic consulted: Consultas dinamicas con filtros opcionales.
+- Relevant finding: Spring Data JPA documenta Specifications/Criteria como forma de construir predicados programaticamente y componer filtros en tiempo de ejecucion.
+- Decision impact: Se usa Criteria API para evitar ambiguedad de tipos en PostgreSQL con parametros nulos.
+- Library/tool: Hibernate ORM.
+- Topic consulted: `@Enumerated(EnumType.STRING)` enum mapping.
+- Relevant finding: Hibernate mapea enums `STRING` como el nombre del enum en columna `VARCHAR`; los valores de base de datos deben corresponder a constantes Java validas.
+- Decision impact: Todo permiso insertado en `identity.permission_catalog` debe existir en `PermissionCode` y estar cubierto por pruebas.
 
 <!-- END SDD TASK DESIGN TRACEABILITY -->

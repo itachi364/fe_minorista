@@ -16,7 +16,7 @@ import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
 import com.msvanegasg.facturaelectronica.billing.infrastructure.persistence.entity.SaleJpaEntity;
 
-public interface SaleJpaRepository extends JpaRepository<SaleJpaEntity, UUID> {
+public interface SaleJpaRepository extends JpaRepository<SaleJpaEntity, UUID>, SaleJpaRepositoryCustom {
 
     @EntityGraph(attributePaths = { "lines", "electronicDocument" })
     Optional<SaleJpaEntity> findByCompanyIdAndId(UUID companyId, UUID id);
@@ -43,25 +43,6 @@ public interface SaleJpaRepository extends JpaRepository<SaleJpaEntity, UUID> {
             @Param("paymentMethodCode") PaymentMethodCode paymentMethodCode,
             @Param("documentStatus") ElectronicDocumentStatus documentStatus,
             @Param("from") Instant from, @Param("to") Instant to);
-
-    @EntityGraph(attributePaths = { "lines", "electronicDocument" })
-    @Query("""
-            select s from SaleJpaEntity s join s.electronicDocument d
-            where s.companyId = :companyId
-              and (:documentType is null or d.documentType = :documentType)
-              and (:status is null or d.status = :status)
-              and (:customerId is null or s.customerId = :customerId)
-              and (:from is null or d.issuedAt >= :from)
-              and (:to is null or d.issuedAt < :to)
-              and (:prefix is null or d.prefix = :prefix)
-              and (:number is null or d.documentNumber = :number)
-              and (:cufeCude is null or d.cufeCude = :cufeCude)
-            order by d.issuedAt desc
-            """)
-    List<SaleJpaEntity> findElectronicDocuments(@Param("companyId") UUID companyId,
-            @Param("documentType") ElectronicDocumentType documentType, @Param("status") ElectronicDocumentStatus status,
-            @Param("customerId") UUID customerId, @Param("from") Instant from, @Param("to") Instant to,
-            @Param("prefix") String prefix, @Param("number") Long number, @Param("cufeCude") String cufeCude);
 
     @EntityGraph(attributePaths = { "lines", "electronicDocument" })
     @Query("select s from SaleJpaEntity s join s.electronicDocument d where s.companyId = :companyId and d.id = :documentId")

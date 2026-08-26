@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.msvanegasg.facturaelectronica.billingservice.BillingServiceApplication;
+import com.msvanegasg.facturaelectronica.billing.application.dto.ElectronicDocumentQuery;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
@@ -63,6 +64,21 @@ class SalePersistenceAdapterTest {
         assertThat(found.lines()).hasSize(1);
         assertThat(found.electronicDocument()).isNotNull();
         assertThat(found.electronicDocument().providerTrackingId()).startsWith("mock-tracking-");
+    }
+
+    @Test
+    void findsElectronicDocumentsWithOnlyDateRangeFilters() {
+        Sale draft = draftSale();
+        Sale confirmed = draft.confirm(validatedDocument(draft), Instant.parse("2026-05-19T10:01:00Z"));
+        Sale saved = adapter.save(confirmed);
+
+        List<Sale> documents = adapter.findByElectronicDocument(new ElectronicDocumentQuery(saved.companyId(), null,
+                null, null, java.time.LocalDate.parse("2026-05-01"), java.time.LocalDate.parse("2026-05-31"), null,
+                null, null));
+
+        assertThat(documents).hasSize(1);
+        assertThat(documents.get(0).electronicDocument()).isNotNull();
+        assertThat(documents.get(0).electronicDocument().id()).isEqualTo(saved.electronicDocument().id());
     }
 
     private static Sale draftSale() {

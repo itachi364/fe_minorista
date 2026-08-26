@@ -24,6 +24,7 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.LicensePolicy;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ProviderSubmissionResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.PosReceiptResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery;
+import com.msvanegasg.facturaelectronica.billing.application.dto.SaleDocumentTypeOverrideCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.AssignFiscalNumberUseCase;
@@ -31,6 +32,7 @@ import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageSaleU
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AccountingEntryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AuditEventPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.CompanyFiscalPolicyRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ElectronicDocumentProviderPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FinalConsumerProfileRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalDocumentUsagePort;
@@ -38,9 +40,12 @@ import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGenerato
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryAvailabilityPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryMovementPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.LicenseValidationPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.OperationalPinValidationPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.SaleRepositoryPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.SaleDocumentTypeOverrideRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.domain.model.CudeGenerator;
 import com.msvanegasg.facturaelectronica.billing.domain.model.BuyerIdentificationMode;
+import com.msvanegasg.facturaelectronica.billing.domain.model.CompanyFiscalPolicy;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
@@ -50,6 +55,7 @@ import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleChannel;
+import com.msvanegasg.facturaelectronica.billing.domain.model.SaleDocumentTypeOverride;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleLine;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
 import com.msvanegasg.facturaelectronica.eventing.DomainEventEnvelope;
@@ -67,6 +73,9 @@ public class SaleManagementService implements ManageSaleUseCase {
     private final FinalConsumerProfileRepositoryPort finalConsumerProfileRepository;
     private final LicenseValidationPort licenseValidationPort;
     private final FiscalDocumentUsagePort fiscalDocumentUsagePort;
+    private final CompanyFiscalPolicyRepositoryPort companyFiscalPolicyRepository;
+    private final SaleDocumentTypeOverrideRepositoryPort saleDocumentTypeOverrideRepository;
+    private final OperationalPinValidationPort operationalPinValidationPort;
     private final AssignFiscalNumberUseCase assignFiscalNumberUseCase;
     private final DomainEventPublisherPort eventPublisher;
     private final IdGeneratorPort idGenerator;
@@ -80,7 +89,7 @@ public class SaleManagementService implements ManageSaleUseCase {
         this(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort, accountingEntryPort,
                 auditEventPort, companyId -> java.util.Optional.of(new com.msvanegasg.facturaelectronica.billing.domain.model.FinalConsumerProfile(
                         new UUID(0L, 222L), null, "FINAL_CONSUMER", 31, "222222222222", "Consumidor final",
-                        true, "TEST", "TEST", Instant.EPOCH)),
+                true, "TEST", "TEST", Instant.EPOCH)),
                 licenseValidationPort, assignFiscalNumberUseCase, DomainEventPublisherPort.noop(), idGenerator,
                 clock);
     }
@@ -104,7 +113,7 @@ public class SaleManagementService implements ManageSaleUseCase {
         this(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort, accountingEntryPort,
                 auditEventPort, companyId -> java.util.Optional.of(new com.msvanegasg.facturaelectronica.billing.domain.model.FinalConsumerProfile(
                         new UUID(0L, 222L), null, "FINAL_CONSUMER", 31, "222222222222", "Consumidor final",
-                        true, "TEST", "TEST", Instant.EPOCH)),
+                true, "TEST", "TEST", Instant.EPOCH)),
                 licenseValidationPort, assignFiscalNumberUseCase, eventPublisher, idGenerator, clock);
     }
 
@@ -116,7 +125,9 @@ public class SaleManagementService implements ManageSaleUseCase {
             DomainEventPublisherPort eventPublisher, IdGeneratorPort idGenerator, ClockPort clock) {
         this(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort, accountingEntryPort,
                 auditEventPort, finalConsumerProfileRepository, licenseValidationPort, FiscalDocumentUsagePort.noop(),
-                assignFiscalNumberUseCase, eventPublisher, idGenerator, clock);
+                CompanyFiscalPolicyRepositoryPort.defaultsOnly(), SaleDocumentTypeOverrideRepositoryPort.noop(),
+                OperationalPinValidationPort.allowAll(), assignFiscalNumberUseCase, eventPublisher, idGenerator,
+                clock);
     }
 
     public SaleManagementService(SaleRepositoryPort saleRepository, InventoryAvailabilityPort inventoryAvailability,
@@ -124,6 +135,9 @@ public class SaleManagementService implements ManageSaleUseCase {
             AccountingEntryPort accountingEntryPort, AuditEventPort auditEventPort,
             FinalConsumerProfileRepositoryPort finalConsumerProfileRepository,
             LicenseValidationPort licenseValidationPort, FiscalDocumentUsagePort fiscalDocumentUsagePort,
+            CompanyFiscalPolicyRepositoryPort companyFiscalPolicyRepository,
+            SaleDocumentTypeOverrideRepositoryPort saleDocumentTypeOverrideRepository,
+            OperationalPinValidationPort operationalPinValidationPort,
             AssignFiscalNumberUseCase assignFiscalNumberUseCase, DomainEventPublisherPort eventPublisher,
             IdGeneratorPort idGenerator, ClockPort clock) {
         this.saleRepository = Objects.requireNonNull(saleRepository);
@@ -135,6 +149,9 @@ public class SaleManagementService implements ManageSaleUseCase {
         this.finalConsumerProfileRepository = Objects.requireNonNull(finalConsumerProfileRepository);
         this.licenseValidationPort = Objects.requireNonNull(licenseValidationPort);
         this.fiscalDocumentUsagePort = Objects.requireNonNull(fiscalDocumentUsagePort);
+        this.companyFiscalPolicyRepository = Objects.requireNonNull(companyFiscalPolicyRepository);
+        this.saleDocumentTypeOverrideRepository = Objects.requireNonNull(saleDocumentTypeOverrideRepository);
+        this.operationalPinValidationPort = Objects.requireNonNull(operationalPinValidationPort);
         this.assignFiscalNumberUseCase = Objects.requireNonNull(assignFiscalNumberUseCase);
         this.eventPublisher = Objects.requireNonNull(eventPublisher);
         this.idGenerator = Objects.requireNonNull(idGenerator);
@@ -147,6 +164,12 @@ public class SaleManagementService implements ManageSaleUseCase {
         return saleRepository.findByCompanyIdAndIdempotencyKey(command.companyId(), command.idempotencyKey())
                 .map(BillingResultMapper::toSaleResult)
                 .orElseGet(() -> createNew(command));
+    }
+
+    @Override
+    public SaleResult close(CreateSaleCommand command) {
+        SaleResult sale = create(command);
+        return confirm(command.companyId(), sale.id(), command.idempotencyKey());
     }
 
     @Override
@@ -164,9 +187,7 @@ public class SaleManagementService implements ManageSaleUseCase {
         UUID documentId = idGenerator.newId();
         Instant now = clock.now();
         ensureMonthlyDocumentQuota(companyId, licensePolicy, now);
-        ElectronicDocumentType documentType = sale.saleChannel() == SaleChannel.POS
-                ? ElectronicDocumentType.ELECTRONIC_POS
-                : ElectronicDocumentType.ELECTRONIC_INVOICE;
+        ElectronicDocumentType documentType = resolveSaleDocumentType(sale);
         FiscalNumberResult fiscalNumber = assignFiscalNumberUseCase.assign(new AssignFiscalNumberCommand(
                 sale.companyId(), documentType, LocalDate.ofInstant(now, ZoneOffset.UTC), FiscalEnvironment.TEST));
         ProviderSubmissionResult provider = providerPort.submit(sale, documentId, documentType, idempotencyKey);
@@ -177,6 +198,37 @@ public class SaleManagementService implements ManageSaleUseCase {
         publishConfirmedSaleEvents(completed);
         auditEventPort.register(toAuditEvent(completed));
         return BillingResultMapper.toSaleResult(completed);
+    }
+
+    @Override
+    public SaleResult overrideDocumentType(SaleDocumentTypeOverrideCommand command) {
+        Objects.requireNonNull(command, "command is required");
+        Sale sale = saleRepository.findByCompanyIdAndId(command.companyId(), command.saleId())
+                .orElseThrow(() -> new SaleNotFoundException(command.saleId()));
+        if (sale.status() != SaleStatus.DRAFT) {
+            throw new IllegalStateException("Solo puedes cambiar el tipo de documento fiscal antes de emitir la venta.");
+        }
+        if (command.documentType() == null || !command.documentType().isSaleDocument()) {
+            throw new IllegalArgumentException("El tipo de documento fiscal no es valido para ventas.");
+        }
+        CompanyFiscalPolicy policy = companyFiscalPolicyRepository.findByCompanyId(command.companyId())
+                .orElseGet(() -> CompanyFiscalPolicy.defaults(command.companyId()));
+        if (!policy.allowDocumentTypeOverride()) {
+            throw new IllegalStateException("La politica fiscal de la empresa no permite cambios excepcionales.");
+        }
+        if (policy.requirePinForOverride()) {
+            OperationalPinValidationPort.OperationalPinValidationResult pinResult = operationalPinValidationPort.verify(
+                    command.companyId(), command.pin(), command.authorizationHeader());
+            if (!pinResult.valid()) {
+                throw new IllegalStateException(pinResult.locked() || pinResult.mustChange()
+                        ? "El PIN operacional esta bloqueado o requiere cambio."
+                        : "El PIN operacional no es valido. Intentos restantes: " + pinResult.remainingAttempts() + ".");
+            }
+        }
+        saleDocumentTypeOverrideRepository.save(SaleDocumentTypeOverride.create(idGenerator.newId(),
+                command.companyId(), command.saleId(), command.documentType(), command.authorizedBy(),
+                command.reason(), clock.now()));
+        return BillingResultMapper.toSaleResult(sale);
     }
 
     @Override
@@ -307,6 +359,18 @@ public class SaleManagementService implements ManageSaleUseCase {
             throw new LicenseBlockedException("La licencia permite maximo " + maxMonthlyDocuments
                     + " documentos fiscales mensuales.");
         }
+    }
+
+    private ElectronicDocumentType resolveSaleDocumentType(UUID companyId) {
+        return companyFiscalPolicyRepository.findByCompanyId(companyId)
+                .orElseGet(() -> CompanyFiscalPolicy.defaults(companyId))
+                .resolveSaleDocumentType();
+    }
+
+    private ElectronicDocumentType resolveSaleDocumentType(Sale sale) {
+        return saleDocumentTypeOverrideRepository.findActiveByCompanyIdAndSaleId(sale.companyId(), sale.id())
+                .map(SaleDocumentTypeOverride::documentType)
+                .orElseGet(() -> resolveSaleDocumentType(sale.companyId()));
     }
 
     private ElectronicDocument documentFromProvider(UUID documentId, Sale sale, ElectronicDocumentType documentType,

@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,10 +23,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import com.msvanegasg.facturaelectronica.billing.application.dto.CompanyFiscalPolicyResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.IssuerProfileResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.NumberingResolutionResult;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.ConfigureIssuerProfileUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.CreateNumberingResolutionUseCase;
+import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageCompanyFiscalPolicyUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.QueryFiscalConfigurationUseCase;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalEnvironment;
@@ -46,13 +49,43 @@ class FiscalConfigurationControllerTest {
     private CreateNumberingResolutionUseCase createNumberingResolutionUseCase;
     @Mock
     private QueryFiscalConfigurationUseCase queryFiscalConfigurationUseCase;
+    @Mock
+    private ManageCompanyFiscalPolicyUseCase manageCompanyFiscalPolicyUseCase;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(new FiscalConfigurationController(configureIssuerProfileUseCase,
-                createNumberingResolutionUseCase, queryFiscalConfigurationUseCase))
+                createNumberingResolutionUseCase, queryFiscalConfigurationUseCase, manageCompanyFiscalPolicyUseCase))
                 .setControllerAdvice(new BillingExceptionHandler())
                 .build();
+    }
+
+    @Test
+    void configuresFiscalPolicy() throws Exception {
+        when(manageCompanyFiscalPolicyUseCase.configure(any())).thenReturn(policy());
+
+        mockMvc.perform(put("/api/v1/fiscal-policy")
+                .header("X-Company-Id", COMPANY_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "defaultSaleDocumentType": "ELECTRONIC_INVOICE",
+                          "allowDocumentTypeOverride": true,
+                          "requirePinForOverride": true
+                        }
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.defaultSaleDocumentType").value("ELECTRONIC_INVOICE"));
+    }
+
+    @Test
+    void findsFiscalPolicy() throws Exception {
+        when(manageCompanyFiscalPolicyUseCase.findByCompanyId(COMPANY_ID)).thenReturn(policy());
+
+        mockMvc.perform(get("/api/v1/fiscal-policy")
+                .header("X-Company-Id", COMPANY_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requirePinForOverride").value(true));
     }
 
     @Test
@@ -166,5 +199,10 @@ class FiscalConfigurationControllerTest {
         return new NumberingResolutionResult(RESOLUTION_ID, COMPANY_ID, ElectronicDocumentType.ELECTRONIC_POS,
                 "18760000001", "POS", 100, 200, 99, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
                 FiscalEnvironment.TEST, true);
+    }
+
+    private static CompanyFiscalPolicyResult policy() {
+        return new CompanyFiscalPolicyResult(COMPANY_ID, ElectronicDocumentType.ELECTRONIC_INVOICE, true, true,
+                Instant.parse("2026-05-19T10:00:00Z"));
     }
 }

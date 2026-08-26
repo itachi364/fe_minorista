@@ -9,9 +9,11 @@ import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import com.msvanegasg.facturaelectronica.billing.application.dto.ProviderSubmissionResult;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ElectronicDocumentProviderPort;
+import com.msvanegasg.facturaelectronica.billing.application.usecase.ExternalProviderException;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ProviderStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
@@ -30,15 +32,22 @@ public class DianProviderHttpAdapter implements ElectronicDocumentProviderPort {
     @Override
     public ProviderSubmissionResult submit(Sale sale, UUID documentId, ElectronicDocumentType documentType,
             String idempotencyKey) {
-        ProviderSubmissionResponse response = restClient.post()
-                .uri(providerPath(documentType))
-                .header("Idempotency-Key", idempotencyKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(ProviderSubmissionRequest.from(sale, documentId, documentType))
-                .retrieve()
-                .body(ProviderSubmissionResponse.class);
+        ProviderSubmissionResponse response;
+        try {
+            response = restClient.post()
+                    .uri(providerPath(documentType))
+                    .header("Idempotency-Key", idempotencyKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(ProviderSubmissionRequest.from(sale, documentId, documentType))
+                    .retrieve()
+                    .body(ProviderSubmissionResponse.class);
+        } catch (RestClientException exception) {
+            throw new ExternalProviderException(
+                    "No fue posible enviar el documento fiscal al conector DIAN. Intenta nuevamente o revisa la configuracion DIAN de la empresa.",
+                    exception);
+        }
         if (response == null) {
-            throw new IllegalStateException("El conector DIAN mock no retorno respuesta.");
+            throw new ExternalProviderException("El conector DIAN no retorno respuesta para el documento fiscal.");
         }
         return new ProviderSubmissionResult(ProviderStatus.valueOf(response.status()), response.trackingId(),
                 response.cufeCude(), response.qrContent(), response.errorCode(), response.errorMessage());

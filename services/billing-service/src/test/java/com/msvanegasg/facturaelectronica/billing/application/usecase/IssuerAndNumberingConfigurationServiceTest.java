@@ -112,7 +112,7 @@ class IssuerAndNumberingConfigurationServiceTest {
         assertThatThrownBy(() -> service.assign(new AssignFiscalNumberCommand(COMPANY_ID,
                 ElectronicDocumentType.ELECTRONIC_POS, DOCUMENT_DATE, FiscalEnvironment.TEST)))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Debes configurar un emisor fiscal activo antes de confirmar ventas POS.");
+                .hasMessage("Debes configurar un emisor fiscal activo antes de emitir documentos fiscales.");
     }
 
     @Test
@@ -125,7 +125,7 @@ class IssuerAndNumberingConfigurationServiceTest {
         assertThatThrownBy(() -> service.assign(new AssignFiscalNumberCommand(COMPANY_ID,
                 ElectronicDocumentType.ELECTRONIC_POS, DOCUMENT_DATE, FiscalEnvironment.TEST)))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Debes configurar una resolucion de numeracion activa para POS electronico antes de confirmar ventas.");
+                .hasMessage("Debes configurar una resolucion de numeracion activa para POS electronico antes de emitir el documento fiscal.");
     }
 
     @Test

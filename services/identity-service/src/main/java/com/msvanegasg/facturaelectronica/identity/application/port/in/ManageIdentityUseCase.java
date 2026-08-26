@@ -40,6 +40,8 @@ public interface ManageIdentityUseCase {
 
     CompanyAccessResult permissions(UUID companyId, UUID userId);
 
+    List<PermissionCatalogResult> listPlatformPermissionCatalog(String authorizationHeader);
+
     List<PermissionCatalogResult> listPermissionCatalog(String authorizationHeader);
 
     List<UserResult> listCompanyUsers(UUID companyId, String email, String authorizationHeader);

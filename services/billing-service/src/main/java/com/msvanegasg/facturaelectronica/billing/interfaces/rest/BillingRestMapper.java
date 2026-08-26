@@ -3,6 +3,8 @@ package com.msvanegasg.facturaelectronica.billing.interfaces.rest;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.billing.application.dto.ConfigureIssuerProfileCommand;
+import com.msvanegasg.facturaelectronica.billing.application.dto.CompanyFiscalPolicyCommand;
+import com.msvanegasg.facturaelectronica.billing.application.dto.CompanyFiscalPolicyResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.CreateNumberingResolutionCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.CreateSaleCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ElectronicDocumentResult;
@@ -15,6 +17,8 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineCommand
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.ElectronicDocumentResponse;
+import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.CompanyFiscalPolicyRequest;
+import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.CompanyFiscalPolicyResponse;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.FiscalArtifactResponse;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.FiscalEventResponse;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.FiscalNoteResponse;
@@ -70,6 +74,16 @@ final class BillingRestMapper {
         return new NumberingResolutionResponse(result.id(), result.companyId(), result.documentType(),
                 result.resolutionNumber(), result.prefix(), result.fromNumber(), result.toNumber(),
                 result.currentNumber(), result.validFrom(), result.validTo(), result.environment(), result.active());
+    }
+
+    static CompanyFiscalPolicyCommand toCommand(UUID companyId, CompanyFiscalPolicyRequest request) {
+        return new CompanyFiscalPolicyCommand(companyId, request.defaultSaleDocumentType(),
+                request.allowDocumentTypeOverride(), request.requirePinForOverride());
+    }
+
+    static CompanyFiscalPolicyResponse toResponse(CompanyFiscalPolicyResult result) {
+        return new CompanyFiscalPolicyResponse(result.companyId(), result.defaultSaleDocumentType(),
+                result.allowDocumentTypeOverride(), result.requirePinForOverride(), result.updatedAt());
     }
 
     private static SaleLineCommand toLineCommand(SaleLineRequest request) {
