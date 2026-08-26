@@ -5201,3 +5201,237 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - `npm run build` - OK.
   - Resultado:
     - Los modales empresariales usan contenedores acotados, scroll interno y composicion dedicada para evitar campos cortados o paneles anidados.
+
+## Fase 27: Politica fiscal configurable, PIN operacional y documentos fiscales
+
+- [ ] TASK-204: Documentar politica fiscal por empresa
+  - Estado: TODO
+  - Requisitos: RF-179, RF-180, RF-181.
+  - Acceptance criteria: AC-244, AC-245.
+  - Descripcion: Formalizar que `POS` es canal operativo y que el tipo fiscal se resuelve por politica empresarial, con `ELECTRONIC_INVOICE` como default recomendado.
+  - Archivos:
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+    - `specs/use-cases.md`
+  - Dependencias:
+    - TASK-041, TASK-153, TASK-200.
+  - Criterios:
+    - La politica separa canal POS de tipo fiscal.
+    - La documentacion cita DIAN y diferencia factura electronica de documento equivalente POS.
+    - La resolucion activa se mantiene por tipo documental y ambiente.
+  - Validacion:
+    - Revision SDD cruzada.
+
+- [ ] TASK-205: Configurar documento fiscal por defecto para venta POS
+  - Estado: TODO
+  - Requisitos: RF-179, RF-180, RF-190.
+  - Acceptance criteria: AC-244, AC-252.
+  - Descripcion: Implementar politica empresarial para que ventas POS emitan por defecto factura electronica de venta (`ELECTRONIC_INVOICE`) y generen tirilla como representacion grafica.
+  - Archivos:
+    - `services/billing-service/src/main/java/**`
+    - `services/billing-service/src/test/java/**`
+    - `apps/facturaelectronica-web/src/**`
+  - Dependencias:
+    - TASK-204.
+  - Criterios:
+    - Confirmar POS usa `ELECTRONIC_INVOICE` por defecto.
+    - El sistema sigue conservando `SaleChannel.POS`.
+    - La tirilla no se rotula como documento equivalente POS cuando el tipo fiscal es factura electronica.
+  - Validacion:
+    - Tests unitarios `billing-service`.
+    - Tests HTTP adapter DIAN.
+    - `npm test -- --run App.test.jsx`.
+
+- [ ] TASK-206: Mantener resolucion activa por tipo documental y ambiente
+  - Estado: TODO
+  - Requisitos: RF-181, RF-191.
+  - Acceptance criteria: AC-245, AC-253.
+  - Descripcion: Reforzar que una empresa pueda tener simultaneamente resoluciones activas por factura electronica, POS electronico, nota credito, nota debito y nota de ajuste POS.
+  - Archivos:
+    - `services/billing-service/src/main/java/**/NumberingResolution*`
+    - `services/billing-service/src/test/java/**/IssuerAndNumberingConfigurationServiceTest.java`
+    - `apps/facturaelectronica-web/src/features/fiscal/**`
+  - Dependencias:
+    - TASK-204.
+  - Criterios:
+    - Activar una resolucion no afecta tipos documentales distintos.
+    - La UI muestra claramente tipo documental y ambiente.
+  - Validacion:
+    - Tests de dominio, persistencia y REST de resoluciones.
+
+- [ ] TASK-207: Implementar PIN operacional de 6 digitos
+  - Estado: TODO
+  - Requisitos: RF-184, RF-185.
+  - Acceptance criteria: AC-248.
+  - Descripcion: Crear modelo, API y UI para que administradores/supervisores configuren PIN operacional numerico de exactamente 6 digitos.
+  - Archivos:
+    - `services/identity-service/src/main/java/**`
+    - `services/identity-service/src/main/resources/db/migration/**`
+    - `apps/facturaelectronica-web/src/**`
+  - Dependencias:
+    - TASK-164, TASK-181.
+  - Criterios:
+    - PIN no se guarda plano.
+    - PIN no inicia sesion ni reemplaza password.
+    - Validacion de 6 digitos en frontend y backend.
+  - Validacion:
+    - Tests unitarios y REST de identity.
+    - Tests frontend.
+
+- [ ] TASK-208: Bloquear PIN tras 3 intentos fallidos
+  - Estado: TODO
+  - Requisitos: RF-186, RF-187.
+  - Acceptance criteria: AC-249, AC-256.
+  - Descripcion: Registrar intentos fallidos consecutivos y bloquear PIN en el tercer fallo, con auditoria.
+  - Archivos:
+    - `services/identity-service/src/main/java/**`
+    - `services/audit-service/src/main/java/**` si aplica
+  - Dependencias:
+    - TASK-207.
+  - Criterios:
+    - Tercer fallo cambia estado a `LOCKED`.
+    - Nuevos usos bloqueados no validan contra hash.
+    - Auditoria no expone PIN.
+  - Validacion:
+    - Tests de bloqueo, intentos y auditoria.
+
+- [ ] TASK-209: Desbloqueo administrativo con cambio obligatorio
+  - Estado: TODO
+  - Requisitos: RF-186, RF-187.
+  - Acceptance criteria: AC-250, AC-251, AC-256.
+  - Descripcion: Permitir desbloqueo administrativo del PIN dejando estado `CHANGE_REQUIRED` hasta que el titular cambie el PIN.
+  - Archivos:
+    - `services/identity-service/src/main/java/**`
+    - `apps/facturaelectronica-web/src/**`
+  - Dependencias:
+    - TASK-208.
+  - Criterios:
+    - Solo usuario autorizado desbloquea.
+    - `CHANGE_REQUIRED` no autoriza operaciones.
+    - Cambio posterior deja PIN `ACTIVE`.
+  - Validacion:
+    - Tests REST y frontend.
+
+- [ ] TASK-210: Override de tipo documental por venta con PIN
+  - Estado: TODO
+  - Requisitos: RF-182, RF-183, RF-188, RF-191.
+  - Acceptance criteria: AC-246, AC-247, AC-253, AC-256.
+  - Descripcion: Permitir que un administrador/supervisor autorice con PIN el cambio puntual del tipo fiscal de una venta sin cerrar la sesion del vendedor.
+  - Archivos:
+    - `services/billing-service/src/main/java/**`
+    - `services/identity-service/src/main/java/**`
+    - `services/bff-service/src/main/java/**`
+    - `apps/facturaelectronica-web/src/features/sales/**`
+  - Dependencias:
+    - TASK-205, TASK-207, TASK-208, TASK-209.
+  - Criterios:
+    - Override aplica solo a la venta indicada.
+    - Requiere permiso `SALES_DOCUMENT_TYPE_OVERRIDE`.
+    - Requiere motivo obligatorio.
+    - Valida resolucion activa del tipo destino.
+  - Validacion:
+    - Tests unitarios, REST, BFF y frontend.
+
+- [ ] TASK-211: Ajustar confirmacion POS para factura electronica por defecto
+  - Estado: TODO
+  - Requisitos: RF-180, RF-190.
+  - Acceptance criteria: AC-244, AC-252.
+  - Descripcion: Cambiar la confirmacion POS para resolver el tipo fiscal desde politica y usar `ELECTRONIC_INVOICE` por defecto.
+  - Archivos:
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/application/usecase/SaleManagementService.java`
+    - `services/billing-service/src/test/java/com/msvanegasg/facturaelectronica/billing/application/usecase/SaleManagementServiceTest.java`
+    - `services/billing-service/src/test/java/com/msvanegasg/facturaelectronica/billing/infrastructure/client/DianProviderHttpAdapterTest.java`
+  - Dependencias:
+    - TASK-205.
+  - Criterios:
+    - Venta POS default llama `/electronic-invoices`.
+    - Error por resolucion faltante menciona factura electronica de venta si ese es el tipo resuelto.
+  - Validacion:
+    - Tests Maven de `billing-service`.
+
+- [ ] TASK-212: Ajustar UI Fiscal/Ventas/Facturacion
+  - Estado: TODO
+  - Requisitos: RF-179, RF-180, RF-182, RF-183, RF-190, RF-191.
+  - Acceptance criteria: AC-244, AC-246, AC-247, AC-252, AC-253.
+  - Descripcion: Ajustar UI para mostrar politica fiscal, resoluciones por tipo, selector informativo del tipo fiscal resuelto y modal de override con PIN.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/features/fiscal/**`
+    - `apps/facturaelectronica-web/src/features/sales/**`
+    - `apps/facturaelectronica-web/src/data/navigation.js`
+    - `apps/facturaelectronica-web/src/locales/**`
+  - Dependencias:
+    - TASK-205, TASK-210.
+  - Criterios:
+    - Textos en espanol.
+    - Vendedor ve default y no puede cambiar sin autorizacion.
+    - Administrador autorizado puede aprobar sin cerrar sesion del vendedor.
+  - Validacion:
+    - `npm test -- --run App.test.jsx`.
+    - `npm run build`.
+
+- [ ] TASK-213: Crear modulo independiente de Nota credito
+  - Estado: TODO
+  - Requisitos: RF-188, RF-189.
+  - Acceptance criteria: AC-254, AC-255, AC-256.
+  - Descripcion: Crear modulo fiscal independiente para notas credito con permiso, contrato, resolucion `CREDIT_NOTE` y auditoria.
+  - Archivos:
+    - `services/billing-service/src/main/java/**`
+    - `apps/facturaelectronica-web/src/**`
+  - Dependencias:
+    - TASK-206.
+  - Criterios:
+    - No vive dentro de Ventas.
+    - Usa resolucion `CREDIT_NOTE`.
+  - Validacion:
+    - Tests backend/frontend.
+
+- [ ] TASK-214: Crear modulo independiente de Nota debito
+  - Estado: TODO
+  - Requisitos: RF-188, RF-189.
+  - Acceptance criteria: AC-254, AC-255, AC-256.
+  - Descripcion: Crear modulo fiscal independiente para notas debito con permiso, contrato, resolucion `DEBIT_NOTE` y auditoria.
+  - Archivos:
+    - `services/billing-service/src/main/java/**`
+    - `apps/facturaelectronica-web/src/**`
+  - Dependencias:
+    - TASK-206.
+  - Criterios:
+    - No vive dentro de Ventas.
+    - Usa resolucion `DEBIT_NOTE`.
+  - Validacion:
+    - Tests backend/frontend.
+
+- [ ] TASK-215: Crear modulo independiente de Nota de ajuste POS
+  - Estado: TODO
+  - Requisitos: RF-188, RF-189, RF-191.
+  - Acceptance criteria: AC-254, AC-255, AC-256.
+  - Descripcion: Crear modulo fiscal independiente para nota de ajuste POS, aplicable a documentos equivalentes POS y con resolucion `POS_ADJUSTMENT_NOTE`.
+  - Archivos:
+    - `services/billing-service/src/main/java/**`
+    - `apps/facturaelectronica-web/src/**`
+  - Dependencias:
+    - TASK-206, TASK-210.
+  - Criterios:
+    - Solo aplica sobre `ELECTRONIC_POS`.
+    - Usa resolucion `POS_ADJUSTMENT_NOTE`.
+  - Validacion:
+    - Tests backend/frontend.
+
+- [ ] TASK-216: Auditoria completa de PIN, override y notas fiscales
+  - Estado: TODO
+  - Requisitos: RF-187, RF-188, RF-189.
+  - Acceptance criteria: AC-247, AC-249, AC-250, AC-255, AC-256.
+  - Descripcion: Centralizar eventos auditables de PIN operacional, override de documento fiscal y emision de notas.
+  - Archivos:
+    - `services/audit-service/src/main/java/**`
+    - `services/billing-service/src/main/java/**`
+    - `services/identity-service/src/main/java/**`
+  - Dependencias:
+    - TASK-207, TASK-208, TASK-209, TASK-210, TASK-213, TASK-214, TASK-215.
+  - Criterios:
+    - Auditoria registra resultado y correlation ID.
+    - No registra PIN, hashes, passwords ni payload fiscal completo.
+  - Validacion:
+    - Tests de auditoria y busqueda de secretos en diffs/logs.

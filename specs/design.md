@@ -2726,7 +2726,7 @@ Context7 evidence:
   - Decision impact: La SPA mantiene `companyForm` vacio para crear, usa un identificador de empresa en edicion para actualizar y usa identificadores de empresa objetivo separados para modales.
 
 ### TASK-202 - Separar Registro de Ventas de la pantalla POS
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 26: QA visual y flujo operativo POS.
 - Decision de diseno: `Ventas` queda como vista transaccional para registrar y confirmar POS; `Registro de Ventas` queda como vista de consulta historica inmutable con filtros y detalle fiscal/documental.
 - Componentes/capas: `facturaelectronica-web`, BFF existente, `billing-service` existente.
@@ -2742,7 +2742,7 @@ Context7 evidence:
   - Decision impact: El historico se implementa como componente y pantalla propios, con `sale.id` como llave estable.
 
 ### TASK-203 - Redisenar modales empresariales
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 26: QA visual y flujo operativo POS.
 - Decision de diseno: Los modales de administrador inicial y marca empresarial deben usar un contenedor modal responsivo, con grid propio y sin anidar paneles de pagina dentro de modales.
 - Componentes/capas: `facturaelectronica-web`.
@@ -2756,5 +2756,99 @@ Context7 evidence:
   - Topic consulted: Controlled forms and local draft state.
   - Relevant finding: React recomienda inputs controlados por estado para formularios y estados visuales claros durante submit/error.
   - Decision impact: Los modales mantienen formularios controlados y separan composicion modal de paneles de pagina.
+
+## TASK-204 a TASK-216: politica fiscal configurable, PIN operacional y documentos fiscales
+
+### Decisiones de diseno
+
+- `SaleChannel.POS` representa canal operativo de caja, scanner, pago y tirilla; no representa por si solo el tipo fiscal DIAN.
+- La politica empresarial define `defaultPosDocumentType`. El valor recomendado y default del producto es `ELECTRONIC_INVOICE`.
+- `ELECTRONIC_POS` queda disponible como documento equivalente electronico POS para empresas que lo configuren o para ventas excepcionales autorizadas.
+- Las resoluciones se mantienen por tipo documental: una activa por `company_id`, `document_type` y `environment`.
+- El override de tipo documental es una autorizacion operacional puntual, no una modificacion de politica global.
+- El override se valida en backend con permiso `SALES_DOCUMENT_TYPE_OVERRIDE`, PIN operacional, motivo obligatorio, licencia, empresa y resolucion activa compatible.
+- El PIN operacional tiene exactamente 6 digitos, se almacena como hash fuerte, se bloquea con 3 fallos y despues del desbloqueo queda `CHANGE_REQUIRED`.
+- Nota credito, nota debito y nota de ajuste POS viven en modulos fiscales independientes, con permisos y resoluciones propias.
+- La tirilla de una venta POS que emite factura electronica debe presentarse como representacion grafica de factura electronica de venta.
+
+### Web/DIAN evidence
+
+- Library/tool: DIAN official website.
+- Topic consulted: Factura electronica de venta y documento equivalente electronico POS.
+- Relevant finding: DIAN documenta que quienes opten por documentos equivalentes electronicos pueden soportar operaciones con documento equivalente electronico correspondiente o con factura electronica de venta; el documento equivalente electronico POS tiene requisitos propios y denominacion especifica.
+- Decision impact: NexoFiscal separa canal POS de tipo fiscal, usa factura electronica como default comercial y conserva POS electronico como opcion parametrizable/auditada.
+
+### Context7 evidence
+
+- Library/tool: Spring Boot.
+- Topic consulted: REST validation and exception handling.
+- Relevant finding: Spring Boot integra Bean Validation con `@Valid @RequestBody` y permite mapear excepciones de dominio/reglas de negocio a respuestas REST claras.
+- Decision impact: PIN, override y politica fiscal deben validar DTOs en interfaces y reglas de negocio en aplicacion/dominio, con errores funcionales auditables.
+
+### TASK-204 - Documentar politica fiscal por empresa
+- Estado: Pendiente.
+- Fase: Fase 27: Politica fiscal configurable, PIN operacional y documentos fiscales.
+- Decision de diseno: Introducir `company_fiscal_policy` con `defaultPosDocumentType`, override permitido y PIN requerido.
+- Componentes/capas: `billing-service`, `facturaelectronica-web`, BFF.
+
+### TASK-205 - Configurar documento fiscal por defecto para venta POS
+- Estado: Pendiente.
+- Fase: Fase 27.
+- Decision de diseno: Default recomendado `ELECTRONIC_INVOICE`; `ELECTRONIC_POS` es opcion avanzada por empresa.
+
+### TASK-206 - Mantener resolucion activa por tipo documental y ambiente
+- Estado: Pendiente.
+- Fase: Fase 27.
+- Decision de diseno: Confirmar y reforzar la regla existente de `company_id + document_type + environment`, evitando cualquier resolucion global.
+
+### TASK-207 - Disenar PIN operacional de 6 digitos
+- Estado: Pendiente.
+- Fase: Fase 27.
+- Decision de diseno: PIN numerico exacto de 6 digitos, hash fuerte, no reutilizable como password de login.
+
+### TASK-208 - Bloquear PIN tras 3 intentos fallidos
+- Estado: Pendiente.
+- Fase: Fase 27.
+- Decision de diseno: Contador consecutivo, estado `LOCKED` y auditoria de intentos.
+
+### TASK-209 - Desbloqueo administrativo con cambio obligatorio
+- Estado: Pendiente.
+- Fase: Fase 27.
+- Decision de diseno: Desbloqueo deja el PIN en `CHANGE_REQUIRED`; el titular debe cambiarlo antes de autorizar.
+
+### TASK-210 - Override de tipo documental por venta con PIN
+- Estado: Pendiente.
+- Fase: Fase 27.
+- Decision de diseno: Autorizacion puntual con vendedor, autorizador, PIN, motivo, tipo anterior y tipo nuevo.
+
+### TASK-211 - Ajustar confirmacion POS para factura electronica por defecto
+- Estado: Pendiente.
+- Fase: Fase 27.
+- Decision de diseno: `SaleChannel.POS` confirma por defecto `ELECTRONIC_INVOICE` y llama al flujo de factura electronica.
+
+### TASK-212 - Ajustar UI Fiscal/Ventas/Facturacion
+- Estado: Pendiente.
+- Fase: Fase 27.
+- Decision de diseno: Mostrar politica fiscal, resoluciones por tipo, override con modal PIN y textos en espanol.
+
+### TASK-213 - Crear modulo independiente de Nota credito
+- Estado: Pendiente.
+- Fase: Fase 27.
+- Decision de diseno: Pantalla/contrato/permiso/resolucion `CREDIT_NOTE`.
+
+### TASK-214 - Crear modulo independiente de Nota debito
+- Estado: Pendiente.
+- Fase: Fase 27.
+- Decision de diseno: Pantalla/contrato/permiso/resolucion `DEBIT_NOTE`.
+
+### TASK-215 - Crear modulo independiente de Nota de ajuste POS
+- Estado: Pendiente.
+- Fase: Fase 27.
+- Decision de diseno: Pantalla/contrato/permiso/resolucion `POS_ADJUSTMENT_NOTE`, solo sobre documento equivalente POS.
+
+### TASK-216 - Auditoria completa de PIN, override y notas fiscales
+- Estado: Pendiente.
+- Fase: Fase 27.
+- Decision de diseno: Auditar intentos, bloqueos, desbloqueos, cambios y emisiones sin secretos ni payloads completos.
 
 <!-- END SDD TASK DESIGN TRACEABILITY -->

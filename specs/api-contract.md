@@ -956,8 +956,68 @@ Reglas:
 - `buyerIdentificationMode` acepta `IDENTIFIED_CUSTOMER` o `FINAL_CONSUMER`.
 - Si `buyerIdentificationMode=IDENTIFIED_CUSTOMER`, `customerId` es obligatorio y debe pertenecer a la empresa.
 - Si `buyerIdentificationMode=FINAL_CONSUMER`, `customerId` debe ser nulo; billing resuelve el perfil fiscal desde configuracion persistida.
-- La SPA no envia `saleChannel`; el flujo `Venta POS` usa canal interno `POS` y documento `ELECTRONIC_POS`.
+- La SPA no envia `saleChannel`; el flujo `Venta POS` usa canal interno `POS`.
+- El canal `POS` no define por si solo el tipo fiscal. El tipo fiscal se resuelve por politica empresarial: por defecto `ELECTRONIC_INVOICE`, con `ELECTRONIC_POS` como opcion parametrizable o override autorizado.
 - La SPA no envia `unitPrice`, `taxCode` ni `taxRate` como fuente fiscal; billing toma precio e impuesto desde `inventory-service`.
+
+### Politica fiscal y override operacional
+
+- `GET /api/v1/fiscal-policy`
+- `PUT /api/v1/fiscal-policy`
+- `POST /api/v1/sales/{saleId}/document-type-override`
+- `POST /api/v1/operational-pins`
+- `PUT /api/v1/operational-pins/current`
+- `POST /api/v1/operational-pins/{userId}/unlock`
+
+`FiscalPolicyResponse`:
+
+```json
+{
+  "companyId": "uuid",
+  "defaultPosDocumentType": "ELECTRONIC_INVOICE",
+  "allowSaleDocumentTypeOverride": true,
+  "requiresPinForOverride": true,
+  "active": true
+}
+```
+
+`SaleDocumentTypeOverrideRequest`:
+
+```json
+{
+  "targetDocumentType": "ELECTRONIC_POS",
+  "authorizerEmail": "admin@empresa.com",
+  "pin": "123456",
+  "reason": "Cliente solicita documento equivalente POS para esta venta"
+}
+```
+
+Reglas:
+
+- `targetDocumentType` solo acepta tipos documentales habilitados por politica y licencia.
+- El autorizador debe pertenecer a la misma empresa, estar activo, tener permiso `SALES_DOCUMENT_TYPE_OVERRIDE` y PIN operacional `ACTIVE`.
+- El PIN tiene exactamente 6 digitos numericos y viaja solo en el request de autorizacion; backend nunca lo retorna.
+- Tras 3 fallos consecutivos el PIN queda bloqueado.
+- El override aplica solo a la venta indicada y debe registrarse con auditoria.
+
+### Modulos fiscales independientes
+
+- `POST /api/v1/credit-notes`
+- `GET /api/v1/credit-notes?status=&from=&to=&customerId=`
+- `GET /api/v1/credit-notes/{noteId}`
+- `POST /api/v1/debit-notes`
+- `GET /api/v1/debit-notes?status=&from=&to=&customerId=`
+- `GET /api/v1/debit-notes/{noteId}`
+- `POST /api/v1/pos-adjustment-notes`
+- `GET /api/v1/pos-adjustment-notes?status=&from=&to=&customerId=`
+- `GET /api/v1/pos-adjustment-notes/{noteId}`
+
+Reglas:
+
+- Nota credito usa resolucion `CREDIT_NOTE`.
+- Nota debito usa resolucion `DEBIT_NOTE`.
+- Nota de ajuste POS usa resolucion `POS_ADJUSTMENT_NOTE`.
+- Estos endpoints no pertenecen al modulo `Ventas`; requieren permisos fiscales especificos y auditoria propia.
 
 ### IssuerProfileRequest
 

@@ -486,3 +486,65 @@ Reglas de persistencia:
 - `billing.numbering_resolution.active` permite conservar historico de resoluciones y consecutivos usados.
 - Regla funcional: solo una resolucion activa por `company_id`, `document_type` y `environment`. El caso de uso desactiva resoluciones hermanas antes de guardar o activar la nueva resolucion.
 - No se eliminan registros al inactivar, porque soportan trazabilidad fiscal, historico de ventas y auditoria.
+
+## Politica Fiscal, PIN Operacional y Override
+
+Estado: modelo objetivo para Fase 27.
+
+Tablas objetivo en `billing-service` o bounded context fiscal:
+
+- `billing.company_fiscal_policy`
+- `billing.sale_document_type_override`
+- `billing.operational_pin`
+- `billing.operational_pin_attempt`
+- `billing.fiscal_note`
+
+Campos principales de `company_fiscal_policy`:
+
+- `company_id`: UUID, PK logica por empresa.
+- `default_pos_document_type`: `ELECTRONIC_INVOICE` por defecto recomendado.
+- `allow_sale_document_type_override`: boolean.
+- `requires_pin_for_override`: boolean.
+- `active`: boolean.
+- `created_at`, `updated_at`, `updated_by`, `correlation_id`.
+
+Campos principales de `sale_document_type_override`:
+
+- `id`, `company_id`, `sale_id`.
+- `from_document_type`, `to_document_type`.
+- `seller_user_id`, `authorizer_user_id`.
+- `reason`: texto funcional obligatorio, sanitizado.
+- `authorized_at`, `correlation_id`.
+- `result`: `APPROVED`, `REJECTED`, `FAILED`.
+
+Campos principales de `operational_pin`:
+
+- `user_id`, `company_id`.
+- `pin_hash`: hash fuerte; nunca PIN plano.
+- `status`: `ACTIVE`, `LOCKED`, `CHANGE_REQUIRED`, `DISABLED`.
+- `failed_attempts`: contador consecutivo maximo 3.
+- `created_at`, `changed_at`, `locked_at`, `unlocked_at`, `last_used_at`.
+- `unlocked_by`, `correlation_id`.
+
+Campos principales de `operational_pin_attempt`:
+
+- `id`, `company_id`, `user_id`, `requested_by`.
+- `resource_type`, `resource_id`, `action`.
+- `result`: `SUCCESS`, `FAILED`, `LOCKED`, `CHANGE_REQUIRED`, `DENIED`.
+- `attempted_at`, `correlation_id`.
+
+Campos principales de `fiscal_note`:
+
+- `id`, `company_id`, `source_document_id`, `document_type`.
+- `resolution_id`, `prefix`, `document_number`.
+- `status`, `provider_status`, `cufe_cude`, `qr_content`, `tracking_id`.
+- `reason_code`, `reason`, `subtotal`, `tax_total`, `total`.
+- `created_by`, `created_at`, `submitted_at`, `validated_at`, `correlation_id`.
+
+Reglas:
+
+- `billing.numbering_resolution` conserva la regla de una activa por `company_id`, `document_type` y `environment`; no es una resolucion global.
+- `company_fiscal_policy.default_pos_document_type` debe tener resolucion activa compatible antes de confirmar ventas.
+- `operational_pin.failed_attempts >= 3` bloquea el PIN y exige desbloqueo administrativo.
+- Desbloquear PIN no lo deja usable: debe quedar `CHANGE_REQUIRED` hasta que el titular lo cambie.
+- Notas credito, debito y ajuste POS deben conservar numeracion propia y no reutilizar consecutivos.

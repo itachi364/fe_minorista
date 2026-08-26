@@ -303,3 +303,19 @@
 - AC-241: Dado un usuario con acceso a ventas, cuando abra `Registro de Ventas`, entonces debe poder filtrar y consultar ventas registradas sin acciones de modificacion, eliminacion, inactivacion, anulacion, reemision o reimpresion.
 - AC-242: Dada una venta registrada con documento electronico, cuando el usuario haga clic en `Ver detalle`, entonces la SPA debe mostrar detalle de venta, lineas, estado fiscal, numero de documento, tracking y CUFE/CUDE cuando exista.
 - AC-243: Dado `ROOT`, cuando abra modales de administrador inicial o marca empresarial, entonces los modales deben mantenerse centrados, responsivos, sin desbordar campos ni superponer contenido, y con scroll interno solo cuando el alto disponible lo requiera.
+
+## Politica fiscal configurable, PIN operacional y documentos fiscales
+
+- AC-244: Dada una empresa con politica fiscal por defecto `ELECTRONIC_INVOICE`, cuando un vendedor confirme una venta POS sin override, entonces `billing-service` debe asignar numeracion de factura electronica de venta y enviar el documento al flujo de factura electronica.
+- AC-245: Dada una empresa con resoluciones activas para varios tipos documentales, cuando se cree o active una resolucion, entonces solo se inactivan resoluciones del mismo `company_id`, `document_type` y `environment`, sin afectar otros tipos documentales.
+- AC-246: Dado un vendedor sin permiso de override, cuando intente cambiar una venta de factura electronica a documento equivalente POS, entonces el sistema debe exigir autorizacion operacional y no debe cambiar la venta sin aprobacion.
+- AC-247: Dado un administrador/supervisor con permiso `SALES_DOCUMENT_TYPE_OVERRIDE`, cuando ingrese PIN valido y motivo, entonces el backend debe autorizar el cambio solo para esa venta y registrar auditoria con vendedor y autorizador.
+- AC-248: Dado un PIN operacional, cuando se cree o cambie, entonces debe aceptar exactamente 6 digitos numericos y persistirse solo como hash.
+- AC-249: Dado un PIN operacional activo, cuando falle 3 veces consecutivas, entonces debe quedar `LOCKED`, rechazar nuevas autorizaciones y generar auditoria de bloqueo.
+- AC-250: Dado un PIN bloqueado, cuando un administrador autorizado lo desbloquee, entonces debe pasar a `CHANGE_REQUIRED` y el titular debe cambiarlo antes de autorizar operaciones.
+- AC-251: Dado un usuario con PIN en `CHANGE_REQUIRED`, cuando intente autorizar un override, entonces el sistema debe rechazar la autorizacion y solicitar cambio de PIN.
+- AC-252: Dada una venta POS que emite factura electronica de venta, cuando se genere tirilla, entonces debe titularse como representacion grafica de factura electronica de venta e incluir CUFE cuando exista.
+- AC-253: Dada una venta POS que emite documento equivalente electronico POS, cuando se confirme, entonces debe usar resolucion `ELECTRONIC_POS`, CUDE y reglas propias de documento equivalente POS.
+- AC-254: Dado un usuario sin permisos fiscales de notas, cuando abra la aplicacion, entonces no debe ver ni ejecutar Nota credito, Nota debito ni Nota de ajuste POS.
+- AC-255: Dado un usuario autorizado para notas, cuando cree Nota credito, Nota debito o Nota de ajuste POS, entonces el sistema debe usar la resolucion activa del tipo documental correspondiente y auditar la operacion.
+- AC-256: Dado cualquier uso exitoso o fallido de PIN/override/notas fiscales, entonces auditoria debe conservar correlation ID y no debe incluir PIN, hashes de PIN, contrasenas ni payloads fiscales completos.

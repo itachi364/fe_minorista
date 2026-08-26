@@ -392,6 +392,19 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-176: La SPA debe separar la pantalla operativa de venta POS de la consulta historica. `Ventas` debe enfocarse en registrar/confirmar ventas y `Registro de Ventas` debe mostrar ventas ya registradas como historico inmutable.
 - RF-177: El historico `Registro de Ventas` solo debe permitir visualizar ventas y abrir detalle fiscal/documental, incluyendo CUFE/CUDE cuando exista. No debe permitir modificar, eliminar, inactivar, anular ni reemitir ventas.
 - RF-178: Los modales de acciones empresariales deben tener una composicion visual profesional, sin desbordes, paneles anidados incoherentes ni campos cortados, conservando bloqueo solo del campo empresa objetivo cuando aplique.
+- RF-179: El canal de venta POS no debe definir por si solo el tipo de documento fiscal. La empresa debe configurar una politica fiscal que indique el documento por defecto para ventas POS.
+- RF-180: El documento fiscal por defecto recomendado para ventas POS debe ser `ELECTRONIC_INVOICE` (factura electronica de venta), permitiendo `ELECTRONIC_POS` como opcion avanzada parametrizable por empresa.
+- RF-181: El sistema debe conservar una resolucion activa por empresa, tipo documental y ambiente, permitiendo que una misma empresa tenga resoluciones activas simultaneas para factura electronica, documento equivalente POS, nota credito, nota debito y nota de ajuste POS.
+- RF-182: Un vendedor no debe poder cambiar el tipo documental de una venta sin autorizacion operacional de un usuario autorizado de la misma empresa.
+- RF-183: El cambio excepcional del tipo documental de una venta debe aplicar solo a esa venta, sin cerrar la sesion del vendedor y sin modificar la politica fiscal por defecto de la empresa.
+- RF-184: El sistema debe soportar un PIN operacional de autorizacion de exactamente 6 digitos numericos para administradores/supervisores autorizados.
+- RF-185: El PIN operacional no debe almacenarse en texto plano, no reemplaza la contrasena de login y solo sirve para autorizar operaciones sensibles dentro de una sesion ya autenticada.
+- RF-186: El PIN operacional debe bloquearse al tercer intento fallido consecutivo. Solo un administrador autorizado puede desbloquearlo y despues del desbloqueo el titular debe cambiarlo antes de volver a usarlo.
+- RF-187: Toda creacion, cambio, fallo, bloqueo, desbloqueo y uso exitoso del PIN operacional debe quedar auditado con usuario vendedor, usuario autorizador, empresa, recurso, resultado y correlation ID, sin exponer el PIN.
+- RF-188: El sistema debe implementar permisos separados para override de tipo documental, configuracion fiscal, notas credito, notas debito, notas de ajuste POS, reenvios y anulaciones/cancelaciones permitidas por norma.
+- RF-189: Los modulos de Nota credito, Nota debito y Nota de ajuste POS deben ser independientes del modulo de Ventas y tener pantallas, contratos, permisos, resoluciones y auditoria propios.
+- RF-190: Cuando una venta POS emita factura electronica de venta, la representacion imprimible debe identificarse como representacion grafica/tirilla de factura electronica de venta, no como documento equivalente POS.
+- RF-191: Si una venta requiere documento equivalente electronico POS, el backend debe validar que exista resolucion `ELECTRONIC_POS` activa y que el cambio haya sido permitido por politica de empresa o por override autorizado.
 
 ## Requisitos fase productizacion operativa
 

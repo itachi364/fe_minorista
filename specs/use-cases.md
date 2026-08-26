@@ -472,3 +472,72 @@ Flujos alternos:
 - Si el usuario no tiene permiso, el backend rechaza aunque la UI oculte la accion.
 
 Acceptance criteria: AC-225, AC-158, AC-201, AC-207.
+
+## UC-031: Configurar politica fiscal por empresa
+
+Actor: Administrador empresarial o ROOT.
+
+Precondiciones:
+- La empresa tiene licencia activa para facturacion.
+- El usuario tiene permiso de configuracion fiscal.
+
+Flujo principal:
+1. El usuario abre Configuracion > Fiscal.
+2. El sistema muestra la politica fiscal vigente de la empresa.
+3. El usuario selecciona documento fiscal por defecto para ventas POS: factura electronica de venta o documento equivalente POS.
+4. El sistema valida que exista o se configure resolucion activa compatible por tipo documental y ambiente.
+5. El sistema guarda la politica, registra auditoria y no modifica ventas ya emitidas.
+
+Flujos alternos:
+- Si no existe resolucion compatible, el sistema permite guardar politica en borrador o bloquea activacion segun regla aprobada.
+- Si el usuario no tiene permiso, el backend rechaza aunque la UI oculte la opcion.
+
+Acceptance criteria: AC-244, AC-245, AC-252, AC-253.
+
+## UC-032: Autorizar cambio de tipo documental con PIN
+
+Actor: Vendedor y administrador/supervisor autorizador.
+
+Precondiciones:
+- El vendedor tiene una venta POS en borrador.
+- La empresa permite override de tipo documental.
+- El autorizador pertenece a la empresa, tiene permiso `SALES_DOCUMENT_TYPE_OVERRIDE` y PIN operacional activo.
+
+Flujo principal:
+1. El vendedor solicita cambiar el tipo fiscal de la venta.
+2. La SPA abre modal de autorizacion sin cerrar la sesion del vendedor.
+3. El autorizador ingresa correo o selecciona su usuario, PIN de 6 digitos y motivo.
+4. El backend valida usuario, permiso, PIN, estado del PIN, politica, licencia y resolucion activa.
+5. El sistema registra el override solo para esa venta.
+6. Auditoria registra vendedor, autorizador, motivo, tipo anterior, tipo nuevo y correlation ID.
+7. La venta continua en la sesion del vendedor con el nuevo tipo fiscal.
+
+Flujos alternos:
+- Si el PIN falla 3 veces, queda bloqueado.
+- Si el PIN esta `CHANGE_REQUIRED`, se rechaza la autorizacion.
+- Si no hay resolucion activa para el tipo destino, se rechaza con mensaje funcional.
+
+Acceptance criteria: AC-246, AC-247, AC-248, AC-249, AC-250, AC-251, AC-256.
+
+## UC-033: Emitir notas fiscales independientes
+
+Actor: Contador, administrador o usuario con permiso fiscal especifico.
+
+Precondiciones:
+- Existe documento fiscal origen validado o gestionable.
+- Existe resolucion activa para el tipo de nota correspondiente.
+- El usuario tiene permiso para el modulo de nota.
+
+Flujo principal:
+1. El usuario abre Facturacion > Nota credito, Nota debito o Nota de ajuste POS.
+2. El sistema busca y valida el documento origen dentro de la empresa.
+3. El usuario captura motivo, valores/lineas y observaciones permitidas.
+4. El backend asigna numeracion desde la resolucion del tipo de nota.
+5. El conector DIAN mock/real procesa la nota segun modo de empresa.
+6. El sistema registra estado, CUFE/CUDE, artefactos, auditoria y efectos contables cuando aplique.
+
+Flujos alternos:
+- Nota de ajuste POS solo aplica sobre documento equivalente electronico POS.
+- Nota credito/debito aplica sobre factura electronica de venta segun reglas aprobadas.
+
+Acceptance criteria: AC-254, AC-255, AC-256.
