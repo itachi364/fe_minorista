@@ -31,8 +31,8 @@ public final class BffRouteResolver {
                 "electronic-invoices", "credit-notes", "debit-notes")) {
             return TargetService.BILLING;
         }
-        if (matchesAny(normalized, "accounts", "accounting-rules", "accounting-setup", "accounting-entries",
-                "accounts-payable", "accounts-receivable", "expenses")) {
+        if (matchesAny(normalized, "accounts", "accounting-rules", "accounting-setup", "accounting-configuration",
+                "accounting-entries", "accounts-payable", "accounts-receivable", "expenses")) {
             return TargetService.ACCOUNTING;
         }
         if (matchesAny(normalized, "payroll")) {

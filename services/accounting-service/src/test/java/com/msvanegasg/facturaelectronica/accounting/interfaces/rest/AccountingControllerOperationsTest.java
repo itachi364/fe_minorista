@@ -24,9 +24,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingSetupResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingRuleLineResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingRuleResult;
-import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingSetupResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsPayablePaymentResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsPayableResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsReceivablePaymentResult;
@@ -39,6 +39,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.LedgerAccoun
 import com.msvanegasg.facturaelectronica.accounting.application.dto.LedgerBookResult;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.GenerateAccountingEntryUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.InitializeBasicAccountingSetupUseCase;
+import com.msvanegasg.facturaelectronica.accounting.application.port.in.ConfigureAccountingUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountingRulesUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsPayableUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsReceivableUseCase;
@@ -72,6 +73,8 @@ class AccountingControllerOperationsTest {
     @Mock
     private InitializeBasicAccountingSetupUseCase setupUseCase;
     @Mock
+    private ConfigureAccountingUseCase configureAccountingUseCase;
+    @Mock
     private ManageChartOfAccountsUseCase chartOfAccountsUseCase;
     @Mock
     private ManageAccountingRulesUseCase accountingRulesUseCase;
@@ -88,8 +91,8 @@ class AccountingControllerOperationsTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new AccountingController(setupUseCase, chartOfAccountsUseCase,
-                accountingRulesUseCase, accountingEntryUseCase, accountingBooksUseCase, expenseUseCase,
+        mockMvc = MockMvcBuilders.standaloneSetup(new AccountingController(setupUseCase, configureAccountingUseCase,
+                chartOfAccountsUseCase, accountingRulesUseCase, accountingEntryUseCase, accountingBooksUseCase, expenseUseCase,
                 accountsPayableUseCase, accountsReceivableUseCase)).build();
     }
 
@@ -104,6 +107,83 @@ class AccountingControllerOperationsTest {
                 .andExpect(jsonPath("$.templateName").value("BASIC_COLOMBIA_SMALL_BUSINESS"))
                 .andExpect(jsonPath("$.accounts[0].code").value("1105"))
                 .andExpect(jsonPath("$.rules[0].eventType").value("SALE_CONFIRMED"));
+    }
+
+    @Test
+    void createsAccountingConfigurationBatch() throws Exception {
+        when(configureAccountingUseCase.configure(any())).thenReturn(new AccountingSetupResult(COMPANY_ID,
+                "CUSTOM_ACCOUNTING_CONFIGURATION", List.of(account("1105"), account("4135")),
+                List.of(rule("Venta facturada", true))));
+
+        mockMvc.perform(post("/api/v1/accounting-configuration/batch")
+                .header("X-Company-Id", COMPANY_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "accounts": [
+                            {"code": "1105", "name": "Caja"},
+                            {"code": "4135", "name": "Ingresos"}
+                          ],
+                          "rules": [
+                            {
+                              "eventType": "SALE_CONFIRMED",
+                              "sourceType": "SALE",
+                              "name": "Venta facturada",
+                              "lines": [
+                                {"accountCode": "1105", "side": "DEBIT", "amountType": "TOTAL"},
+                                {"accountCode": "4135", "side": "CREDIT", "amountType": "SUBTOTAL"}
+                              ]
+                            }
+                          ]
+                        }
+                        """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.templateName").value("CUSTOM_ACCOUNTING_CONFIGURATION"))
+                .andExpect(jsonPath("$.accounts[1].code").value("4135"))
+                .andExpect(jsonPath("$.rules[0].name").value("Venta facturada"));
+    }
+
+    @Test
+    void createsAccountsAndRulesBatchEndpoints() throws Exception {
+        when(chartOfAccountsUseCase.createAll(any())).thenReturn(List.of(account("1105"), account("4135")));
+        when(accountingRulesUseCase.replaceActiveAll(any())).thenReturn(List.of(rule("Venta facturada", true)));
+
+        mockMvc.perform(post("/api/v1/accounts/batch")
+                .header("X-Company-Id", COMPANY_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "accounts": [
+                            {"code": "1105", "name": "Caja"},
+                            {"code": "4135", "name": "Ingresos"}
+                          ]
+                        }
+                        """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$[0].code").value("1105"))
+                .andExpect(jsonPath("$[1].code").value("4135"));
+
+        mockMvc.perform(post("/api/v1/accounting-rules/batch")
+                .header("X-Company-Id", COMPANY_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "rules": [
+                            {
+                              "eventType": "SALE_CONFIRMED",
+                              "sourceType": "SALE",
+                              "name": "Venta facturada",
+                              "lines": [
+                                {"accountCode": "1105", "side": "DEBIT", "amountType": "TOTAL"},
+                                {"accountCode": "4135", "side": "CREDIT", "amountType": "SUBTOTAL"}
+                              ]
+                            }
+                          ]
+                        }
+                        """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$[0].eventType").value("SALE_CONFIRMED"))
+                .andExpect(jsonPath("$[0].active").value(true));
     }
     @Test
     void listsAccountsAndReplacesAccountingRules() throws Exception {

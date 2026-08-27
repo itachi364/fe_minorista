@@ -1540,9 +1540,58 @@ Reglas:
 - TASK-053 agrega configuracion base contable editable, consulta de cuentas por empresa/filtro activo, consulta de reglas por empresa/evento/estado, reemplazo de regla activa y desactivacion explicita de la regla activa.
 - TASK-220 agrega prevalidacion de regla activa `SALE_CONFIRMED` desde `billing-service` para evitar ventas parcialmente confirmadas cuando una empresa no ha inicializado contabilidad.
 - TASK-222 expone `Configuracion contable` en la SPA usando `POST /api/v1/accounting-setup/basic`, `GET /api/v1/accounts` y `GET /api/v1/accounting-rules`.
-- TASK-223 redefine la configuracion contable como asistente editable y agrega contratos batch `POST /api/v1/accounts/batch` y `POST /api/v1/accounting-rules/batch` para crear una o varias cuentas/reglas en una sola accion.
+- TASK-223 redefine la configuracion contable como asistente editable y agrega contratos batch `POST /api/v1/accounts/batch`, `POST /api/v1/accounting-rules/batch` y `POST /api/v1/accounting-configuration/batch` para crear una o varias cuentas/reglas en una sola accion transaccional.
 - `PUT /api/v1/accounting-rules/active` desactiva la regla activa previa para el evento y crea una nueva regla activa; `POST /api/v1/accounting-rules` conserva la validacion de no duplicar regla activa.
 - Un documento fiscal validado debe poder rastrearse hasta su asiento contable.
+
+### AccountingConfigurationRequest
+
+`POST /api/v1/accounting-configuration/batch`
+
+```json
+{
+  "accounts": [
+    {
+      "code": "1105",
+      "name": "Caja",
+      "parentAccountId": null
+    }
+  ],
+  "rules": [
+    {
+      "eventType": "SALE_CONFIRMED",
+      "sourceType": "SALE",
+      "name": "Venta facturada",
+      "lines": [
+        {
+          "accountCode": "1105",
+          "side": "DEBIT",
+          "amountType": "TOTAL",
+          "description": "Ingreso a caja"
+        },
+        {
+          "accountCode": "4135",
+          "side": "CREDIT",
+          "amountType": "SUBTOTAL",
+          "description": "Ingreso por venta"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Respuesta `201 Created`: `AccountingSetupResponse` con `companyId`, `templateName`, `accounts` y `rules` creadas.
+
+Reglas:
+
+- Requiere `X-Company-Id`.
+- Debe enviarse al menos una cuenta o una regla.
+- Las cuentas del lote no pueden repetir codigo PUC ni existir previamente para la empresa.
+- Las reglas del lote no pueden repetir `eventType` por empresa.
+- Cada movimiento contable debe referenciar una cuenta existente o una cuenta incluida en el mismo lote.
+- Cada regla debe tener al menos un movimiento debito y uno credito.
+- La operacion es atomica: si falla una cuenta, regla o movimiento, no se persiste ningun registro del lote.
 
 ### Cuentas por cobrar
 

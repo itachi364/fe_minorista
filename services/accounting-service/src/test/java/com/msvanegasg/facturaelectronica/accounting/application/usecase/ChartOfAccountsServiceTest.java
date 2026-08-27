@@ -94,6 +94,32 @@ class ChartOfAccountsServiceTest {
         assertThat(activeAccounts).extracting(AccountResult::code).containsExactly("4135");
         assertThat(allAccounts).extracting(AccountResult::code).containsExactly("1105", "4135");
     }
+
+    @Test
+    void createAllStoresSeveralAccountsAtOnce() {
+        ChartOfAccountsService service = service(new InMemoryAccountRepository());
+
+        List<AccountResult> results = service.createAll(List.of(
+                new CreateAccountCommand(COMPANY_ID, "1105", "Caja", null),
+                new CreateAccountCommand(COMPANY_ID, "4135", "Ingresos", null)));
+
+        assertThat(results).extracting(AccountResult::code).containsExactly("1105", "4135");
+    }
+
+    @Test
+    void createAllRejectsDuplicatedCodesBeforeSavingBatch() {
+        InMemoryAccountRepository repository = new InMemoryAccountRepository();
+        ChartOfAccountsService service = service(repository);
+
+        assertThatThrownBy(() -> service.createAll(List.of(
+                new CreateAccountCommand(COMPANY_ID, "1105", "Caja", null),
+                new CreateAccountCommand(COMPANY_ID, "1105", "Caja duplicada", null))))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("duplicated account code in batch: 1105");
+
+        assertThat(repository.findByCompanyId(COMPANY_ID, null)).isEmpty();
+    }
+
     @Test
     void createRejectsInvalidPucCode() {
         ChartOfAccountsService service = service(new InMemoryAccountRepository());

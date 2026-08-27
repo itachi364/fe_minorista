@@ -10,6 +10,8 @@ public interface ManageChartOfAccountsUseCase {
 
     AccountResult create(CreateAccountCommand command);
 
+    List<AccountResult> createAll(List<CreateAccountCommand> commands);
+
     AccountResult findByCode(UUID companyId, String code);
 
     List<AccountResult> find(UUID companyId, Boolean active);

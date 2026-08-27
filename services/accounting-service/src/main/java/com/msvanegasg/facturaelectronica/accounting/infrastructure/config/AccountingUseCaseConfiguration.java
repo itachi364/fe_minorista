@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.InitializeBasicAccountingSetupUseCase;
+import com.msvanegasg.facturaelectronica.accounting.application.port.in.ConfigureAccountingUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsPayableUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsReceivableUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.GenerateAccountingEntryUseCase;
@@ -25,6 +26,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.port.out.IdGener
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.AccountsPayableManagementService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.AccountsReceivableManagementService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.BasicAccountingSetupService;
+import com.msvanegasg.facturaelectronica.accounting.application.usecase.AccountingConfigurationService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.AccountingRuleManagementService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.ChartOfAccountsService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.ExpenseManagementService;
@@ -46,6 +48,14 @@ public class AccountingUseCaseConfiguration {
             AccountingRuleRepositoryPort ruleRepository,
             IdGeneratorPort idGenerator) {
         return new BasicAccountingSetupService(accountRepository, ruleRepository, idGenerator);
+    }
+
+    @Bean
+    ConfigureAccountingUseCase configureAccountingUseCase(
+            AccountRepositoryPort accountRepository,
+            AccountingRuleRepositoryPort ruleRepository,
+            IdGeneratorPort idGenerator) {
+        return new AccountingConfigurationService(accountRepository, ruleRepository, idGenerator);
     }
 
     @Bean

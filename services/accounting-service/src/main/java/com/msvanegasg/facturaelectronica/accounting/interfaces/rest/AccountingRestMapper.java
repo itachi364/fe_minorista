@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingConfigurationCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsPayablePaymentResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsReceivablePaymentResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsReceivableResult;
@@ -38,6 +39,7 @@ import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.Accounts
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountsPayableResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountResponse;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingConfigurationRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingEntryLineResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingEntryRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingEntryResponse;
@@ -65,6 +67,13 @@ public final class AccountingRestMapper {
 
     public static CreateAccountCommand toCommand(UUID companyId, AccountRequest request) {
         return new CreateAccountCommand(companyId, request.code(), request.name(), request.parentAccountId());
+    }
+
+    public static AccountingConfigurationCommand toCommand(UUID companyId, AccountingConfigurationRequest request) {
+        return new AccountingConfigurationCommand(
+                companyId,
+                safeAccounts(request).stream().map(account -> toCommand(companyId, account)).toList(),
+                safeRules(request).stream().map(rule -> toCommand(companyId, rule)).toList());
     }
 
     public static CreateAccountingRuleCommand toCommand(UUID companyId, AccountingRuleRequest request) {
@@ -238,6 +247,14 @@ public final class AccountingRestMapper {
                 request.side(),
                 request.amountType(),
                 request.description());
+    }
+
+    private static List<AccountRequest> safeAccounts(AccountingConfigurationRequest request) {
+        return request.accounts() == null ? List.of() : request.accounts();
+    }
+
+    private static List<AccountingRuleRequest> safeRules(AccountingConfigurationRequest request) {
+        return request.rules() == null ? List.of() : request.rules();
     }
 
     private static AccountingRuleLineResponse toResponse(AccountingRuleLineResult result) {

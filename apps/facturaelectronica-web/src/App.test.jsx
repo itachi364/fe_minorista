@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import App from './App.jsx';
+import { AccountingConfigurationPanel } from './features/accounting/AccountingConfigurationPanel.jsx';
 import { loadStoredSession, saveStoredSession, SESSION_TIMEOUT_MS } from './utils/sessionStorage.js';
 
 const COMPANY_ID = '11111111-1111-1111-1111-111111111111';
@@ -144,6 +145,35 @@ test('renders only login when there is no active session', () => {
   expect(screen.queryByLabelText('Razon social')).not.toBeInTheDocument();
   expect(screen.queryByText('Respuesta')).not.toBeInTheDocument();
   expect(container.querySelector('textarea')).toBeNull();
+});
+
+test('accounting configuration template is previewed and submitted as batch payload', async () => {
+  const onConfigure = vi.fn().mockResolvedValue({ accounts: [], rules: [] });
+
+  render(<AccountingConfigurationPanel
+    accounts={[]}
+    rules={[]}
+    onLoad={vi.fn()}
+    onConfigure={onConfigure}
+    busy={false}
+  />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Usar plantilla recomendada' }));
+  expect(screen.getAllByDisplayValue('1105').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Movimientos contables').length).toBeGreaterThan(0);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar configuracion' }));
+
+  await waitFor(() => expect(onConfigure).toHaveBeenCalledTimes(1));
+  expect(onConfigure.mock.calls[0][0]).toMatchObject({
+    accounts: expect.arrayContaining([expect.objectContaining({ code: '1105', name: 'Caja' })]),
+    rules: expect.arrayContaining([
+      expect.objectContaining({
+        eventType: 'SALE_CONFIRMED',
+        lines: expect.arrayContaining([expect.objectContaining({ accountCode: '1105', side: 'DEBIT' })]),
+      }),
+    ]),
+  });
 });
 
 test('login with active license hides login and shows operational shell', async () => {

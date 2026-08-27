@@ -72,6 +72,38 @@ class AccountingRuleManagementServiceTest {
                 .hasMessage("active accounting rule already exists for event type");
     }
 
+    @Test
+    void replaceActiveAllReplacesSeveralRulesAtOnce() {
+        TestContext context = TestContext.withDefaultAccounts();
+        context.ids.add(UUID.fromString("33333333-3333-3333-3333-333333333333"));
+        AccountingRuleManagementService service = context.service();
+
+        List<AccountingRuleResult> results = service.replaceActiveAll(List.of(
+                ruleCommand("Venta contado", "1105"),
+                new CreateAccountingRuleCommand(COMPANY_ID, AccountingEventType.EXPENSE_CONFIRMED,
+                        AccountingSourceType.EXPENSE, "Egreso contado", List.of(
+                                new CreateAccountingRuleLineCommand("5135", AccountingEntrySide.DEBIT,
+                                        AccountingAmountType.TOTAL, "Gasto"),
+                                new CreateAccountingRuleLineCommand("1105", AccountingEntrySide.CREDIT,
+                                        AccountingAmountType.TOTAL, "Caja")))));
+
+        assertThat(results).extracting(AccountingRuleResult::eventType)
+                .containsExactly(AccountingEventType.SALE_CONFIRMED, AccountingEventType.EXPENSE_CONFIRMED);
+    }
+
+    @Test
+    void replaceActiveAllRejectsRulesWithoutDebitAndCredit() {
+        TestContext context = TestContext.withDefaultAccounts();
+        AccountingRuleManagementService service = context.service();
+
+        assertThatThrownBy(() -> service.replaceActiveAll(List.of(new CreateAccountingRuleCommand(COMPANY_ID,
+                AccountingEventType.SALE_CONFIRMED, AccountingSourceType.SALE, "Venta incompleta", List.of(
+                        new CreateAccountingRuleLineCommand("1105", AccountingEntrySide.DEBIT,
+                                AccountingAmountType.TOTAL, "Caja"))))))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("accounting rule requires debit and credit movements");
+    }
+
     private static CreateAccountingRuleCommand ruleCommand(String name, String debitAccount) {
         return new CreateAccountingRuleCommand(COMPANY_ID, AccountingEventType.SALE_CONFIRMED, AccountingSourceType.SALE,
                 name, List.of(
@@ -96,6 +128,7 @@ class AccountingRuleManagementServiceTest {
             context.accounts.save(Account.create(UUID.randomUUID(), COMPANY_ID, "1305", "Clientes", null));
             context.accounts.save(Account.create(UUID.randomUUID(), COMPANY_ID, "4135", "Ingresos", null));
             context.accounts.save(Account.create(UUID.randomUUID(), COMPANY_ID, "2408", "IVA", null));
+            context.accounts.save(Account.create(UUID.randomUUID(), COMPANY_ID, "5135", "Gastos", null));
             return context;
         }
 

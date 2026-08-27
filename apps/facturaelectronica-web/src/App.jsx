@@ -1671,12 +1671,13 @@ export default function App() {
     return result?.options || {};
   }
 
-  async function initializeAccountingSetup() {
+  async function saveAccountingConfiguration(payload) {
     requireCompany();
-    const setup = await requestJson('/api/v1/accounting-setup/basic', {
+    const setup = await requestJson('/api/v1/accounting-configuration/batch', {
       method: 'POST',
       ...context,
-      idempotencyKey: createIdempotencyKey('accounting-setup'),
+      body: payload,
+      idempotencyKey: createIdempotencyKey('accounting-configuration'),
     });
     setAccountingAccounts(setup?.accounts || []);
     setAccountingRules(setup?.rules || []);
@@ -2043,7 +2044,7 @@ export default function App() {
             <FiscalNotesPanel forms={fiscalNoteForms} setForms={setFiscalNoteForms} results={fiscalNoteResults} onSubmit={(noteType) => execute(() => createFiscalNote(noteType), { successMessage: 'Documento fiscal creado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Documentos fiscales'])} />
           )}
           {currentStep === 'Configuracion contable' && (
-            <AccountingConfigurationPanel accounts={accountingAccounts} rules={accountingRules} onLoad={() => execute(loadAccountingConfiguration, { successMessage: 'Estado contable actualizado.' })} onInitialize={() => execute(initializeAccountingSetup, { successMessage: 'Contabilidad basica inicializada correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Configuracion contable'])} />
+            <AccountingConfigurationPanel accounts={accountingAccounts} rules={accountingRules} onLoad={() => execute(loadAccountingConfiguration, { successMessage: 'Estado contable actualizado.' })} onConfigure={(payload) => execute(() => saveAccountingConfiguration(payload), { successMessage: 'Configuracion contable guardada correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Configuracion contable'])} />
           )}
           {currentStep === 'Ventas' && (
             <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onClose={() => execute(closeSale, { successMessage: 'Venta cerrada correctamente.' })} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />

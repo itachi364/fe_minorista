@@ -2917,14 +2917,15 @@ Context7 evidence:
 - Relacion con ventas: El cierre de venta depende de que la empresa tenga regla contable `SALE_CONFIRMED` activa; el usuario puede resolverlo desde este modulo.
 
 ### TASK-223 - Asistente editable de plan de cuentas y reglas contables por empresa
-- Estado: Documentado.
+- Estado: Implementado.
 - Fase: Fase 28: Configuracion contable empresarial.
 - Decision de diseno: La inicializacion automatica pasa a ser un asistente guiado y editable. El sistema puede sugerir una plantilla, pero siempre debe mostrar una vista previa antes de crear cuentas o reglas.
 - UX: El formulario permite agregar multiples filas de cuentas PUC y multiples reglas contables. Dentro de cada regla, las filas se muestran como `movimientos contables`, no como `lineas`, para que el usuario entienda que cada fila afecta una cuenta.
-- Contratos: `accounting-service` debe exponer operaciones batch para crear varias cuentas y reglas en una sola peticion. El BFF enruta estas operaciones y conserva autorizacion, correlation ID y auditoria.
-- Consistencia: El caso de uso batch debe ejecutarse dentro de una transaccion. Si falla cualquier cuenta, regla o movimiento contable, se revierte todo el lote y se devuelve un error funcional con detalles por fila.
+- Contratos: `accounting-service` expone `POST /api/v1/accounts/batch`, `POST /api/v1/accounting-rules/batch` y `POST /api/v1/accounting-configuration/batch` para crear varias cuentas/reglas en una sola accion. El BFF enruta `accounting-configuration` hacia `accounting-service` y conserva autorizacion, correlation ID y auditoria transversal.
+- Consistencia: `AccountingConfigurationService` valida todo el lote antes de persistir y ejecuta el guardado con transaccion declarativa. Si falla cualquier cuenta, regla o movimiento contable, se revierte todo el lote y se devuelve un error funcional.
 - Regla historica: Cuentas o reglas usadas por asientos no se eliminan fisicamente; se inactivan o se versionan para mantener trazabilidad contable.
 - Seguridad/licencia: Requiere licencia `ACCOUNTING` y permiso `ACCOUNTING_MANAGE`; `ACCOUNTING_VIEW` solo permite consulta.
+- Validacion implementada: Vitest cubre el preview y submit batch del asistente. Maven cubre use cases, controller REST y route resolver BFF.
 
 #### Context7 evidence
 - Library/tool: React.

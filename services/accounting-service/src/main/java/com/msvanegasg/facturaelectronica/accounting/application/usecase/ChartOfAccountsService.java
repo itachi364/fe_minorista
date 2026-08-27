@@ -2,7 +2,9 @@ package com.msvanegasg.facturaelectronica.accounting.application.usecase;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.HashSet;
 
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountCommand;
@@ -38,6 +40,33 @@ public class ChartOfAccountsService implements ManageChartOfAccountsUseCase {
                 command.parentAccountId());
 
         return toResult(accountRepository.save(account));
+    }
+
+    @Override
+    public List<AccountResult> createAll(List<CreateAccountCommand> commands) {
+        if (commands == null || commands.isEmpty()) {
+            throw new IllegalArgumentException("accounts batch requires at least one account");
+        }
+        Set<String> requestedCodes = new HashSet<>();
+        List<Account> accounts = commands.stream()
+                .map(command -> {
+                    validate(command);
+                    Account account = Account.create(idGenerator.newId(), command.companyId(), command.code(),
+                            command.name(), command.parentAccountId());
+                    if (!requestedCodes.add(command.companyId() + ":" + account.code())) {
+                        throw new IllegalStateException("duplicated account code in batch: " + account.code());
+                    }
+                    accountRepository.findByCompanyIdAndCode(command.companyId(), account.code())
+                            .ifPresent(existing -> {
+                                throw new IllegalStateException("account code already exists for company");
+                            });
+                    return account;
+                })
+                .toList();
+        return accounts.stream()
+                .map(accountRepository::save)
+                .map(this::toResult)
+                .toList();
     }
 
     @Override

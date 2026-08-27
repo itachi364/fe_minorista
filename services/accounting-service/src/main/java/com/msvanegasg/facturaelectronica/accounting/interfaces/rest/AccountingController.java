@@ -15,11 +15,13 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.msvanegasg.facturaelectronica.accounting.application.dto.ExpenseQuery;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.JournalBookQuery;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.LedgerBookQuery;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.InitializeBasicAccountingSetupUseCase;
+import com.msvanegasg.facturaelectronica.accounting.application.port.in.ConfigureAccountingUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsPayableUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsReceivableUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.GenerateAccountingEntryUseCase;
@@ -39,11 +41,14 @@ import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.Accounts
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountsPayableResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountResponse;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingConfigurationRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingEntryRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingEntryResponse;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingRulesBatchRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingRuleRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingRuleResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingSetupResponse;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountsBatchRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.ExpenseRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.ExpenseResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.FinancialStatementResponse;
@@ -61,6 +66,7 @@ public class AccountingController {
     private static final String COMPANY_HEADER = "X-Company-Id";
 
     private final InitializeBasicAccountingSetupUseCase initializeBasicAccountingSetupUseCase;
+    private final ConfigureAccountingUseCase configureAccountingUseCase;
     private final ManageChartOfAccountsUseCase manageChartOfAccountsUseCase;
     private final ManageAccountingRulesUseCase manageAccountingRulesUseCase;
     private final GenerateAccountingEntryUseCase generateAccountingEntryUseCase;
@@ -71,6 +77,7 @@ public class AccountingController {
 
     public AccountingController(
             InitializeBasicAccountingSetupUseCase initializeBasicAccountingSetupUseCase,
+            ConfigureAccountingUseCase configureAccountingUseCase,
             ManageChartOfAccountsUseCase manageChartOfAccountsUseCase,
             ManageAccountingRulesUseCase manageAccountingRulesUseCase,
             GenerateAccountingEntryUseCase generateAccountingEntryUseCase,
@@ -79,6 +86,7 @@ public class AccountingController {
             ManageAccountsPayableUseCase manageAccountsPayableUseCase,
             ManageAccountsReceivableUseCase manageAccountsReceivableUseCase) {
         this.initializeBasicAccountingSetupUseCase = initializeBasicAccountingSetupUseCase;
+        this.configureAccountingUseCase = configureAccountingUseCase;
         this.manageChartOfAccountsUseCase = manageChartOfAccountsUseCase;
         this.manageAccountingRulesUseCase = manageAccountingRulesUseCase;
         this.generateAccountingEntryUseCase = generateAccountingEntryUseCase;
@@ -102,6 +110,19 @@ public class AccountingController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(AccountingRestMapper.toResponse(
                         manageChartOfAccountsUseCase.create(AccountingRestMapper.toCommand(companyId, request))));
+    }
+
+    @PostMapping("/accounts/batch")
+    @Transactional
+    public ResponseEntity<List<AccountResponse>> createAccountsBatch(
+            @RequestHeader(COMPANY_HEADER) UUID companyId,
+            @Valid @RequestBody AccountsBatchRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(manageChartOfAccountsUseCase.createAll(request.accounts().stream()
+                        .map(account -> AccountingRestMapper.toCommand(companyId, account))
+                        .toList()).stream()
+                        .map(AccountingRestMapper::toResponse)
+                        .toList());
     }
 
     @GetMapping(value = "/accounts", params = "code")
@@ -128,6 +149,28 @@ public class AccountingController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(AccountingRestMapper.toResponse(
                         manageAccountingRulesUseCase.create(AccountingRestMapper.toCommand(companyId, request))));
+    }
+
+    @PostMapping("/accounting-rules/batch")
+    @Transactional
+    public ResponseEntity<List<AccountingRuleResponse>> createAccountingRulesBatch(
+            @RequestHeader(COMPANY_HEADER) UUID companyId,
+            @Valid @RequestBody AccountingRulesBatchRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(manageAccountingRulesUseCase.replaceActiveAll(request.rules().stream()
+                        .map(rule -> AccountingRestMapper.toCommand(companyId, rule))
+                        .toList()).stream()
+                        .map(AccountingRestMapper::toResponse)
+                        .toList());
+    }
+
+    @PostMapping("/accounting-configuration/batch")
+    public ResponseEntity<AccountingSetupResponse> configureAccounting(
+            @RequestHeader(COMPANY_HEADER) UUID companyId,
+            @Valid @RequestBody AccountingConfigurationRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(AccountingRestMapper.toResponse(configureAccountingUseCase.configure(
+                        AccountingRestMapper.toCommand(companyId, request))));
     }
 
     @PutMapping("/accounting-rules/active")

@@ -2,6 +2,8 @@ package com.msvanegasg.facturaelectronica.accounting.application.usecase;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingRuleLineResult;
@@ -12,6 +14,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAc
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingRuleRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.IdGeneratorPort;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEntrySide;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEventType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingRule;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingRuleLine;
@@ -47,6 +50,27 @@ public class AccountingRuleManagementService implements ManageAccountingRulesUse
         ruleRepository.findActiveByCompanyIdAndEventType(command.companyId(), command.eventType())
                 .ifPresent(rule -> ruleRepository.save(rule.deactivate()));
         return createActiveRule(command);
+    }
+
+    @Override
+    public List<AccountingRuleResult> replaceActiveAll(List<CreateAccountingRuleCommand> commands) {
+        if (commands == null || commands.isEmpty()) {
+            throw new IllegalArgumentException("accounting rules batch requires at least one rule");
+        }
+        Set<String> eventTypes = new HashSet<>();
+        commands.forEach(command -> {
+            validate(command);
+            String key = command.companyId() + ":" + command.eventType();
+            if (!eventTypes.add(key)) {
+                throw new IllegalStateException("duplicated accounting rule event type in batch: "
+                        + command.eventType());
+            }
+            command.lines().forEach(line -> assertAccountExists(command, line));
+            assertRuleHasDebitAndCredit(command);
+        });
+        return commands.stream()
+                .map(this::replaceActive)
+                .toList();
     }
 
     @Override
@@ -88,6 +112,14 @@ public class AccountingRuleManagementService implements ManageAccountingRulesUse
     private void assertAccountExists(CreateAccountingRuleCommand command, CreateAccountingRuleLineCommand line) {
         accountRepository.findByCompanyIdAndCode(command.companyId(), line.accountCode())
                 .orElseThrow(() -> new IllegalStateException("account was not found: " + line.accountCode()));
+    }
+
+    private static void assertRuleHasDebitAndCredit(CreateAccountingRuleCommand command) {
+        boolean hasDebit = command.lines().stream().anyMatch(line -> line.side() == AccountingEntrySide.DEBIT);
+        boolean hasCredit = command.lines().stream().anyMatch(line -> line.side() == AccountingEntrySide.CREDIT);
+        if (!hasDebit || !hasCredit) {
+            throw new IllegalStateException("accounting rule requires debit and credit movements");
+        }
     }
 
     private static AccountingRuleResult toResult(AccountingRule rule) {

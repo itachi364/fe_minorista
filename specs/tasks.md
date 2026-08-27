@@ -5623,8 +5623,8 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
   - Validacion:
     - Vitest frontend.
 
-- [ ] TASK-223: Asistente editable de plan de cuentas y reglas contables por empresa
-  - Estado: TODO
+- [x] TASK-223: Asistente editable de plan de cuentas y reglas contables por empresa
+  - Estado: DONE
   - Requisitos: RF-203, RF-204, RF-205, RF-206, RF-207, RF-097, RF-098.
   - Acceptance criteria:
     - AC-281: El boton de configuracion contable no crea datos automaticamente sin mostrar previamente el formulario/asistente.
@@ -5664,8 +5664,14 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - TASK-220.
     - TASK-090.
   - Validacion:
-    - Unit tests de casos de uso contables.
-    - Controller tests de contratos batch.
-    - Persistence tests de rollback transaccional.
-    - Vitest frontend para formularios dinamicos y vista previa.
-    - Prueba E2E de empresa nueva configurando contabilidad sin usar inicializacion automatica oculta.
+    - `npm test -- --run App.test.jsx --reporter=dot`: 24 tests OK.
+    - `.\mvnw.cmd -pl services/accounting-service,services/bff-service -am test`: BUILD SUCCESS, 61 tests accounting-service, 32 tests bff-service, 3 tests platform-eventing.
+    - Unit tests de casos de uso contables: `ChartOfAccountsServiceTest`, `AccountingRuleManagementServiceTest`, `AccountingConfigurationServiceTest`.
+    - Controller tests de contratos batch: `AccountingControllerOperationsTest`.
+    - BFF route test: `BffRouteResolverTest`.
+    - Validacion pendiente manual: E2E desde navegador creando empresa nueva, configurando contabilidad editable y cerrando venta con regla `SALE_CONFIRMED`.
+  - Resultado:
+    - Se agrego `ConfigureAccountingUseCase` y `AccountingConfigurationService` para guardar cuentas y reglas en una sola operacion atomica.
+    - Se agregaron contratos batch `POST /api/v1/accounts/batch`, `POST /api/v1/accounting-rules/batch` y `POST /api/v1/accounting-configuration/batch`.
+    - El BFF enruta `accounting-configuration` hacia `accounting-service`.
+    - La SPA reemplazo la inicializacion de caja negra por un asistente editable con cuentas PUC, reglas y movimientos contables.

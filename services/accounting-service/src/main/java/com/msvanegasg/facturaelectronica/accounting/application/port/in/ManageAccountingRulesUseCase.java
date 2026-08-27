@@ -13,6 +13,8 @@ public interface ManageAccountingRulesUseCase {
 
     AccountingRuleResult replaceActive(CreateAccountingRuleCommand command);
 
+    List<AccountingRuleResult> replaceActiveAll(List<CreateAccountingRuleCommand> commands);
+
     AccountingRuleResult deactivateActive(UUID companyId, AccountingEventType eventType);
 
     List<AccountingRuleResult> find(UUID companyId, AccountingEventType eventType, Boolean active);
