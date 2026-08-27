@@ -38,6 +38,16 @@ public class AccountingEntryPersistenceAdapter implements AccountingEntryReposit
     }
 
     @Override
+    public long countByAccountId(UUID accountId) {
+        return lineRepository.countByAccountId(accountId);
+    }
+
+    @Override
+    public long countByAccountingRuleId(UUID accountingRuleId) {
+        return entryRepository.countByAccountingRuleId(accountingRuleId);
+    }
+
+    @Override
     public Optional<AccountingEntry> findByCompanyIdAndSource(UUID companyId, AccountingSourceType sourceType,
             UUID sourceId) {
         return entryRepository.findByCompanyIdAndSourceTypeAndSourceId(companyId, sourceType, sourceId)
@@ -80,6 +90,7 @@ public class AccountingEntryPersistenceAdapter implements AccountingEntryReposit
                 entry.getDescription(),
                 entry.getSourceType(),
                 entry.getSourceId(),
+                entry.getAccountingRuleId(),
                 lines.stream().map(AccountingEntryPersistenceAdapter::toDomainLine).toList());
     }
 
@@ -103,6 +114,7 @@ public class AccountingEntryPersistenceAdapter implements AccountingEntryReposit
                 .description(entry.description())
                 .sourceType(entry.sourceType())
                 .sourceId(entry.sourceId())
+                .accountingRuleId(entry.accountingRuleId())
                 .status(entry.status())
                 .debitTotal(entry.debitTotal())
                 .creditTotal(entry.creditTotal())

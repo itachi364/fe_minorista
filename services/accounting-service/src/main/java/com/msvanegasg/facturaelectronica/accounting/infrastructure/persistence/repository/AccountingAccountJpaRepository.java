@@ -10,6 +10,8 @@ import com.msvanegasg.facturaelectronica.accounting.infrastructure.persistence.e
 
 public interface AccountingAccountJpaRepository extends JpaRepository<AccountingAccountJpaEntity, UUID> {
 
+    Optional<AccountingAccountJpaEntity> findByCompanyIdAndId(UUID companyId, UUID id);
+
     Optional<AccountingAccountJpaEntity> findByCompanyIdAndCode(UUID companyId, String code);
 
     List<AccountingAccountJpaEntity> findByCompanyIdOrderByCodeAsc(UUID companyId);

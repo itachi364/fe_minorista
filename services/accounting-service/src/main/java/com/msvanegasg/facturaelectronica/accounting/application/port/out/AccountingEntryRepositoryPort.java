@@ -12,6 +12,10 @@ public interface AccountingEntryRepositoryPort {
 
     boolean existsByCompanyIdAndSource(UUID companyId, AccountingSourceType sourceType, UUID sourceId);
 
+    long countByAccountId(UUID accountId);
+
+    long countByAccountingRuleId(UUID accountingRuleId);
+
     Optional<AccountingEntry> findByCompanyIdAndSource(UUID companyId, AccountingSourceType sourceType, UUID sourceId);
 
     AccountingEntry save(AccountingEntry entry);

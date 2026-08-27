@@ -251,6 +251,14 @@ class QueryAccountingBooksServiceTest {
 
         private final Map<String, Account> accounts = new HashMap<>();
 
+        @Override
+        public Optional<Account> findByCompanyIdAndId(UUID companyId, UUID id) {
+            return accounts.values().stream()
+                    .filter(account -> account.companyId().equals(companyId))
+                    .filter(account -> account.id().equals(id))
+                    .findFirst();
+        }
+
         void saveDefaultAccountsFor(UUID companyId) {
             save(Account.create(UUID.randomUUID(), companyId, "1105", "Caja", null));
             save(Account.create(UUID.randomUUID(), companyId, "2408", "Impuesto sobre las ventas por pagar", null));
@@ -294,6 +302,21 @@ class QueryAccountingBooksServiceTest {
                     .anyMatch(entry -> entry.companyId().equals(companyId)
                             && entry.sourceType() == sourceType
                             && entry.sourceId().equals(sourceId));
+        }
+
+        @Override
+        public long countByAccountId(UUID accountId) {
+            return entries.stream()
+                    .flatMap(entry -> entry.lines().stream())
+                    .filter(line -> line.accountId().equals(accountId))
+                    .count();
+        }
+
+        @Override
+        public long countByAccountingRuleId(UUID accountingRuleId) {
+            return entries.stream()
+                    .filter(entry -> accountingRuleId.equals(entry.accountingRuleId()))
+                    .count();
         }
 
         @Override

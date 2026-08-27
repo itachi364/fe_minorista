@@ -15,6 +15,7 @@ public record AccountingEntryResponse(
         String description,
         AccountingSourceType sourceType,
         UUID sourceId,
+        UUID accountingRuleId,
         AccountingEntryStatus status,
         BigDecimal debitTotal,
         BigDecimal creditTotal,

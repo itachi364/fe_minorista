@@ -14,6 +14,7 @@ public final class AccountingEntry {
     private final String description;
     private final AccountingSourceType sourceType;
     private final UUID sourceId;
+    private final UUID accountingRuleId;
     private final AccountingEntryStatus status;
     private final List<AccountingEntryLine> lines;
 
@@ -24,6 +25,7 @@ public final class AccountingEntry {
             String description,
             AccountingSourceType sourceType,
             UUID sourceId,
+            UUID accountingRuleId,
             AccountingEntryStatus status,
             List<AccountingEntryLine> lines) {
         this.id = id;
@@ -32,6 +34,7 @@ public final class AccountingEntry {
         this.description = description;
         this.sourceType = sourceType;
         this.sourceId = sourceId;
+        this.accountingRuleId = accountingRuleId;
         this.status = status;
         this.lines = List.copyOf(lines);
     }
@@ -43,6 +46,18 @@ public final class AccountingEntry {
             String description,
             AccountingSourceType sourceType,
             UUID sourceId,
+            List<AccountingEntryLine> lines) {
+        return post(id, companyId, entryDate, description, sourceType, sourceId, null, lines);
+    }
+
+    public static AccountingEntry post(
+            UUID id,
+            UUID companyId,
+            LocalDate entryDate,
+            String description,
+            AccountingSourceType sourceType,
+            UUID sourceId,
+            UUID accountingRuleId,
             List<AccountingEntryLine> lines) {
         requireNonNull(id, "id");
         requireNonNull(companyId, "companyId");
@@ -64,6 +79,7 @@ public final class AccountingEntry {
                 normalizedDescription,
                 sourceType,
                 sourceId,
+                accountingRuleId,
                 AccountingEntryStatus.POSTED,
                 normalizedLines);
     }
@@ -90,6 +106,10 @@ public final class AccountingEntry {
 
     public UUID sourceId() {
         return sourceId;
+    }
+
+    public UUID accountingRuleId() {
+        return accountingRuleId;
     }
 
     public AccountingEntryStatus status() {

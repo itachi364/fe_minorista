@@ -8,6 +8,8 @@ import com.msvanegasg.facturaelectronica.accounting.domain.model.Account;
 
 public interface AccountRepositoryPort {
 
+    Optional<Account> findByCompanyIdAndId(UUID companyId, UUID id);
+
     Optional<Account> findByCompanyIdAndCode(UUID companyId, String code);
 
     List<Account> findByCompanyId(UUID companyId, Boolean active);

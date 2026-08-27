@@ -1,7 +1,9 @@
 package com.msvanegasg.facturaelectronica.accounting.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.LocalDate;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
@@ -13,10 +15,13 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountRepositoryPort;
+import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingEntryRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingRuleRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.Account;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEntry;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEventType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingRule;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingSourceType;
 
 class BasicAccountingSetupServiceTest {
 
@@ -62,9 +67,25 @@ class BasicAccountingSetupServiceTest {
         assertThat(context.rules.findByCompanyId(COMPANY_ID, AccountingEventType.SALE_CONFIRMED, false)).hasSize(1);
     }
 
+    @Test
+    void initializeRejectsReplacingUsedActiveRule() {
+        TestContext context = new TestContext();
+        BasicAccountingSetupService service = context.service();
+        var first = service.initialize(COMPANY_ID).rules().stream()
+                .filter(rule -> rule.eventType() == AccountingEventType.SALE_CONFIRMED)
+                .findFirst()
+                .orElseThrow();
+        context.entries.markRuleUsed(first.id());
+
+        assertThatThrownBy(() -> service.initialize(COMPANY_ID))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("used accounting rule cannot be replaced by basic setup");
+    }
+
     private static final class TestContext {
         private final InMemoryAccountRepository accounts = new InMemoryAccountRepository();
         private final InMemoryAccountingRuleRepository rules = new InMemoryAccountingRuleRepository();
+        private final InMemoryAccountingEntryRepository entries = new InMemoryAccountingEntryRepository();
         private final Queue<UUID> ids = new ArrayDeque<>();
 
         TestContext() {
@@ -74,12 +95,20 @@ class BasicAccountingSetupServiceTest {
         }
 
         BasicAccountingSetupService service() {
-            return new BasicAccountingSetupService(accounts, rules, ids::remove);
+            return new BasicAccountingSetupService(accounts, rules, entries, ids::remove);
         }
     }
 
     private static final class InMemoryAccountRepository implements AccountRepositoryPort {
         private final Map<String, Account> accounts = new HashMap<>();
+
+        @Override
+        public Optional<Account> findByCompanyIdAndId(UUID companyId, UUID id) {
+            return accounts.values().stream()
+                    .filter(account -> account.companyId().equals(companyId))
+                    .filter(account -> account.id().equals(id))
+                    .findFirst();
+        }
 
         @Override
         public Optional<Account> findByCompanyIdAndCode(UUID companyId, String code) {
@@ -110,6 +139,14 @@ class BasicAccountingSetupServiceTest {
         private final Map<UUID, AccountingRule> rules = new HashMap<>();
 
         @Override
+        public Optional<AccountingRule> findByCompanyIdAndId(UUID companyId, UUID id) {
+            return rules.values().stream()
+                    .filter(rule -> rule.companyId().equals(companyId))
+                    .filter(rule -> rule.id().equals(id))
+                    .findFirst();
+        }
+
+        @Override
         public Optional<AccountingRule> findActiveByCompanyIdAndEventType(UUID companyId, AccountingEventType eventType) {
             return rules.values().stream()
                     .filter(rule -> rule.companyId().equals(companyId))
@@ -131,6 +168,46 @@ class BasicAccountingSetupServiceTest {
         public AccountingRule save(AccountingRule rule) {
             rules.put(rule.id(), rule);
             return rule;
+        }
+    }
+
+    private static final class InMemoryAccountingEntryRepository implements AccountingEntryRepositoryPort {
+        private final Map<UUID, Long> ruleUsage = new HashMap<>();
+
+        void markRuleUsed(UUID ruleId) {
+            ruleUsage.merge(ruleId, 1L, Long::sum);
+        }
+
+        @Override
+        public boolean existsByCompanyIdAndSource(UUID companyId, AccountingSourceType sourceType, UUID sourceId) {
+            return false;
+        }
+
+        @Override
+        public long countByAccountId(UUID accountId) {
+            return 0;
+        }
+
+        @Override
+        public long countByAccountingRuleId(UUID accountingRuleId) {
+            return ruleUsage.getOrDefault(accountingRuleId, 0L);
+        }
+
+        @Override
+        public Optional<AccountingEntry> findByCompanyIdAndSource(UUID companyId, AccountingSourceType sourceType,
+                UUID sourceId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public AccountingEntry save(AccountingEntry entry) {
+            throw new UnsupportedOperationException("not needed");
+        }
+
+        @Override
+        public List<AccountingEntry> findPostedByCompanyIdAndEntryDateBetween(UUID companyId, LocalDate fromDate,
+                LocalDate toDate) {
+            return List.of();
         }
     }
 }

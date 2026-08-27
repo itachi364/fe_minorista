@@ -13,5 +13,7 @@ public record AccountingRuleResult(
         AccountingSourceType sourceType,
         String name,
         List<AccountingRuleLineResult> lines,
-        boolean active) {
+        boolean active,
+        boolean used,
+        long usageCount) {
 }

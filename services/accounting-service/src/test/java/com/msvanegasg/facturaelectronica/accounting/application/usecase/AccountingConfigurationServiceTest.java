@@ -3,6 +3,7 @@ package com.msvanegasg.facturaelectronica.accounting.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.LocalDate;
 import java.util.ArrayDeque;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -20,9 +21,11 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccoun
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountingRuleCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountingRuleLineCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountRepositoryPort;
+import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingEntryRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingRuleRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.Account;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingAmountType;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEntry;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEntrySide;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEventType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingRule;
@@ -71,6 +74,29 @@ class AccountingConfigurationServiceTest {
         assertThat(context.rules.findByCompanyId(COMPANY_ID, null, null)).isEmpty();
     }
 
+    @Test
+    void rejectsReplacingUsedActiveRule() {
+        TestContext context = new TestContext();
+        AccountingRule activeRule = AccountingRule.create(UUID.fromString("99999999-9999-9999-9999-999999999999"),
+                COMPANY_ID, AccountingEventType.SALE_CONFIRMED, AccountingSourceType.SALE, "Venta usada",
+                List.of(
+                        com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingRuleLine.create("1105",
+                                AccountingEntrySide.DEBIT, AccountingAmountType.TOTAL, "Caja"),
+                        com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingRuleLine.create("4135",
+                                AccountingEntrySide.CREDIT, AccountingAmountType.SUBTOTAL, "Ingresos")));
+        context.accounts.save(Account.create(UUID.randomUUID(), COMPANY_ID, "1105", "Caja", null));
+        context.accounts.save(Account.create(UUID.randomUUID(), COMPANY_ID, "4135", "Ingresos", null));
+        context.accounts.save(Account.create(UUID.randomUUID(), COMPANY_ID, "2408", "IVA", null));
+        context.rules.save(activeRule);
+        context.entries.markRuleUsed(activeRule.id());
+        AccountingConfigurationService service = context.service();
+
+        assertThatThrownBy(() -> service.configure(new AccountingConfigurationCommand(COMPANY_ID, List.of(),
+                List.of(saleRule()))))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("used accounting rule cannot be replaced");
+    }
+
     private static CreateAccountingRuleCommand saleRule() {
         return new CreateAccountingRuleCommand(COMPANY_ID, AccountingEventType.SALE_CONFIRMED, AccountingSourceType.SALE,
                 "Venta facturada", List.of(
@@ -85,6 +111,7 @@ class AccountingConfigurationServiceTest {
     private static final class TestContext {
         private final InMemoryAccountRepository accounts = new InMemoryAccountRepository();
         private final InMemoryAccountingRuleRepository rules = new InMemoryAccountingRuleRepository();
+        private final InMemoryAccountingEntryRepository entries = new InMemoryAccountingEntryRepository();
         private final Queue<UUID> ids = new ArrayDeque<>(List.of(
                 UUID.fromString("11111111-1111-1111-1111-111111111111"),
                 UUID.fromString("22222222-2222-2222-2222-222222222222"),
@@ -92,12 +119,20 @@ class AccountingConfigurationServiceTest {
                 UUID.fromString("44444444-4444-4444-4444-444444444444")));
 
         AccountingConfigurationService service() {
-            return new AccountingConfigurationService(accounts, rules, ids::remove);
+            return new AccountingConfigurationService(accounts, rules, entries, ids::remove);
         }
     }
 
     private static final class InMemoryAccountRepository implements AccountRepositoryPort {
         private final Map<String, Account> accounts = new HashMap<>();
+
+        @Override
+        public Optional<Account> findByCompanyIdAndId(UUID companyId, UUID id) {
+            return accounts.values().stream()
+                    .filter(account -> account.companyId().equals(companyId))
+                    .filter(account -> account.id().equals(id))
+                    .findFirst();
+        }
 
         @Override
         public Optional<Account> findByCompanyIdAndCode(UUID companyId, String code) {
@@ -128,6 +163,14 @@ class AccountingConfigurationServiceTest {
         private final Map<UUID, AccountingRule> rules = new HashMap<>();
 
         @Override
+        public Optional<AccountingRule> findByCompanyIdAndId(UUID companyId, UUID id) {
+            return rules.values().stream()
+                    .filter(rule -> rule.companyId().equals(companyId))
+                    .filter(rule -> rule.id().equals(id))
+                    .findFirst();
+        }
+
+        @Override
         public Optional<AccountingRule> findActiveByCompanyIdAndEventType(UUID companyId, AccountingEventType eventType) {
             return rules.values().stream()
                     .filter(rule -> rule.companyId().equals(companyId))
@@ -149,6 +192,46 @@ class AccountingConfigurationServiceTest {
         public AccountingRule save(AccountingRule rule) {
             rules.put(rule.id(), rule);
             return rule;
+        }
+    }
+
+    private static final class InMemoryAccountingEntryRepository implements AccountingEntryRepositoryPort {
+        private final Map<UUID, Long> ruleUsage = new HashMap<>();
+
+        void markRuleUsed(UUID ruleId) {
+            ruleUsage.merge(ruleId, 1L, Long::sum);
+        }
+
+        @Override
+        public boolean existsByCompanyIdAndSource(UUID companyId, AccountingSourceType sourceType, UUID sourceId) {
+            return false;
+        }
+
+        @Override
+        public long countByAccountId(UUID accountId) {
+            return 0;
+        }
+
+        @Override
+        public long countByAccountingRuleId(UUID accountingRuleId) {
+            return ruleUsage.getOrDefault(accountingRuleId, 0L);
+        }
+
+        @Override
+        public Optional<AccountingEntry> findByCompanyIdAndSource(UUID companyId, AccountingSourceType sourceType,
+                UUID sourceId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public AccountingEntry save(AccountingEntry entry) {
+            throw new UnsupportedOperationException("not needed");
+        }
+
+        @Override
+        public List<AccountingEntry> findPostedByCompanyIdAndEntryDateBetween(UUID companyId, LocalDate fromDate,
+                LocalDate toDate) {
+            return List.of();
         }
     }
 }

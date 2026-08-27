@@ -12,6 +12,10 @@ public interface ManageChartOfAccountsUseCase {
 
     List<AccountResult> createAll(List<CreateAccountCommand> commands);
 
+    AccountResult update(UUID companyId, UUID accountId, CreateAccountCommand command);
+
+    AccountResult deactivate(UUID companyId, UUID accountId);
+
     AccountResult findByCode(UUID companyId, String code);
 
     List<AccountResult> find(UUID companyId, Boolean active);

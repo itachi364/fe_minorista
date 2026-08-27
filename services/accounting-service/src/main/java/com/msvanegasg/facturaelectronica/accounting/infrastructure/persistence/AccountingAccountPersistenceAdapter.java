@@ -21,6 +21,12 @@ public class AccountingAccountPersistenceAdapter implements AccountRepositoryPor
     }
 
     @Override
+    public Optional<Account> findByCompanyIdAndId(UUID companyId, UUID id) {
+        return accountRepository.findByCompanyIdAndId(companyId, id)
+                .map(AccountingAccountPersistenceAdapter::toDomain);
+    }
+
+    @Override
     public Optional<Account> findByCompanyIdAndCode(UUID companyId, String code) {
         return accountRepository.findByCompanyIdAndCode(companyId, code)
                 .map(AccountingAccountPersistenceAdapter::toDomain);

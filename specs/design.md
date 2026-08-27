@@ -2945,4 +2945,15 @@ Context7 evidence:
 - Relevant finding: Spring MVC soporta `@Valid @RequestBody` para validar payloads REST y Spring Transaction Management revierte transacciones declarativas ante excepciones runtime por defecto.
 - Decision impact: TASK-223 exige validacion de payload batch, errores funcionales por fila y guardado transaccional para impedir configuraciones contables parciales.
 
+### TASK-224 - Trazabilidad de uso y mantenimiento seguro de cuentas/reglas contables
+- Estado: Implementado.
+- Fase: Fase 28: Configuracion contable empresarial.
+- Decision de diseno: El sistema debe distinguir configuraciones contables usadas y no usadas para permitir mantenimiento sin romper trazabilidad historica.
+- Modelo: `accounting_entry` agrega `accounting_rule_id` nullable. Los asientos nuevos guardan la regla exacta usada; asientos historicos previos quedan sin regla trazada y no se reconstruyen por inferencia.
+- Cuentas: El uso se calcula desde `accounting_entry_line.account_id`; una cuenta usada no se actualiza estructuralmente ni se inactiva.
+- Reglas: El uso se calcula desde `accounting_entry.accounting_rule_id`; una regla usada no se actualiza estructuralmente ni se inactiva.
+- UX: La SPA muestra columna `Uso` y botones `Actualizar`/`Inactivar` solo para recursos `Sin uso`.
+- Consistencia: Actualizaciones e inactivaciones se validan en backend; el frontend solo mejora experiencia, no es la fuente de seguridad.
+- Auditoria: Las mutaciones pasan por BFF y quedan cubiertas por auditoria transversal de acciones mutables.
+
 <!-- END SDD TASK DESIGN TRACEABILITY -->

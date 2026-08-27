@@ -125,6 +125,24 @@ public class AccountingController {
                         .toList());
     }
 
+    @PutMapping("/accounts/{accountId}")
+    public ResponseEntity<AccountResponse> updateAccount(
+            @RequestHeader(COMPANY_HEADER) UUID companyId,
+            @PathVariable UUID accountId,
+            @Valid @RequestBody AccountRequest request) {
+        return ResponseEntity.ok(AccountingRestMapper.toResponse(
+                manageChartOfAccountsUseCase.update(companyId, accountId,
+                        AccountingRestMapper.toCommand(companyId, request))));
+    }
+
+    @PostMapping("/accounts/{accountId}/deactivate")
+    public ResponseEntity<AccountResponse> deactivateAccount(
+            @RequestHeader(COMPANY_HEADER) UUID companyId,
+            @PathVariable UUID accountId) {
+        return ResponseEntity.ok(AccountingRestMapper.toResponse(
+                manageChartOfAccountsUseCase.deactivate(companyId, accountId)));
+    }
+
     @GetMapping(value = "/accounts", params = "code")
     public ResponseEntity<AccountResponse> findAccountByCode(
             @RequestHeader(COMPANY_HEADER) UUID companyId,
@@ -162,6 +180,24 @@ public class AccountingController {
                         .toList()).stream()
                         .map(AccountingRestMapper::toResponse)
                         .toList());
+    }
+
+    @PutMapping("/accounting-rules/{ruleId}")
+    public ResponseEntity<AccountingRuleResponse> updateAccountingRule(
+            @RequestHeader(COMPANY_HEADER) UUID companyId,
+            @PathVariable UUID ruleId,
+            @Valid @RequestBody AccountingRuleRequest request) {
+        return ResponseEntity.ok(AccountingRestMapper.toResponse(
+                manageAccountingRulesUseCase.update(companyId, ruleId,
+                        AccountingRestMapper.toCommand(companyId, request))));
+    }
+
+    @PostMapping("/accounting-rules/{ruleId}/deactivate")
+    public ResponseEntity<AccountingRuleResponse> deactivateAccountingRule(
+            @RequestHeader(COMPANY_HEADER) UUID companyId,
+            @PathVariable UUID ruleId) {
+        return ResponseEntity.ok(AccountingRestMapper.toResponse(
+                manageAccountingRulesUseCase.deactivate(companyId, ruleId)));
     }
 
     @PostMapping("/accounting-configuration/batch")

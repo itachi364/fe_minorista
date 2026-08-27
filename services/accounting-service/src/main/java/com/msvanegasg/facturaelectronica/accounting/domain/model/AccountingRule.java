@@ -67,6 +67,14 @@ public final class AccountingRule {
         return restore(id, companyId, eventType, sourceType, name, lines, false);
     }
 
+    public AccountingRule update(
+            AccountingEventType eventType,
+            AccountingSourceType sourceType,
+            String name,
+            List<AccountingRuleLine> lines) {
+        return restore(id, companyId, eventType, sourceType, name, lines, active);
+    }
+
     public UUID id() {
         return id;
     }

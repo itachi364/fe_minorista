@@ -224,6 +224,11 @@ Si el flujo de compra no esta completamente modelado, se debe introducir o compl
 - En UI, `accounting.accounting_rule_line` debe presentarse como `movimiento contable`; en base de datos puede conservar el nombre tecnico `line`.
 - Una cuenta o regla con uso historico en `accounting.accounting_entry_line` no debe eliminarse fisicamente; debe inactivarse o versionarse para conservar trazabilidad.
 - Las creaciones batch deben persistirse como una unidad atomica por empresa. Si una cuenta, regla o movimiento contable falla validacion, ninguna fila del lote debe quedar guardada.
+- TASK-224 agrega `accounting.accounting_entry.accounting_rule_id` nullable para que los nuevos asientos rastreen la regla exacta usada.
+- El uso de cuentas se calcula desde `accounting.accounting_entry_line.account_id`.
+- El uso de reglas se calcula desde `accounting.accounting_entry.accounting_rule_id`.
+- Las reglas historicas previas a TASK-224 pueden tener asientos sin `accounting_rule_id`; ese historial se conserva como no trazado y no debe inferirse automaticamente.
+- Cuentas y reglas con `usageCount > 0` no se actualizan estructuralmente ni se inactivan desde el modulo de configuracion.
 
 ### Reportes y licencias
 

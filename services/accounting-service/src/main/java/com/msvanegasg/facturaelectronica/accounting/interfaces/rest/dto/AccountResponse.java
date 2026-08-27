@@ -15,5 +15,7 @@ public record AccountResponse(
         AccountLevel level,
         AccountNature nature,
         UUID parentAccountId,
-        boolean active) {
+        boolean active,
+        boolean used,
+        long usageCount) {
 }

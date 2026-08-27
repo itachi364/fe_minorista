@@ -9,6 +9,8 @@ import com.msvanegasg.facturaelectronica.accounting.infrastructure.persistence.e
 
 public interface AccountingEntryLineJpaRepository extends JpaRepository<AccountingEntryLineJpaEntity, UUID> {
 
+    long countByAccountId(UUID accountId);
+
     List<AccountingEntryLineJpaEntity> findByEntryIdOrderByLineOrderAsc(UUID entryId);
 
     void deleteByEntryId(UUID entryId);

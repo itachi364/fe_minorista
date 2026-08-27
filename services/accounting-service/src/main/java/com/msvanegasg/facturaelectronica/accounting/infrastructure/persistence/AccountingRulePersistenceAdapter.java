@@ -31,6 +31,12 @@ public class AccountingRulePersistenceAdapter implements AccountingRuleRepositor
     }
 
     @Override
+    public Optional<AccountingRule> findByCompanyIdAndId(UUID companyId, UUID id) {
+        return ruleRepository.findByCompanyIdAndId(companyId, id)
+                .map(rule -> toDomain(rule, lineRepository.findByRuleIdOrderByLineOrderAsc(rule.getId())));
+    }
+
+    @Override
     public Optional<AccountingRule> findActiveByCompanyIdAndEventType(UUID companyId, AccountingEventType eventType) {
         return ruleRepository.findByCompanyIdAndEventTypeAndActiveTrue(companyId, eventType)
                 .map(rule -> toDomain(rule, lineRepository.findByRuleIdOrderByLineOrderAsc(rule.getId())));

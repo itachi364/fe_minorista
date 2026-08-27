@@ -3,6 +3,7 @@ package com.msvanegasg.facturaelectronica.accounting.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -15,10 +16,13 @@ import org.junit.jupiter.api.Test;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountRepositoryPort;
+import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingEntryRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.Account;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountCategory;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEntry;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountLevel;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountNature;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingSourceType;
 
 class ChartOfAccountsServiceTest {
 
@@ -143,13 +147,49 @@ class ChartOfAccountsServiceTest {
                 .hasMessage("account code already exists for company");
     }
 
+    @Test
+    void updateChangesUnusedAccountNameAndParent() {
+        InMemoryAccountRepository repository = new InMemoryAccountRepository();
+        ChartOfAccountsService service = service(repository);
+        AccountResult created = service.create(new CreateAccountCommand(COMPANY_ID, "1105", "Caja", null));
+
+        AccountResult updated = service.update(COMPANY_ID, created.id(),
+                new CreateAccountCommand(COMPANY_ID, "1105", "Caja general", PARENT_ACCOUNT_ID));
+
+        assertThat(updated.name()).isEqualTo("Caja general");
+        assertThat(updated.parentAccountId()).isEqualTo(PARENT_ACCOUNT_ID);
+        assertThat(updated.used()).isFalse();
+        assertThat(updated.usageCount()).isZero();
+    }
+
+    @Test
+    void deactivateRejectsUsedAccount() {
+        InMemoryAccountRepository repository = new InMemoryAccountRepository();
+        InMemoryAccountingEntryRepository entries = new InMemoryAccountingEntryRepository();
+        ChartOfAccountsService service = new ChartOfAccountsService(repository, entries, () -> ACCOUNT_ID);
+        AccountResult created = service.create(new CreateAccountCommand(COMPANY_ID, "1105", "Caja", null));
+        entries.markAccountUsed(created.id());
+
+        assertThatThrownBy(() -> service.deactivate(COMPANY_ID, created.id()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("used account cannot be deactivated");
+    }
+
     private static ChartOfAccountsService service(AccountRepositoryPort repository) {
-        return new ChartOfAccountsService(repository, () -> ACCOUNT_ID);
+        return new ChartOfAccountsService(repository, new InMemoryAccountingEntryRepository(), () -> ACCOUNT_ID);
     }
 
     private static final class InMemoryAccountRepository implements AccountRepositoryPort {
 
         private final Map<String, Account> accounts = new HashMap<>();
+
+        @Override
+        public Optional<Account> findByCompanyIdAndId(UUID companyId, UUID id) {
+            return accounts.values().stream()
+                    .filter(account -> account.companyId().equals(companyId))
+                    .filter(account -> account.id().equals(id))
+                    .findFirst();
+        }
 
         @Override
         public Optional<Account> findByCompanyIdAndCode(UUID companyId, String code) {
@@ -173,6 +213,47 @@ class ChartOfAccountsServiceTest {
 
         private static String key(UUID companyId, String code) {
             return companyId + ":" + code;
+        }
+    }
+
+    private static final class InMemoryAccountingEntryRepository implements AccountingEntryRepositoryPort {
+
+        private final Map<UUID, Long> accountUsage = new HashMap<>();
+
+        void markAccountUsed(UUID accountId) {
+            accountUsage.merge(accountId, 1L, Long::sum);
+        }
+
+        @Override
+        public boolean existsByCompanyIdAndSource(UUID companyId, AccountingSourceType sourceType, UUID sourceId) {
+            return false;
+        }
+
+        @Override
+        public long countByAccountId(UUID accountId) {
+            return accountUsage.getOrDefault(accountId, 0L);
+        }
+
+        @Override
+        public long countByAccountingRuleId(UUID accountingRuleId) {
+            return 0;
+        }
+
+        @Override
+        public Optional<AccountingEntry> findByCompanyIdAndSource(UUID companyId, AccountingSourceType sourceType,
+                UUID sourceId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public AccountingEntry save(AccountingEntry entry) {
+            throw new UnsupportedOperationException("not needed");
+        }
+
+        @Override
+        public List<AccountingEntry> findPostedByCompanyIdAndEntryDateBetween(UUID companyId, LocalDate fromDate,
+                LocalDate toDate) {
+            return List.of();
         }
     }
 }

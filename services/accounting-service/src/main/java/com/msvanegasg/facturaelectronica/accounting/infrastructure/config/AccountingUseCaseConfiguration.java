@@ -46,31 +46,35 @@ public class AccountingUseCaseConfiguration {
     InitializeBasicAccountingSetupUseCase initializeBasicAccountingSetupUseCase(
             AccountRepositoryPort accountRepository,
             AccountingRuleRepositoryPort ruleRepository,
+            AccountingEntryRepositoryPort entryRepository,
             IdGeneratorPort idGenerator) {
-        return new BasicAccountingSetupService(accountRepository, ruleRepository, idGenerator);
+        return new BasicAccountingSetupService(accountRepository, ruleRepository, entryRepository, idGenerator);
     }
 
     @Bean
     ConfigureAccountingUseCase configureAccountingUseCase(
             AccountRepositoryPort accountRepository,
             AccountingRuleRepositoryPort ruleRepository,
+            AccountingEntryRepositoryPort entryRepository,
             IdGeneratorPort idGenerator) {
-        return new AccountingConfigurationService(accountRepository, ruleRepository, idGenerator);
+        return new AccountingConfigurationService(accountRepository, ruleRepository, entryRepository, idGenerator);
     }
 
     @Bean
     ManageChartOfAccountsUseCase manageChartOfAccountsUseCase(
             AccountRepositoryPort accountRepository,
+            AccountingEntryRepositoryPort entryRepository,
             IdGeneratorPort idGenerator) {
-        return new ChartOfAccountsService(accountRepository, idGenerator);
+        return new ChartOfAccountsService(accountRepository, entryRepository, idGenerator);
     }
 
     @Bean
     ManageAccountingRulesUseCase manageAccountingRulesUseCase(
             AccountingRuleRepositoryPort ruleRepository,
             AccountRepositoryPort accountRepository,
+            AccountingEntryRepositoryPort entryRepository,
             IdGeneratorPort idGenerator) {
-        return new AccountingRuleManagementService(ruleRepository, accountRepository, idGenerator);
+        return new AccountingRuleManagementService(ruleRepository, accountRepository, entryRepository, idGenerator);
     }
 
     @Bean

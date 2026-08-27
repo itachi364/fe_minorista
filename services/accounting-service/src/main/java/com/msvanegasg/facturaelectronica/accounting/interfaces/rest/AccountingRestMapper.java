@@ -138,7 +138,9 @@ public final class AccountingRestMapper {
                 result.level(),
                 result.nature(),
                 result.parentAccountId(),
-                result.active());
+                result.active(),
+                result.used(),
+                result.usageCount());
     }
 
     public static AccountingRuleResponse toResponse(AccountingRuleResult result) {
@@ -149,7 +151,9 @@ public final class AccountingRestMapper {
                 result.sourceType(),
                 result.name(),
                 result.lines().stream().map(AccountingRestMapper::toResponse).toList(),
-                result.active());
+                result.active(),
+                result.used(),
+                result.usageCount());
     }
 
 
@@ -168,6 +172,7 @@ public final class AccountingRestMapper {
                 result.description(),
                 result.sourceType(),
                 result.sourceId(),
+                result.accountingRuleId(),
                 result.status(),
                 result.debitTotal(),
                 result.creditTotal(),

@@ -9,6 +9,7 @@ import java.util.HashSet;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageChartOfAccountsUseCase;
+import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingEntryRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.Account;
@@ -16,10 +17,13 @@ import com.msvanegasg.facturaelectronica.accounting.domain.model.Account;
 public class ChartOfAccountsService implements ManageChartOfAccountsUseCase {
 
     private final AccountRepositoryPort accountRepository;
+    private final AccountingEntryRepositoryPort entryRepository;
     private final IdGeneratorPort idGenerator;
 
-    public ChartOfAccountsService(AccountRepositoryPort accountRepository, IdGeneratorPort idGenerator) {
+    public ChartOfAccountsService(AccountRepositoryPort accountRepository, AccountingEntryRepositoryPort entryRepository,
+            IdGeneratorPort idGenerator) {
         this.accountRepository = Objects.requireNonNull(accountRepository);
+        this.entryRepository = Objects.requireNonNull(entryRepository);
         this.idGenerator = Objects.requireNonNull(idGenerator);
     }
 
@@ -70,6 +74,33 @@ public class ChartOfAccountsService implements ManageChartOfAccountsUseCase {
     }
 
     @Override
+    public AccountResult update(UUID companyId, UUID accountId, CreateAccountCommand command) {
+        Objects.requireNonNull(companyId, "companyId is required");
+        Objects.requireNonNull(accountId, "accountId is required");
+        validate(command);
+        if (!companyId.equals(command.companyId())) {
+            throw new IllegalArgumentException("account companyId must match path companyId");
+        }
+        Account existing = accountRepository.findByCompanyIdAndId(companyId, accountId)
+                .orElseThrow(() -> new IllegalStateException("account was not found"));
+        assertUnused(existing.id(), "used account cannot be updated");
+        if (!existing.code().equals(command.code().trim())) {
+            throw new IllegalStateException("account code cannot be changed");
+        }
+        return toResult(accountRepository.save(existing.update(command.name(), command.parentAccountId())));
+    }
+
+    @Override
+    public AccountResult deactivate(UUID companyId, UUID accountId) {
+        Objects.requireNonNull(companyId, "companyId is required");
+        Objects.requireNonNull(accountId, "accountId is required");
+        Account existing = accountRepository.findByCompanyIdAndId(companyId, accountId)
+                .orElseThrow(() -> new IllegalStateException("account was not found"));
+        assertUnused(existing.id(), "used account cannot be deactivated");
+        return toResult(accountRepository.save(existing.deactivate()));
+    }
+
+    @Override
     public AccountResult findByCode(UUID companyId, String code) {
         Objects.requireNonNull(companyId, "companyId is required");
         Objects.requireNonNull(code, "code is required");
@@ -87,6 +118,7 @@ public class ChartOfAccountsService implements ManageChartOfAccountsUseCase {
     }
 
     private AccountResult toResult(Account account) {
+        long usageCount = entryRepository.countByAccountId(account.id());
         return new AccountResult(
                 account.id(),
                 account.companyId(),
@@ -96,7 +128,15 @@ public class ChartOfAccountsService implements ManageChartOfAccountsUseCase {
                 account.level(),
                 account.nature(),
                 account.parentAccountId(),
-                account.active());
+                account.active(),
+                usageCount > 0,
+                usageCount);
+    }
+
+    private void assertUnused(UUID accountId, String message) {
+        if (entryRepository.countByAccountId(accountId) > 0) {
+            throw new IllegalStateException(message);
+        }
     }
 
     private static void validate(CreateAccountCommand command) {

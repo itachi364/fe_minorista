@@ -13,6 +13,8 @@ import com.msvanegasg.facturaelectronica.accounting.infrastructure.persistence.e
 
 public interface AccountingEntryJpaRepository extends JpaRepository<AccountingEntryJpaEntity, UUID> {
 
+    long countByAccountingRuleId(UUID accountingRuleId);
+
     boolean existsByCompanyIdAndSourceTypeAndSourceId(
             UUID companyId,
             AccountingSourceType sourceType,

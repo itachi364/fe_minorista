@@ -3,6 +3,7 @@ package com.msvanegasg.facturaelectronica.accounting.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.LocalDate;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
@@ -17,9 +18,11 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingRu
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountingRuleCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountingRuleLineCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountRepositoryPort;
+import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingEntryRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingRuleRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.Account;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingAmountType;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEntry;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEntrySide;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEventType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingRule;
@@ -104,6 +107,32 @@ class AccountingRuleManagementServiceTest {
                 .hasMessage("accounting rule requires debit and credit movements");
     }
 
+    @Test
+    void replaceActiveRejectsUsedRule() {
+        TestContext context = TestContext.withDefaultAccounts();
+        AccountingRuleManagementService service = context.service();
+        AccountingRuleResult current = service.create(ruleCommand("Venta contado", "1105"));
+        context.entries.markRuleUsed(current.id());
+
+        assertThatThrownBy(() -> service.replaceActive(ruleCommand("Venta cartera", "1305")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("used accounting rule cannot be replaced");
+    }
+
+    @Test
+    void updateAndDeactivateUnusedRule() {
+        TestContext context = TestContext.withDefaultAccounts();
+        AccountingRuleManagementService service = context.service();
+        AccountingRuleResult current = service.create(ruleCommand("Venta contado", "1105"));
+
+        AccountingRuleResult updated = service.update(COMPANY_ID, current.id(), ruleCommand("Venta actualizada", "1305"));
+        AccountingRuleResult deactivated = service.deactivate(COMPANY_ID, current.id());
+
+        assertThat(updated.name()).isEqualTo("Venta actualizada");
+        assertThat(updated.used()).isFalse();
+        assertThat(deactivated.active()).isFalse();
+    }
+
     private static CreateAccountingRuleCommand ruleCommand(String name, String debitAccount) {
         return new CreateAccountingRuleCommand(COMPANY_ID, AccountingEventType.SALE_CONFIRMED, AccountingSourceType.SALE,
                 name, List.of(
@@ -118,6 +147,7 @@ class AccountingRuleManagementServiceTest {
     private static final class TestContext {
         private final InMemoryAccountRepository accounts = new InMemoryAccountRepository();
         private final InMemoryAccountingRuleRepository rules = new InMemoryAccountingRuleRepository();
+        private final InMemoryAccountingEntryRepository entries = new InMemoryAccountingEntryRepository();
         private final Queue<UUID> ids = new ArrayDeque<>();
 
         static TestContext withDefaultAccounts() {
@@ -133,12 +163,20 @@ class AccountingRuleManagementServiceTest {
         }
 
         AccountingRuleManagementService service() {
-            return new AccountingRuleManagementService(rules, accounts, ids::remove);
+            return new AccountingRuleManagementService(rules, accounts, entries, ids::remove);
         }
     }
 
     private static final class InMemoryAccountRepository implements AccountRepositoryPort {
         private final Map<String, Account> accounts = new HashMap<>();
+
+        @Override
+        public Optional<Account> findByCompanyIdAndId(UUID companyId, UUID id) {
+            return accounts.values().stream()
+                    .filter(account -> account.companyId().equals(companyId))
+                    .filter(account -> account.id().equals(id))
+                    .findFirst();
+        }
 
         @Override
         public Optional<Account> findByCompanyIdAndCode(UUID companyId, String code) {
@@ -168,6 +206,14 @@ class AccountingRuleManagementServiceTest {
         private final Map<UUID, AccountingRule> rules = new HashMap<>();
 
         @Override
+        public Optional<AccountingRule> findByCompanyIdAndId(UUID companyId, UUID id) {
+            return rules.values().stream()
+                    .filter(rule -> rule.companyId().equals(companyId))
+                    .filter(rule -> rule.id().equals(id))
+                    .findFirst();
+        }
+
+        @Override
         public Optional<AccountingRule> findActiveByCompanyIdAndEventType(UUID companyId, AccountingEventType eventType) {
             return rules.values().stream()
                     .filter(rule -> rule.companyId().equals(companyId))
@@ -189,6 +235,46 @@ class AccountingRuleManagementServiceTest {
         public AccountingRule save(AccountingRule rule) {
             rules.put(rule.id(), rule);
             return rule;
+        }
+    }
+
+    private static final class InMemoryAccountingEntryRepository implements AccountingEntryRepositoryPort {
+        private final Map<UUID, Long> ruleUsage = new HashMap<>();
+
+        void markRuleUsed(UUID ruleId) {
+            ruleUsage.merge(ruleId, 1L, Long::sum);
+        }
+
+        @Override
+        public boolean existsByCompanyIdAndSource(UUID companyId, AccountingSourceType sourceType, UUID sourceId) {
+            return false;
+        }
+
+        @Override
+        public long countByAccountId(UUID accountId) {
+            return 0;
+        }
+
+        @Override
+        public long countByAccountingRuleId(UUID accountingRuleId) {
+            return ruleUsage.getOrDefault(accountingRuleId, 0L);
+        }
+
+        @Override
+        public Optional<AccountingEntry> findByCompanyIdAndSource(UUID companyId, AccountingSourceType sourceType,
+                UUID sourceId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public AccountingEntry save(AccountingEntry entry) {
+            throw new UnsupportedOperationException("not needed");
+        }
+
+        @Override
+        public List<AccountingEntry> findPostedByCompanyIdAndEntryDateBetween(UUID companyId, LocalDate fromDate,
+                LocalDate toDate) {
+            return List.of();
         }
     }
 }

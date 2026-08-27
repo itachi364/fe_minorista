@@ -108,6 +108,17 @@ public final class Account {
         return active;
     }
 
+    public Account update(String name, UUID parentAccountId) {
+        return restore(id, companyId, code, name, parentAccountId, active);
+    }
+
+    public Account deactivate() {
+        if (!active) {
+            return this;
+        }
+        return restore(id, companyId, code, name, parentAccountId, false);
+    }
+
     private static String normalizeCode(String code) {
         if (code == null || code.isBlank()) {
             throw new IllegalArgumentException("account code is required");

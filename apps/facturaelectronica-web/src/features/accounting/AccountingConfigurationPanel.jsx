@@ -68,40 +68,92 @@ const recommendedTemplate = {
   ],
 };
 
-export function AccountingConfigurationPanel({ accounts, rules, onLoad, onConfigure, busy }) {
+export function AccountingConfigurationPanel({
+  accounts,
+  rules,
+  onLoad,
+  onConfigure,
+  onUpdateAccount = async () => null,
+  onDeactivateAccount = async () => null,
+  onUpdateRule = async () => null,
+  onDeactivateRule = async () => null,
+  busy,
+}) {
   const [draft, setDraft] = useState(() => emptyDraft());
+  const [editing, setEditing] = useState(null);
   const errors = useMemo(() => validateDraft(draft), [draft]);
-  const canSubmit = !busy && (draft.accounts.length > 0 || draft.rules.length > 0) && errors.length === 0;
+  const isEditingAccount = editing?.type === 'account';
+  const isEditingRule = editing?.type === 'rule';
+  const canSubmit = !busy
+    && (draft.accounts.length > 0 || draft.rules.length > 0)
+    && errors.length === 0
+    && (!isEditingAccount || (draft.accounts.length === 1 && draft.rules.length === 0))
+    && (!isEditingRule || (draft.rules.length === 1 && draft.accounts.length === 0));
 
   async function submitDraft() {
     if (!canSubmit) {
       return null;
     }
+    if (isEditingAccount) {
+      const result = await onUpdateAccount(editing.id, accountPayload(draft.accounts[0]));
+      if (result) {
+        clearDraft();
+      }
+      return result;
+    }
+    if (isEditingRule) {
+      const result = await onUpdateRule(editing.id, rulePayload(draft.rules[0]));
+      if (result) {
+        clearDraft();
+      }
+      return result;
+    }
     const existingAccountCodes = new Set(accounts.map((account) => account.code));
     const result = await onConfigure({
       accounts: draft.accounts
         .filter(({ code }) => !existingAccountCodes.has(code.trim()))
-        .map(({ code, name, parentAccountId }) => ({
-          code: code.trim(),
-          name: name.trim(),
-          parentAccountId: parentAccountId || null,
-        })),
-      rules: draft.rules.map((rule) => ({
-        eventType: rule.eventType,
-        sourceType: rule.sourceType,
-        name: rule.name.trim(),
-        lines: rule.lines.map((line) => ({
-          accountCode: line.accountCode.trim(),
-          side: line.side,
-          amountType: line.amountType,
-          description: line.description.trim(),
-        })),
-      })),
+        .map(accountPayload),
+      rules: draft.rules.map(rulePayload),
     });
     if (result) {
-      setDraft(emptyDraft());
+      clearDraft();
     }
     return result;
+  }
+
+  function clearDraft() {
+    setDraft(emptyDraft());
+    setEditing(null);
+  }
+
+  function editAccount(account) {
+    setEditing({ type: 'account', id: account.id });
+    setDraft({
+      accounts: [{
+        code: account.code || '',
+        name: account.name || '',
+        parentAccountId: account.parentAccountId || '',
+      }],
+      rules: [],
+    });
+  }
+
+  function editRule(rule) {
+    setEditing({ type: 'rule', id: rule.id });
+    setDraft({
+      accounts: [],
+      rules: [{
+        eventType: rule.eventType || 'SALE_CONFIRMED',
+        sourceType: rule.sourceType || 'SALE',
+        name: rule.name || '',
+        lines: rule.lines?.length ? rule.lines.map((line) => ({
+          accountCode: line.accountCode || '',
+          side: line.side || 'DEBIT',
+          amountType: line.amountType || 'TOTAL',
+          description: line.description || '',
+        })) : [emptyMovement('DEBIT'), emptyMovement('CREDIT')],
+      }],
+    });
   }
 
   return <section className="accounting-configuration">
@@ -113,8 +165,9 @@ export function AccountingConfigurationPanel({ accounts, rules, onLoad, onConfig
         </div>
         <div className="toolbar-actions">
           <button className="secondary" disabled={busy} onClick={onLoad} type="button">Actualizar estado</button>
-          <button className="secondary" disabled={busy} onClick={() => setDraft(cloneTemplate())} type="button">Usar plantilla recomendada</button>
-          <button className="primary" disabled={!canSubmit} onClick={submitDraft} type="button">Guardar configuracion</button>
+          <button className="secondary" disabled={busy || Boolean(editing)} onClick={() => setDraft(cloneTemplate())} type="button">Usar plantilla recomendada</button>
+          {editing && <button className="secondary" disabled={busy} onClick={clearDraft} type="button">Cancelar edicion</button>}
+          <button className="primary" disabled={!canSubmit} onClick={submitDraft} type="button">{submitLabel(editing)}</button>
         </div>
       </header>
       <div className="status-row">
@@ -133,12 +186,12 @@ export function AccountingConfigurationPanel({ accounts, rules, onLoad, onConfig
           <h2>Plan de cuentas</h2>
           <p className="hint">Agrega una o varias cuentas PUC antes de guardar.</p>
         </div>
-        <button className="secondary" disabled={busy} onClick={() => setDraft(addAccountRow)} type="button">Agregar cuenta</button>
+        <button className="secondary" disabled={busy || isEditingRule} onClick={() => setDraft(addAccountRow)} type="button">Agregar cuenta</button>
       </header>
       {draft.accounts.length === 0 && <p className="empty-state">Sin cuentas en preparacion.</p>}
       {draft.accounts.map((account, index) => (
         <div className="accounting-row" key={`account-${index}`}>
-          <Field label="Codigo PUC" value={account.code} onChange={(value) => setDraft(updateAccount(index, 'code', value))} disabled={busy} placeholder="Ej. 1105" />
+          <Field label="Codigo PUC" value={account.code} onChange={(value) => setDraft(updateAccount(index, 'code', value))} disabled={busy || isEditingAccount} placeholder="Ej. 1105" />
           <Field label="Nombre de cuenta" value={account.name} onChange={(value) => setDraft(updateAccount(index, 'name', value))} disabled={busy} placeholder="Ej. Caja" />
           <Field label="Cuenta padre" value={account.parentAccountId || ''} onChange={(value) => setDraft(updateAccount(index, 'parentAccountId', value))} disabled={busy} placeholder="UUID opcional" />
           <button className="danger" disabled={busy} onClick={() => setDraft(removeAccount(index))} type="button">Quitar</button>
@@ -152,7 +205,7 @@ export function AccountingConfigurationPanel({ accounts, rules, onLoad, onConfig
           <h2>Reglas contables</h2>
           <p className="hint">Cada regla puede tener varios movimientos contables. Debe existir al menos un debito y un credito.</p>
         </div>
-        <button className="secondary" disabled={busy} onClick={() => setDraft(addRuleRow)} type="button">Agregar regla</button>
+        <button className="secondary" disabled={busy || isEditingAccount} onClick={() => setDraft(addRuleRow)} type="button">Agregar regla</button>
       </header>
       {draft.rules.length === 0 && <p className="empty-state">Sin reglas en preparacion.</p>}
       {draft.rules.map((rule, ruleIndex) => (
@@ -185,29 +238,49 @@ export function AccountingConfigurationPanel({ accounts, rules, onLoad, onConfig
     <DataTable
       title="Reglas contables"
       description="Estas reglas determinan los asientos automaticos que se crean al cerrar operaciones."
-      columns={['Evento', 'Origen', 'Nombre', 'Movimientos contables', 'Estado']}
+      columns={['Evento', 'Origen', 'Nombre', 'Movimientos contables', 'Uso', 'Estado', 'Acciones']}
       rows={rules.map((rule) => [
         eventLabels[rule.eventType] || rule.eventType,
         sourceLabels[rule.sourceType] || rule.sourceType,
         rule.name,
         rule.lines?.length || 0,
+        usageLabel(rule),
         rule.active ? 'Activa' : 'Inactiva',
+        {
+          searchText: rule.used ? 'usada solo lectura' : 'sin uso editable',
+          content: rule.used
+            ? <span className="hint">Solo lectura</span>
+            : <div className="row-actions">
+                <button className="secondary" disabled={busy} onClick={() => editRule(rule)} type="button">Actualizar</button>
+                <button className="secondary" disabled={busy || !rule.active} onClick={() => onDeactivateRule(rule.id)} type="button">Inactivar</button>
+              </div>,
+        },
       ])}
       emptyMessage="Sin reglas configuradas. Crea una configuracion contable antes de cerrar ventas."
-      rowKey={(row) => `${row[0]}-${row[2]}`}
+      rowKey={(row) => `${row[0]}-${row[2]}-${row[4]}`}
       pageSize={5}
     />
 
     <DataTable
       title="Plan de cuentas"
       description="Cuentas PUC disponibles para registrar asientos y generar reportes financieros."
-      columns={['Codigo', 'Cuenta', 'Categoria', 'Naturaleza', 'Estado']}
+      columns={['Codigo', 'Cuenta', 'Categoria', 'Naturaleza', 'Uso', 'Estado', 'Acciones']}
       rows={accounts.map((account) => [
         account.code,
         account.name,
         account.category,
         account.nature,
+        usageLabel(account),
         account.active ? 'Activa' : 'Inactiva',
+        {
+          searchText: account.used ? 'usada solo lectura' : 'sin uso editable',
+          content: account.used
+            ? <span className="hint">Solo lectura</span>
+            : <div className="row-actions">
+                <button className="secondary" disabled={busy} onClick={() => editAccount(account)} type="button">Actualizar</button>
+                <button className="secondary" disabled={busy || !account.active} onClick={() => onDeactivateAccount(account.id)} type="button">Inactivar</button>
+              </div>,
+        },
       ])}
       emptyMessage="Sin cuentas configuradas."
       rowKey={(row) => row[0]}
@@ -218,6 +291,43 @@ export function AccountingConfigurationPanel({ accounts, rules, onLoad, onConfig
 
 function hasActiveSaleRule(rules) {
   return rules.some((rule) => rule.eventType === 'SALE_CONFIRMED' && rule.active);
+}
+
+function submitLabel(editing) {
+  if (editing?.type === 'account') {
+    return 'Actualizar cuenta';
+  }
+  if (editing?.type === 'rule') {
+    return 'Actualizar regla';
+  }
+  return 'Guardar configuracion';
+}
+
+function usageLabel(item) {
+  const count = Number(item.usageCount || 0);
+  return item.used ? `Usada (${count})` : 'Sin uso';
+}
+
+function accountPayload({ code, name, parentAccountId }) {
+  return {
+    code: code.trim(),
+    name: name.trim(),
+    parentAccountId: parentAccountId || null,
+  };
+}
+
+function rulePayload(rule) {
+  return {
+    eventType: rule.eventType,
+    sourceType: rule.sourceType,
+    name: rule.name.trim(),
+    lines: rule.lines.map((line) => ({
+      accountCode: line.accountCode.trim(),
+      side: line.side,
+      amountType: line.amountType,
+      description: line.description.trim(),
+    })),
+  };
 }
 
 function emptyDraft() {

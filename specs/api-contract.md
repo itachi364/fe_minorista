@@ -1592,6 +1592,12 @@ Reglas:
 - Cada movimiento contable debe referenciar una cuenta existente o una cuenta incluida en el mismo lote.
 - Cada regla debe tener al menos un movimiento debito y uno credito.
 - La operacion es atomica: si falla una cuenta, regla o movimiento, no se persiste ningun registro del lote.
+- TASK-224 agrega `used` y `usageCount` a `AccountResponse` y `AccountingRuleResponse`.
+- `PUT /api/v1/accounts/{accountId}` permite actualizar cuenta solo cuando `usageCount = 0`.
+- `POST /api/v1/accounts/{accountId}/deactivate` inactiva cuenta solo cuando `usageCount = 0`.
+- `PUT /api/v1/accounting-rules/{ruleId}` permite actualizar regla solo cuando `usageCount = 0`.
+- `POST /api/v1/accounting-rules/{ruleId}/deactivate` inactiva regla solo cuando `usageCount = 0`.
+- Si el recurso ya fue usado, el backend debe responder `400 BUSINESS_RULE_VIOLATION` o equivalente funcional sin modificar datos.
 
 ### Cuentas por cobrar
 

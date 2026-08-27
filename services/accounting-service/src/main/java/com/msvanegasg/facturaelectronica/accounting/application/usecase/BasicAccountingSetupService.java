@@ -10,6 +10,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingRu
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingSetupResult;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.InitializeBasicAccountingSetupUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountRepositoryPort;
+import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingEntryRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingRuleRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.Account;
@@ -26,12 +27,16 @@ public class BasicAccountingSetupService implements InitializeBasicAccountingSet
 
     private final AccountRepositoryPort accountRepository;
     private final AccountingRuleRepositoryPort ruleRepository;
+    private final AccountingEntryRepositoryPort entryRepository;
     private final IdGeneratorPort idGenerator;
 
     public BasicAccountingSetupService(AccountRepositoryPort accountRepository,
-            AccountingRuleRepositoryPort ruleRepository, IdGeneratorPort idGenerator) {
+            AccountingRuleRepositoryPort ruleRepository,
+            AccountingEntryRepositoryPort entryRepository,
+            IdGeneratorPort idGenerator) {
         this.accountRepository = Objects.requireNonNull(accountRepository);
         this.ruleRepository = Objects.requireNonNull(ruleRepository);
+        this.entryRepository = Objects.requireNonNull(entryRepository);
         this.idGenerator = Objects.requireNonNull(idGenerator);
     }
 
@@ -59,7 +64,12 @@ public class BasicAccountingSetupService implements InitializeBasicAccountingSet
 
     private AccountingRule replaceActiveRule(UUID companyId, RuleTemplate template) {
         ruleRepository.findActiveByCompanyIdAndEventType(companyId, template.eventType())
-                .ifPresent(rule -> ruleRepository.save(rule.deactivate()));
+                .ifPresent(rule -> {
+                    if (entryRepository.countByAccountingRuleId(rule.id()) > 0) {
+                        throw new IllegalStateException("used accounting rule cannot be replaced by basic setup");
+                    }
+                    ruleRepository.save(rule.deactivate());
+                });
         AccountingRule rule = AccountingRule.create(idGenerator.newId(), companyId, template.eventType(),
                 template.sourceType(), template.name(), template.lines().stream()
                         .map(line -> AccountingRuleLine.create(line.accountCode(), line.side(), line.amountType(),
@@ -132,13 +142,13 @@ public class BasicAccountingSetupService implements InitializeBasicAccountingSet
 
     private static AccountResult toResult(Account account) {
         return new AccountResult(account.id(), account.companyId(), account.code(), account.name(), account.category(),
-                account.level(), account.nature(), account.parentAccountId(), account.active());
+                account.level(), account.nature(), account.parentAccountId(), account.active(), false, 0);
     }
 
     private static AccountingRuleResult toResult(AccountingRule rule) {
         return new AccountingRuleResult(rule.id(), rule.companyId(), rule.eventType(), rule.sourceType(), rule.name(),
                 rule.lines().stream().map(line -> new AccountingRuleLineResult(line.accountCode(), line.side(),
-                        line.amountType(), line.description())).toList(), rule.active());
+                        line.amountType(), line.description())).toList(), rule.active(), false, 0);
     }
 
     private record AccountTemplate(String code, String name) {

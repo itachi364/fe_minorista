@@ -87,6 +87,7 @@ public class GenerateAccountingEntryService implements GenerateAccountingEntryUs
                 command.description(),
                 command.sourceType(),
                 command.sourceId(),
+                rule.id(),
                 lines);
 
         AccountingEntry saved = entryRepository.save(entry);
@@ -157,6 +158,7 @@ public class GenerateAccountingEntryService implements GenerateAccountingEntryUs
                 entry.description(),
                 entry.sourceType(),
                 entry.sourceId(),
+                entry.accountingRuleId(),
                 entry.status(),
                 entry.debitTotal(),
                 entry.creditTotal(),

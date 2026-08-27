@@ -176,6 +176,38 @@ test('accounting configuration template is previewed and submitted as batch payl
   });
 });
 
+test('accounting configuration shows usage and protects used accounts and rules', () => {
+  const onDeactivateAccount = vi.fn();
+  const onDeactivateRule = vi.fn();
+
+  render(<AccountingConfigurationPanel
+    accounts={[
+      { id: 'account-1', code: '1105', name: 'Caja', category: 'ASSET', nature: 'DEBIT', active: true, used: false, usageCount: 0 },
+      { id: 'account-2', code: '4135', name: 'Ingresos', category: 'INCOME', nature: 'CREDIT', active: true, used: true, usageCount: 2 },
+    ]}
+    rules={[
+      { id: 'rule-1', eventType: 'SALE_CONFIRMED', sourceType: 'SALE', name: 'Venta', active: true, used: false, usageCount: 0, lines: [] },
+      { id: 'rule-2', eventType: 'EXPENSE_CONFIRMED', sourceType: 'EXPENSE', name: 'Egreso', active: true, used: true, usageCount: 1, lines: [] },
+    ]}
+    onLoad={vi.fn()}
+    onConfigure={vi.fn()}
+    onDeactivateAccount={onDeactivateAccount}
+    onDeactivateRule={onDeactivateRule}
+    busy={false}
+  />);
+
+  expect(screen.getAllByText('Uso').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Sin uso').length).toBeGreaterThan(0);
+  expect(screen.getByText('Usada (2)')).toBeInTheDocument();
+  expect(screen.getByText('Usada (1)')).toBeInTheDocument();
+  expect(screen.getAllByText('Solo lectura')).toHaveLength(2);
+
+  fireEvent.click(screen.getAllByRole('button', { name: 'Inactivar' })[0]);
+  expect(onDeactivateRule).toHaveBeenCalledWith('rule-1');
+  fireEvent.click(screen.getAllByRole('button', { name: 'Inactivar' })[1]);
+  expect(onDeactivateAccount).toHaveBeenCalledWith('account-1');
+});
+
 test('login with active license hides login and shows operational shell', async () => {
   const fetchMock = mockLoginFlow(ACTIVE_LICENSE);
 

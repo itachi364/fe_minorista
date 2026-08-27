@@ -5675,3 +5675,51 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - Se agregaron contratos batch `POST /api/v1/accounts/batch`, `POST /api/v1/accounting-rules/batch` y `POST /api/v1/accounting-configuration/batch`.
     - El BFF enruta `accounting-configuration` hacia `accounting-service`.
     - La SPA reemplazo la inicializacion de caja negra por un asistente editable con cuentas PUC, reglas y movimientos contables.
+
+- [x] TASK-224: Trazabilidad de uso y mantenimiento seguro de cuentas/reglas contables
+  - Estado: DONE
+  - Requisitos: RF-208, RF-209, RF-210.
+  - Acceptance criteria:
+    - AC-290: El plan de cuentas expone `used` y `usageCount` calculados desde asientos contables reales.
+    - AC-291: Las reglas contables exponen `used` y `usageCount` calculados desde `accounting_entry.accounting_rule_id`.
+    - AC-292: Los asientos nuevos guardan el `accounting_rule_id` de la regla usada para generar el asiento.
+    - AC-293: Las reglas anteriores sin `accounting_rule_id` quedan como historico no trazado; no se inventa historial contable.
+    - AC-294: Una cuenta sin uso puede actualizar nombre/cuenta padre o inactivarse; una cuenta usada no permite cambios estructurales ni inactivacion.
+    - AC-295: Una regla sin uso puede actualizarse o inactivarse; una regla usada no permite cambios estructurales ni inactivacion.
+    - AC-296: La SPA muestra columna `Uso` en tablas de reglas y plan de cuentas.
+    - AC-297: La SPA muestra acciones `Actualizar` e `Inactivar` solo cuando el recurso no ha sido usado.
+  - Descripcion: Agregar trazabilidad exacta del uso de reglas/cuentas para conservar integridad contable y permitir mantenimiento seguro de configuraciones no usadas.
+  - Alcance:
+    - Migracion Flyway para `accounting_entry.accounting_rule_id`.
+    - DTOs enriquecidos con `used` y `usageCount`.
+    - Puertos/repositorios para conteos de uso.
+    - Endpoints de actualizacion/inactivacion condicionados por uso.
+    - UI con columna `Uso` y acciones condicionadas.
+  - Fuera de alcance:
+    - Reconstruir historial de reglas usadas antes de existir `accounting_rule_id`.
+    - Eliminacion fisica de cuentas o reglas.
+    - Versionamiento avanzado de reglas contables usadas.
+  - Archivos propuestos:
+    - `services/accounting-service/src/main/resources/db/migration/*`
+    - `services/accounting-service/src/main/java/com/msvanegasg/facturaelectronica/accounting/**`
+    - `apps/facturaelectronica-web/src/features/accounting/AccountingConfigurationPanel.jsx`
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+    - `specs/tasks.md`
+  - Dependencias:
+    - TASK-223.
+    - TASK-220.
+  - Validacion:
+    - Unit tests de uso/update/inactivacion de cuentas y reglas.
+    - Controller tests de nuevos endpoints.
+    - Persistence tests para conteos por `account_id` y `accounting_rule_id`.
+    - Vitest frontend para columnas `Uso` y acciones condicionadas.
+  - Resultado:
+    - `accounting_entry` guarda `accounting_rule_id` para asientos nuevos.
+    - Cuentas y reglas exponen `used` y `usageCount`.
+    - Reglas usadas no se pueden reemplazar, actualizar ni inactivar por endpoints directos, batch o plantilla basica.
+    - El panel contable muestra `Uso` y solo permite acciones sobre registros sin uso.

@@ -9,6 +9,8 @@ import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingRule;
 
 public interface AccountingRuleRepositoryPort {
 
+    Optional<AccountingRule> findByCompanyIdAndId(UUID companyId, UUID id);
+
     Optional<AccountingRule> findActiveByCompanyIdAndEventType(UUID companyId, AccountingEventType eventType);
 
     List<AccountingRule> findByCompanyId(UUID companyId, AccountingEventType eventType, Boolean active);

@@ -392,7 +392,7 @@ class AccountingControllerOperationsTest {
     }
     private static AccountResult account(String code) {
         return new AccountResult(UUID.randomUUID(), COMPANY_ID, code, "Cuenta " + code, AccountCategory.ASSET,
-                AccountLevel.ACCOUNT, AccountNature.DEBIT, null, true);
+                AccountLevel.ACCOUNT, AccountNature.DEBIT, null, true, false, 0);
     }
 
     private static AccountingRuleResult rule(String name, boolean active) {
@@ -403,7 +403,7 @@ class AccountingControllerOperationsTest {
                         new AccountingRuleLineResult("4135", AccountingEntrySide.CREDIT,
                                 AccountingAmountType.SUBTOTAL, "Ingresos"),
                         new AccountingRuleLineResult("2408", AccountingEntrySide.CREDIT,
-                                AccountingAmountType.TAX_TOTAL, "IVA")), active);
+                                AccountingAmountType.TAX_TOTAL, "IVA")), active, false, 0);
     }
 
     private static ExpenseResult expense(ExpenseStatus status) {

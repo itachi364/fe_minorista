@@ -15,6 +15,10 @@ public interface ManageAccountingRulesUseCase {
 
     List<AccountingRuleResult> replaceActiveAll(List<CreateAccountingRuleCommand> commands);
 
+    AccountingRuleResult update(UUID companyId, UUID ruleId, CreateAccountingRuleCommand command);
+
+    AccountingRuleResult deactivate(UUID companyId, UUID ruleId);
+
     AccountingRuleResult deactivateActive(UUID companyId, AccountingEventType eventType);
 
     List<AccountingRuleResult> find(UUID companyId, AccountingEventType eventType, Boolean active);

@@ -1695,6 +1695,50 @@ export default function App() {
     return { accounts, rules };
   }
 
+  async function updateAccountingAccount(accountId, payload) {
+    requireCompany();
+    const account = await requestJson(`/api/v1/accounts/${accountId}`, {
+      method: 'PUT',
+      ...context,
+      body: payload,
+    });
+    setAccountingAccounts((current) => current.map((item) => item.id === account.id ? account : item));
+    return account;
+  }
+
+  async function deactivateAccountingAccount(accountId) {
+    requireCompany();
+    const account = await requestJson(`/api/v1/accounts/${accountId}/deactivate`, {
+      method: 'POST',
+      ...context,
+      idempotencyKey: createIdempotencyKey('account-deactivate'),
+    });
+    setAccountingAccounts((current) => current.map((item) => item.id === account.id ? account : item));
+    return account;
+  }
+
+  async function updateAccountingRule(ruleId, payload) {
+    requireCompany();
+    const rule = await requestJson(`/api/v1/accounting-rules/${ruleId}`, {
+      method: 'PUT',
+      ...context,
+      body: payload,
+    });
+    setAccountingRules((current) => current.map((item) => item.id === rule.id ? rule : item));
+    return rule;
+  }
+
+  async function deactivateAccountingRule(ruleId) {
+    requireCompany();
+    const rule = await requestJson(`/api/v1/accounting-rules/${ruleId}/deactivate`, {
+      method: 'POST',
+      ...context,
+      idempotencyKey: createIdempotencyKey('accounting-rule-deactivate'),
+    });
+    setAccountingRules((current) => current.map((item) => item.id === rule.id ? rule : item));
+    return rule;
+  }
+
   async function loadPayrollData() {
     requireCompany();
     const [settings, workers, payments, documents] = await Promise.all([
@@ -2044,7 +2088,7 @@ export default function App() {
             <FiscalNotesPanel forms={fiscalNoteForms} setForms={setFiscalNoteForms} results={fiscalNoteResults} onSubmit={(noteType) => execute(() => createFiscalNote(noteType), { successMessage: 'Documento fiscal creado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Documentos fiscales'])} />
           )}
           {currentStep === 'Configuracion contable' && (
-            <AccountingConfigurationPanel accounts={accountingAccounts} rules={accountingRules} onLoad={() => execute(loadAccountingConfiguration, { successMessage: 'Estado contable actualizado.' })} onConfigure={(payload) => execute(() => saveAccountingConfiguration(payload), { successMessage: 'Configuracion contable guardada correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Configuracion contable'])} />
+            <AccountingConfigurationPanel accounts={accountingAccounts} rules={accountingRules} onLoad={() => execute(loadAccountingConfiguration, { successMessage: 'Estado contable actualizado.' })} onConfigure={(payload) => execute(() => saveAccountingConfiguration(payload), { successMessage: 'Configuracion contable guardada correctamente.' })} onUpdateAccount={(accountId, payload) => execute(() => updateAccountingAccount(accountId, payload), { successMessage: 'Cuenta contable actualizada correctamente.' })} onDeactivateAccount={(accountId) => execute(() => deactivateAccountingAccount(accountId), { successMessage: 'Cuenta contable inactivada correctamente.' })} onUpdateRule={(ruleId, payload) => execute(() => updateAccountingRule(ruleId, payload), { successMessage: 'Regla contable actualizada correctamente.' })} onDeactivateRule={(ruleId) => execute(() => deactivateAccountingRule(ruleId), { successMessage: 'Regla contable inactivada correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Configuracion contable'])} />
           )}
           {currentStep === 'Ventas' && (
             <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onClose={() => execute(closeSale, { successMessage: 'Venta cerrada correctamente.' })} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />

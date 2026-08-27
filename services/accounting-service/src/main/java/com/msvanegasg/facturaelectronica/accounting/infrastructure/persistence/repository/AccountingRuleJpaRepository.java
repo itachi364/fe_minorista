@@ -11,6 +11,8 @@ import com.msvanegasg.facturaelectronica.accounting.infrastructure.persistence.e
 
 public interface AccountingRuleJpaRepository extends JpaRepository<AccountingRuleJpaEntity, UUID> {
 
+    Optional<AccountingRuleJpaEntity> findByCompanyIdAndId(UUID companyId, UUID id);
+
     Optional<AccountingRuleJpaEntity> findByCompanyIdAndEventTypeAndActiveTrue(
             UUID companyId,
             AccountingEventType eventType);

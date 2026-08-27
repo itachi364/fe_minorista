@@ -50,12 +50,14 @@ class GenerateAccountingEntryServiceTest {
     @Test
     void generatePostsBalancedSaleEntryUsingCompanyRuleTemplate() {
         TestContext context = TestContext.withDefaultAccounts();
-        context.rules.save(saleRule(COMPANY_ID));
+        AccountingRule rule = saleRule(COMPANY_ID);
+        context.rules.save(rule);
         GenerateAccountingEntryService service = context.service();
 
         AccountingEntryResult result = service.generate(saleCommand(COMPANY_ID, SOURCE_ID));
 
         assertThat(result.companyId()).isEqualTo(COMPANY_ID);
+        assertThat(result.accountingRuleId()).isEqualTo(rule.id());
         assertThat(result.sourceType()).isEqualTo(AccountingSourceType.SALE);
         assertThat(result.sourceId()).isEqualTo(SOURCE_ID);
         assertThat(result.status()).isEqualTo(AccountingEntryStatus.POSTED);
@@ -415,6 +417,14 @@ class GenerateAccountingEntryServiceTest {
 
         private final Map<String, Account> accounts = new HashMap<>();
 
+        @Override
+        public Optional<Account> findByCompanyIdAndId(UUID companyId, UUID id) {
+            return accounts.values().stream()
+                    .filter(account -> account.companyId().equals(companyId))
+                    .filter(account -> account.id().equals(id))
+                    .findFirst();
+        }
+
         void saveDefaultAccountsFor(UUID companyId) {
             save(Account.create(UUID.randomUUID(), companyId, "1105", "Caja", null));
             save(Account.create(UUID.randomUUID(), companyId, "1435", "Inventarios", null));
@@ -458,6 +468,14 @@ class GenerateAccountingEntryServiceTest {
         }
 
         @Override
+        public Optional<AccountingRule> findByCompanyIdAndId(UUID companyId, UUID id) {
+            return rules.values().stream()
+                    .filter(rule -> rule.companyId().equals(companyId))
+                    .filter(rule -> rule.id().equals(id))
+                    .findFirst();
+        }
+
+        @Override
         public Optional<AccountingRule> findActiveByCompanyIdAndEventType(
                 UUID companyId,
                 AccountingEventType eventType) {
@@ -491,6 +509,21 @@ class GenerateAccountingEntryServiceTest {
         @Override
         public boolean existsByCompanyIdAndSource(UUID companyId, AccountingSourceType sourceType, UUID sourceId) {
             return entries.containsKey(key(companyId, sourceType, sourceId));
+        }
+
+        @Override
+        public long countByAccountId(UUID accountId) {
+            return entries.values().stream()
+                    .flatMap(entry -> entry.lines().stream())
+                    .filter(line -> line.accountId().equals(accountId))
+                    .count();
+        }
+
+        @Override
+        public long countByAccountingRuleId(UUID accountingRuleId) {
+            return entries.values().stream()
+                    .filter(entry -> accountingRuleId.equals(entry.accountingRuleId()))
+                    .count();
         }
 
         @Override

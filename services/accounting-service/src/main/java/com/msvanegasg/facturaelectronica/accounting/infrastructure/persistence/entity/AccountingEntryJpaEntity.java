@@ -47,6 +47,9 @@ public class AccountingEntryJpaEntity {
     @Column(name = "source_id", nullable = false)
     private UUID sourceId;
 
+    @Column(name = "accounting_rule_id")
+    private UUID accountingRuleId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private AccountingEntryStatus status;
