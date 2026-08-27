@@ -5499,6 +5499,8 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - Fallos del conector DIAN se mapean como `EXTERNAL_PROVIDER_ERROR`.
     - Validaciones ejecutadas: `./mvnw.cmd -pl services/billing-service -am test`, `npm test -- --run App.test.jsx`, `npm run build`.
 
+## Fase transversal: Bugs y estabilizacion operativa
+
 - [x] TASK-218: Corregir reconocimiento ROOT y catalogo de permisos
   - Estado: DONE
   - Requisitos: RF-193, RF-194, RF-195.
@@ -5558,3 +5560,65 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - `billing-service` usa Criteria API para documentos electronicos con filtros opcionales.
     - `ROOT` inicia sin empresa activa ni formularios precargados.
     - El boton `Cargar licencia` queda bloqueado al estar cargada la licencia seleccionada.
+
+- [x] TASK-220: Bloquear cierre de venta sin configuracion contable activa
+  - Estado: DONE
+  - Requisitos: RF-198, RF-199.
+  - Acceptance criteria:
+    - AC-270: `billing-service` valida que exista regla contable activa `SALE_CONFIRMED` antes de asignar numeracion fiscal o enviar documento a DIAN/mock.
+    - AC-271: Si falta configuracion contable, la venta permanece sin confirmar, no se consume consecutivo fiscal, no se descuenta inventario y no se registra asiento.
+    - AC-272: `accounting-service` transforma la ausencia de regla contable en `400 BUSINESS_RULE_VIOLATION`, no en `500 INTERNAL_ERROR`.
+    - AC-273: La SPA muestra mensaje funcional y lleva al usuario a `Configuracion contable`.
+  - Descripcion: Corregir bug detectado al cerrar venta de empresa nueva sin plantilla/regla contable inicializada.
+  - Archivos:
+    - `services/billing-service/src/main/java/**/AccountingEntryPort.java`
+    - `services/billing-service/src/main/java/**/AccountingEntryHttpAdapter.java`
+    - `services/billing-service/src/main/java/**/SaleManagementService.java`
+    - `services/accounting-service/src/main/java/**/exception/*.java`
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `specs/*.md`
+  - Dependencias:
+    - TASK-217.
+  - Validacion:
+    - Maven targeted de `billing-service`.
+    - Maven targeted de `accounting-service`.
+
+- [x] TASK-221: Validaciones frontend de resolucion fiscal antes de POST
+  - Estado: DONE
+  - Requisitos: RF-200.
+  - Acceptance criteria:
+    - AC-274: `Desde` y `Hasta` deben ser enteros mayores a cero y `Hasta >= Desde`.
+    - AC-275: `Vigencia hasta` no puede ser menor que `Vigencia desde`.
+    - AC-276: Los campos invalidos se resaltan en rojo con mensaje local y el formulario no ejecuta POST mientras exista error.
+  - Descripcion: Evitar errores de backend por rangos fiscales obvios desde la SPA.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/components/forms.jsx`
+    - `apps/facturaelectronica-web/src/features/fiscal/ResolutionForm.jsx`
+    - `apps/facturaelectronica-web/src/styles.css`
+  - Validacion:
+    - Vitest frontend.
+
+## Fase 28: Configuracion contable empresarial
+
+- [x] TASK-222: Crear modulo visible de configuracion contable
+  - Estado: DONE
+  - Requisitos: RF-201, RF-202.
+  - Acceptance criteria:
+    - AC-277: La SPA muestra `Configuracion contable` dentro de `Contabilidad`.
+    - AC-278: El modulo permite inicializar contabilidad basica por empresa mediante `POST /api/v1/accounting-setup/basic`.
+    - AC-279: El modulo lista plan de cuentas y reglas contables existentes por empresa.
+    - AC-280: El acceso depende de licencia `ACCOUNTING` y permisos `ACCOUNTING_VIEW` o `ACCOUNTING_MANAGE`.
+  - Descripcion: Sacar la configuracion contable del modulo Reportes y hacerla visible como prerequisito operacional de ventas y contabilidad.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/features/accounting/AccountingConfigurationPanel.jsx`
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/data/navigation.js`
+    - `apps/facturaelectronica-web/src/data/licenseModules.js`
+    - `apps/facturaelectronica-web/src/utils/authorization.js`
+    - `apps/facturaelectronica-web/src/features/reports/ReportsForm.jsx`
+  - Dependencias:
+    - TASK-061.
+    - TASK-217.
+    - TASK-220.
+  - Validacion:
+    - Vitest frontend.

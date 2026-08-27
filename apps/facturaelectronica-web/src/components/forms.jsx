@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { asPretty } from '../utils/payloadBuilders.js';
 
 export function FormPanel({ title, submitLabel, onSubmit, busy, children }) {
@@ -11,10 +11,28 @@ export function FormPanel({ title, submitLabel, onSubmit, busy, children }) {
   </form>;
 }
 
-export function Field({ label, value, onChange, type = 'text', readOnly = false, disabled = false, placeholder = '', autoComplete, inputRef, onKeyDown }) {
-  return <label>
+export function Field({ label, value, onChange, type = 'text', readOnly = false, disabled = false, placeholder = '', autoComplete, inputRef, onKeyDown, error = '', min, max, step }) {
+  const inputId = useId();
+  const errorId = `${inputId}-error`;
+  return <label className={error ? 'field invalid' : 'field'}>
     {label}
-    <input ref={inputRef} value={value} onChange={(event) => onChange(event.target.value)} onKeyDown={onKeyDown} type={type} readOnly={readOnly} disabled={disabled} placeholder={placeholder} autoComplete={autoComplete} />
+    <input
+      ref={inputRef}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      onKeyDown={onKeyDown}
+      type={type}
+      readOnly={readOnly}
+      disabled={disabled}
+      placeholder={placeholder}
+      autoComplete={autoComplete}
+      min={min}
+      max={max}
+      step={step}
+      aria-invalid={Boolean(error)}
+      aria-describedby={error ? errorId : undefined}
+    />
+    {error && <span className="field-error-message" id={errorId}>{error}</span>}
   </label>;
 }
 

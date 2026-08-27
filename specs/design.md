@@ -2860,7 +2860,7 @@ Context7 evidence:
 
 ### TASK-218 - Corregir reconocimiento ROOT y catalogo de permisos
 - Estado: Implementado.
-- Fase: Fase 27.
+- Fase: Fase transversal: Bugs y estabilizacion operativa.
 - Decision de diseno: `identity-service` separa el catalogo global de permisos root-only del catalogo empresarial. El permiso `OPERATIONAL_PIN_MANAGE` se incorpora al enum `PermissionCode` para alinear Flyway, JPA y dominio. El BFF conserva `ROOT` solo cuando `/api/v1/platform/permissions` responde correctamente para un actor root real.
 - Componentes/capas: `identity-service` ajusta dominio, caso de uso y controlador; `bff-service` agrega prueba de lectura de catalogos globales sin empresa activa para ROOT.
 - Riesgo mitigado: Un permiso en base de datos que no exista en el enum Java rompe Hibernate al mapear `@Enumerated(EnumType.STRING)` y deja a ROOT sin acceso global.
@@ -2878,7 +2878,7 @@ Context7 evidence:
 
 ### TASK-219 - Correccion de uso de licencia y seleccion ROOT explicita
 - Estado: Implementado.
-- Fase: Fase 27.
+- Fase: Fase transversal: Bugs y estabilizacion operativa.
 - Decision de diseno: `billing-service` reemplaza el JPQL de documentos electronicos con filtros opcionales nulos por una consulta Criteria dinamica que agrega predicados solo cuando hay valor real.
 - Decision de UX: `ROOT` inicia sesion sin empresa activa, aun si habia una empresa persistida en `sessionStorage`; la seleccion de empresa es explicita antes de hidratar formularios derivados.
 - Decision de licencias: El boton `Cargar licencia` se deshabilita cuando la licencia de la empresa seleccionada ya esta cargada o guardada.
@@ -2893,5 +2893,37 @@ Context7 evidence:
 - Topic consulted: `@Enumerated(EnumType.STRING)` enum mapping.
 - Relevant finding: Hibernate mapea enums `STRING` como el nombre del enum en columna `VARCHAR`; los valores de base de datos deben corresponder a constantes Java validas.
 - Decision impact: Todo permiso insertado en `identity.permission_catalog` debe existir en `PermissionCode` y estar cubierto por pruebas.
+
+### TASK-220 - Bloquear cierre de venta sin configuracion contable activa
+- Estado: Implementado.
+- Fase: Fase transversal: Bugs y estabilizacion operativa.
+- Decision de diseno: `billing-service` ejecuta una prevalidacion contra `accounting-service` para confirmar que existe una regla contable activa `SALE_CONFIRMED` antes de asignar numeracion fiscal, invocar DIAN/mock o aplicar inventario.
+- Componentes/capas: `AccountingEntryPort` agrega `ensureSalePostingConfigured(companyId)`, `AccountingEntryHttpAdapter` consulta `GET /api/v1/accounting-rules?eventType=SALE_CONFIRMED&active=true` y `SaleManagementService.confirm` invoca esta validacion antes de `AssignFiscalNumberUseCase`.
+- Errores: Si falta configuracion contable se retorna `BUSINESS_RULE_VIOLATION` con mensaje funcional. `accounting-service` centraliza `IllegalStateException` en `400` para evitar `500` genericos por regla faltante.
+- Riesgo mitigado: Evita ventas parcialmente confirmadas con inventario descontado y contabilidad fallida por empresas nuevas sin plantilla PUC inicializada.
+
+### TASK-221 - Validaciones frontend de resolucion fiscal antes de POST
+- Estado: Implementado.
+- Fase: Fase transversal: Bugs y estabilizacion operativa.
+- Decision de diseno: `ResolutionForm` valida localmente consecutivos positivos, orden del rango y vigencia antes de llamar al backend.
+- UX: Los campos invalidos usan estado visual rojo y mensaje bajo el campo; el boton se deshabilita mientras exista error local.
+
+### TASK-222 - Crear modulo visible de configuracion contable
+- Estado: Implementado.
+- Fase: Fase 28: Configuracion contable empresarial.
+- Decision de diseno: La configuracion contable deja de vivir como accion secundaria en Reportes y pasa a un modulo propio bajo Contabilidad.
+- Componentes/capas: La SPA agrega `AccountingConfigurationPanel`, navega con `Configuracion contable`, consulta `GET /api/v1/accounts`, `GET /api/v1/accounting-rules` e inicializa con `POST /api/v1/accounting-setup/basic`.
+- Seguridad/licencia: El acceso se controla por licencia `ACCOUNTING` y permisos `ACCOUNTING_VIEW`/`ACCOUNTING_MANAGE`, manteniendo backend como fuente real de autorizacion.
+- Relacion con ventas: El cierre de venta depende de que la empresa tenga regla contable `SALE_CONFIRMED` activa; el usuario puede resolverlo desde este modulo.
+
+#### Context7 evidence
+- Library/tool: React.
+- Topic consulted: Controlled form inputs and client-side validation before submit.
+- Relevant finding: React recomienda controlar valores de formulario con estado y renderizar mensajes/estado derivado antes de ejecutar acciones de submit.
+- Decision impact: `ResolutionForm` calcula errores desde estado y bloquea el POST cuando el rango fiscal no cumple reglas locales.
+- Library/tool: Spring Framework.
+- Topic consulted: RestClient error handling and exception mapping with controller advice.
+- Relevant finding: `RestClient` propaga errores HTTP como excepciones y Spring MVC permite mapear excepciones de dominio con `@ControllerAdvice`.
+- Decision impact: El adaptador contable convierte fallos de disponibilidad/configuracion en reglas de negocio y `accounting-service` devuelve 400 en vez de 500 para regla faltante.
 
 <!-- END SDD TASK DESIGN TRACEABILITY -->

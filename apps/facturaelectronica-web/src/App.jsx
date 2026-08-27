@@ -28,6 +28,7 @@ import {
   createThirdPartyForm,
 } from './utils/formStateFactory.js';
 import { LoginPanel } from './features/auth/LoginPanel.jsx';
+import { AccountingConfigurationPanel } from './features/accounting/AccountingConfigurationPanel.jsx';
 import { AuditLogPanel } from './features/audit/AuditLogPanel.jsx';
 import { CatalogAdminPanel } from './features/catalogs/CatalogAdminPanel.jsx';
 import { AdminModal } from './features/company/AdminModal.jsx';
@@ -137,6 +138,8 @@ export default function App() {
   const [reportDefinitions, setReportDefinitions] = useState([]);
   const [reportOptions, setReportOptions] = useState({});
   const [reportsData, setReportsData] = useState(null);
+  const [accountingAccounts, setAccountingAccounts] = useState([]);
+  const [accountingRules, setAccountingRules] = useState([]);
   const [payrollSettingsForm, setPayrollSettingsForm] = useState(createPayrollSettingsForm);
   const [payrollWorkerForm, setPayrollWorkerForm] = useState(createPayrollWorkerForm);
   const [dailyLaborPaymentForm, setDailyLaborPaymentForm] = useState(createDailyLaborPaymentForm);
@@ -152,6 +155,7 @@ export default function App() {
   const autoAuditLoadKeyRef = useRef('');
   const autoIdentityLoadKeyRef = useRef('');
   const autoReportsLoadKeyRef = useRef('');
+  const autoAccountingLoadKeyRef = useRef('');
 
   const token = session?.accessToken || '';
   const context = useMemo(() => ({ token, companyId: activeCompanyId, userId: session?.userId }), [token, activeCompanyId, session?.userId]);
@@ -374,6 +378,18 @@ export default function App() {
   }, [currentStep, activeCompanyId, reportDefinitions.length]);
 
   useEffect(() => {
+    if (currentStep !== 'Configuracion contable' || !activeCompanyId || !canUse(stepPermissionRules['Configuracion contable'])) {
+      return;
+    }
+    const key = `accounting|${activeCompanyId}`;
+    if (autoAccountingLoadKeyRef.current === key) {
+      return;
+    }
+    autoAccountingLoadKeyRef.current = key;
+    loadAccountingConfiguration().catch(() => undefined);
+  }, [currentStep, activeCompanyId]);
+
+  useEffect(() => {
     if (!session) {
       return undefined;
     }
@@ -409,6 +425,8 @@ export default function App() {
         : caught.payload || { status: caught.status, message: caught.message };
       const message = isLicenseNotConfiguredError(caught)
         ? 'La empresa no tiene una licencia configurada. Contacta al administrador de la plataforma.'
+        : isAccountingSetupRequiredError(caught)
+        ? 'Debes inicializar la configuracion contable basica antes de cerrar ventas. Ve al modulo Configuracion contable.'
         : isFiscalSetupRequiredError(caught)
         ? `${payload.message} Ve al modulo Fiscal y completa la configuracion antes de confirmar la venta.`
         : options.authAction && !caught.status
@@ -420,6 +438,9 @@ export default function App() {
           : 'Hay un error al realizar la accion. Revisa Logs/Auditoria para mas detalle.';
       if (isFiscalSetupRequiredError(caught)) {
         setSelectedStep('Fiscal');
+      }
+      if (isAccountingSetupRequiredError(caught)) {
+        setSelectedStep('Configuracion contable');
       }
       setActionStatus({
         status: 'error',
@@ -444,6 +465,14 @@ export default function App() {
         || message.includes('resolucion de numeracion activa')
         || message.includes('active issuer profile')
         || message.includes('active numbering resolution'));
+  }
+
+  function isAccountingSetupRequiredError(error) {
+    const message = String(error?.payload?.message || error?.message || '').toLowerCase();
+    return (error?.status === 400 || error?.status >= 500)
+      && (message.includes('configuracion contable basica')
+        || message.includes('accounting rule was not found')
+        || message.includes('asiento contable'));
   }
 
   async function loadRootCompanies(tokenValue = token) {
@@ -626,6 +655,8 @@ export default function App() {
     setPayrollWorkers([]);
     setDailyLaborPayments([]);
     setElectronicPayrollDocuments([]);
+    setAccountingAccounts([]);
+    setAccountingRules([]);
     setSaleId('');
     setSaleForm(createSaleForm());
     setIssuerProfiles([]);
@@ -633,6 +664,7 @@ export default function App() {
     setAdminModalOpen(false);
     setAdminTargetCompanyId('');
     autoIdentityLoadKeyRef.current = '';
+    autoAccountingLoadKeyRef.current = '';
   }
 
   function closeSessionWithModal(title, message) {
@@ -1641,11 +1673,25 @@ export default function App() {
 
   async function initializeAccountingSetup() {
     requireCompany();
-    return requestJson('/api/v1/accounting-setup/basic', {
+    const setup = await requestJson('/api/v1/accounting-setup/basic', {
       method: 'POST',
       ...context,
       idempotencyKey: createIdempotencyKey('accounting-setup'),
     });
+    setAccountingAccounts(setup?.accounts || []);
+    setAccountingRules(setup?.rules || []);
+    return setup;
+  }
+
+  async function loadAccountingConfiguration() {
+    requireCompany();
+    const [accounts, rules] = await Promise.all([
+      requestJson('/api/v1/accounts', context),
+      requestJson('/api/v1/accounting-rules', context),
+    ]);
+    setAccountingAccounts(accounts || []);
+    setAccountingRules(rules || []);
+    return { accounts, rules };
   }
 
   async function loadPayrollData() {
@@ -1865,6 +1911,9 @@ export default function App() {
     setSaleForm((current) => ({ ...current, customerId: '' }));
     setIssuerProfiles([]);
     setNumberingResolutions([]);
+    setAccountingAccounts([]);
+    setAccountingRules([]);
+    autoAccountingLoadKeyRef.current = '';
     const selectedCompany = rootCompanies.find((company) => company.id === companyId || company.companyId === companyId);
     if (selectedCompany) {
       setIssuerForm((current) => buildIssuerFromCompany(selectedCompany, current));
@@ -1993,6 +2042,9 @@ export default function App() {
           {currentStep === 'Documentos fiscales' && (
             <FiscalNotesPanel forms={fiscalNoteForms} setForms={setFiscalNoteForms} results={fiscalNoteResults} onSubmit={(noteType) => execute(() => createFiscalNote(noteType), { successMessage: 'Documento fiscal creado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Documentos fiscales'])} />
           )}
+          {currentStep === 'Configuracion contable' && (
+            <AccountingConfigurationPanel accounts={accountingAccounts} rules={accountingRules} onLoad={() => execute(loadAccountingConfiguration, { successMessage: 'Estado contable actualizado.' })} onInitialize={() => execute(initializeAccountingSetup, { successMessage: 'Contabilidad basica inicializada correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Configuracion contable'])} />
+          )}
           {currentStep === 'Ventas' && (
             <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onClose={() => execute(closeSale, { successMessage: 'Venta cerrada correctamente.' })} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
           )}
@@ -2003,7 +2055,7 @@ export default function App() {
             <PayrollPanel settingsForm={payrollSettingsForm} setSettingsForm={setPayrollSettingsForm} workerForm={payrollWorkerForm} setWorkerForm={setPayrollWorkerForm} paymentForm={dailyLaborPaymentForm} setPaymentForm={setDailyLaborPaymentForm} workers={payrollWorkers} payments={dailyLaborPayments} electronicDocuments={electronicPayrollDocuments} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} workerClassificationOptions={runtimeCatalogs.payrollWorkerClassificationOptions} paymentMethodOptions={runtimeCatalogs.paymentMethodOptions} onLoad={() => execute(loadPayrollData)} onSaveSettings={() => execute(savePayrollSettings)} onCreateWorker={() => execute(createPayrollWorker)} onCreateDailyPayment={() => execute(createDailyLaborPayment)} onIssueElectronicDocument={(paymentId) => execute(() => issueElectronicPayrollDocument(paymentId))} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Nomina)} />
           )}
           {currentStep === 'Reportes' && (
-            <ReportsForm definitions={reportDefinitions} options={reportOptions} form={reportsForm} setForm={setReportsForm} data={reportsData} onReportChange={(reportCode) => execute(() => selectReportDefinition(reportCode), { silentNullSuccess: true })} onLoadDefinitions={() => execute(loadReportDefinitions)} onSubmit={() => execute(loadReports)} onExport={(format) => execute(() => exportReport(format), { successMessage: 'Reporte descargado correctamente.' })} onInitializeAccounting={() => execute(initializeAccountingSetup)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Reportes)} />
+            <ReportsForm definitions={reportDefinitions} options={reportOptions} form={reportsForm} setForm={setReportsForm} data={reportsData} onReportChange={(reportCode) => execute(() => selectReportDefinition(reportCode), { silentNullSuccess: true })} onLoadDefinitions={() => execute(loadReportDefinitions)} onSubmit={() => execute(loadReports)} onExport={(format) => execute(() => exportReport(format), { successMessage: 'Reporte descargado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Reportes)} />
           )}
           {currentStep === 'Catalogos' && (
             <CatalogAdminPanel definitions={catalogDefinitions} selectedCatalogCode={selectedCatalogCode} setSelectedCatalogCode={setSelectedCatalogCode} items={catalogItems} form={catalogItemForm} setForm={setCatalogItemForm} onLoadDefinitions={() => execute(loadCatalogDefinitions)} onLoadItems={() => execute(() => loadCatalogItems())} onNew={startNewCatalogItem} onEdit={editCatalogItem} onSave={() => execute(saveCatalogItem)} onToggleActive={(item) => execute(() => toggleCatalogItemActive(item))} busy={busy || !canManageCatalogs} isRoot={isRoot} />

@@ -18,7 +18,6 @@ export function ReportsForm({
   onLoadDefinitions,
   onSubmit,
   onExport,
-  onInitializeAccounting,
   busy,
 }) {
   const selectedReport = definitions.find((report) => report.code === form.reportCode);
@@ -32,7 +31,6 @@ export function ReportsForm({
       </div>
       <div className="toolbar-actions">
         <button className="secondary" disabled={busy} onClick={onLoadDefinitions} type="button">Actualizar catalogo</button>
-        <button className="secondary" disabled={busy} onClick={onInitializeAccounting} type="button">Configurar contabilidad basica</button>
         <button className="secondary" disabled={busy || !selectedReport} onClick={() => onExport('CSV')} type="button">Descargar CSV</button>
         <button className="secondary" disabled={busy || !selectedReport} onClick={() => onExport('XLS')} type="button">Descargar Excel</button>
         <button className="primary" disabled={busy || !selectedReport} onClick={onSubmit} type="button">Generar reporte</button>

@@ -396,7 +396,7 @@ Reglas:
 - Menus principales:
   - `Ventas`.
   - `Reportes`.
-  - `Contabilidad`: agrupa `Terceros`, `Inventario`, `Fiscal` y `Nomina`.
+  - `Contabilidad`: agrupa `Terceros`, `Inventario`, `Fiscal`, `Documentos fiscales`, `Configuracion contable` y `Nomina`.
   - `Configuracion`: agrupa `Empresa`, `Licencias`, `Catalogos`, `Logs`, `Usuarios` y `Roles`.
 - Los submenus conservan validacion por licencia y permisos efectivos. El frontend puede ocultar opciones, pero la autorizacion real permanece en BFF/backend.
 
@@ -1398,6 +1398,12 @@ Reglas:
 - `POST /api/v1/accounting-rules/{eventType}/deactivate`
 - `GET /api/v1/accounting-rules?eventType=&active=`
 
+Uso obligatorio en cierre de venta:
+
+- `billing-service` debe consultar `GET /api/v1/accounting-rules?eventType=SALE_CONFIRMED&active=true` antes de asignar numeracion fiscal o enviar a DIAN/mock.
+- Si la respuesta esta vacia, el cierre debe bloquearse con `400 BUSINESS_RULE_VIOLATION` y mensaje funcional de configuracion contable requerida.
+- El frontend usa el mismo contrato para mostrar estado en `Configuracion contable`.
+
 ### Asientos
 
 - `POST /api/v1/accounting-entries`
@@ -1454,6 +1460,8 @@ Reglas:
 - Reintentar la contabilizacion de una misma venta no debe crear un segundo asiento.
 - Las cuentas deben derivar del PUC colombiano o de una configuracion aprobada por empresa.
 - TASK-053 agrega configuracion base contable editable, consulta de cuentas por empresa/filtro activo, consulta de reglas por empresa/evento/estado, reemplazo de regla activa y desactivacion explicita de la regla activa.
+- TASK-220 agrega prevalidacion de regla activa `SALE_CONFIRMED` desde `billing-service` para evitar ventas parcialmente confirmadas cuando una empresa no ha inicializado contabilidad.
+- TASK-222 expone `Configuracion contable` en la SPA usando `POST /api/v1/accounting-setup/basic`, `GET /api/v1/accounts` y `GET /api/v1/accounting-rules`.
 - `PUT /api/v1/accounting-rules/active` desactiva la regla activa previa para el evento y crea una nueva regla activa; `POST /api/v1/accounting-rules` conserva la validacion de no duplicar regla activa.
 - Un documento fiscal validado debe poder rastrearse hasta su asiento contable.
 

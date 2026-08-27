@@ -410,6 +410,11 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-195: El BFF debe reconocer `ROOT` solo mediante un contrato root-only de `identity-service`, nunca por un endpoint que tambien responda 200 a usuarios empresariales.
 - RF-196: El tablero ROOT de uso de licencia debe calcular documentos mensuales sin fallar cuando la consulta de documentos electronicos no recibe filtros opcionales distintos a fecha/empresa.
 - RF-197: Al iniciar sesion como `ROOT`, la SPA no debe precargar empresa activa ni formularios derivados; la seleccion de empresa debe ser explicita para evitar cambios accidentales.
+- RF-198: El cierre de venta debe validar configuracion contable empresarial activa antes de consumir numeracion fiscal, enviar a DIAN/mock, descontar inventario o registrar asiento.
+- RF-199: Si falta regla contable activa para `SALE_CONFIRMED`, el sistema debe bloquear el cierre con error funcional y guiar a `Configuracion contable`.
+- RF-200: La SPA debe validar localmente rangos de resolucion fiscal: consecutivos enteros positivos, `Hasta >= Desde` y vigencia final mayor o igual a inicial, sin ejecutar POST cuando los datos son invalidos.
+- RF-201: Debe existir un modulo `Configuracion contable` dentro de `Contabilidad` para inicializar plantilla basica PUC, consultar cuentas y consultar reglas contables por empresa.
+- RF-202: El modulo `Configuracion contable` debe depender de licencia `ACCOUNTING` y permisos `ACCOUNTING_VIEW` o `ACCOUNTING_MANAGE`; ROOT y administradores empresariales conservan acceso segun reglas RBAC vigentes.
 
 ## Requisitos fase productizacion operativa
 

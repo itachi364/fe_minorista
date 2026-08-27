@@ -400,7 +400,6 @@ class SaleManagementServiceTest {
         when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
                 .thenReturn(new LicensePolicy(null, 1));
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
-        when(idGenerator.newId()).thenReturn(DOCUMENT_ID);
         when(clock.now()).thenReturn(NOW);
         when(fiscalDocumentUsagePort.countIssuedDocuments(org.mockito.ArgumentMatchers.eq(COMPANY_ID), any(), any()))
                 .thenReturn(1L);
@@ -410,6 +409,28 @@ class SaleManagementServiceTest {
                 .hasMessageContaining("maximo 1 documentos");
 
         verify(providerPort, never()).submit(any(), any(), any(), any());
+        verify(saleRepository, never()).save(any());
+    }
+
+    @Test
+    void blocksConfirmBeforeFiscalEmissionWhenAccountingSetupIsMissing() {
+        SaleManagementService service = service();
+        when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
+        when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
+                .thenReturn(LicensePolicy.unlimited());
+        when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
+        when(clock.now()).thenReturn(NOW);
+        doThrow(new IllegalStateException("Debes inicializar la configuracion contable basica antes de cerrar ventas."))
+                .when(accountingEntryPort).ensureSalePostingConfigured(COMPANY_ID);
+
+        assertThatThrownBy(() -> service.confirm(COMPANY_ID, SALE_ID, "confirm-without-accounting"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("configuracion contable basica");
+
+        verify(assignFiscalNumberUseCase, never()).assign(any());
+        verify(providerPort, never()).submit(any(), any(), any(), any());
+        verify(inventoryMovementPort, never()).applySaleOut(any(), any());
+        verify(accountingEntryPort, never()).postSale(any(), any());
         verify(saleRepository, never()).save(any());
     }
 

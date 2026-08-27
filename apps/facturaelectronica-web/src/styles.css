@@ -372,6 +372,27 @@ label {
   font-weight: 720;
 }
 
+.field.invalid input,
+.field.invalid select,
+.field.invalid textarea {
+  border-color: #d14b4b;
+  background: #fff8f8;
+}
+
+.field.invalid input:focus,
+.field.invalid select:focus,
+.field.invalid textarea:focus {
+  border-color: #c93737;
+  box-shadow: 0 0 0 3px rgba(209, 75, 75, 0.14);
+}
+
+.field-error-message {
+  color: #ad3030;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 fieldset {
   min-width: 0;
   margin: 0;

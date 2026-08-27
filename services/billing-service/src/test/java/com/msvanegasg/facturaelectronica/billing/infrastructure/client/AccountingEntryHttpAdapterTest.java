@@ -1,6 +1,7 @@
 package com.msvanegasg.facturaelectronica.billing.infrastructure.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -56,6 +57,41 @@ class AccountingEntryHttpAdapterTest {
         assertThat(handler.requestBody).contains("\"entryDate\":\"2026-05-19\"");
     }
 
+    @Test
+    void validatesActiveSaleAccountingRuleBeforeClosingSale() throws IOException {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        CapturingHandler handler = new CapturingHandler();
+        server.createContext("/api/v1/accounting-rules", handler::handleRules);
+        server.start();
+        String baseUrl = "http://localhost:" + server.getAddress().getPort();
+        AccountingEntryHttpAdapter adapter = new AccountingEntryHttpAdapter(
+                new BillingProperties("http://inventory", "http://provider", baseUrl, "http://audit",
+                        "http://tenant", "http://identity", "ACCEPTED"));
+
+        adapter.ensureSalePostingConfigured(UUID.fromString("11111111-1111-1111-1111-111111111111"));
+
+        assertThat(handler.companyId).isEqualTo("11111111-1111-1111-1111-111111111111");
+        assertThat(handler.query).contains("eventType=SALE_CONFIRMED").contains("active=true");
+    }
+
+    @Test
+    void rejectsSaleCloseWhenNoActiveAccountingRuleExists() throws IOException {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        CapturingHandler handler = new CapturingHandler();
+        handler.rulesBody = "[]";
+        server.createContext("/api/v1/accounting-rules", handler::handleRules);
+        server.start();
+        String baseUrl = "http://localhost:" + server.getAddress().getPort();
+        AccountingEntryHttpAdapter adapter = new AccountingEntryHttpAdapter(
+                new BillingProperties("http://inventory", "http://provider", baseUrl, "http://audit",
+                        "http://tenant", "http://identity", "ACCEPTED"));
+
+        assertThatThrownBy(() -> adapter.ensureSalePostingConfigured(
+                UUID.fromString("11111111-1111-1111-1111-111111111111")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("configuracion contable basica");
+    }
+
     private static Sale confirmedSale() {
         UUID companyId = UUID.fromString("11111111-1111-1111-1111-111111111111");
         UUID saleId = UUID.fromString("22222222-2222-2222-2222-222222222222");
@@ -78,6 +114,8 @@ class AccountingEntryHttpAdapterTest {
         private String idempotencyKey;
         private String contentType;
         private String requestBody;
+        private String query;
+        private String rulesBody = "[{\"id\":\"99999999-9999-9999-9999-999999999999\",\"eventType\":\"SALE_CONFIRMED\",\"active\":true}]";
 
         private void handle(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
             companyId = exchange.getRequestHeaders().getFirst("X-Company-Id");
@@ -85,6 +123,16 @@ class AccountingEntryHttpAdapterTest {
             contentType = exchange.getRequestHeaders().getFirst("Content-Type");
             requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(201, -1);
+            exchange.close();
+        }
+
+        private void handleRules(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
+            companyId = exchange.getRequestHeaders().getFirst("X-Company-Id");
+            query = exchange.getRequestURI().getRawQuery();
+            byte[] response = rulesBody.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
             exchange.close();
         }
     }

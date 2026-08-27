@@ -184,10 +184,11 @@ public class SaleManagementService implements ManageSaleUseCase {
         }
         LicensePolicy licensePolicy = licenseValidationPort.policy(companyId, LicenseAction.ISSUE_FISCAL_DOCUMENT);
         sale.lines().forEach(line -> ensureAvailable(sale.companyId(), line));
-        UUID documentId = idGenerator.newId();
         Instant now = clock.now();
         ensureMonthlyDocumentQuota(companyId, licensePolicy, now);
         ElectronicDocumentType documentType = resolveSaleDocumentType(sale);
+        accountingEntryPort.ensureSalePostingConfigured(companyId);
+        UUID documentId = idGenerator.newId();
         FiscalNumberResult fiscalNumber = assignFiscalNumberUseCase.assign(new AssignFiscalNumberCommand(
                 sale.companyId(), documentType, LocalDate.ofInstant(now, ZoneOffset.UTC), FiscalEnvironment.TEST));
         ProviderSubmissionResult provider = providerPort.submit(sale, documentId, documentType, idempotencyKey);

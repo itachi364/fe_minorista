@@ -213,6 +213,14 @@ Si el flujo de compra no esta completamente modelado, se debe introducir o compl
 - El consumo real queda en `inventory.inventory_movement` con `CONSUMPTION_OUT`, `source_document_id`, `source_document_type`, `reason`, `idempotency_key` y usuario.
 - No se deben crear descuentos automaticos por receta sin confirmacion explicita.
 
+### Configuracion contable empresarial
+
+- El modulo `Configuracion contable` no introduce tablas nuevas en esta fase; consulta y opera las tablas existentes del schema `accounting`.
+- `accounting.account` almacena el plan de cuentas por empresa, con codigos PUC o parametrizaciones aprobadas.
+- `accounting.accounting_rule` y `accounting.accounting_rule_line` almacenan reglas por evento de negocio y lineas de partida doble.
+- Para cerrar una venta fiscal, debe existir una regla activa `SALE_CONFIRMED` por `company_id`; de lo contrario `billing-service` debe bloquear la operacion antes de numeracion fiscal, DIAN/mock, inventario y asiento.
+- La inicializacion `POST /api/v1/accounting-setup/basic` crea/reactiva cuentas y reglas minimas de prueba, sin reemplazar una parametrizacion contable profesional.
+
 ### Reportes y licencias
 
 - Los reportes se calculan desde tablas activas de contabilidad, inventario, billing e identidad.
