@@ -220,6 +220,10 @@ Si el flujo de compra no esta completamente modelado, se debe introducir o compl
 - `accounting.accounting_rule` y `accounting.accounting_rule_line` almacenan reglas por evento de negocio y lineas de partida doble.
 - Para cerrar una venta fiscal, debe existir una regla activa `SALE_CONFIRMED` por `company_id`; de lo contrario `billing-service` debe bloquear la operacion antes de numeracion fiscal, DIAN/mock, inventario y asiento.
 - La inicializacion `POST /api/v1/accounting-setup/basic` crea/reactiva cuentas y reglas minimas de prueba, sin reemplazar una parametrizacion contable profesional.
+- TASK-223 mantiene las mismas tablas y agrega comportamiento transaccional batch sobre `accounting.account`, `accounting.accounting_rule` y `accounting.accounting_rule_line`.
+- En UI, `accounting.accounting_rule_line` debe presentarse como `movimiento contable`; en base de datos puede conservar el nombre tecnico `line`.
+- Una cuenta o regla con uso historico en `accounting.accounting_entry_line` no debe eliminarse fisicamente; debe inactivarse o versionarse para conservar trazabilidad.
+- Las creaciones batch deben persistirse como una unidad atomica por empresa. Si una cuenta, regla o movimiento contable falla validacion, ninguna fila del lote debe quedar guardada.
 
 ### Reportes y licencias
 

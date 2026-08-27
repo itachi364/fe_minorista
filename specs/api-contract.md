@@ -1388,12 +1388,45 @@ Reglas:
 ### Cuentas
 
 - `POST /api/v1/accounts`
+- `POST /api/v1/accounts/batch`
 - `GET /api/v1/accounts?code=`
 - `GET /api/v1/accounts?active=`
+
+### AccountsBatchRequest
+
+Permite crear una o varias cuentas en una sola operacion. La operacion debe ser transaccional.
+
+```json
+{
+  "accounts": [
+    {
+      "code": "1105",
+      "name": "Caja",
+      "description": "Efectivo y caja general",
+      "category": "ASSET",
+      "active": true
+    },
+    {
+      "code": "4135",
+      "name": "Comercio al por mayor y al por menor",
+      "description": "Ingresos operacionales",
+      "category": "INCOME",
+      "active": true
+    }
+  ]
+}
+```
+
+Reglas:
+
+- Si una cuenta del lote es invalida, duplicada o viola el PUC/configuracion empresarial, no se crea ninguna cuenta del lote.
+- El backend debe devolver detalles por indice/fila para que la SPA resalte el campo correspondiente.
+- Cuentas usadas por asientos no se eliminan fisicamente; solo pueden inactivarse conservando historial.
 
 ### Reglas contables
 
 - `POST /api/v1/accounting-rules`
+- `POST /api/v1/accounting-rules/batch`
 - `PUT /api/v1/accounting-rules/active`
 - `POST /api/v1/accounting-rules/{eventType}/deactivate`
 - `GET /api/v1/accounting-rules?eventType=&active=`
@@ -1437,6 +1470,51 @@ Uso obligatorio en cierre de venta:
 }
 ```
 
+### AccountingRulesBatchRequest
+
+Permite crear una o varias reglas contables en una sola operacion. Cada `line` se presenta en la SPA como `movimiento contable`.
+
+```json
+{
+  "rules": [
+    {
+      "eventType": "SALE_CONFIRMED",
+      "sourceType": "SALE",
+      "name": "Venta facturada",
+      "activate": true,
+      "lines": [
+        {
+          "accountCode": "1105",
+          "side": "DEBIT",
+          "amountType": "TOTAL",
+          "description": "Ingreso a caja"
+        },
+        {
+          "accountCode": "4135",
+          "side": "CREDIT",
+          "amountType": "SUBTOTAL",
+          "description": "Ingreso por venta"
+        },
+        {
+          "accountCode": "2408",
+          "side": "CREDIT",
+          "amountType": "TAX",
+          "description": "IVA generado"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Reglas:
+
+- La operacion es transaccional: si falla cualquier regla o movimiento contable, no se crea ninguna regla del lote.
+- Todas las cuentas referenciadas deben existir activas para la empresa o venir en el mismo flujo de configuracion aprobado.
+- Si `activate=true`, el backend debe inactivar/versionar la regla activa previa del mismo evento sin borrar historial.
+- Los errores deben incluir indice de regla e indice de movimiento para soportar validacion visual por fila.
+- La vista `Usar plantilla recomendada` debe construir este payload despues de mostrar una vista previa editable; nunca debe aplicar datos ocultos.
+
 ### AccountingEntryRequest
 
 ```json
@@ -1462,6 +1540,7 @@ Reglas:
 - TASK-053 agrega configuracion base contable editable, consulta de cuentas por empresa/filtro activo, consulta de reglas por empresa/evento/estado, reemplazo de regla activa y desactivacion explicita de la regla activa.
 - TASK-220 agrega prevalidacion de regla activa `SALE_CONFIRMED` desde `billing-service` para evitar ventas parcialmente confirmadas cuando una empresa no ha inicializado contabilidad.
 - TASK-222 expone `Configuracion contable` en la SPA usando `POST /api/v1/accounting-setup/basic`, `GET /api/v1/accounts` y `GET /api/v1/accounting-rules`.
+- TASK-223 redefine la configuracion contable como asistente editable y agrega contratos batch `POST /api/v1/accounts/batch` y `POST /api/v1/accounting-rules/batch` para crear una o varias cuentas/reglas en una sola accion.
 - `PUT /api/v1/accounting-rules/active` desactiva la regla activa previa para el evento y crea una nueva regla activa; `POST /api/v1/accounting-rules` conserva la validacion de no duplicar regla activa.
 - Un documento fiscal validado debe poder rastrearse hasta su asiento contable.
 

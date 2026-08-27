@@ -2916,6 +2916,16 @@ Context7 evidence:
 - Seguridad/licencia: El acceso se controla por licencia `ACCOUNTING` y permisos `ACCOUNTING_VIEW`/`ACCOUNTING_MANAGE`, manteniendo backend como fuente real de autorizacion.
 - Relacion con ventas: El cierre de venta depende de que la empresa tenga regla contable `SALE_CONFIRMED` activa; el usuario puede resolverlo desde este modulo.
 
+### TASK-223 - Asistente editable de plan de cuentas y reglas contables por empresa
+- Estado: Documentado.
+- Fase: Fase 28: Configuracion contable empresarial.
+- Decision de diseno: La inicializacion automatica pasa a ser un asistente guiado y editable. El sistema puede sugerir una plantilla, pero siempre debe mostrar una vista previa antes de crear cuentas o reglas.
+- UX: El formulario permite agregar multiples filas de cuentas PUC y multiples reglas contables. Dentro de cada regla, las filas se muestran como `movimientos contables`, no como `lineas`, para que el usuario entienda que cada fila afecta una cuenta.
+- Contratos: `accounting-service` debe exponer operaciones batch para crear varias cuentas y reglas en una sola peticion. El BFF enruta estas operaciones y conserva autorizacion, correlation ID y auditoria.
+- Consistencia: El caso de uso batch debe ejecutarse dentro de una transaccion. Si falla cualquier cuenta, regla o movimiento contable, se revierte todo el lote y se devuelve un error funcional con detalles por fila.
+- Regla historica: Cuentas o reglas usadas por asientos no se eliminan fisicamente; se inactivan o se versionan para mantener trazabilidad contable.
+- Seguridad/licencia: Requiere licencia `ACCOUNTING` y permiso `ACCOUNTING_MANAGE`; `ACCOUNTING_VIEW` solo permite consulta.
+
 #### Context7 evidence
 - Library/tool: React.
 - Topic consulted: Controlled form inputs and client-side validation before submit.
@@ -2925,5 +2935,13 @@ Context7 evidence:
 - Topic consulted: RestClient error handling and exception mapping with controller advice.
 - Relevant finding: `RestClient` propaga errores HTTP como excepciones y Spring MVC permite mapear excepciones de dominio con `@ControllerAdvice`.
 - Decision impact: El adaptador contable convierte fallos de disponibilidad/configuracion en reglas de negocio y `accounting-service` devuelve 400 en vez de 500 para regla faltante.
+- Library/tool: React.
+- Topic consulted: Dynamic controlled form inputs and submit handling.
+- Relevant finding: React documenta formularios controlados mediante estado, handlers compartidos por `name` y manejo de submit con `preventDefault`, lo que permite validar y renderizar listas dinamicas antes de enviar.
+- Decision impact: TASK-223 modela el asistente contable como estado controlado con filas dinamicas de cuentas, reglas y movimientos contables antes de construir el request batch.
+- Library/tool: Spring Framework 6.2.
+- Topic consulted: Request body validation, exception handling and transaction rollback.
+- Relevant finding: Spring MVC soporta `@Valid @RequestBody` para validar payloads REST y Spring Transaction Management revierte transacciones declarativas ante excepciones runtime por defecto.
+- Decision impact: TASK-223 exige validacion de payload batch, errores funcionales por fila y guardado transaccional para impedir configuraciones contables parciales.
 
 <!-- END SDD TASK DESIGN TRACEABILITY -->

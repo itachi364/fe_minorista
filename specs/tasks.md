@@ -5622,3 +5622,50 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - TASK-220.
   - Validacion:
     - Vitest frontend.
+
+- [ ] TASK-223: Asistente editable de plan de cuentas y reglas contables por empresa
+  - Estado: TODO
+  - Requisitos: RF-203, RF-204, RF-205, RF-206, RF-207, RF-097, RF-098.
+  - Acceptance criteria:
+    - AC-281: El boton de configuracion contable no crea datos automaticamente sin mostrar previamente el formulario/asistente.
+    - AC-282: El asistente permite agregar, editar y quitar varias cuentas PUC antes de enviar una sola creacion batch.
+    - AC-283: El asistente permite agregar, editar y quitar varias reglas contables antes de enviar una sola creacion batch.
+    - AC-284: Cada regla permite agregar multiples `movimientos contables` con cuenta, naturaleza debito/credito, tipo de monto y descripcion.
+    - AC-285: El backend valida que todas las cuentas referenciadas existan o vengan en el mismo lote, y que cada regla quede balanceable segun partida doble.
+    - AC-286: El guardado batch es transaccional: si una cuenta, regla o movimiento falla, no se persiste ningun registro del lote.
+    - AC-287: La opcion `Usar plantilla recomendada` muestra una vista previa editable de cuentas y reglas antes de guardar.
+    - AC-288: Cuentas o reglas ya usadas por asientos no se eliminan fisicamente; se inactivan o versionan conservando trazabilidad.
+    - AC-289: Toda creacion, actualizacion, inactivacion o aplicacion de plantilla contable queda auditada con empresa, usuario, recurso, resultado y correlation ID.
+  - Descripcion: Reemplazar la inicializacion contable de caja negra por un asistente profesional para que cada empresa configure su plan de cuentas y reglas contables, con carga de una o varias cuentas/reglas en una sola operacion.
+  - Alcance:
+    - UI con formularios dinamicos para cuentas PUC y reglas contables.
+    - Renombrar visualmente `lineas` de regla a `movimientos contables`.
+    - Contratos batch para crear varias cuentas y reglas en una sola peticion.
+    - Vista previa editable para plantilla recomendada.
+    - Validaciones frontend y backend antes de persistir.
+    - Auditoria de acciones mutables.
+  - Fuera de alcance:
+    - Migrar a PUC completo oficial.
+    - Implementar borradores/posteo manual de asientos.
+    - Eliminar reglas historicas ya usadas.
+  - Archivos propuestos:
+    - `apps/facturaelectronica-web/src/features/accounting/AccountingConfigurationPanel.jsx`
+    - `apps/facturaelectronica-web/src/features/accounting/*`
+    - `apps/facturaelectronica-web/src/services/*`
+    - `services/accounting-service/**`
+    - `services/bff-service/**`
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+    - `specs/tasks.md`
+  - Dependencias:
+    - TASK-222.
+    - TASK-220.
+    - TASK-090.
+  - Validacion:
+    - Unit tests de casos de uso contables.
+    - Controller tests de contratos batch.
+    - Persistence tests de rollback transaccional.
+    - Vitest frontend para formularios dinamicos y vista previa.
+    - Prueba E2E de empresa nueva configurando contabilidad sin usar inicializacion automatica oculta.

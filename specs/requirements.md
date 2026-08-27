@@ -415,6 +415,11 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-200: La SPA debe validar localmente rangos de resolucion fiscal: consecutivos enteros positivos, `Hasta >= Desde` y vigencia final mayor o igual a inicial, sin ejecutar POST cuando los datos son invalidos.
 - RF-201: Debe existir un modulo `Configuracion contable` dentro de `Contabilidad` para inicializar plantilla basica PUC, consultar cuentas y consultar reglas contables por empresa.
 - RF-202: El modulo `Configuracion contable` debe depender de licencia `ACCOUNTING` y permisos `ACCOUNTING_VIEW` o `ACCOUNTING_MANAGE`; ROOT y administradores empresariales conservan acceso segun reglas RBAC vigentes.
+- RF-203: El modulo `Configuracion contable` debe evolucionar de inicializacion automatica a asistente guiado editable para registrar plan de cuentas y reglas contables por empresa.
+- RF-204: El asistente debe permitir crear una o varias cuentas PUC y una o varias reglas contables en una sola accion, agregando multiples lineas de formulario antes de enviar el request.
+- RF-205: Las reglas contables deben mostrar sus lineas como `movimientos contables`, permitiendo varias cuentas afectadas por regla y validando partida doble antes de guardar.
+- RF-206: Debe existir una opcion `Usar plantilla recomendada` que muestre previamente las cuentas y reglas que se van a crear, sin aplicar cambios ocultos.
+- RF-207: La creacion batch de cuentas y reglas contables debe ser transaccional y auditada: si una cuenta, regla o movimiento contable falla validacion, no debe persistirse una configuracion parcial.
 
 ## Requisitos fase productizacion operativa
 
