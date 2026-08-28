@@ -2956,4 +2956,19 @@ Context7 evidence:
 - Consistencia: Actualizaciones e inactivaciones se validan en backend; el frontend solo mejora experiencia, no es la fuente de seguridad.
 - Auditoria: Las mutaciones pasan por BFF y quedan cubiertas por auditoria transversal de acciones mutables.
 
+### TASK-225 - Precio final con IVA incluido en inventario y resumen fiscal de venta
+- Estado: Implementado.
+- Fase: Fase 29: UX fiscal de inventario y ventas.
+- Decision de diseno: La captura operativa de inventario usa `precio final` porque es el valor que conoce el negocio. La SPA calcula `precio sin IVA` y `valor IVA` desde la tarifa del impuesto seleccionado usando `base = total / (1 + tarifa / 100)` e `iva = total - base`.
+- Contrato: `inventory-service` conserva `salePrice` como precio unitario sin IVA/base gravable. `finalSalePrice` no se envia al backend en esta iteracion porque es un valor derivado de UI.
+- Ventas: La SPA no envia `unitPrice`, `taxCode` ni `taxRate`; `billing-service` sigue calculando lineas desde el snapshot de inventario. Para experiencia previa al cierre, la SPA muestra subtotal, IVA y total estimados con los datos de los productos escaneados.
+- Codigo de barras: El campo `Codigo de barras` de inventario queda como input dedicado con `autoComplete=off`, aceptando escritura manual o lectores USB HID que se comportan como teclado.
+- Impresion: La representacion grafica/tirilla debe mantener subtotal, IVA y total de `SaleResponse`, que provienen del backend confirmado.
+
+#### Context7 evidence
+- Library/tool: React.
+- Topic consulted: Controlled inputs and avoiding redundant state for calculated values.
+- Relevant finding: React recomienda derivar valores calculables desde estado base en lugar de duplicarlos como estado editable.
+- Decision impact: `Precio sin IVA` y `Valor IVA` se calculan desde `Precio final` + `taxRate`; solo el precio final es editable.
+
 <!-- END SDD TASK DESIGN TRACEABILITY -->

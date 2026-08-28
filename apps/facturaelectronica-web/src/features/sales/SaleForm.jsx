@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Field, SelectField } from '../../components/forms.jsx';
+import { calculateSaleTotals, calculateTaxAddedAmounts } from '../../utils/taxCalculations.js';
 
 export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSearch, customerOptions, selectedCustomer, onSearchCustomers, onSelectCustomer, updateItem, addItem, removeItem, onClose, onPrintReceipt, onScanBarcode, serviceConsumption, onLoadServiceConsumption, onUpdateServiceConsumptionQuantity, onUpdateServiceConsumptionReason, onConfirmServiceConsumption, busy, paymentOptions = [], walletOptions = [] }) {
   const [barcodeScan, setBarcodeScan] = useState('');
   const barcodeRef = useRef(null);
   const serviceLines = form.items.filter((item) => item.productId && item.itemType === 'SERVICE');
+  const totals = calculateSaleTotals(form.items);
 
   useEffect(() => {
     let ignore = false;
@@ -129,15 +131,19 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
       </div>
       <div className="line-list">
         {form.items.map((item, index) => (
-          <div className="line-row" key={`${index}-${item.productId}`}>
-            <Field label="Producto" value={item.productId} onChange={(value) => updateItem(index, 'productId', value)} />
-            <Field label="Nombre" value={item.productName || ''} onChange={() => {}} readOnly />
-            <Field label="Cantidad" value={item.quantity} onChange={(value) => updateItem(index, 'quantity', value)} type="number" />
-            <Field label="Precio" value={item.unitPrice} onChange={() => {}} type="number" readOnly />
-            <Field label="Descuento" value={item.discountAmount} onChange={(value) => updateItem(index, 'discountAmount', value)} type="number" />
-            <button className="icon-button" onClick={() => removeItem(index)} type="button" aria-label="Eliminar linea">X</button>
-          </div>
+          <SaleLineRow
+            key={`${index}-${item.productId}`}
+            item={item}
+            index={index}
+            updateItem={updateItem}
+            removeItem={removeItem}
+          />
         ))}
+      </div>
+      <div className="sale-summary">
+        <span><b>Subtotal</b>{money(totals.subtotal)}</span>
+        <span><b>IVA</b>{money(totals.tax)}</span>
+        <span><b>Total</b>{money(totals.total)}</span>
       </div>
       <div className="button-row">
         <button className="primary" disabled={busy} type="submit">Cerrar venta</button>
@@ -202,6 +208,23 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
       )}
     </section>
   </form>;
+}
+
+function SaleLineRow({ item, index, updateItem, removeItem }) {
+  const quantity = Number(item.quantity || 0);
+  const amounts = calculateTaxAddedAmounts(Number(item.unitPrice || 0) * quantity - Number(item.discountAmount || 0), item.taxRate);
+  return (
+          <div className="line-row" key={`${index}-${item.productId}`}>
+            <Field label="Producto" value={item.productId} onChange={(value) => updateItem(index, 'productId', value)} />
+            <Field label="Nombre" value={item.productName || ''} onChange={() => {}} readOnly />
+            <Field label="Cantidad" value={item.quantity} onChange={(value) => updateItem(index, 'quantity', value)} type="number" />
+            <Field label="Precio sin IVA" value={item.unitPrice} onChange={() => {}} type="number" readOnly />
+            <Field label="IVA" value={amounts.tax ? String(amounts.tax) : ''} onChange={() => {}} type="number" readOnly />
+            <Field label="Total" value={amounts.total ? String(amounts.total) : ''} onChange={() => {}} type="number" readOnly />
+            <Field label="Descuento" value={item.discountAmount} onChange={(value) => updateItem(index, 'discountAmount', value)} type="number" />
+            <button className="icon-button" onClick={() => removeItem(index)} type="button" aria-label="Eliminar linea">X</button>
+          </div>
+  );
 }
 
 function number(value) {

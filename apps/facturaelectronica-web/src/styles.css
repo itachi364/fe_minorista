@@ -985,13 +985,38 @@ textarea:hover {
 
 .line-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1.4fr) repeat(5, minmax(96px, 1fr)) 40px;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(6, minmax(96px, 1fr)) 40px;
   gap: 9px;
   align-items: end;
   border: 1px solid #dfe7ee;
   border-radius: 8px;
   padding: 12px;
   background: #fbfcfd;
+}
+
+.sale-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.sale-summary span {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #d8e3eb;
+  border-radius: 8px;
+  background: #f8fbfd;
+  padding: 12px 14px;
+  color: #142536;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.sale-summary b {
+  color: #526473;
+  font-size: 11px;
+  text-transform: uppercase;
 }
 
 .result-panel {

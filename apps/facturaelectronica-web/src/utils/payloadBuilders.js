@@ -1,5 +1,6 @@
 import { calculateNitVerificationDigit, isNit, onlyDigits } from './nit.js';
 import { isSimpleNaturalCustomer, normalizeThirdPartyForm } from './thirdPartyRules.js';
+import { calculateTaxIncludedAmounts } from './taxCalculations.js';
 
 function toNumber(value) {
   if (value === '' || value === null || value === undefined) {
@@ -76,9 +77,13 @@ export function buildThirdPartyPayload(form, companyMunicipalityCode) {
 }
 
 export function buildProductPayload(form) {
+  const calculatedPrice = form.finalSalePrice
+    ? calculateTaxIncludedAmounts(form.finalSalePrice, form.taxRate)
+    : null;
   return compactObject({
     ...form,
-    salePrice: toNumber(form.salePrice),
+    finalSalePrice: undefined,
+    salePrice: calculatedPrice?.base || toNumber(form.salePrice),
     cost: toNumber(form.cost),
     initialStock: toNumber(form.initialStock),
     taxRate: toNumber(form.taxRate),

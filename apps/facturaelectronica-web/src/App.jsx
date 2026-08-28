@@ -1152,6 +1152,8 @@ export default function App() {
       updateSaleItem(0, 'productName', result.name || '');
       updateSaleItem(0, 'itemType', result.itemType || '');
       updateSaleItem(0, 'unitPrice', String(result.salePrice || productForm.salePrice));
+      updateSaleItem(0, 'taxCode', result.taxCode || productForm.taxCode || '');
+      updateSaleItem(0, 'taxRate', String(result.taxRate ?? productForm.taxRate ?? ''));
     }
     return result;
   }
@@ -1178,6 +1180,8 @@ export default function App() {
         itemType: product.itemType || '',
         quantity: '1',
         unitPrice: String(product.salePrice ?? '0'),
+        taxCode: product.taxCode || '',
+        taxRate: String(product.taxRate ?? ''),
         discountAmount: '0',
         barcode: product.barcode || barcode,
       };
@@ -1987,7 +1991,7 @@ export default function App() {
   function addSaleItem() {
     setSaleForm((current) => ({
       ...current,
-      items: [...current.items, { productId: '', productName: '', itemType: '', quantity: '1', unitPrice: '0', discountAmount: '0' }],
+      items: [...current.items, { productId: '', productName: '', itemType: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxCode: '', taxRate: '' }],
     }));
   }
 

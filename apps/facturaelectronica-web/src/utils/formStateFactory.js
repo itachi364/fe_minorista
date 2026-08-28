@@ -92,6 +92,7 @@ export function createProductForm() {
     purchaseEnabled: false,
     stockTracked: false,
     salePrice: '',
+    finalSalePrice: '',
     cost: '',
     initialStock: '',
     taxCategoryCode: '',
@@ -168,7 +169,7 @@ export function createSaleForm() {
     customerId: '',
     paymentMethodCode: '',
     virtualWalletCode: '',
-    items: [{ productId: '', productName: '', itemType: '', quantity: '1', unitPrice: '0', discountAmount: '0' }],
+    items: [{ productId: '', productName: '', itemType: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxCode: '', taxRate: '' }],
   };
 }
 

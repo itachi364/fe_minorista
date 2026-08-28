@@ -5744,3 +5744,42 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - Cuentas y reglas exponen `used` y `usageCount`.
     - Reglas usadas no se pueden reemplazar, actualizar ni inactivar por endpoints directos, batch o plantilla basica.
     - El panel contable muestra `Uso` y solo permite acciones sobre registros sin uso.
+
+## Fase 29: UX fiscal de inventario y ventas
+
+- [x] TASK-225: Captura de precio final con IVA incluido y resumen fiscal de venta
+  - Estado: DONE
+  - Requisitos: RF-211, RF-212, RF-213, RF-214, RF-215.
+  - Acceptance criteria:
+    - AC-298: En inventario, el usuario ingresa `Precio final` y la SPA calcula automaticamente `Precio sin IVA` y `Valor IVA`.
+    - AC-299: `Tarifa impuesto` deja de aparecer como campo principal visible/editable; la tarifa se deriva del catalogo `SALES_TAX`.
+    - AC-300: El payload `POST /api/v1/products` envia `salePrice` como precio unitario sin IVA calculado desde `Precio final`.
+    - AC-301: En ventas, cada linea muestra valores fiscales derivados y el formulario muestra resumen `Subtotal`, `IVA` y `Total` antes de cerrar.
+    - AC-302: La representacion imprimible conserva `Subtotal`, `IVA` y `Total` desde `SaleResponse`.
+    - AC-303: El campo `Codigo de barras` de inventario acepta escritura manual o lector USB HID sin boton adicional.
+  - Descripcion: Mejorar UX fiscal para pequenos negocios capturando precios finales conocidos por el usuario, calculando base gravable e IVA sin alterar la responsabilidad fiscal del backend.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/features/inventory/ProductForm.jsx`
+    - `apps/facturaelectronica-web/src/features/sales/SaleForm.jsx`
+    - `apps/facturaelectronica-web/src/utils/formStateFactory.js`
+    - `apps/facturaelectronica-web/src/utils/payloadBuilders.js`
+    - `apps/facturaelectronica-web/src/utils/taxCalculations.js`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/tasks.md`
+  - Dependencias:
+    - TASK-085.
+    - TASK-115.
+    - TASK-217.
+  - Validacion:
+    - `npm test -- --run App.test.jsx taxCalculations.test.js`: 29 tests OK.
+    - `npm run build`: OK.
+    - `npm audit`: 0 vulnerabilidades.
+    - Prueba manual Docker: crear producto con precio final, escanear por codigo de barras y cerrar venta revisando subtotal/IVA/total.
+  - Resultado:
+    - Inventario captura `Precio final` y calcula `Precio sin IVA`/`Valor IVA`.
+    - `buildProductPayload` envia `salePrice` como base sin IVA.
+    - Ventas muestra resumen estimado `Subtotal`, `IVA` y `Total` antes de cerrar.
+    - Las lineas escaneadas conservan `taxCode` y `taxRate` desde inventario para mostrar valores fiscales.

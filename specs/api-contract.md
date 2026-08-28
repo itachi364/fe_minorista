@@ -664,7 +664,7 @@ Estado TASK-048:
   "saleEnabled": true,
   "purchaseEnabled": true,
   "stockTracked": true,
-  "salePrice": 15000,
+  "salePrice": 12605.04,
   "cost": 9000,
   "initialStock": 10,
   "taxCategoryCode": "IVA",
@@ -688,7 +688,7 @@ Estado TASK-048:
   "saleEnabled": true,
   "purchaseEnabled": true,
   "stockTracked": true,
-  "salePrice": 15000,
+  "salePrice": 12605.04,
   "cost": 9000,
   "taxCategoryCode": "IVA",
   "taxCode": "IVA_19",
@@ -2125,6 +2125,8 @@ Reglas:
 
 - `taxCode` y `taxRate` son obligatorios para items vendibles (`saleEnabled=true`) y se toman del catalogo `SALES_TAX`.
 - `GET /api/v1/products/by-barcode/{barcode}` filtra por `X-Company-Id`, retorna productos activos y permite al POS agregar productos escaneados automaticamente.
+- En UI, el usuario captura `precio final` con IVA incluido; la SPA calcula y envia `salePrice` como precio unitario sin IVA/base gravable. El backend no recibe `finalSalePrice` en el contrato estable.
+- En ventas POS, la SPA no envia `unitPrice`, `taxCode` ni `taxRate`; `billing-service` toma precio e impuesto desde inventario y retorna por linea `subtotal`, `taxAmount` y `total`.
 - La respuesta de producto es la fuente para el snapshot fiscal de linea que usa `billing-service`.
 
 Reglas de pago:

@@ -1,5 +1,6 @@
 import { DataTable } from '../../components/DataTable.jsx';
 import { Field, FormPanel, SelectField } from '../../components/forms.jsx';
+import { calculateTaxAddedAmounts, calculateTaxIncludedAmounts } from '../../utils/taxCalculations.js';
 
 const itemUsageProfiles = [
   {
@@ -51,6 +52,7 @@ export function ProductForm({
   onLoadPurchases,
 }) {
   const selectedUsage = findUsageProfile(form);
+  const priceBreakdown = calculateTaxIncludedAmounts(form.finalSalePrice, form.taxRate);
 
   function updateUsage(value) {
     const profile = itemUsageProfiles.find((item) => item.value === value);
@@ -67,12 +69,24 @@ export function ProductForm({
 
   function updateTax(taxCode) {
     const selected = taxOptions.find((option) => option.value === taxCode);
+    const nextTaxRate = String(selected?.taxRate ?? form.taxRate);
+    const breakdown = calculateTaxIncludedAmounts(form.finalSalePrice, nextTaxRate);
     setForm({
       ...form,
       taxCode,
       taxCategoryCode: selected?.taxCategoryCode || form.taxCategoryCode,
       taxLabel: selected?.taxLabel || selected?.label || form.taxLabel,
-      taxRate: String(selected?.taxRate ?? form.taxRate),
+      taxRate: nextTaxRate,
+      salePrice: breakdown.base ? String(breakdown.base) : form.salePrice,
+    });
+  }
+
+  function updateFinalSalePrice(finalSalePrice) {
+    const breakdown = calculateTaxIncludedAmounts(finalSalePrice, form.taxRate);
+    setForm({
+      ...form,
+      finalSalePrice,
+      salePrice: breakdown.base ? String(breakdown.base) : '',
     });
   }
 
@@ -86,8 +100,9 @@ export function ProductForm({
         <SelectField label="Tipo de item" value={form.itemType} onChange={(value) => setForm({ ...form, itemType: value })} options={itemTypeCatalog} />
         <SelectField label="Impuesto de venta" value={form.taxCode} onChange={updateTax} options={taxOptions} />
         <Field label="Categoria impuesto" value={form.taxCategoryCode} onChange={() => {}} readOnly />
-        <Field label="Tarifa impuesto" value={form.taxRate} onChange={() => {}} readOnly />
-        <Field label="Precio venta" value={form.salePrice} onChange={(value) => setForm({ ...form, salePrice: value })} type="number" />
+        <Field label="Precio sin IVA" value={priceBreakdown.base ? String(priceBreakdown.base) : form.salePrice} onChange={() => {}} type="number" readOnly />
+        <Field label="Valor IVA" value={priceBreakdown.tax ? String(priceBreakdown.tax) : ''} onChange={() => {}} type="number" readOnly />
+        <Field label="Precio final" value={form.finalSalePrice} onChange={updateFinalSalePrice} type="number" placeholder="Valor que paga el cliente" min="0" step="0.01" />
         <Field label="Costo" value={form.cost} onChange={(value) => setForm({ ...form, cost: value })} type="number" />
         <Field label="Stock inicial" value={form.initialStock} onChange={(value) => setForm({ ...form, initialStock: value })} type="number" />
         <SelectField label="Uso del item" value={selectedUsage?.value || ''} onChange={updateUsage} options={itemUsageProfiles} />
@@ -111,7 +126,7 @@ export function ProductForm({
         ]} placeholder="Todos" />
       </div>
       <DataTable
-        columns={['SKU', 'Nombre', 'Tipo', 'Stock', 'Costo', 'Precio', 'Estado']}
+        columns={['SKU', 'Nombre', 'Tipo', 'Stock', 'Costo', 'Precio sin IVA', 'Precio final', 'Estado']}
         rows={products.map(productRow)}
         rowKey={(_row, index) => products[index]?.id || index}
         emptyMessage="Sin productos consultados."
@@ -152,6 +167,7 @@ function findUsageProfile(form) {
 }
 
 function productRow(product) {
+  const finalPrice = calculateTaxAddedAmounts(product.salePrice, product.taxRate);
   return [
     product.sku || '',
     product.name || '',
@@ -159,6 +175,7 @@ function productRow(product) {
     quantity(product.currentStock),
     money(product.cost),
     money(product.salePrice),
+    money(finalPrice.total),
     product.active === false ? 'Inactivo' : 'Activo',
   ];
 }

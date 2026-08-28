@@ -423,6 +423,11 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-208: El sistema debe indicar si una cuenta PUC o regla contable ya fue usada por asientos contables reales.
 - RF-209: Las cuentas PUC y reglas contables sin uso pueden actualizarse o inactivarse; si ya fueron usadas, solo pueden consultarse para conservar trazabilidad.
 - RF-210: Los asientos contables nuevos deben guardar la regla contable exacta usada para generarlos.
+- RF-211: En inventario, el usuario debe capturar el precio final con IVA incluido y la SPA debe calcular automaticamente precio sin IVA y valor de IVA segun el impuesto de venta configurado.
+- RF-212: El contrato de producto debe conservar `salePrice` como precio unitario sin IVA/base gravable; el precio final visible en la SPA es un dato derivado y no reemplaza la fuente fiscal del backend.
+- RF-213: En ventas, el vendedor debe ver subtotal/base gravable, IVA y total antes de cerrar la venta, calculados desde el snapshot de producto y cantidades capturadas.
+- RF-214: La tirilla o representacion imprimible de venta debe mostrar subtotal, IVA y total para que coincida con el resumen operativo de la SPA.
+- RF-215: El campo de codigo de barras en inventario debe aceptar digitacion manual o lector USB HID sin boton adicional, capturando el valor en el campo dedicado.
 
 ## Requisitos fase productizacion operativa
 
