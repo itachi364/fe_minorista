@@ -27,6 +27,7 @@ export const stepLicenseModules = {
   Logs: 'AUDIT',
   Usuarios: 'USERS',
   Roles: 'USERS',
+  'PIN operacional': 'BILLING',
 };
 
 export function licenseModuleLabel(moduleCode) {

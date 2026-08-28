@@ -18,11 +18,13 @@ import {
   createLicenseForm,
   createLoginForm,
   createManagedUserForm,
+  createOperationalPinForm,
   createPayrollSettingsForm,
   createPayrollWorkerForm,
   createProductForm,
   createReportsForm,
   createResolutionForm,
+  createSaleDocumentOverrideForm,
   createSaleForm,
   createServiceConsumptionState,
   createThirdPartyForm,
@@ -41,6 +43,7 @@ import { FiscalNotesPanel } from './features/fiscal/FiscalNotesPanel.jsx';
 import { FiscalPolicyForm } from './features/fiscal/FiscalPolicyForm.jsx';
 import { ResolutionForm } from './features/fiscal/ResolutionForm.jsx';
 import { RolesPanel, UsersPanel } from './features/identity/IdentityAdminPanel.jsx';
+import { OperationalPinPanel } from './features/identity/OperationalPinPanel.jsx';
 import { ProductForm } from './features/inventory/ProductForm.jsx';
 import { PayrollPanel } from './features/payroll/PayrollPanel.jsx';
 import { LicenseAdminPanel } from './features/licenses/LicenseAdminPanel.jsx';
@@ -102,6 +105,8 @@ export default function App() {
   const [permissionCatalog, setPermissionCatalog] = useState([]);
   const [companyRoles, setCompanyRoles] = useState([]);
   const [managedUsers, setManagedUsers] = useState([]);
+  const [operationalPinForm, setOperationalPinForm] = useState(createOperationalPinForm);
+  const [operationalPinStatus, setOperationalPinStatus] = useState(null);
   const [catalogDefinitions, setCatalogDefinitions] = useState([]);
   const [selectedCatalogCode, setSelectedCatalogCode] = useState('');
   const [catalogItems, setCatalogItems] = useState([]);
@@ -124,6 +129,8 @@ export default function App() {
   const [dianConfigurationForm, setDianConfigurationForm] = useState(createDianConfigurationForm);
   const [dianConfiguration, setDianConfiguration] = useState(null);
   const [saleForm, setSaleForm] = useState(createSaleForm);
+  const [saleDocumentOverrideForm, setSaleDocumentOverrideForm] = useState(createSaleDocumentOverrideForm);
+  const [saleDocumentOverride, setSaleDocumentOverride] = useState(null);
   const [serviceConsumption, setServiceConsumption] = useState(createServiceConsumptionState);
   const [operationalListFilters, setOperationalListFilters] = useState(createOperationalListFilters);
   const [thirdPartyList, setThirdPartyList] = useState([]);
@@ -157,6 +164,7 @@ export default function App() {
   const autoIdentityLoadKeyRef = useRef('');
   const autoReportsLoadKeyRef = useRef('');
   const autoAccountingLoadKeyRef = useRef('');
+  const autoOperationalPinLoadKeyRef = useRef('');
 
   const token = session?.accessToken || '';
   const context = useMemo(() => ({ token, companyId: activeCompanyId, userId: session?.userId }), [token, activeCompanyId, session?.userId]);
@@ -171,6 +179,7 @@ export default function App() {
   const canManageUsers = canUse(stepPermissionRules.Usuarios);
   const canManageRoles = canUse(stepPermissionRules.Roles);
   const canManageCatalogs = canUse(stepPermissionRules.Catalogos);
+  const canManageOperationalPin = canUse(stepPermissionRules['PIN operacional']);
   const canViewAudit = isRoot || isCompanyAdmin || hasAnyPermission(activeAccess, stepPermissionRules.Logs);
   const licensedModules = new Set(license?.enabledModules || []);
   const licenseAllowsStep = (step) => {
@@ -365,6 +374,18 @@ export default function App() {
     }
     loadFiscalConfiguration().catch(() => undefined);
   }, [currentStep, activeCompanyId]);
+
+  useEffect(() => {
+    if (currentStep !== 'PIN operacional' || !activeCompanyId || !canManageOperationalPin) {
+      return;
+    }
+    const key = `operational-pin|${activeCompanyId}`;
+    if (autoOperationalPinLoadKeyRef.current === key) {
+      return;
+    }
+    autoOperationalPinLoadKeyRef.current = key;
+    loadOperationalPinStatus().catch(() => undefined);
+  }, [currentStep, activeCompanyId, canManageOperationalPin]);
 
   useEffect(() => {
     if (currentStep !== 'Reportes' || !activeCompanyId || !canUse(stepPermissionRules.Reportes)) {
@@ -635,6 +656,10 @@ export default function App() {
     setCatalogItemForm(createCatalogItemForm());
     setManagedUserForm(createManagedUserForm());
     setCompanyRoleForm(createCompanyRoleForm());
+    setOperationalPinForm(createOperationalPinForm());
+    setOperationalPinStatus(null);
+    setSaleDocumentOverrideForm(createSaleDocumentOverrideForm());
+    setSaleDocumentOverride(null);
     setEditingUserId('');
     setEditingRoleId('');
     setRootCompanies([]);
@@ -666,6 +691,7 @@ export default function App() {
     setAdminTargetCompanyId('');
     autoIdentityLoadKeyRef.current = '';
     autoAccountingLoadKeyRef.current = '';
+    autoOperationalPinLoadKeyRef.current = '';
   }
 
   function closeSessionWithModal(title, message) {
@@ -1114,6 +1140,40 @@ export default function App() {
     return updated;
   }
 
+  async function loadOperationalPinStatus() {
+    requireCompany();
+    const result = await requestJson(`/api/v1/companies/${activeCompanyId}/operational-pin`, context);
+    setOperationalPinStatus(result);
+    return result;
+  }
+
+  async function saveOperationalPin() {
+    requireCompany();
+    if (!/^\d{6}$/.test(operationalPinForm.pin)) {
+      throw new Error('El PIN operacional debe tener exactamente 6 digitos numericos.');
+    }
+    const result = await requestJson(`/api/v1/companies/${activeCompanyId}/operational-pin`, {
+      method: 'PUT',
+      body: { pin: operationalPinForm.pin },
+      ...context,
+      idempotencyKey: createIdempotencyKey('operational-pin'),
+    });
+    setOperationalPinStatus(result);
+    setOperationalPinForm(createOperationalPinForm());
+    return result;
+  }
+
+  async function unlockOperationalPin() {
+    requireCompany();
+    const result = await requestJson(`/api/v1/companies/${activeCompanyId}/operational-pin/unlock`, {
+      method: 'PUT',
+      ...context,
+      idempotencyKey: createIdempotencyKey('operational-pin-unlock'),
+    });
+    setOperationalPinStatus(result);
+    return result;
+  }
+
   function togglePermissionCode(code) {
     setCompanyRoleForm((current) => {
       const exists = current.permissionCodes.includes(code);
@@ -1154,6 +1214,7 @@ export default function App() {
       updateSaleItem(0, 'unitPrice', String(result.salePrice || productForm.salePrice));
       updateSaleItem(0, 'taxCode', result.taxCode || productForm.taxCode || '');
       updateSaleItem(0, 'taxRate', String(result.taxRate ?? productForm.taxRate ?? ''));
+      setProductForm(createProductForm());
     }
     return result;
   }
@@ -1203,6 +1264,7 @@ export default function App() {
       idempotencyKey: createIdempotencyKey('issuer'),
     });
     await loadFiscalConfiguration();
+    setIssuerForm(buildIssuerFromCompany(activeCompany, createIssuerForm()));
     return result;
   }
 
@@ -1215,6 +1277,7 @@ export default function App() {
       idempotencyKey: createIdempotencyKey('resolution'),
     });
     await loadFiscalConfiguration();
+    setResolutionForm(createResolutionForm());
     return result;
   }
 
@@ -1402,6 +1465,18 @@ export default function App() {
 
   async function closeSale() {
     requireCompany();
+    if (saleId) {
+      const result = await confirmSale();
+      setSaleId('');
+      setSaleForm(createSaleForm());
+      setSaleDocumentOverrideForm(createSaleDocumentOverrideForm());
+      setSaleDocumentOverride(null);
+      setCustomerSearch('');
+      setSelectedCustomer(null);
+      setCustomerOptions([]);
+      setServiceConsumption(createServiceConsumptionState());
+      return result;
+    }
     const result = await requestJson('/api/v1/sales/close', {
       method: 'POST',
       body: buildSalePayload(saleForm),
@@ -1414,10 +1489,34 @@ export default function App() {
     }
     setSaleId('');
     setSaleForm(createSaleForm());
+    setSaleDocumentOverrideForm(createSaleDocumentOverrideForm());
+    setSaleDocumentOverride(null);
     setCustomerSearch('');
     setSelectedCustomer(null);
     setCustomerOptions([]);
     setServiceConsumption(createServiceConsumptionState());
+    return result;
+  }
+
+  async function requestSaleDocumentTypeOverride(payload) {
+    requireCompany();
+    const draftSale = saleId ? { id: saleId } : await createSale();
+    if (!draftSale?.id) {
+      throw new Error('No fue posible preparar la venta para solicitar el cambio fiscal.');
+    }
+    const result = await requestJson(`/api/v1/sales/${draftSale.id}/document-type-override`, {
+      method: 'POST',
+      body: payload,
+      ...context,
+      idempotencyKey: createIdempotencyKey('sale-document-type-override'),
+    });
+    setSaleId(draftSale.id);
+    setSaleDocumentOverride({
+      documentType: payload.documentType,
+      reason: payload.reason,
+      authorizedBy: payload.authorizedBy || session?.userId || '',
+    });
+    setSaleDocumentOverrideForm(createSaleDocumentOverrideForm());
     return result;
   }
 
@@ -2012,11 +2111,16 @@ export default function App() {
     setSaleId('');
     setServiceConsumption(createServiceConsumptionState());
     setSaleForm((current) => ({ ...current, customerId: '' }));
+    setSaleDocumentOverrideForm(createSaleDocumentOverrideForm());
+    setSaleDocumentOverride(null);
     setIssuerProfiles([]);
     setNumberingResolutions([]);
+    setOperationalPinForm(createOperationalPinForm());
+    setOperationalPinStatus(null);
     setAccountingAccounts([]);
     setAccountingRules([]);
     autoAccountingLoadKeyRef.current = '';
+    autoOperationalPinLoadKeyRef.current = '';
     const selectedCompany = rootCompanies.find((company) => company.id === companyId || company.companyId === companyId);
     if (selectedCompany) {
       setIssuerForm((current) => buildIssuerFromCompany(selectedCompany, current));
@@ -2149,7 +2253,7 @@ export default function App() {
             <AccountingConfigurationPanel accounts={accountingAccounts} rules={accountingRules} onLoad={() => execute(loadAccountingConfiguration, { successMessage: 'Estado contable actualizado.' })} onConfigure={(payload) => execute(() => saveAccountingConfiguration(payload), { successMessage: 'Configuracion contable guardada correctamente.' })} onUpdateAccount={(accountId, payload) => execute(() => updateAccountingAccount(accountId, payload), { successMessage: 'Cuenta contable actualizada correctamente.' })} onDeactivateAccount={(accountId) => execute(() => deactivateAccountingAccount(accountId), { successMessage: 'Cuenta contable inactivada correctamente.' })} onUpdateRule={(ruleId, payload) => execute(() => updateAccountingRule(ruleId, payload), { successMessage: 'Regla contable actualizada correctamente.' })} onDeactivateRule={(ruleId) => execute(() => deactivateAccountingRule(ruleId), { successMessage: 'Regla contable inactivada correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Configuracion contable'])} />
           )}
           {currentStep === 'Ventas' && (
-            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onClose={() => execute(closeSale, { successMessage: 'Venta cerrada correctamente.' })} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
+            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onClose={() => execute(closeSale, { successMessage: 'Venta cerrada correctamente.' })} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} fiscalPolicy={fiscalPolicy} documentOverride={saleDocumentOverride} overrideForm={saleDocumentOverrideForm} setOverrideForm={setSaleDocumentOverrideForm} fiscalDocumentTypeOptions={runtimeCatalogs.fiscalDocumentTypeOptions} onRequestDocumentOverride={(payload) => execute(() => requestSaleDocumentTypeOverride(payload), { successMessage: 'Cambio de documento fiscal autorizado para esta venta.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
           )}
           {currentStep === 'Registro de Ventas' && (
             <SalesRegistryPanel sales={salesList} selectedSale={selectedSaleDetail} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} onLoadSales={() => execute(loadSalesList)} onViewDetail={(sale) => execute(() => openSaleDetail(sale), { silentNullSuccess: true })} onCloseDetail={() => setSelectedSaleDetail(null)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Registro de Ventas'])} paymentOptions={runtimeCatalogs.paymentMethodOptions} />
@@ -2168,6 +2272,9 @@ export default function App() {
           )}
           {currentStep === 'Roles' && (
             <RolesPanel permissions={availableCompanyPermissions} roles={companyRoles} form={companyRoleForm} setForm={setCompanyRoleForm} editingRoleId={editingRoleId} onNew={startNewCompanyRole} onEdit={editCompanyRole} onSave={() => execute(saveCompanyRole)} onToggleActive={(role) => execute(() => toggleCompanyRoleActive(role))} onTogglePermission={togglePermissionCode} busy={busy || !activeCompanyId || !canManageRoles} />
+          )}
+          {currentStep === 'PIN operacional' && (
+            <OperationalPinPanel form={operationalPinForm} setForm={setOperationalPinForm} status={operationalPinStatus} onLoad={() => execute(loadOperationalPinStatus, { silentNullSuccess: true })} onSave={() => execute(saveOperationalPin, { successMessage: 'PIN operacional guardado correctamente.' })} onUnlock={() => execute(unlockOperationalPin, { successMessage: 'PIN desbloqueado. Ahora debe cambiarse antes de usarse.' })} busy={busy || !activeCompanyId || !canManageOperationalPin} />
           )}
           {currentStep === 'Usuarios' && (
             <UsersPanel users={managedUsers} roles={companyRoles} form={managedUserForm} setForm={setManagedUserForm} editingUserId={editingUserId} onNew={startNewManagedUser} onEdit={editManagedUser} onSave={() => execute(saveManagedUser)} onToggleActive={(user) => execute(() => toggleManagedUserActive(user))} busy={busy || !activeCompanyId || !canManageUsers} />

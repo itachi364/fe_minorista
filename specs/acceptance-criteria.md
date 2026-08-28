@@ -319,3 +319,20 @@
 - AC-254: Dado un usuario sin permisos fiscales de notas, cuando abra la aplicacion, entonces no debe ver ni ejecutar Nota credito, Nota debito ni Nota de ajuste POS.
 - AC-255: Dado un usuario autorizado para notas, cuando cree Nota credito, Nota debito o Nota de ajuste POS, entonces el sistema debe usar la resolucion activa del tipo documental correspondiente y auditar la operacion.
 - AC-256: Dado cualquier uso exitoso o fallido de PIN/override/notas fiscales, entonces auditoria debe conservar correlation ID y no debe incluir PIN, hashes de PIN, contrasenas ni payloads fiscales completos.
+
+## Bugs UX formularios y PIN operacional
+
+- AC-304: Dado un producto creado correctamente, cuando el backend responde exito, entonces el formulario de inventario se limpia y el producto queda visible en la lista.
+- AC-305: Dado un error al crear producto, cuando el backend rechaza la solicitud, entonces el formulario conserva los datos digitados para correccion.
+- AC-306: Dado un emisor fiscal guardado correctamente, cuando se recarga la configuracion fiscal, entonces se limpian campos capturados y se mantienen visibles los datos informativos de empresa activa como solo lectura.
+- AC-307: Dada una resolucion fiscal guardada correctamente, cuando se recarga la configuracion fiscal, entonces el formulario de resolucion queda listo para una nueva captura.
+- AC-308: Dado un usuario autorizado, cuando abre Configuracion > PIN operacional, entonces puede consultar estado, crear/cambiar PIN de 6 digitos y desbloquearlo si esta bloqueado.
+- AC-309: Dado cualquier flujo de PIN operacional, entonces la SPA nunca muestra ni persiste el PIN o hash recibido; solo muestra estado, intentos restantes y fecha de actualizacion.
+- AC-310: La SPA muestra `PIN operacional` en Configuracion solo a usuarios autorizados por rol/permiso/licencia.
+- AC-311: La pantalla permite consultar estado del PIN, crear/cambiar PIN de exactamente 6 digitos y limpiar el input despues de guardar.
+- AC-312: La pantalla permite desbloquear un PIN bloqueado sin mostrar PIN ni hash.
+- AC-313: El request de configuracion envia solo `{ "pin": "123456" }` por `PUT /api/v1/companies/{companyId}/operational-pin`.
+- AC-314: Dado el modulo Ventas, cuando se renderiza el formulario, entonces el encabezado no muestra botones de accion y solo existe un boton principal `Cerrar venta`.
+- AC-315: Dado que la politica fiscal permite override y existen tipos fiscales alternos, cuando el vendedor abre Ventas, entonces puede solicitar cambio de documento fiscal desde un modal con PIN operacional y motivo.
+- AC-316: Dada una venta sin borrador creado, cuando se autoriza el cambio de documento fiscal, entonces la SPA crea primero la venta en borrador y envia el override a `/api/v1/sales/{saleId}/document-type-override`.
+- AC-317: Dado un override autorizado sobre una venta en borrador, cuando el usuario cierre la venta, entonces la SPA confirma ese mismo `saleId` en lugar de crear una venta nueva.

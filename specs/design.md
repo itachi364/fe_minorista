@@ -2971,4 +2971,43 @@ Context7 evidence:
 - Relevant finding: React recomienda derivar valores calculables desde estado base en lugar de duplicarlos como estado editable.
 - Decision impact: `Precio sin IVA` y `Valor IVA` se calculan desde `Precio final` + `taxRate`; solo el precio final es editable.
 
+### TASK-226 - Limpiar formulario de producto despues de creacion
+- Estado: Implementado.
+- Fase: Fase transversal: Bugs y estabilizacion operativa.
+- Decision de diseno: El formulario de inventario es controlado por estado React y vuelve a `createProductForm()` solo cuando `POST /api/v1/products` responde con un producto creado.
+- UX: La tabla conserva el item creado y el formulario queda disponible para capturar un nuevo producto sin duplicar accidentalmente SKU, codigo de barras, precio, impuesto o stock.
+
+### TASK-227 - Limpiar formularios fiscales despues de guardado
+- Estado: Implementado.
+- Fase: Fase transversal: Bugs y estabilizacion operativa.
+- Decision de diseno: `configureIssuer` y `configureResolution` limpian sus formularios despues de guardar y recargar la configuracion fiscal. En emisor, los campos derivados de la empresa activa siguen mostrandose como solo lectura porque no son captura manual del emisor.
+- UX: El usuario puede registrar otro emisor o resolucion sin borrar manualmente el dato anterior.
+
+### TASK-228 - Pantalla de administracion de PIN operacional
+- Estado: Implementado.
+- Fase: Fase transversal: Bugs y estabilizacion operativa.
+- Decision de diseno: La SPA expone `PIN operacional` bajo Configuracion y consume `GET/PUT /api/v1/companies/{companyId}/operational-pin` y `PUT /api/v1/companies/{companyId}/operational-pin/unlock` a traves del BFF.
+- Seguridad: El PIN se captura como input numerico de 6 digitos y se limpia despues de guardar. La UI solo muestra estado, intentos restantes y fecha de actualizacion; nunca muestra PIN ni hash.
+- Autorizacion: La pantalla depende de `OPERATIONAL_PIN_MANAGE`, administradores empresariales o ROOT; el backend conserva la validacion real.
+
+#### Context7 evidence
+- Library/tool: React.
+- Topic consulted: Controlled input forms and reset after successful submit.
+- Relevant finding: React documenta inputs controlados con `value` desde estado y reset de formulario cambiando el estado de vuelta a valores iniciales.
+- Decision impact: TASK-226, TASK-227 y TASK-228 limpian los formularios con factories de estado solo despues de operaciones exitosas.
+
+### TASK-229 - Simplificar acciones de venta y solicitar override documental con PIN
+- Estado: Implementado.
+- Fase: Fase transversal: Bugs y estabilizacion operativa.
+- Decision de diseno: El encabezado de `Ventas` queda solo como titulo; las acciones operativas se concentran al final del formulario con `Agregar linea`, `Solicitar cambio de documento fiscal` y `Cerrar venta`.
+- Flujo: Si el vendedor solicita cambiar el tipo fiscal antes de cerrar, la SPA crea una venta en borrador mediante `POST /api/v1/sales`, envia el override a `POST /api/v1/sales/{saleId}/document-type-override` con PIN y motivo, y despues `Cerrar venta` confirma el mismo borrador con `POST /api/v1/sales/{saleId}/confirm`.
+- Seguridad: El PIN viaja solo en el request de autorizacion, no se almacena en estado despues de exito y no se muestra en respuestas ni logs de UI.
+- UX: La pantalla muestra el tipo documental efectivo de la venta y marca cuando existe un cambio autorizado para esa venta.
+
+#### Context7 evidence
+- Library/tool: React.
+- Topic consulted: Conditional rendering and controlled form inputs.
+- Relevant finding: React recomienda representar ventanas modales y formularios controlados desde estado explicito, y derivar lo visible del estado actual.
+- Decision impact: El modal de override usa estado controlado, validacion local de PIN/motivo y cierre condicional despues de una operacion exitosa.
+
 <!-- END SDD TASK DESIGN TRACEABILITY -->

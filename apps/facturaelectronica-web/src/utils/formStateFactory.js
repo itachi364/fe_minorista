@@ -48,6 +48,10 @@ export function createCompanyRoleForm() {
   return { name: '', description: '', permissionCodes: [] };
 }
 
+export function createOperationalPinForm() {
+  return { pin: '' };
+}
+
 export function createCatalogItemForm() {
   return {
     editingCode: '',
@@ -170,6 +174,15 @@ export function createSaleForm() {
     paymentMethodCode: '',
     virtualWalletCode: '',
     items: [{ productId: '', productName: '', itemType: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxCode: '', taxRate: '' }],
+  };
+}
+
+export function createSaleDocumentOverrideForm() {
+  return {
+    documentType: 'ELECTRONIC_POS',
+    authorizedBy: '',
+    pin: '',
+    reason: '',
   };
 }
 

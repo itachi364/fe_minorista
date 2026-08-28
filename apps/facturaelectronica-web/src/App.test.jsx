@@ -312,7 +312,7 @@ test('sales user can access POS without fiscal advanced permission', async () =>
   expect(screen.queryByRole('button', { name: 'Fiscal' })).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
-  expect(screen.getAllByRole('button', { name: 'Cerrar venta' }).length).toBeGreaterThan(0);
+  expect(screen.getAllByRole('button', { name: 'Cerrar venta' })).toHaveLength(1);
 });
 
 test('company owner updates active company without create company action', async () => {
@@ -696,12 +696,154 @@ test('creates POS sale with controlled virtual wallet payment method', async () 
 
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(7));
   expect(screen.queryByLabelText('Venta creada')).not.toBeInTheDocument();
-  expect(screen.getByText('Agrega productos y cierra la venta en un solo paso')).toBeInTheDocument();
+  expect(screen.getByText('Agrega productos y cierra la venta en un solo paso.')).toBeInTheDocument();
   expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/v1/sales/close', expect.objectContaining({ method: 'POST' }));
   const salePayload = JSON.parse(fetchMock.mock.calls[5][1].body);
   expect(salePayload.paymentMethodCode).toBe('VIRTUAL_WALLET');
   expect(salePayload.virtualWalletCode).toBe('NEQUI');
   expect(salePayload.paymentMethodId).toBeUndefined();
+});
+
+test('clears product form after successful item creation', async () => {
+  const createdProduct = {
+    id: '44444444-4444-4444-4444-444444444444',
+    sku: '123456789',
+    barcode: '123456789',
+    name: 'Cafe r',
+    itemType: 'PHYSICAL_GOOD',
+    salePrice: 5042.02,
+    taxCode: 'IVA_19',
+    taxRate: 19,
+    currentStock: 100,
+    active: true,
+  };
+  const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
+    .mockResolvedValueOnce(jsonResponse(createdProduct));
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Inventario' }));
+  fillProductForm();
+  fireEvent.click(screen.getByRole('button', { name: 'Crear item' }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
+  expect(screen.getByLabelText('SKU')).toHaveValue('');
+  expect(screen.getByLabelText('Codigo de barras')).toHaveValue('');
+  expect(screen.getByLabelText('Nombre')).toHaveValue('');
+  expect(screen.getByLabelText('Precio final')).toHaveValue(null);
+  expect(screen.getByText('Cafe r')).toBeInTheDocument();
+});
+
+test('clears issuer and resolution forms after successful fiscal save', async () => {
+  const policy = {
+    companyId: COMPANY_ID,
+    defaultSaleDocumentType: 'ELECTRONIC_INVOICE',
+    allowDocumentTypeOverride: true,
+    requirePinForOverride: true,
+  };
+  const issuer = {
+    id: '11111111-2222-3333-4444-555555555555',
+    legalName: ACTIVE_COMPANY.legalName,
+    nit: ACTIVE_COMPANY.identificationNumber,
+    verificationDigit: ACTIVE_COMPANY.verificationDigit,
+    municipalityCode: '11001',
+    active: true,
+  };
+  const resolution = {
+    id: '99999999-8888-7777-6666-555555555555',
+    documentType: 'ELECTRONIC_INVOICE',
+    resolutionNumber: '987654321',
+    prefix: 'FE',
+    fromNumber: 1,
+    toNumber: 100,
+    currentNumber: 0,
+    validFrom: '2026-01-01',
+    validTo: '2026-12-31',
+    environment: 'TEST',
+    active: true,
+  };
+  const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
+    .mockResolvedValueOnce(jsonResponse([]))
+    .mockResolvedValueOnce(jsonResponse([]))
+    .mockResolvedValueOnce(jsonResponse(policy))
+    .mockResolvedValueOnce(jsonResponse(issuer))
+    .mockResolvedValueOnce(jsonResponse([issuer]))
+    .mockResolvedValueOnce(jsonResponse([]))
+    .mockResolvedValueOnce(jsonResponse(policy))
+    .mockResolvedValueOnce(jsonResponse(resolution))
+    .mockResolvedValueOnce(jsonResponse([issuer]))
+    .mockResolvedValueOnce(jsonResponse([resolution]))
+    .mockResolvedValueOnce(jsonResponse(policy));
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Fiscal' }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(8));
+  fireEvent.change(screen.getByLabelText('Direccion fiscal'), { target: { value: 'Calle 1 # 2-3' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar emisor' }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(12));
+  expect(screen.getByLabelText('Direccion fiscal')).toHaveValue('');
+
+  fireEvent.change(screen.getByLabelText('Numero resolucion'), { target: { value: '987654321' } });
+  fireEvent.change(screen.getByLabelText('Prefijo'), { target: { value: 'FE' } });
+  fireEvent.change(screen.getByLabelText('Desde'), { target: { value: '1' } });
+  fireEvent.change(screen.getByLabelText('Hasta'), { target: { value: '100' } });
+  fireEvent.change(screen.getByLabelText('Vigencia desde'), { target: { value: '2026-01-01' } });
+  fireEvent.change(screen.getByLabelText('Vigencia hasta'), { target: { value: '2026-12-31' } });
+  fireEvent.change(screen.getByLabelText('Ambiente'), { target: { value: 'TEST' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Crear resolucion' }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(16));
+  expect(screen.getByLabelText('Numero resolucion')).toHaveValue('');
+  expect(screen.getByLabelText('Prefijo')).toHaveValue('');
+  expect(screen.getByLabelText('Desde')).toHaveValue(null);
+  expect(screen.getByLabelText('Hasta')).toHaveValue(null);
+});
+
+test('manages operational PIN from configuration menu', async () => {
+  const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
+    .mockResolvedValueOnce(jsonResponse({
+      companyId: COMPANY_ID,
+      configured: false,
+      valid: false,
+      locked: false,
+      mustChange: false,
+      remainingAttempts: 3,
+      updatedAt: null,
+    }))
+    .mockResolvedValueOnce(jsonResponse({
+      companyId: COMPANY_ID,
+      configured: true,
+      valid: true,
+      locked: false,
+      mustChange: false,
+      remainingAttempts: 3,
+      updatedAt: '2026-08-28T12:00:00Z',
+    }));
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'PIN operacional' }));
+  await waitFor(() => expect(screen.getByText('Sin configurar')).toBeInTheDocument());
+  fireEvent.change(screen.getByLabelText('PIN de 6 digitos'), { target: { value: '123456' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Crear PIN' }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(7));
+  expect(fetchMock).toHaveBeenNthCalledWith(6, `/api/v1/companies/${COMPANY_ID}/operational-pin`, expect.objectContaining({
+    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(fetchMock).toHaveBeenNthCalledWith(7, `/api/v1/companies/${COMPANY_ID}/operational-pin`, expect.objectContaining({
+    method: 'PUT',
+    body: JSON.stringify({ pin: '123456' }),
+    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(screen.getByLabelText('PIN de 6 digitos')).toHaveValue('');
+  expect(screen.getByText('Configurado')).toBeInTheDocument();
 });
 
 test('shows fiscal setup guidance when POS confirmation lacks active issuer', async () => {
@@ -873,6 +1015,61 @@ test('searches customer by document and sends selected customer id in POS sale',
   expect(salePayload.customerId).toBe(customer.id);
 });
 
+test('requests fiscal document override before confirming the same sale draft', async () => {
+  const draftSale = {
+    id: '33333333-3333-3333-3333-333333333333',
+    saleDate: '2026-08-28',
+    status: 'DRAFT',
+  };
+  const confirmedSale = {
+    ...draftSale,
+    status: 'CONFIRMED',
+    electronicDocument: {
+      prefix: 'POS',
+      documentNumber: 10,
+      cufeCude: 'mock-cufe-override',
+    },
+  };
+  const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
+    .mockResolvedValueOnce(jsonResponse(draftSale))
+    .mockResolvedValueOnce(jsonResponse({ saleId: draftSale.id, documentType: 'ELECTRONIC_POS' }))
+    .mockResolvedValueOnce(jsonResponse(confirmedSale))
+    .mockResolvedValueOnce(downloadResponse());
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
+  expect(screen.getAllByRole('button', { name: 'Cerrar venta' })).toHaveLength(1);
+  fireEvent.click(screen.getByRole('button', { name: 'Solicitar cambio de documento fiscal' }));
+  fireEvent.change(screen.getByLabelText('PIN operacional'), { target: { value: '123456' } });
+  fireEvent.change(screen.getByLabelText('Motivo del cambio'), { target: { value: 'Cliente solicita POS electronico' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Autorizar cambio' }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(7));
+  expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/v1/sales', expect.objectContaining({ method: 'POST' }));
+  expect(fetchMock).toHaveBeenNthCalledWith(7, `/api/v1/sales/${draftSale.id}/document-type-override`, expect.objectContaining({
+    method: 'POST',
+    headers: expect.objectContaining({
+      'X-Company-Id': COMPANY_ID,
+      'Idempotency-Key': expect.stringContaining('sale-document-type-override-'),
+    }),
+  }));
+  expect(JSON.parse(fetchMock.mock.calls[6][1].body)).toMatchObject({
+    documentType: 'ELECTRONIC_POS',
+    pin: '123456',
+    reason: 'Cliente solicita POS electronico',
+  });
+  expect(screen.getByText('Cambio autorizado solo para esta venta.')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cerrar venta' }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(9));
+  expect(fetchMock).toHaveBeenNthCalledWith(8, `/api/v1/sales/${draftSale.id}/confirm`, expect.objectContaining({ method: 'POST' }));
+  expect(fetchMock).toHaveBeenNthCalledWith(9, `/api/v1/sales/${draftSale.id}/receipt?widthMm=80`, expect.objectContaining({ method: 'POST' }));
+});
+
 test('creates fiscal credit note from dedicated fiscal documents module', async () => {
   const note = {
     id: '99999999-9999-9999-9999-999999999999',
@@ -1023,6 +1220,19 @@ function fillManagedUserForm() {
   fireEvent.change(screen.getByLabelText('Correo electronico'), { target: { value: 'vendedor@example.com' } });
   fireEvent.change(screen.getByLabelText('Password inicial'), { target: { value: 'VendedorDemo#2026!' } });
   fireEvent.change(screen.getByLabelText('Rol obligatorio'), { target: { value: '66666666-6666-6666-6666-666666666666' } });
+}
+
+function fillProductForm() {
+  fireEvent.change(screen.getByLabelText('SKU'), { target: { value: '123456789' } });
+  fireEvent.change(screen.getByLabelText('Codigo de barras'), { target: { value: '123456789' } });
+  fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Cafe r' } });
+  fireEvent.change(screen.getByLabelText('Descripcion'), { target: { value: 'cafe r' } });
+  fireEvent.change(screen.getByLabelText('Tipo de item'), { target: { value: 'PHYSICAL_GOOD' } });
+  fireEvent.change(screen.getByLabelText('Impuesto de venta'), { target: { value: 'IVA_19' } });
+  fireEvent.change(screen.getByLabelText('Precio final'), { target: { value: '6000' } });
+  fireEvent.change(screen.getByLabelText('Costo'), { target: { value: '5000' } });
+  fireEvent.change(screen.getByLabelText('Stock inicial'), { target: { value: '100' } });
+  fireEvent.change(screen.getByLabelText('Uso del item'), { target: { value: 'SELL_STOCK' } });
 }
 
 function fillSimpleNaturalCustomerForm() {

@@ -428,6 +428,11 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-213: En ventas, el vendedor debe ver subtotal/base gravable, IVA y total antes de cerrar la venta, calculados desde el snapshot de producto y cantidades capturadas.
 - RF-214: La tirilla o representacion imprimible de venta debe mostrar subtotal, IVA y total para que coincida con el resumen operativo de la SPA.
 - RF-215: El campo de codigo de barras en inventario debe aceptar digitacion manual o lector USB HID sin boton adicional, capturando el valor en el campo dedicado.
+- RF-216: Despues de crear correctamente un producto, la SPA debe limpiar el formulario de inventario para permitir registrar otro item sin arrastrar datos anteriores.
+- RF-217: Despues de guardar correctamente un emisor fiscal o una resolucion fiscal, la SPA debe limpiar los campos capturados del formulario correspondiente; los datos informativos derivados de la empresa activa pueden permanecer visibles como solo lectura.
+- RF-218: Debe existir una pantalla `PIN operacional` en Configuracion para que usuarios con `OPERATIONAL_PIN_MANAGE`, administradores empresariales o ROOT consulten estado, creen/cambien y desbloqueen el PIN operacional sin exponer el valor guardado.
+- RF-219: En Ventas no deben existir acciones duplicadas en el encabezado; las acciones operativas deben estar concentradas en la zona inferior del formulario para evitar cierres accidentales.
+- RF-220: En Ventas debe existir una accion para solicitar cambio excepcional del tipo de documento fiscal de la venta mediante PIN operacional, creando un borrador interno si la venta aun no existe y confirmando luego ese mismo borrador.
 
 ## Requisitos fase productizacion operativa
 

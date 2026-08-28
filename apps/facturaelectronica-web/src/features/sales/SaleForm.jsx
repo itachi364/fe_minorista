@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
+import { ActionModal } from '../../components/Modal.jsx';
 import { Field, SelectField } from '../../components/forms.jsx';
 import { calculateSaleTotals, calculateTaxAddedAmounts } from '../../utils/taxCalculations.js';
 
-export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSearch, customerOptions, selectedCustomer, onSearchCustomers, onSelectCustomer, updateItem, addItem, removeItem, onClose, onPrintReceipt, onScanBarcode, serviceConsumption, onLoadServiceConsumption, onUpdateServiceConsumptionQuantity, onUpdateServiceConsumptionReason, onConfirmServiceConsumption, busy, paymentOptions = [], walletOptions = [] }) {
+export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSearch, customerOptions, selectedCustomer, onSearchCustomers, onSelectCustomer, updateItem, addItem, removeItem, onClose, onPrintReceipt, onScanBarcode, serviceConsumption, onLoadServiceConsumption, onUpdateServiceConsumptionQuantity, onUpdateServiceConsumptionReason, onConfirmServiceConsumption, fiscalPolicy, documentOverride, overrideForm = {}, setOverrideForm = () => {}, fiscalDocumentTypeOptions = [], onRequestDocumentOverride, busy, paymentOptions = [], walletOptions = [] }) {
   const [barcodeScan, setBarcodeScan] = useState('');
+  const [overrideModalOpen, setOverrideModalOpen] = useState(false);
   const barcodeRef = useRef(null);
   const serviceLines = form.items.filter((item) => item.productId && item.itemType === 'SERVICE');
   const totals = calculateSaleTotals(form.items);
+  const saleDocumentOptions = fiscalDocumentTypeOptions.filter((option) => ['ELECTRONIC_INVOICE', 'ELECTRONIC_POS'].includes(option.value));
+  const defaultDocumentType = fiscalPolicy?.defaultSaleDocumentType || 'ELECTRONIC_INVOICE';
+  const effectiveDocumentType = documentOverride?.documentType || defaultDocumentType;
+  const canRequestOverride = Boolean(onRequestDocumentOverride) && fiscalPolicy?.allowDocumentTypeOverride !== false && saleDocumentOptions.length > 1;
 
   useEffect(() => {
     let ignore = false;
@@ -84,14 +90,11 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
     }
   }
 
-  return <form className="stack" onSubmit={submitClose}>
-    <section className="tool-panel">
+  return <>
+    <form className="stack" onSubmit={submitClose}>
+      <section className="tool-panel">
       <header className="panel-header">
         <h1>Ventas</h1>
-        <div className="button-row">
-          <button className="secondary" onClick={addItem} type="button">Agregar linea</button>
-          <button className="primary" disabled={busy} type="submit">Cerrar venta</button>
-        </div>
       </header>
       <div className="form-grid compact">
         <SelectField label="Comprador" value={form.buyerIdentificationMode} onChange={updateBuyerMode} options={[
@@ -124,8 +127,9 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
             submitScan();
           }
         }} />
-        <div className={saleId ? 'sale-state ready' : 'sale-state'}>
-          <span>{saleId ? 'Venta pendiente de emision fiscal' : 'Agrega productos y cierra la venta en un solo paso'}</span>
+        <div className={saleId || documentOverride ? 'sale-state ready' : 'sale-state'}>
+          <span>Documento fiscal: {labelFiscalDocument(effectiveDocumentType, saleDocumentOptions)}</span>
+          <small>{documentOverride ? 'Cambio autorizado solo para esta venta.' : 'Agrega productos y cierra la venta en un solo paso.'}</small>
           {saleId && <code>{saleId}</code>}
         </div>
       </div>
@@ -146,6 +150,12 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
         <span><b>Total</b>{money(totals.total)}</span>
       </div>
       <div className="button-row">
+        <button className="secondary" onClick={addItem} type="button">Agregar linea</button>
+        {canRequestOverride && (
+          <button className="secondary" disabled={busy} onClick={() => setOverrideModalOpen(true)} type="button">
+            Solicitar cambio de documento fiscal
+          </button>
+        )}
         <button className="primary" disabled={busy} type="submit">Cerrar venta</button>
         {saleId && <button className="secondary" disabled={busy} onClick={() => onPrintReceipt(saleId)} type="button">Imprimir comprobante</button>}
       </div>
@@ -206,8 +216,66 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
         )}
       </section>
       )}
-    </section>
-  </form>;
+      </section>
+    </form>
+    {overrideModalOpen && (
+      <SaleDocumentOverrideModal
+        form={overrideForm}
+        setForm={setOverrideForm}
+        documentOptions={saleDocumentOptions}
+        currentDocumentType={effectiveDocumentType}
+        onSubmit={async (payload) => {
+          await onRequestDocumentOverride(payload);
+          setOverrideModalOpen(false);
+        }}
+        onClose={() => setOverrideModalOpen(false)}
+        busy={busy}
+      />
+    )}
+  </>;
+}
+
+function SaleDocumentOverrideModal({ form, setForm, documentOptions, currentDocumentType, onSubmit, onClose, busy }) {
+  const availableDocumentOptions = documentOptions.filter((option) => option.value !== currentDocumentType);
+  const selectedDocumentType = availableDocumentOptions.some((option) => option.value === form.documentType)
+    ? form.documentType
+    : availableDocumentOptions[0]?.value || '';
+  const pinIsValid = /^\d{6}$/.test(form.pin || '');
+  const reasonIsValid = String(form.reason || '').trim().length >= 8;
+  const disabled = busy || !selectedDocumentType || !pinIsValid || !reasonIsValid;
+
+  function updatePin(value) {
+    setForm({ ...form, pin: String(value || '').replace(/\D/g, '').slice(0, 6) });
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    if (disabled) {
+      return;
+    }
+    await onSubmit({
+      documentType: selectedDocumentType,
+      authorizedBy: form.authorizedBy || null,
+      pin: form.pin,
+      reason: String(form.reason || '').trim(),
+    });
+  }
+
+  return <ActionModal title="Solicitar cambio de documento fiscal" onClose={onClose} size="medium">
+    <form className="modal-section" onSubmit={submit}>
+      <p className="hint">El cambio aplica solo a esta venta y requiere autorizacion operacional con PIN de administrador.</p>
+      <div className="modal-form-grid">
+        <SelectField label="Documento fiscal destino" value={selectedDocumentType} onChange={(value) => setForm({ ...form, documentType: value })} options={availableDocumentOptions} />
+        <Field label="Usuario autorizador" value={form.authorizedBy || ''} onChange={(value) => setForm({ ...form, authorizedBy: value })} placeholder="Opcional si autoriza el usuario actual" />
+        <Field label="PIN operacional" value={form.pin || ''} onChange={updatePin} type="password" maxLength={6} inputMode="numeric" pattern="[0-9]*" error={form.pin && !pinIsValid ? 'El PIN debe tener exactamente 6 digitos.' : ''} />
+        <Field label="Motivo del cambio" value={form.reason || ''} onChange={(value) => setForm({ ...form, reason: value })} error={form.reason && !reasonIsValid ? 'Indica un motivo de minimo 8 caracteres.' : ''} />
+      </div>
+      <div className="modal-actions">
+        <button className="secondary" disabled={busy} onClick={onClose} type="button">Cancelar</button>
+        <button className="primary" disabled={disabled} type="submit">Autorizar cambio</button>
+      </div>
+    </form>
+  </ActionModal>;
 }
 
 function SaleLineRow({ item, index, updateItem, removeItem }) {
@@ -239,4 +307,16 @@ function money(value) {
     return '';
   }
   return Number(value).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 2 });
+}
+
+function labelFiscalDocument(value, options) {
+  const option = options.find((item) => item.value === value);
+  if (option) {
+    return option.label;
+  }
+  const labels = {
+    ELECTRONIC_INVOICE: 'Factura electronica de venta',
+    ELECTRONIC_POS: 'POS electronico',
+  };
+  return labels[value] || value || 'Sin definir';
 }

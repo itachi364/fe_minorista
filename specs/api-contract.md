@@ -965,18 +965,19 @@ Reglas:
 - `GET /api/v1/fiscal-policy`
 - `PUT /api/v1/fiscal-policy`
 - `POST /api/v1/sales/{saleId}/document-type-override`
-- `POST /api/v1/operational-pins`
-- `PUT /api/v1/operational-pins/current`
-- `POST /api/v1/operational-pins/{userId}/unlock`
+- `GET /api/v1/companies/{companyId}/operational-pin`
+- `PUT /api/v1/companies/{companyId}/operational-pin`
+- `POST /api/v1/companies/{companyId}/operational-pin/verify`
+- `PUT /api/v1/companies/{companyId}/operational-pin/unlock`
 
 `FiscalPolicyResponse`:
 
 ```json
 {
   "companyId": "uuid",
-  "defaultPosDocumentType": "ELECTRONIC_INVOICE",
-  "allowSaleDocumentTypeOverride": true,
-  "requiresPinForOverride": true,
+  "defaultSaleDocumentType": "ELECTRONIC_INVOICE",
+  "allowDocumentTypeOverride": true,
+  "requirePinForOverride": true,
   "active": true
 }
 ```
@@ -985,8 +986,8 @@ Reglas:
 
 ```json
 {
-  "targetDocumentType": "ELECTRONIC_POS",
-  "authorizerEmail": "admin@empresa.com",
+  "documentType": "ELECTRONIC_POS",
+  "authorizedBy": "uuid-opcional",
   "pin": "123456",
   "reason": "Cliente solicita documento equivalente POS para esta venta"
 }
@@ -994,11 +995,14 @@ Reglas:
 
 Reglas:
 
-- `targetDocumentType` solo acepta tipos documentales habilitados por politica y licencia.
+- `documentType` solo acepta tipos documentales habilitados por politica y licencia.
+- Si `authorizedBy` no viaja en el payload, el backend usa el usuario autenticado enviado por contexto de seguridad.
 - El autorizador debe pertenecer a la misma empresa, estar activo, tener permiso `SALES_DOCUMENT_TYPE_OVERRIDE` y PIN operacional `ACTIVE`.
 - El PIN tiene exactamente 6 digitos numericos y viaja solo en el request de autorizacion; backend nunca lo retorna.
 - Tras 3 fallos consecutivos el PIN queda bloqueado.
 - El override aplica solo a la venta indicada y debe registrarse con auditoria.
+- Si la SPA solicita override antes de cerrar la venta, primero debe crear una venta `DRAFT`, enviar el override sobre ese `saleId` y luego confirmar ese mismo borrador.
+- `OperationalPinResponse` solo expone `configured`, `locked`, `mustChange`, `remainingAttempts` y `updatedAt`; nunca retorna PIN ni hash.
 
 ### Modulos fiscales independientes
 

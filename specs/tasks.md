@@ -5619,6 +5619,86 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
   - Validacion:
     - Vitest frontend.
 
+- [x] TASK-226: Limpiar formulario de producto despues de creacion
+  - Estado: DONE
+  - Requisitos: RF-216.
+  - Acceptance criteria:
+    - AC-304: Despues de crear un producto exitosamente, los campos del formulario de inventario vuelven a su estado inicial.
+    - AC-305: El producto creado permanece visible en la lista de productos registrada en memoria de la SPA.
+    - AC-306: Si la creacion falla, el formulario no se limpia para que el usuario pueda corregir.
+  - Descripcion: Resolver bug UX donde el formulario de inventario quedaba lleno despues de un `201/200` exitoso.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/tasks.md`
+  - Validacion:
+    - Vitest frontend.
+
+- [x] TASK-227: Limpiar formularios fiscales despues de guardado
+  - Estado: DONE
+  - Requisitos: RF-217.
+  - Acceptance criteria:
+    - AC-307: Despues de guardar un emisor fiscal exitosamente, se limpian responsabilidades, municipio y direccion capturada.
+    - AC-308: Los datos de empresa activa en emisor permanecen visibles solo lectura cuando aplican.
+    - AC-309: Despues de guardar una resolucion exitosamente, los campos de resolucion vuelven a su estado inicial.
+  - Descripcion: Reducir duplicados accidentales al crear emisores o resoluciones fiscales consecutivas.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/tasks.md`
+  - Validacion:
+    - Vitest frontend.
+
+- [x] TASK-228: Pantalla de administracion de PIN operacional
+  - Estado: DONE
+  - Requisitos: RF-184, RF-185, RF-186, RF-187, RF-218.
+  - Acceptance criteria:
+    - AC-310: La SPA muestra `PIN operacional` en Configuracion solo a usuarios autorizados por rol/permiso/licencia.
+    - AC-311: La pantalla permite consultar estado del PIN, crear/cambiar PIN de exactamente 6 digitos y limpiar el input despues de guardar.
+    - AC-312: La pantalla permite desbloquear un PIN bloqueado sin mostrar PIN ni hash.
+    - AC-313: El request de configuracion envia solo `{ "pin": "123456" }` por `PUT /api/v1/companies/{companyId}/operational-pin`.
+  - Descripcion: Cerrar la brecha funcional de UI para administrar el PIN usado en overrides operacionales de ventas fiscales.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/features/identity/OperationalPinPanel.jsx`
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/data/navigation.js`
+    - `apps/facturaelectronica-web/src/data/licenseModules.js`
+    - `apps/facturaelectronica-web/src/utils/authorization.js`
+    - `apps/facturaelectronica-web/src/utils/formStateFactory.js`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/tasks.md`
+  - Validacion:
+    - Vitest frontend.
+
+- [x] TASK-229: Simplificar acciones de venta y solicitar override documental con PIN
+  - Estado: DONE
+  - Requisitos: RF-184, RF-185, RF-186, RF-187, RF-219, RF-220.
+  - Acceptance criteria:
+    - AC-314: El encabezado de Ventas no muestra botones operativos duplicados.
+    - AC-315: Ventas permite abrir un modal para solicitar cambio excepcional de tipo documental con PIN operacional y motivo.
+    - AC-316: Si no existe venta en borrador, la SPA crea el borrador antes de enviar el override documental.
+    - AC-317: Al cerrar una venta con override, la SPA confirma el mismo borrador y no crea una venta adicional.
+  - Descripcion: Ajustar la UX de Ventas para tener un cierre claro de una sola accion principal y habilitar el cambio excepcional entre factura electronica y POS electronico mediante autorizacion operacional.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/features/sales/SaleForm.jsx`
+    - `apps/facturaelectronica-web/src/utils/formStateFactory.js`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+    - `specs/requirements.md`
+    - `specs/acceptance-criteria.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/tasks.md`
+  - Validacion:
+    - Vitest frontend.
+
 ## Fase 28: Configuracion contable empresarial
 
 - [x] TASK-222: Crear modulo visible de configuracion contable

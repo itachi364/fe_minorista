@@ -15,6 +15,7 @@ export const stepPermissionRules = {
   Logs: ['AUDIT_VIEW', 'GLOBAL_AUDIT_VIEW'],
   Usuarios: ['COMPANY_USERS_MANAGE', 'USERS_MANAGE'],
   Roles: ['COMPANY_ROLES_MANAGE', 'ROLES_MANAGE'],
+  'PIN operacional': ['OPERATIONAL_PIN_MANAGE'],
 };
 
 export function hasAnyPermission(access, permissions) {
