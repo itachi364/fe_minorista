@@ -20,7 +20,7 @@ flowchart TB
     Accounting[accounting-service]
     Audit[audit-service]
     Payroll[payroll-service]
-    Reporting[reporting-service objective]
+    Reporting[reporting-service]
   end
 
   subgraph DataPlane["Private data plane"]
@@ -39,12 +39,18 @@ flowchart TB
     AccountingQueue[SQS accounting-effects + DLQ]
     ProviderQueue[SQS provider-retries + DLQ]
     ReportingQueue[SQS reporting-projections + DLQ]
+    ReportExportQueue[SQS report-export-jobs + DLQ]
     AuditLambda[audit-event-writer Lambda]
     InventoryLambda[inventory-sale-effect Lambda]
     AccountingLambda[accounting-effect Lambda]
     ProviderRetryLambda[provider-submission-retry Lambda]
     ReportingLambda[reporting-projection Lambda]
+    ReportExportLambda[report-export-worker Lambda]
     Inbox[(Consumer Inbox tables)]
+  end
+
+  subgraph Notifications["AWS notifications"]
+    Ses[SES report notifications]
   end
 
   subgraph ExternalDian["External DIAN responsibility"]
@@ -98,6 +104,8 @@ flowchart TB
   Tenant --> AssetBucket
   Billing --> AssetBucket
   Reporting --> AssetBucket
+  Reporting --> ReportExportQueue
+  Reporting --> Ses
 
   Tenant --> RdsProxy
   Identity --> RdsProxy
@@ -124,6 +132,7 @@ flowchart TB
   EventBus --> AccountingQueue --> AccountingLambda
   EventBus --> ProviderQueue --> ProviderRetryLambda
   EventBus --> ReportingQueue --> ReportingLambda
+  EventBus --> ReportExportQueue --> ReportExportLambda
 
   AuditLambda --> Inbox
   InventoryLambda --> Inbox
@@ -137,3 +146,7 @@ flowchart TB
   ProviderRetryLambda --> DianProvider
   ReportingLambda --> RdsProxy
   ReportingLambda --> Reporting
+  ReportExportLambda --> RdsProxy
+  ReportExportLambda --> AssetBucket
+  ReportExportLambda --> Reporting
+  ReportExportLambda --> Ses

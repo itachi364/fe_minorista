@@ -47,7 +47,7 @@ public class BffProxyController {
         this.auditClient = auditClient;
     }
 
-    @RequestMapping("/api/v1/**")
+    @RequestMapping({ "/api/v1/**", "/reportes/descarga/**" })
     public ResponseEntity<byte[]> proxy(HttpServletRequest servletRequest, @RequestBody(required = false) byte[] body) {
         String path = servletRequest.getRequestURI();
         TargetService targetService = routeResolver.resolve(path);

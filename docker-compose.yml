@@ -385,17 +385,35 @@ services:
     working_dir: /workspace
     environment:
       SERVER_PORT: ${REPORTING_SERVICE_PORT:-8094}
+      REPORTING_DB_URL: ${REPORTING_DB_URL:-${DB_URL}}
+      REPORTING_DB_USERNAME: ${REPORTING_DB_USERNAME:-${DB_USERNAME}}
+      REPORTING_DB_PASSWORD: ${REPORTING_DB_PASSWORD:-${DB_PASSWORD}}
+      REPORTING_DB_POOL_MAX_SIZE: ${REPORTING_DB_POOL_MAX_SIZE:-${DB_POOL_MAX_SIZE:-3}}
+      REPORTING_DB_POOL_MIN_IDLE: ${REPORTING_DB_POOL_MIN_IDLE:-${DB_POOL_MIN_IDLE:-0}}
+      REPORTING_DB_CONNECTION_TIMEOUT_MS: ${REPORTING_DB_CONNECTION_TIMEOUT_MS:-${DB_CONNECTION_TIMEOUT_MS:-10000}}
+      REPORTING_DB_IDLE_TIMEOUT_MS: ${REPORTING_DB_IDLE_TIMEOUT_MS:-${DB_IDLE_TIMEOUT_MS:-60000}}
+      REPORTING_DB_MAX_LIFETIME_MS: ${REPORTING_DB_MAX_LIFETIME_MS:-${DB_MAX_LIFETIME_MS:-300000}}
       IDENTITY_SERVICE_URL: http://identity-service:${IDENTITY_SERVICE_PORT:-8092}
       INVENTORY_SERVICE_URL: http://inventory-service:${INVENTORY_SERVICE_PORT:-8087}
       BILLING_SERVICE_URL: http://billing-service:${BILLING_SERVICE_PORT:-8088}
       ACCOUNTING_SERVICE_URL: http://accounting-service:${ACCOUNTING_SERVICE_PORT:-8090}
       PAYROLL_SERVICE_URL: http://payroll-service:${PAYROLL_SERVICE_PORT:-8093}
       TENANT_SERVICE_URL: http://tenant-service:${TENANT_SERVICE_PORT:-8084}
+      APP_PUBLIC_BASE_URL: ${APP_PUBLIC_BASE_URL:-http://localhost:5173}
+      REPORT_EXPORT_LOCAL_STORAGE_PATH: ${REPORT_EXPORT_LOCAL_STORAGE_PATH:-/var/nexofiscal/report-exports}
+      REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS: ${REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS:-5}
+      REPORT_LINK_TOKEN_TTL_HOURS: ${REPORT_LINK_TOKEN_TTL_HOURS:-72}
+      REPORT_EXPORT_RETENTION_DAYS: ${REPORT_EXPORT_RETENTION_DAYS:-7}
+      REPORT_EXPORT_WORKER_ENABLED: ${REPORT_EXPORT_WORKER_ENABLED:-true}
+      REPORT_EXPORT_WORKER_FIXED_DELAY_MS: ${REPORT_EXPORT_WORKER_FIXED_DELAY_MS:-5000}
+      REPORT_EXPORT_BATCH_SIZE: ${REPORT_EXPORT_BATCH_SIZE:-5}
+      JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
     ports:
       - "${REPORTING_SERVICE_PORT:-8094}:${REPORTING_SERVICE_PORT:-8094}"
     volumes:
       - .:/workspace
       - maven_cache:/root/.m2
+      - report_exports_data:/var/nexofiscal/report-exports
     command: ["sh", "./mvnw", "-pl", "services/reporting-service", "clean", "spring-boot:run"]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${REPORTING_SERVICE_PORT:-8094}/actuator/health >/dev/null 2>&1 || exit 1"]
@@ -403,6 +421,9 @@ services:
       timeout: 5s
       retries: 10
       start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   bff-service:
     image: eclipse-temurin:17-jdk
@@ -453,7 +474,7 @@ services:
         condition: service_healthy
 
   frontend:
-    image: node:20-alpine
+    image: node:22-alpine
     container_name: facturaelectronica-frontend
     working_dir: /workspace/apps/facturaelectronica-web
     environment:
@@ -470,3 +491,4 @@ volumes:
   maven_cache:
   frontend_node_modules:
   tenant_branding_data:
+  report_exports_data:

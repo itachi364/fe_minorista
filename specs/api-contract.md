@@ -2757,7 +2757,7 @@ Regla: la exportacion reutiliza las mismas validaciones y filtros de `/api/v1/re
 
 ### Reportes asincronos avanzados
 
-Estado: diseno objetivo posterior a Fase 20 DIAN TASK-145 a TASK-163 y con Fase 21 seguridad TASK-164 a TASK-174 estable. No implementado en la API actual.
+Estado: implementacion inicial disponible en `reporting-service` y expuesta por BFF.
 
 Crear job de exportacion pesado:
 
@@ -2771,7 +2771,7 @@ Content-Type: application/json
 ```json
 {
   "reportCode": "SALES_BY_SELLER",
-  "format": "XLSX",
+  "format": "XLS",
   "chartType": "TABLE",
   "filters": {
     "from": "2026-08-01",
@@ -2789,7 +2789,7 @@ Respuesta:
   "jobId": "uuid",
   "status": "PENDING",
   "reportCode": "SALES_BY_SELLER",
-  "format": "XLSX",
+  "format": "XLS",
   "requestedAt": "2026-08-24T15:00:00Z",
   "downloadAvailable": false
 }
@@ -2820,8 +2820,10 @@ Respuesta:
 
 ```json
 {
+  "jobId": "uuid",
   "downloadLink": "{APP_PUBLIC_BASE_URL}/reportes/descarga/{token}",
-  "tokenExpiresAt": "2026-08-27T15:00:00Z"
+  "expiresAt": "2026-08-27T15:00:00Z",
+  "presignedTtlSeconds": 5
 }
 ```
 
@@ -2835,9 +2837,9 @@ Reglas:
 
 - El dominio no se hardcodea; se construye con `APP_PUBLIC_BASE_URL`.
 - El correo nunca incluye URL directa de S3.
-- Al hacer clic, el BFF valida token, job, empresa, usuario/alcance y estado.
-- Si el job esta `READY`, el BFF genera una URL prefirmada de S3 con TTL `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS`, inicialmente `5`.
-- El BFF responde con redireccion temporal hacia S3 o streaming controlado segun decision de seguridad/producto.
+- Crear/listar jobs requiere sesion, empresa activa, licencia y permiso `REPORTS_VIEW`.
+- El endpoint de descarga por token no requiere sesion activa; el token temporal intermediado es la credencial de descarga y se almacena solo como hash.
+- Si el job esta `READY`, la implementacion local entrega streaming controlado; produccion puede generar una URL prefirmada de S3 con TTL `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS`, inicialmente `5`.
 - `REPORT_LINK_TOKEN_TTL_HOURS` gobierna la vida del token intermediado; no gobierna la URL prefirmada de S3.
 - Cada clic exitoso o fallido genera auditoria.
 

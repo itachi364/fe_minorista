@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.msvanegasg.facturaelectronica.reporting.application.usecase.ReportNotFoundException;
+import com.msvanegasg.facturaelectronica.reporting.application.usecase.ReportExportJobNotFoundException;
 
 @RestControllerAdvice
 public class ReportingExceptionHandler {
@@ -21,11 +22,12 @@ public class ReportingExceptionHandler {
     })
     public ResponseEntity<ApiError> badRequest(Exception exception) {
         return ResponseEntity.badRequest().body(new ApiError(Instant.now(), 400, "VALIDATION_ERROR",
-                "La solicitud no cumple las reglas de validacion."));
+                exception.getMessage() == null ? "La solicitud no cumple las reglas de validacion."
+                        : exception.getMessage()));
     }
 
-    @ExceptionHandler(ReportNotFoundException.class)
-    public ResponseEntity<ApiError> notFound(ReportNotFoundException exception) {
+    @ExceptionHandler({ ReportNotFoundException.class, ReportExportJobNotFoundException.class })
+    public ResponseEntity<ApiError> notFound(RuntimeException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError(Instant.now(), 404,
                 "RESOURCE_NOT_FOUND", exception.getMessage()));
     }

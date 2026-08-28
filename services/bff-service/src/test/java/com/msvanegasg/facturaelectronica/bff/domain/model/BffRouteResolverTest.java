@@ -59,6 +59,10 @@ class BffRouteResolverTest {
         assertThat(resolver.resolve("/api/v1/report-definitions")).isEqualTo(TargetService.REPORTING);
         assertThat(resolver.resolve("/api/v1/reports/query")).isEqualTo(TargetService.REPORTING);
         assertThat(resolver.resolve("/api/v1/reports/export")).isEqualTo(TargetService.REPORTING);
+        assertThat(resolver.resolve("/api/v1/reports/export-jobs")).isEqualTo(TargetService.REPORTING);
+        assertThat(resolver.resolve("/api/v1/reports/export-jobs/11111111-1111-1111-1111-111111111111/download-link"))
+                .isEqualTo(TargetService.REPORTING);
+        assertThat(resolver.resolve("/reportes/descarga/abc123")).isEqualTo(TargetService.REPORTING);
         assertThat(resolver.resolve("/api/v1/reports/SALES_BY_SELLER/options")).isEqualTo(TargetService.REPORTING);
         assertThat(resolver.resolve("/api/v1/reports/sales")).isEqualTo(TargetService.BILLING);
         assertThat(resolver.resolve("/api/v1/reports/inventory-stock")).isEqualTo(TargetService.INVENTORY);

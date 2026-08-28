@@ -29,7 +29,7 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
     private static final Set<String> FORWARDED_HEADERS = Set.of("authorization", "x-company-id", "x-correlation-id",
             "x-user-id", "idempotency-key", "content-type", "accept");
     private static final Set<String> RESPONSE_HEADERS = Set.of("content-type", "content-disposition",
-            "x-correlation-id");
+            "x-correlation-id", "cache-control", "x-report-presigned-ttl-seconds");
     private static final Set<String> MUTATING_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
     private static final Map<TargetService, AccessRule> ACCESS_RULES = Map.of(
             TargetService.CATALOG, new AccessRule(Set.of("COMPANY_CATALOGS_MANAGE", "COMPANY_SETTINGS_MANAGE"),
@@ -96,6 +96,10 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
             return;
         }
         if (request.targetService() == TargetService.TENANT && !MUTATING_METHODS.contains(request.method().name())) {
+            return;
+        }
+        if (request.targetService() == TargetService.REPORTING
+                && normalizeApiPath(request.uri().getPath()).startsWith("reportes/descarga/")) {
             return;
         }
         AccessRule rule = accessRuleFor(request);

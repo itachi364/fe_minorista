@@ -138,6 +138,7 @@ export default function App() {
   const [reportDefinitions, setReportDefinitions] = useState([]);
   const [reportOptions, setReportOptions] = useState({});
   const [reportsData, setReportsData] = useState(null);
+  const [reportJobs, setReportJobs] = useState([]);
   const [accountingAccounts, setAccountingAccounts] = useState([]);
   const [accountingRules, setAccountingRules] = useState([]);
   const [payrollSettingsForm, setPayrollSettingsForm] = useState(createPayrollSettingsForm);
@@ -374,7 +375,7 @@ export default function App() {
       return;
     }
     autoReportsLoadKeyRef.current = key;
-    loadReportDefinitions().catch(() => undefined);
+    Promise.all([loadReportDefinitions(), loadReportJobs()]).catch(() => undefined);
   }, [currentStep, activeCompanyId, reportDefinitions.length]);
 
   useEffect(() => {
@@ -1622,6 +1623,57 @@ export default function App() {
     return { filename: result.filename };
   }
 
+  async function createReportExportJob() {
+    requireCompany();
+    const definition = reportDefinitions.find((report) => report.code === reportsForm.reportCode);
+    if (!definition) {
+      throw new Error('Selecciona un reporte.');
+    }
+    const filters = reportsForm.filters || {};
+    for (const filter of definition.filters || []) {
+      if (filter.required && !filters[filter.code]) {
+        throw new Error(`El filtro ${filter.label || filter.code} es obligatorio.`);
+      }
+    }
+    const created = await requestJson('/api/v1/reports/export-jobs', {
+      method: 'POST',
+      body: {
+        reportCode: reportsForm.reportCode,
+        chartType: reportsForm.chartType || 'TABLE',
+        format: reportsForm.exportFormat || 'XLS',
+        from: filters.from || null,
+        to: filters.to || null,
+        filters,
+        notifyByEmail: Boolean(reportsForm.notifyByEmail),
+      },
+      ...context,
+      idempotencyKey: createIdempotencyKey('report-export-job'),
+    });
+    await loadReportJobs();
+    return created;
+  }
+
+  async function loadReportJobs() {
+    requireCompany();
+    const jobs = await requestJson('/api/v1/reports/export-jobs', context);
+    setReportJobs(jobs || []);
+    return jobs;
+  }
+
+  async function openReportExportDownload(jobId) {
+    requireCompany();
+    const result = await requestJson(`/api/v1/reports/export-jobs/${jobId}/download-link`, {
+      method: 'POST',
+      ...context,
+      idempotencyKey: createIdempotencyKey('report-download-link'),
+    });
+    if (result?.downloadLink) {
+      window.open(result.downloadLink, '_blank', 'noopener');
+    }
+    await loadReportJobs();
+    return result;
+  }
+
   async function loadReportDefinitions() {
     requireCompany();
     const definitions = await requestJson('/api/v1/report-definitions', context);
@@ -1652,6 +1704,8 @@ export default function App() {
     setReportsForm((current) => ({
       reportCode: definition.code,
       chartType: definition.chartTypes?.[0] || 'TABLE',
+      exportFormat: current.exportFormat || 'XLS',
+      notifyByEmail: Boolean(current.notifyByEmail),
       filters: defaultReportFilters(definition, current.filters),
     }));
     setReportsData(null);
@@ -2100,7 +2154,7 @@ export default function App() {
             <PayrollPanel settingsForm={payrollSettingsForm} setSettingsForm={setPayrollSettingsForm} workerForm={payrollWorkerForm} setWorkerForm={setPayrollWorkerForm} paymentForm={dailyLaborPaymentForm} setPaymentForm={setDailyLaborPaymentForm} workers={payrollWorkers} payments={dailyLaborPayments} electronicDocuments={electronicPayrollDocuments} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} workerClassificationOptions={runtimeCatalogs.payrollWorkerClassificationOptions} paymentMethodOptions={runtimeCatalogs.paymentMethodOptions} onLoad={() => execute(loadPayrollData)} onSaveSettings={() => execute(savePayrollSettings)} onCreateWorker={() => execute(createPayrollWorker)} onCreateDailyPayment={() => execute(createDailyLaborPayment)} onIssueElectronicDocument={(paymentId) => execute(() => issueElectronicPayrollDocument(paymentId))} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Nomina)} />
           )}
           {currentStep === 'Reportes' && (
-            <ReportsForm definitions={reportDefinitions} options={reportOptions} form={reportsForm} setForm={setReportsForm} data={reportsData} onReportChange={(reportCode) => execute(() => selectReportDefinition(reportCode), { silentNullSuccess: true })} onLoadDefinitions={() => execute(loadReportDefinitions)} onSubmit={() => execute(loadReports)} onExport={(format) => execute(() => exportReport(format), { successMessage: 'Reporte descargado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Reportes)} />
+            <ReportsForm definitions={reportDefinitions} options={reportOptions} form={reportsForm} setForm={setReportsForm} data={reportsData} jobs={reportJobs} onReportChange={(reportCode) => execute(() => selectReportDefinition(reportCode), { silentNullSuccess: true })} onLoadDefinitions={() => execute(loadReportDefinitions)} onSubmit={() => execute(loadReports)} onExport={(format) => execute(() => exportReport(format), { successMessage: 'Reporte descargado correctamente.' })} onCreateExportJob={() => execute(createReportExportJob, { successMessage: 'Reporte en segundo plano creado correctamente.' })} onLoadExportJobs={() => execute(loadReportJobs, { silentNullSuccess: true })} onDownloadExportJob={(jobId) => execute(() => openReportExportDownload(jobId), { successMessage: 'Enlace de descarga generado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Reportes)} />
           )}
           {currentStep === 'Catalogos' && (
             <CatalogAdminPanel definitions={catalogDefinitions} selectedCatalogCode={selectedCatalogCode} setSelectedCatalogCode={setSelectedCatalogCode} items={catalogItems} form={catalogItemForm} setForm={setCatalogItemForm} onLoadDefinitions={() => execute(loadCatalogDefinitions)} onLoadItems={() => execute(() => loadCatalogItems())} onNew={startNewCatalogItem} onEdit={editCatalogItem} onSave={() => execute(saveCatalogItem)} onToggleActive={(item) => execute(() => toggleCatalogItemActive(item))} busy={busy || !canManageCatalogs} isRoot={isRoot} />

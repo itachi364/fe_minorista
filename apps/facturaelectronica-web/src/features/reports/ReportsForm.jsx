@@ -1,5 +1,5 @@
 import { DataTable } from '../../components/DataTable.jsx';
-import { Field, SelectField } from '../../components/forms.jsx';
+import { CheckField, Field, SelectField } from '../../components/forms.jsx';
 
 const chartLabels = {
   TABLE: 'Tabla',
@@ -14,10 +14,14 @@ export function ReportsForm({
   form,
   setForm,
   data,
+  jobs = [],
   onReportChange,
   onLoadDefinitions,
   onSubmit,
   onExport,
+  onCreateExportJob,
+  onLoadExportJobs,
+  onDownloadExportJob,
   busy,
 }) {
   const selectedReport = definitions.find((report) => report.code === form.reportCode);
@@ -54,6 +58,22 @@ export function ReportsForm({
             options={(selectedReport?.chartTypes || ['TABLE']).map((chartType) => ({ value: chartType, label: chartLabels[chartType] || chartType }))}
             disabled={busy || !selectedReport}
           />
+          <SelectField
+            label="Formato avanzado"
+            value={form.exportFormat || 'XLS'}
+            onChange={(exportFormat) => setForm({ ...form, exportFormat })}
+            options={[
+              { value: 'XLS', label: 'Excel' },
+              { value: 'CSV', label: 'CSV' },
+            ]}
+            disabled={busy || !selectedReport}
+          />
+          <CheckField
+            label="Notificar por correo cuando este listo"
+            checked={Boolean(form.notifyByEmail)}
+            onChange={(notifyByEmail) => setForm({ ...form, notifyByEmail })}
+            disabled={busy || !selectedReport}
+          />
         </div>
         {selectedReport && <p className="hint">{selectedReport.description}</p>}
         <div className="form-grid compact">
@@ -88,6 +108,34 @@ export function ReportsForm({
       sectionClassName="report-table-panel"
       rowKey={(_row, index) => `report-row-${index}`}
     />}
+
+    <DataTable
+      title="Reportes avanzados"
+      titleLevel={2}
+      description="Usa esta cola para reportes pesados. Cuando el estado sea Listo puedes generar el enlace temporal de descarga."
+      columns={['Reporte', 'Formato', 'Estado', 'Solicitado', 'Vence', 'Descargas', 'Acciones']}
+      rows={jobs.map((job) => [
+        reportLabel(job.reportCode, definitions),
+        job.format || '',
+        statusLabel(job.status),
+        shortDateTime(job.requestedAt),
+        shortDateTime(job.expiresAt),
+        job.downloadAttempts ?? 0,
+        {
+          searchText: job.status,
+          content: <button className="secondary" disabled={busy || job.status !== 'READY'} onClick={() => onDownloadExportJob(job.jobId || job.id)} type="button">Descargar</button>,
+        },
+      ])}
+      emptyMessage="Sin reportes avanzados creados."
+      sectionClassName="report-table-panel"
+      rowKey={(row, index) => `${row[0]}-${row[3]}-${index}`}
+      pageSize={5}
+    />
+
+    <footer className="panel-footer">
+      <button className="secondary" disabled={busy} onClick={onLoadExportJobs} type="button">Actualizar trabajos</button>
+      <button className="primary" disabled={busy || !selectedReport} onClick={onCreateExportJob} type="button">Generar en segundo plano</button>
+    </footer>
   </section>;
 }
 
@@ -238,6 +286,26 @@ function formatNumber(value) {
   return Number(value).toLocaleString('es-CO', { maximumFractionDigits: 2 });
 }
 
+function reportLabel(reportCode, definitions) {
+  const definition = definitions.find((report) => report.code === reportCode);
+  return definition?.label || reportCode || '';
+}
+
+function statusLabel(status) {
+  const labels = {
+    PENDING: 'Pendiente',
+    PROCESSING: 'Procesando',
+    READY: 'Listo',
+    FAILED: 'Fallido',
+    EXPIRED: 'Vencido',
+    REVOKED: 'Revocado',
+  };
+  return labels[status] || status || '';
+}
+
 function shortDateTime(value) {
+  if (!value) {
+    return '';
+  }
   return new Date(value).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
 }

@@ -2587,7 +2587,7 @@ Esta seccion normaliza la documentacion SDD para que cada task tenga una decisio
 
 ## TASK-190 a TASK-196: reportes asincronos avanzados con S3 y notificacion
 
-Estado: backlog SDD aprobado para ejecutar despues de Fase 20 DIAN TASK-145 a TASK-163 y con Fase 21 seguridad TASK-164 a TASK-174 estable.
+Estado: implementacion inicial completada en local/Docker. Produccion AWS conserva el mismo diseno con S3 privado, KMS y SES como adaptadores productivos.
 
 Decisiones:
 
@@ -2598,21 +2598,21 @@ Decisiones:
 - El enlace de correo no sera una URL directa de S3.
 - Al hacer clic, el BFF valida token, usuario/alcance, empresa, estado del job, licencia y RBAC; luego genera una URL prefirmada de S3 con TTL `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS`, inicialmente `5`.
 - `REPORT_LINK_TOKEN_TTL_HOURS` gobierna la vida del token enviado al correo; es independiente del TTL de S3.
-- Los archivos quedan en S3 privado con KMS y retencion configurable.
-- `reporting-projection-lambda` mantiene proyecciones reconstruibles; un `report-export-worker-lambda` o worker equivalente generara archivos pesados bajo demanda.
-- SES queda como canal objetivo de notificacion por correo en AWS.
+- En local/Docker los archivos quedan en un volumen privado de `reporting-service`; en produccion quedan en S3 privado con KMS y retencion configurable.
+- `reporting-projection-lambda` mantiene proyecciones reconstruibles; un `report-export-worker-lambda` o worker equivalente generara archivos pesados bajo demanda. La implementacion local usa un worker programado interno para pruebas end-to-end.
+- SES queda como canal objetivo de notificacion por correo en AWS. La implementacion local registra la notificacion sin exponer tokens ni enlaces en logs.
 - Toda solicitud, procesamiento, error, expiracion, revocacion, envio y descarga queda auditada sin exponer filtros sensibles completos, URLs S3, bucket/key publica ni secretos.
 
 Flujo objetivo:
 
 1. La SPA solicita `POST /api/v1/reports/export-jobs`.
 2. El BFF valida sesion, RBAC, licencia y empresa activa.
-3. `reporting-service` crea `report_export_job` en `PENDING` y publica evento.
-4. El worker toma el evento, marca `PROCESSING`, genera el archivo y lo guarda en S3 privado.
+3. `reporting-service` crea `report_export_job` en `PENDING`.
+4. El worker toma el job pendiente, marca `PROCESSING`, genera el archivo y lo guarda en storage privado.
 5. Si termina bien, marca `READY`, crea token de descarga y solicita notificacion por correo.
 6. El usuario abre el enlace `{APP_PUBLIC_BASE_URL}/reportes/descarga/{token}`.
-7. El BFF valida el token y genera URL prefirmada S3 con expiracion de 5 segundos.
-8. La respuesta redirige o entrega la descarga de forma controlada.
+7. El BFF enruta la descarga al `reporting-service`, que valida el token hasheado, estado y expiracion.
+8. La respuesta entrega la descarga de forma controlada; en produccion puede resolverse con URL S3 prefirmada de 5 segundos.
 
 Context7 evidence:
 
@@ -2622,37 +2622,37 @@ Context7 evidence:
 - Decision impact: La descarga pesada se resuelve al momento del clic con URL prefirmada de vida muy corta, no al momento de enviar el correo.
 
 ### TASK-190 - Disenar reportes asincronos avanzados
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Decision de diseno: Clasificar reportes sincronos vs pesados, estados de job, permisos, licencia y reglas de expiracion.
 - Componentes/capas: `reporting-service`, `bff-service`, `facturaelectronica-web`.
 
 ### TASK-191 - Disenar contratos API para jobs de reportes
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Decision de diseno: Exponer contratos para crear jobs, consultar estado/listado y resolver enlaces intermediados de descarga.
 - Componentes/capas: `reporting-service`, `bff-service`.
 
 ### TASK-192 - Disenar persistencia de trabajos de reportes
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Decision de diseno: Persistir jobs, tokens hasheados, intentos de descarga y notificaciones sin guardar URLs S3 directas ni secretos.
 - Componentes/capas: `reporting-service`, PostgreSQL.
 
 ### TASK-193 - Disenar worker asincrono de exportacion
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Decision de diseno: Procesar jobs por SQS/EventBridge + Lambda/worker idempotente y guardar archivos en S3 privado.
 - Componentes/capas: `report-export-worker-lambda`, `reporting-service`, S3.
 
 ### TASK-194 - Disenar descarga segura desde S3 con enlace intermediado
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Decision de diseno: Link publico parametrizable con `APP_PUBLIC_BASE_URL`, token intermediado con TTL propio y URL S3 prefirmada al clic por 5 segundos.
 - Componentes/capas: `bff-service`, `reporting-service`, S3.
 
 ### TASK-195 - Disenar notificaciones por correo
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Decision de diseno: Enviar correo por SES con enlace intermediado y auditoria de envio, fallo y rebote tecnico cuando aplique.
 - Componentes/capas: SES, `reporting-service`, `audit-service`.

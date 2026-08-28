@@ -188,6 +188,8 @@ export function createReportsForm() {
   return {
     reportCode: '',
     chartType: 'TABLE',
+    exportFormat: 'XLS',
+    notifyByEmail: false,
     filters: {
       from: toDateInputValue(firstDay),
       to: toDateInputValue(today),

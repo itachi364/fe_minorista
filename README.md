@@ -33,23 +33,23 @@ La fase vigente de producto define la evolucion visual y operativa de NexoFiscal
 - Marca publica `NexoFiscal` en frontend, login, titulo del navegador, sidebar y textos visibles.
 - Branding empresarial parametrizable por empresa: logo principal, logo de login, logo de encabezado y favicon.
 - Storage seguro de assets de branding, exportaciones y artefactos POS: metadata en PostgreSQL y archivos en storage local controlado o S3 privado/KMS en AWS.
-- Reportes avanzados mediante `reporting-service` objetivo: selector de reporte, filtros dinamicos, opciones de datos, graficos permitidos y exportaciones.
+- Reportes avanzados mediante `reporting-service`: selector de reporte, filtros dinamicos, opciones de datos, graficos permitidos, exportaciones sincronas y jobs asincronos descargables.
 - Reportes objetivo iniciales: ventas por vendedor, ventas por producto, compras, inventario/kardex, rentabilidad basica, cuentas por cobrar, cuentas por pagar, contabilidad, nomina/pagos diarios y uso de licencia.
 - Historico avanzado de ventas/documentos con detalle, vendedor, cliente/consumidor final, items, totales, estado DIAN/mock, artefactos, descargas y reimpresiones.
 - Comprobante POS imprimible con estrategia gradual: primero impresion web 58/80 mm; conectores ESC/POS, WebUSB, WebSerial o agente local quedan para una tarea posterior con hardware validado.
 
 Estado: `TASK-179` a `TASK-189` ya tienen implementacion inicial validada. Quedan evoluciones de volumen como paginacion avanzada, conectores directos de impresora y almacenamiento asincrono de artefactos pesados.
 
-## Backlog Aprobado Fase 24
+## Fase 24 Implementada: Reportes Asincronos
 
-La siguiente evolucion de reportes queda documentada para ejecutarse despues de cerrar Fase 20 DIAN (`TASK-145` a `TASK-163`) y mantener estable Fase 21 seguridad (`TASK-164` a `TASK-174`):
+La evolucion de reportes asincronos ya tiene implementacion inicial local/Docker:
 
 - Reportes pesados asincronos con jobs `PENDING`, `PROCESSING`, `READY`, `FAILED`, `EXPIRED` y `REVOKED`.
-- Worker/Lambda para generar archivos pesados sin bloquear HTTP.
-- Almacenamiento privado en S3/KMS o equivalente cloud.
-- Notificacion por correo cuando el reporte este listo.
+- Worker programado local para generar archivos pesados sin bloquear HTTP; en AWS se proyecta Lambda/SQS/EventBridge.
+- Almacenamiento privado en volumen Docker local; en AWS se proyecta S3/KMS.
+- Notificacion local por adaptador controlado; en AWS se proyecta SES.
 - Link de descarga intermediado por NexoFiscal usando `APP_PUBLIC_BASE_URL`, no URL directa de S3.
-- URL prefirmada S3 generada solo al hacer clic y con TTL inicial de `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS=5`.
+- Descarga intermediada con TTL inicial de `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS=5`; S3 prefirmado queda como adaptador productivo.
 - Token de link parametrizable con `REPORT_LINK_TOKEN_TTL_HOURS`.
 - Auditoria de solicitud, procesamiento, envio, fallo, expiracion, revocacion y descarga.
 
@@ -86,7 +86,7 @@ Estructura actual:
 - `services/accounting-service`: microservicio fisico para PUC, reglas contables, asientos, libro diario y mayor.
 - `services/audit-service`: microservicio fisico para auditoria fiscal y tecnica.
 - `services/payroll-service`: microservicio fisico para trabajadores, pagos diarios verbales y nomina electronica mock opcional.
-- `services/reporting-service`: microservicio fisico para catalogo/opciones/query de reportes avanzados, orquestando fuentes canonicas sin duplicar datos de negocio.
+- `services/reporting-service`: microservicio fisico para catalogo/opciones/query/export de reportes, jobs asincronos y descarga temporal, orquestando fuentes canonicas sin duplicar datos de negocio.
 
 
 La unidad de despliegue objetivo es un artefacto/contenedor por microservicio, no uno por endpoint individual.
@@ -442,7 +442,7 @@ El proyecto incluye `docker-compose.yml` con:
 
 - `postgres`: `postgres:16-alpine`.
 - `bff-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/bff-service clean spring-boot:run`.
-- `frontend`: `node:20-alpine`, ejecutando `npm install && npm run dev`.
+- `frontend`: `node:22-alpine`, ejecutando `npm install && npm run dev`.
 - `tenant-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/tenant-service clean spring-boot:run`.
 - `catalog-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/catalog-service clean spring-boot:run`.
 - `thirdparty-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/thirdparty-service clean spring-boot:run`.

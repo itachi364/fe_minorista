@@ -80,9 +80,10 @@ erDiagram
   COMPANY ||--o{ INBOX_EVENT : consumes
   COMPANY ||--o{ REPORTING_EVENT_PROJECTION : projects
   REPORT_DEFINITION ||--o{ REPORT_EXECUTION : executed_as
-  REPORT_DEFINITION ||--o{ REPORT_EXPORT : exports
+  REPORT_DEFINITION ||--o{ REPORT_EXPORT_JOB : exports
+  REPORT_EXPORT_JOB ||--o{ REPORT_EXPORT_DOWNLOAD_ATTEMPT : records
   COMPANY ||--o{ REPORT_EXECUTION : requests
-  COMPANY ||--o{ REPORT_EXPORT : owns
+  COMPANY ||--o{ REPORT_EXPORT_JOB : owns
 
   COMPANY {
     uuid id PK
@@ -330,12 +331,37 @@ erDiagram
     varchar status
   }
 
-  REPORT_EXPORT {
+  REPORT_EXPORT_JOB {
     uuid id PK
     uuid company_id FK
-    varchar report_code FK
+    uuid requested_by_user_id
+    varchar report_code
     varchar format
+    varchar chart_type
+    date from_date
+    date to_date
+    json filters_json
+    boolean notify_by_email
+    varchar token_hash
+    timestamp token_expires_at
     varchar storage_key
+    varchar filename
+    varchar content_type
+    bigint file_size
     varchar status
+    varchar notification_status
+    varchar failure_message
+    timestamp requested_at
+    timestamp started_at
+    timestamp completed_at
     timestamp expires_at
+  }
+
+  REPORT_EXPORT_DOWNLOAD_ATTEMPT {
+    uuid id PK
+    uuid job_id FK
+    uuid company_id FK
+    timestamp attempted_at
+    varchar result
+    varchar detail
   }

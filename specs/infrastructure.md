@@ -154,7 +154,7 @@ La capacidad final del pool por servicio debe dimensionarse con metricas reales:
 
 ## TASK-063 entorno local BFF/SPA
 
-Docker Compose agrega `bff-service` en el puerto `BFF_SERVICE_PORT` y `frontend` en `FRONTEND_PORT`. `bff-service` no declara `depends_on` hacia microservicios de negocio; sus dependencias REST son de runtime. El servicio `frontend` usa Node 20 y proxy Vite hacia `bff-service` dentro de la red Compose.
+Docker Compose agrega `bff-service` en el puerto `BFF_SERVICE_PORT` y `frontend` en `FRONTEND_PORT`. `bff-service` no declara `depends_on` hacia microservicios de negocio; sus dependencias REST son de runtime. El servicio `frontend` usa Node 22 para alinear Vite y el scanner de Sonar sin advertencias de motor, con proxy Vite hacia `bff-service` dentro de la red Compose.
 
 La arquitectura productiva se mantiene alineada con el target AWS: SPA estatica en S3/CloudFront, API Gateway hacia BFF en ECS Fargate y microservicios internos privados.
 
@@ -1607,7 +1607,7 @@ Esta seccion documenta de forma uniforme el impacto de infraestructura de cada t
 
 ## TASK-190 a TASK-196 infraestructura objetivo
 
-Estado: backlog SDD aprobado; ejecutar despues de Fase 20 DIAN TASK-145 a TASK-163 y con Fase 21 seguridad TASK-164 a TASK-174 estable.
+Estado: implementacion local completada; destino AWS mantiene S3/KMS/SES/SQS como adaptadores productivos.
 
 Componentes AWS objetivo:
 
@@ -1618,6 +1618,13 @@ Componentes AWS objetivo:
 - SES para notificaciones de reporte listo.
 - CloudWatch Logs/Metrics/Alarms para jobs, errores, expiraciones y volumen de descargas.
 - Secrets Manager/SSM Parameter Store para parametros de ambiente no sensibles o sensibles segun corresponda.
+
+Componentes locales/Docker implementados:
+
+- `reporting-service` con PostgreSQL/Flyway para jobs.
+- Worker programado interno controlado por `REPORT_EXPORT_WORKER_ENABLED`.
+- Volumen Docker privado `report_exports_data` para archivos exportados.
+- BFF como unica entrada publica para `POST/GET /api/v1/reports/export-jobs` y `/reportes/descarga/{token}`.
 
 Variables objetivo:
 
@@ -1643,43 +1650,43 @@ Reglas:
 - Las Lambdas deben ser idempotentes y usar DLQ/reintentos sin bloquear `reporting-service`.
 
 ### TASK-190 - Disenar reportes asincronos avanzados
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
-- Impacto de infraestructura: Define umbrales y modo de ejecucion sincrono/asincrono.
+- Impacto de infraestructura: Define umbrales y modo de ejecucion sincrono/asincrono; localmente usa scheduler interno.
 - Control operativo: separar reportes interactivos de trabajos batch.
 
 ### TASK-191 - Disenar contratos API para jobs de reportes
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Impacto de infraestructura: BFF sigue siendo unica entrada publica; `reporting-service` queda privado.
 - Control operativo: contratos deben soportar retries, idempotencia y errores funcionales.
 
 ### TASK-192 - Disenar persistencia de trabajos de reportes
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Impacto de infraestructura: PostgreSQL requiere tablas e indices por empresa, usuario, estado y expiracion.
 - Control operativo: no guardar secretos ni URLs S3 prefirmadas persistentes.
 
 ### TASK-193 - Disenar worker asincrono de exportacion
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
-- Impacto de infraestructura: Lambda/worker, cola, DLQ, permisos S3/KMS minimos.
+- Impacto de infraestructura: Lambda/worker, cola, DLQ, permisos S3/KMS minimos en AWS; scheduler interno en local.
 - Control operativo: idempotencia por job y reintentos seguros.
 
 ### TASK-194 - Disenar descarga segura desde S3 con enlace intermediado
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
-- Impacto de infraestructura: BFF necesita permiso limitado para presign de objetos autorizados.
+- Impacto de infraestructura: BFF enruta descarga intermediada; en AWS necesitara permiso limitado para presign de objetos autorizados.
 - Control operativo: TTL S3 de 5 segundos desde el clic; token de correo con TTL independiente.
 
 ### TASK-195 - Disenar notificaciones por correo
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
-- Impacto de infraestructura: SES, dominio/correo verificado y auditoria de envio.
+- Impacto de infraestructura: SES, dominio/correo verificado y auditoria de envio en AWS; localmente notificacion por log controlado.
 - Control operativo: no incluir datos sensibles ni adjuntos pesados en correo.
 
 ### TASK-196 - Disenar UI de reportes avanzados asincronos
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Impacto de infraestructura: Sin nuevo recurso cloud; consume BFF.
 - Control operativo: mostrar estados claros y no forzar retorno al modulo para descargar desde correo.

@@ -41,6 +41,8 @@ public final class BffRouteResolver {
         if (matchesAny(normalized, "report-definitions")
                 || normalized.equals("reports/query")
                 || normalized.equals("reports/export")
+                || matchesAny(normalized, "reports/export-jobs")
+                || matchesAny(normalized, "reportes/descarga")
                 || normalized.matches("reports/[^/]+/options")) {
             return TargetService.REPORTING;
         }

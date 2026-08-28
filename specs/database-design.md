@@ -419,64 +419,46 @@ Reglas:
 
 ## Reportes Asincronos Avanzados
 
-Estado: modelo objetivo para Fase 24; no implementado en la API actual y dependiente de Fase 20 DIAN TASK-145 a TASK-163 cerrada y Fase 21 seguridad TASK-164 a TASK-174 estable.
+Estado: implementacion inicial local de Fase 24 completada en `reporting-service`. La evolucion productiva conserva S3/KMS/SES/SQS como adaptadores externos sin cambiar contratos de dominio.
 
-Tablas objetivo en `reporting-service`:
+Tablas implementadas en `reporting-service`:
 
 - `reporting.report_export_job`
-- `reporting.report_export_download_token`
 - `reporting.report_export_download_attempt`
-- `reporting.report_export_notification`
 
 Campos principales de `report_export_job`:
 
 - `id`: UUID del job.
 - `company_id`: empresa propietaria.
-- `requested_by`: usuario solicitante.
+- `requested_by_user_id`: usuario solicitante cuando el BFF lo provee.
 - `report_code`: codigo tecnico del reporte.
-- `format`: `CSV`, `XLSX`, `PDF` cuando aplique.
+- `format`: `CSV`, `XLS`.
 - `chart_type`: tipo de visualizacion solicitada si aplica.
 - `filters_json`: filtros normalizados sin secretos ni payloads excesivos.
 - `status`: `PENDING`, `PROCESSING`, `READY`, `FAILED`, `EXPIRED`, `REVOKED`.
-- `storage_bucket_reference`: alias/referencia de bucket, no URL publica.
-- `storage_key`: key privada del objeto S3 o referencia cifrada equivalente.
-- `content_type`, `file_name`, `content_hash`, `size_bytes`.
-- `requested_at`, `processing_started_at`, `ready_at`, `expires_at`, `revoked_at`.
-- `error_code`, `error_message`: error sanitizado para UI/soporte.
-- `correlation_id`.
-
-Campos principales de `report_export_download_token`:
-
-- `id`: UUID interno.
-- `job_id`, `company_id`, `user_id`.
+- `storage_key`: key privada del objeto exportado o referencia equivalente.
+- `filename`, `content_type`, `file_size`.
+- `requested_at`, `started_at`, `completed_at`, `expires_at`.
 - `token_hash`: hash del token enviado al usuario; el token en claro no se almacena.
-- `status`: `ACTIVE`, `USED`, `EXPIRED`, `REVOKED`.
-- `expires_at`: TTL del enlace intermediado configurado por `REPORT_LINK_TOKEN_TTL_HOURS`.
-- `created_at`, `used_at`, `revoked_at`.
-- `last_correlation_id`.
+- `token_expires_at`: TTL del enlace intermediado configurado por `REPORT_LINK_TOKEN_TTL_HOURS`.
+- `notification_status`, `notification_message`: estado funcional de notificacion.
+- `failure_message`: error sanitizado para UI/soporte.
+- `download_attempts`, `last_downloaded_at`.
+- `created_at`, `updated_at`.
 
 Campos principales de `report_export_download_attempt`:
 
-- `id`, `job_id`, `company_id`, `token_id`.
-- `requested_by` cuando se pueda resolver.
-- `result`: `SUCCESS`, `DENIED`, `EXPIRED`, `REVOKED`, `FAILED`.
-- `requested_at`, `ip_hash`, `user_agent_hash`, `correlation_id`.
-- `failure_code`: motivo funcional sanitizado.
-
-Campos principales de `report_export_notification`:
-
-- `id`, `job_id`, `company_id`, `recipient_user_id`, `recipient_email_hash`.
-- `channel`: `EMAIL`.
-- `status`: `PENDING`, `SENT`, `FAILED`.
-- `provider_message_id`: referencia tecnica no sensible.
-- `sent_at`, `error_code`, `correlation_id`.
+- `id`, `job_id`, `company_id`.
+- `attempted_at`.
+- `result`: `SUCCESS`, `DENIED`, `FAILED`.
+- `detail`: motivo funcional sanitizado.
 
 Reglas:
 
 - El enlace publico se construye con `APP_PUBLIC_BASE_URL`, no se persiste como URL canonica obligatoria.
 - La URL prefirmada S3 se genera solo al hacer clic y no se guarda como dato permanente.
 - El TTL inicial de la URL prefirmada es `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS=5`.
-- Los archivos quedan en S3 privado con KMS y politica de retencion configurable.
+- Los archivos quedan en volumen privado local para Docker; en AWS quedan en S3 privado con KMS y politica de retencion configurable.
 - Las tablas deben indexarse por `company_id`, `requested_by`, `status`, `report_code`, `requested_at` y `expires_at`.
 - Los jobs y tokens deben respetar aislamiento multiempresa y RBAC.
 

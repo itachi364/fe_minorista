@@ -4867,8 +4867,8 @@
 
 Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable despues de Fase 20 DIAN (`TASK-145` a `TASK-163`) y con Fase 21 seguridad (`TASK-164` a `TASK-174`) estable.
 
-- [ ] TASK-190: Disenar reportes asincronos avanzados
-  - Estado: TODO
+- [x] TASK-190: Disenar reportes asincronos avanzados
+  - Estado: DONE
   - Requisitos: RF-146, RF-147, RF-148, RF-154, RF-155.
   - Acceptance criteria: AC-209, AC-210, AC-215, AC-216.
   - Descripcion: Definir reglas para clasificar reportes sincronos vs pesados, estados de job, RBAC, licencia, auditoria y expiracion.
@@ -4886,9 +4886,12 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - ROOT, administradores y usuarios normales tienen alcance diferenciado.
   - Validacion:
     - Revision SDD y matriz RF/AC.
+  - Resultado:
+    - Flujo implementado en `reporting-service` con jobs `PENDING`, `PROCESSING`, `READY`, `FAILED` y expiracion `EXPIRED`.
+    - Los reportes pequenos conservan consulta/exportacion sincrona.
 
-- [ ] TASK-191: Disenar contratos API para jobs de reportes
-  - Estado: TODO
+- [x] TASK-191: Disenar contratos API para jobs de reportes
+  - Estado: DONE
   - Requisitos: RF-146, RF-147, RF-153, RF-154.
   - Acceptance criteria: AC-209, AC-212, AC-215.
   - Descripcion: Definir endpoints para crear jobs, listar jobs autorizados, consultar detalle y crear/usar enlaces intermediados de descarga.
@@ -4903,9 +4906,12 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - La API no expone bucket/key S3 ni URL prefirmada persistente.
   - Validacion:
     - Revision de contrato API y escenarios de error.
+  - Resultado:
+    - Endpoints implementados: `POST/GET /api/v1/reports/export-jobs`, `GET /api/v1/reports/export-jobs/{jobId}`, `POST /api/v1/reports/export-jobs/{jobId}/download-link` y `GET /reportes/descarga/{token}`.
+    - BFF enruta jobs y descarga intermediada hacia `reporting-service`.
 
-- [ ] TASK-192: Disenar persistencia de trabajos de reportes
-  - Estado: TODO
+- [x] TASK-192: Disenar persistencia de trabajos de reportes
+  - Estado: DONE
   - Requisitos: RF-147, RF-148, RF-149, RF-152, RF-155.
   - Acceptance criteria: AC-210, AC-214, AC-216.
   - Descripcion: Definir tablas `report_export_job`, tokens, intentos de descarga y notificaciones con indices multiempresa.
@@ -4921,9 +4927,12 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - Indexar por empresa, usuario, estado, reporte y expiracion.
   - Validacion:
     - Revision de modelo y diccionario.
+  - Resultado:
+    - Flyway `reporting.V001__create_report_export_jobs.sql` crea `report_export_job` y `report_export_download_attempt`.
+    - JPA persiste token hasheado, estado, filtros, archivo, notificacion y conteo de descargas.
 
-- [ ] TASK-193: Disenar worker asincrono de exportacion
-  - Estado: TODO
+- [x] TASK-193: Disenar worker asincrono de exportacion
+  - Estado: DONE
   - Requisitos: RF-146, RF-149, RF-155.
   - Acceptance criteria: AC-210, AC-216.
   - Descripcion: Definir `report-export-worker-lambda` o worker equivalente para consumir eventos, generar archivos pesados y guardar en S3 privado.
@@ -4939,9 +4948,12 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - Archivos cifrados con KMS y retencion configurable.
   - Validacion:
     - Revision de arquitectura e infraestructura.
+  - Resultado:
+    - Worker programado local procesa jobs pendientes con `REPORT_EXPORT_WORKER_ENABLED`.
+    - El puerto de storage queda desacoplado para reemplazo por S3/KMS en AWS sin tocar dominio/aplicacion.
 
-- [ ] TASK-194: Disenar descarga segura desde S3 con enlace intermediado
-  - Estado: TODO
+- [x] TASK-194: Disenar descarga segura desde S3 con enlace intermediado
+  - Estado: DONE
   - Requisitos: RF-150, RF-151, RF-152, RF-153, RF-155.
   - Acceptance criteria: AC-211, AC-212, AC-213, AC-214, AC-216.
   - Descripcion: Definir descarga mediante link de aplicacion construido con `APP_PUBLIC_BASE_URL`, validacion BFF y URL S3 prefirmada al clic con TTL inicial de 5 segundos.
@@ -4958,9 +4970,12 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - Token vencido/revocado muestra mensaje funcional claro.
   - Validacion:
     - Revision de seguridad y contrato de descarga.
+  - Resultado:
+    - El link se construye con `APP_PUBLIC_BASE_URL` y token aleatorio almacenado solo como hash.
+    - El endpoint `/reportes/descarga/{token}` entrega el archivo con `Cache-Control: no-store` y TTL configurado en `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS`.
 
-- [ ] TASK-195: Disenar notificaciones por correo
-  - Estado: TODO
+- [x] TASK-195: Disenar notificaciones por correo
+  - Estado: DONE
   - Requisitos: RF-150, RF-152, RF-155.
   - Acceptance criteria: AC-211, AC-216.
   - Descripcion: Definir envio de correo por SES con enlace intermediado y auditoria de envio/fallo.
@@ -4976,9 +4991,12 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - Registrar estado de notificacion y correlation ID.
   - Validacion:
     - Revision de flujo de notificacion y privacidad.
+  - Resultado:
+    - Puerto `ReportNotificationPort` implementado localmente como registro controlado sin exponer token ni link en logs.
+    - SES queda como adaptador productivo pendiente sobre el mismo puerto.
 
-- [ ] TASK-196: Disenar UI de reportes avanzados asincronos
-  - Estado: TODO
+- [x] TASK-196: Disenar UI de reportes avanzados asincronos
+  - Estado: DONE
   - Requisitos: RF-146, RF-153, RF-154.
   - Acceptance criteria: AC-209, AC-214, AC-215.
   - Descripcion: Definir experiencia de usuario para "generar en segundo plano", listado de jobs, estados, errores y descarga disponible desde UI/correo.
@@ -4994,6 +5012,9 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - La UI muestra estado y errores funcionales en espanol.
   - Validacion:
     - Revision UX y matriz de permisos.
+  - Resultado:
+    - `ReportsForm` permite generar en segundo plano, seleccionar formato, pedir notificacion, listar jobs, refrescar estado y descargar cuando el job queda `READY`.
+    - Validado con `.\mvnw.cmd -pl services/reporting-service,services/bff-service test` y `npm run build`.
 
 ## Fase 25: Ajustes QA RBAC, POS e i18n
 

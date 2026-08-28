@@ -21,7 +21,7 @@
     "vite": "^7.3.1"
   },
   "devDependencies": {
-    "@sonar/scan": "^4.4.0",
+    "@sonar/scan": "^5.0.0",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.1.0",
     "@vitest/coverage-v8": "^3.2.7",
