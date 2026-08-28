@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.msvanegasg.facturaelectronica.billingservice.BillingServiceApplication;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ElectronicDocumentQuery;
+import com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocument;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
@@ -81,11 +82,31 @@ class SalePersistenceAdapterTest {
         assertThat(documents.get(0).electronicDocument().id()).isEqualTo(saved.electronicDocument().id());
     }
 
+    @Test
+    void findsSalesByProductWithDynamicFilters() {
+        UUID companyId = UUID.randomUUID();
+        UUID expectedProductId = UUID.randomUUID();
+        Sale expected = adapter.save(draftSale(companyId, expectedProductId, "expected-sale"));
+        adapter.save(draftSale(companyId, UUID.randomUUID(), "other-sale"));
+
+        List<Sale> sales = adapter.find(new SaleQuery(companyId, null,
+                java.time.LocalDate.parse("2026-05-01"), java.time.LocalDate.parse("2026-05-31"),
+                null, null, expectedProductId, null, null));
+
+        assertThat(sales).extracting(Sale::id).containsExactly(expected.id());
+        assertThat(sales.get(0).lines()).extracting(SaleLine::productId).contains(expectedProductId);
+    }
+
     private static Sale draftSale() {
         UUID saleId = UUID.randomUUID();
         UUID companyId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        return Sale.draft(saleId, companyId, null, PaymentMethodCode.CASH, null, SaleChannel.POS, "sale-" + saleId, null,
+        return draftSale(companyId, productId, "sale-" + saleId);
+    }
+
+    private static Sale draftSale(UUID companyId, UUID productId, String idempotencyKey) {
+        UUID saleId = UUID.randomUUID();
+        return Sale.draft(saleId, companyId, null, PaymentMethodCode.CASH, null, SaleChannel.POS, idempotencyKey, null,
                 Instant.parse("2026-05-19T10:00:00Z"),
                 List.of(SaleLine.calculate(UUID.randomUUID(), productId, "SKU-1", "Producto",
                         SaleItemType.PHYSICAL_GOOD, true, new BigDecimal("2.00"), new BigDecimal("15000.00"),

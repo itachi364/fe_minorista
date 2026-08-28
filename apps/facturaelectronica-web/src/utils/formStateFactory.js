@@ -181,6 +181,7 @@ export function createSaleDocumentOverrideForm() {
   return {
     documentType: 'ELECTRONIC_POS',
     authorizedBy: '',
+    authorizedBySearch: '',
     pin: '',
     reason: '',
   };

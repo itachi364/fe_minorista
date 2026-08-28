@@ -3,10 +3,11 @@ import { ActionModal } from '../../components/Modal.jsx';
 import { Field, SelectField } from '../../components/forms.jsx';
 import { calculateSaleTotals, calculateTaxAddedAmounts } from '../../utils/taxCalculations.js';
 
-export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSearch, customerOptions, selectedCustomer, onSearchCustomers, onSelectCustomer, updateItem, addItem, removeItem, onClose, onPrintReceipt, onScanBarcode, serviceConsumption, onLoadServiceConsumption, onUpdateServiceConsumptionQuantity, onUpdateServiceConsumptionReason, onConfirmServiceConsumption, fiscalPolicy, documentOverride, overrideForm = {}, setOverrideForm = () => {}, fiscalDocumentTypeOptions = [], onRequestDocumentOverride, busy, paymentOptions = [], walletOptions = [] }) {
+export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSearch, customerOptions, selectedCustomer, onSearchCustomers, onSelectCustomer, updateItem, removeItem, onClose, onPrintReceipt, onScanBarcode, serviceConsumption, onLoadServiceConsumption, onUpdateServiceConsumptionQuantity, onUpdateServiceConsumptionReason, onConfirmServiceConsumption, fiscalPolicy, documentOverride, overrideForm = {}, setOverrideForm = () => {}, fiscalDocumentTypeOptions = [], authorizerOptions = [], onLoadAuthorizers, onRequestDocumentOverride, busy, paymentOptions = [], walletOptions = [] }) {
   const [barcodeScan, setBarcodeScan] = useState('');
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
   const barcodeRef = useRef(null);
+  const lastSubmittedScanRef = useRef({ value: '', at: 0 });
   const serviceLines = form.items.filter((item) => item.productId && item.itemType === 'SERVICE');
   const totals = calculateSaleTotals(form.items);
   const saleDocumentOptions = fiscalDocumentTypeOptions.filter((option) => ['ELECTRONIC_INVOICE', 'ELECTRONIC_POS'].includes(option.value));
@@ -51,6 +52,11 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
     if (!normalized) {
       return;
     }
+    const now = Date.now();
+    if (lastSubmittedScanRef.current.value === normalized && now - lastSubmittedScanRef.current.at < 350) {
+      return;
+    }
+    lastSubmittedScanRef.current = { value: normalized, at: now };
     await onScanBarcode(normalized);
     setBarcodeScan('');
     window.setTimeout(() => barcodeRef.current?.focus(), 0);
@@ -150,9 +156,11 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
         <span><b>Total</b>{money(totals.total)}</span>
       </div>
       <div className="button-row">
-        <button className="secondary" onClick={addItem} type="button">Agregar linea</button>
         {canRequestOverride && (
-          <button className="secondary" disabled={busy} onClick={() => setOverrideModalOpen(true)} type="button">
+          <button className="secondary" disabled={busy} onClick={() => {
+            Promise.resolve(onLoadAuthorizers?.()).catch(() => undefined);
+            setOverrideModalOpen(true);
+          }} type="button">
             Solicitar cambio de documento fiscal
           </button>
         )}
@@ -223,6 +231,7 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
         form={overrideForm}
         setForm={setOverrideForm}
         documentOptions={saleDocumentOptions}
+        authorizerOptions={authorizerOptions}
         currentDocumentType={effectiveDocumentType}
         onSubmit={async (payload) => {
           await onRequestDocumentOverride(payload);
@@ -235,17 +244,35 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
   </>;
 }
 
-function SaleDocumentOverrideModal({ form, setForm, documentOptions, currentDocumentType, onSubmit, onClose, busy }) {
+function SaleDocumentOverrideModal({ form, setForm, documentOptions, authorizerOptions = [], currentDocumentType, onSubmit, onClose, busy }) {
   const availableDocumentOptions = documentOptions.filter((option) => option.value !== currentDocumentType);
   const selectedDocumentType = availableDocumentOptions.some((option) => option.value === form.documentType)
     ? form.documentType
     : availableDocumentOptions[0]?.value || '';
+  const authorizers = authorizerOptions
+    .filter((user) => user?.id)
+    .map((user) => ({
+      id: user.id,
+      label: `${user.fullName || 'Usuario'} - ${user.email || user.id}`,
+      email: user.email || '',
+    }));
   const pinIsValid = /^\d{6}$/.test(form.pin || '');
   const reasonIsValid = String(form.reason || '').trim().length >= 8;
   const disabled = busy || !selectedDocumentType || !pinIsValid || !reasonIsValid;
 
   function updatePin(value) {
     setForm({ ...form, pin: String(value || '').replace(/\D/g, '').slice(0, 6) });
+  }
+
+  function updateAuthorizer(value) {
+    const selected = authorizers.find((authorizer) => [authorizer.id, authorizer.email, authorizer.label]
+      .filter(Boolean)
+      .some((candidate) => candidate.toLowerCase() === String(value || '').toLowerCase()));
+    setForm({
+      ...form,
+      authorizedBy: selected?.id || '',
+      authorizedBySearch: value,
+    });
   }
 
   async function submit(event) {
@@ -266,7 +293,12 @@ function SaleDocumentOverrideModal({ form, setForm, documentOptions, currentDocu
       <p className="hint">El cambio aplica solo a esta venta y requiere autorizacion operacional con PIN de administrador.</p>
       <div className="modal-form-grid">
         <SelectField label="Documento fiscal destino" value={selectedDocumentType} onChange={(value) => setForm({ ...form, documentType: value })} options={availableDocumentOptions} />
-        <Field label="Usuario autorizador" value={form.authorizedBy || ''} onChange={(value) => setForm({ ...form, authorizedBy: value })} placeholder="Opcional si autoriza el usuario actual" />
+        <Field label="Usuario autorizador" value={form.authorizedBySearch || ''} onChange={updateAuthorizer} list="sale-authorizer-options" placeholder="Opcional si autoriza el usuario actual" autoComplete="off" />
+        <datalist id="sale-authorizer-options">
+          {authorizers.map((authorizer) => (
+            <option key={authorizer.id} value={authorizer.email || authorizer.id}>{authorizer.label}</option>
+          ))}
+        </datalist>
         <Field label="PIN operacional" value={form.pin || ''} onChange={updatePin} type="password" maxLength={6} inputMode="numeric" pattern="[0-9]*" error={form.pin && !pinIsValid ? 'El PIN debe tener exactamente 6 digitos.' : ''} />
         <Field label="Motivo del cambio" value={form.reason || ''} onChange={(value) => setForm({ ...form, reason: value })} error={form.reason && !reasonIsValid ? 'Indica un motivo de minimo 8 caracteres.' : ''} />
       </div>

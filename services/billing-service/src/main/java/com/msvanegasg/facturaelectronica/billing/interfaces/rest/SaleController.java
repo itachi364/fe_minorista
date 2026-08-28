@@ -91,9 +91,10 @@ public class SaleController {
             @RequestParam(required = false) LocalDate to,
             @RequestParam(required = false) UUID sellerId,
             @RequestParam(required = false) UUID customerId,
+            @RequestParam(required = false) UUID productId,
             @RequestParam(required = false) PaymentMethodCode paymentMethodCode,
             @RequestParam(required = false) ElectronicDocumentStatus documentStatus) {
-        return saleUseCase.find(new SaleQuery(companyId, status, from, to, sellerId, customerId, paymentMethodCode,
+        return saleUseCase.find(new SaleQuery(companyId, status, from, to, sellerId, customerId, productId, paymentMethodCode,
                 documentStatus)).stream().map(BillingRestMapper::toResponse).toList();
     }
 

@@ -336,3 +336,9 @@
 - AC-315: Dado que la politica fiscal permite override y existen tipos fiscales alternos, cuando el vendedor abre Ventas, entonces puede solicitar cambio de documento fiscal desde un modal con PIN operacional y motivo.
 - AC-316: Dada una venta sin borrador creado, cuando se autoriza el cambio de documento fiscal, entonces la SPA crea primero la venta en borrador y envia el override a `/api/v1/sales/{saleId}/document-type-override`.
 - AC-317: Dado un override autorizado sobre una venta en borrador, cuando el usuario cierre la venta, entonces la SPA confirma ese mismo `saleId` en lugar de crear una venta nueva.
+- AC-318: Dado el reporte `SALES_BY_PRODUCT`, cuando se consulte con `from`, `to` y `productId` opcional, entonces `billing-service` debe responder `200` con ventas filtradas por producto o lista vacia, sin `500` por parametros nulos de PostgreSQL.
+- AC-319: Dado el reporte `SALES_BY_SELLER`, cuando se consulte con `sellerId` opcional, entonces `billing-service` debe filtrar por vendedor sin afectar otros filtros de fecha, estado, cliente, metodo de pago o estado documental.
+- AC-320: Dado el modulo Ventas, cuando se escanee un codigo de barras valido, entonces la SPA debe agregar o incrementar la linea y no debe abrir modal de exito.
+- AC-321: Dado el modulo Ventas, cuando el scanner agregue una linea, entonces el campo de scanner queda vacio y enfocado para el siguiente codigo.
+- AC-322: Dado el modulo Ventas, entonces no debe existir boton manual `Agregar linea`; las lineas se originan por scanner o busqueda de producto aprobada.
+- AC-323: Dado el modal de cambio documental, cuando existan usuarios autorizadores, entonces debe mostrarse un selector/buscador por correo/nombre que envie `authorizedBy` como `userId`; si el actor actual autoriza, el campo puede quedar vacio.

@@ -44,8 +44,9 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
 
     @Override
     public List<Sale> find(SaleQuery query) {
-        return repository.findSales(query.companyId(), query.status(), query.sellerId(), query.customerId(),
-                query.paymentMethodCode(), query.documentStatus(), startOfDay(query.from()), startOfNextDay(query.to()))
+        return repository.findSalesDynamic(query.companyId(), query.status(), query.sellerId(), query.customerId(),
+                query.productId(), query.paymentMethodCode(), query.documentStatus(), startOfDay(query.from()),
+                startOfNextDay(query.to()))
                 .stream().map(SalePersistenceAdapter::toDomain).toList();
     }
 

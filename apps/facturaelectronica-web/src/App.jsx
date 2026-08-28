@@ -431,12 +431,18 @@ export default function App() {
   async function execute(action, options = {}) {
     markActivity();
     setBusy(true);
-    setActionStatus({ status: 'running', message: 'Procesando solicitud...' });
+    if (!options.silentRunning) {
+      setActionStatus({ status: 'running', message: 'Procesando solicitud...' });
+    }
     try {
       const result = await action();
       if (result === null && options.silentNullSuccess) {
         setActionStatus({ status: 'idle' });
         return null;
+      }
+      if (options.silentSuccess) {
+        setActionStatus({ status: 'idle' });
+        return result;
       }
       const successMessage = options.successMessage || 'La accion se realizo correctamente.';
       setActionStatus({ status: 'success', message: successMessage, autoClose: true });
@@ -2253,7 +2259,7 @@ export default function App() {
             <AccountingConfigurationPanel accounts={accountingAccounts} rules={accountingRules} onLoad={() => execute(loadAccountingConfiguration, { successMessage: 'Estado contable actualizado.' })} onConfigure={(payload) => execute(() => saveAccountingConfiguration(payload), { successMessage: 'Configuracion contable guardada correctamente.' })} onUpdateAccount={(accountId, payload) => execute(() => updateAccountingAccount(accountId, payload), { successMessage: 'Cuenta contable actualizada correctamente.' })} onDeactivateAccount={(accountId) => execute(() => deactivateAccountingAccount(accountId), { successMessage: 'Cuenta contable inactivada correctamente.' })} onUpdateRule={(ruleId, payload) => execute(() => updateAccountingRule(ruleId, payload), { successMessage: 'Regla contable actualizada correctamente.' })} onDeactivateRule={(ruleId) => execute(() => deactivateAccountingRule(ruleId), { successMessage: 'Regla contable inactivada correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Configuracion contable'])} />
           )}
           {currentStep === 'Ventas' && (
-            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode))} onClose={() => execute(closeSale, { successMessage: 'Venta cerrada correctamente.' })} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} fiscalPolicy={fiscalPolicy} documentOverride={saleDocumentOverride} overrideForm={saleDocumentOverrideForm} setOverrideForm={setSaleDocumentOverrideForm} fiscalDocumentTypeOptions={runtimeCatalogs.fiscalDocumentTypeOptions} onRequestDocumentOverride={(payload) => execute(() => requestSaleDocumentTypeOverride(payload), { successMessage: 'Cambio de documento fiscal autorizado para esta venta.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
+            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode), { silentRunning: true, silentSuccess: true })} onClose={() => execute(closeSale, { successMessage: 'Venta cerrada correctamente.' })} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} fiscalPolicy={fiscalPolicy} documentOverride={saleDocumentOverride} overrideForm={saleDocumentOverrideForm} setOverrideForm={setSaleDocumentOverrideForm} fiscalDocumentTypeOptions={runtimeCatalogs.fiscalDocumentTypeOptions} authorizerOptions={managedUsers} onLoadAuthorizers={() => loadCompanyUsers('')} onRequestDocumentOverride={(payload) => execute(() => requestSaleDocumentTypeOverride(payload), { successMessage: 'Cambio de documento fiscal autorizado para esta venta.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
           )}
           {currentStep === 'Registro de Ventas' && (
             <SalesRegistryPanel sales={salesList} selectedSale={selectedSaleDetail} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} onLoadSales={() => execute(loadSalesList)} onViewDetail={(sale) => execute(() => openSaleDetail(sale), { silentNullSuccess: true })} onCloseDetail={() => setSelectedSaleDetail(null)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Registro de Ventas'])} paymentOptions={runtimeCatalogs.paymentMethodOptions} />

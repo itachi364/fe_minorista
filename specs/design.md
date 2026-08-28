@@ -2999,7 +2999,7 @@ Context7 evidence:
 ### TASK-229 - Simplificar acciones de venta y solicitar override documental con PIN
 - Estado: Implementado.
 - Fase: Fase transversal: Bugs y estabilizacion operativa.
-- Decision de diseno: El encabezado de `Ventas` queda solo como titulo; las acciones operativas se concentran al final del formulario con `Agregar linea`, `Solicitar cambio de documento fiscal` y `Cerrar venta`.
+- Decision de diseno: El encabezado de `Ventas` queda solo como titulo; las acciones operativas se concentran al final del formulario con `Solicitar cambio de documento fiscal` y `Cerrar venta`. La captura de lineas se realiza por scanner o seleccion de producto, no por un boton manual redundante.
 - Flujo: Si el vendedor solicita cambiar el tipo fiscal antes de cerrar, la SPA crea una venta en borrador mediante `POST /api/v1/sales`, envia el override a `POST /api/v1/sales/{saleId}/document-type-override` con PIN y motivo, y despues `Cerrar venta` confirma el mismo borrador con `POST /api/v1/sales/{saleId}/confirm`.
 - Seguridad: El PIN viaja solo en el request de autorizacion, no se almacena en estado despues de exito y no se muestra en respuestas ni logs de UI.
 - UX: La pantalla muestra el tipo documental efectivo de la venta y marca cuando existe un cambio autorizado para esa venta.
@@ -3009,5 +3009,43 @@ Context7 evidence:
 - Topic consulted: Conditional rendering and controlled form inputs.
 - Relevant finding: React recomienda representar ventanas modales y formularios controlados desde estado explicito, y derivar lo visible del estado actual.
 - Decision impact: El modal de override usa estado controlado, validacion local de PIN/motivo y cierre condicional despues de una operacion exitosa.
+
+### TASK-230 - Orden documental de bugs QA
+- Estado: Implementado.
+- Fase: Fase transversal: Bugs y estabilizacion operativa.
+- Decision de diseno: No se renumeran tareas DONE para conservar trazabilidad historica; se agrega nota de orden indicando que los bugs posteriores a TASK-229 continuan desde TASK-230 aunque la fase transversal agrupe incidencias detectadas en distintos momentos del QA.
+- Riesgo mitigado: Evita confusion al revisar fases que fueron agregadas en paralelo al desarrollo sin romper referencias existentes en commits, pruebas y documentacion.
+
+### TASK-231 - Corregir reportes de ventas por producto/vendedor
+- Estado: Implementado.
+- Fase: Fase transversal: Bugs y estabilizacion operativa.
+- Decision de diseno: `billing-service` deja de usar JPQL con parametros opcionales nulos para `findSales` y reutiliza el repositorio custom con Criteria API, agregando predicados solo cuando el filtro existe.
+- Filtros: `sellerId`, `customerId`, `productId`, `paymentMethodCode`, `documentStatus`, `status`, `from` y `to` se aplican de forma combinable. `productId` requiere join con lineas de venta y `distinct` para evitar duplicados.
+- Reportes: `reporting-service` conserva `SALES_BY_PRODUCT` y `SALES_BY_SELLER` como reportes transversales, pero delega datos canonicos en `/api/v1/reports/sales`.
+- Riesgo mitigado: Evita `500 INTERNAL_ERROR` de PostgreSQL por inferencia de tipo de parametros nulos y permite que los reportes filtren por producto real.
+
+#### Context7 evidence
+- Library/tool: Spring Data JPA.
+- Topic consulted: Dynamic query predicates with Criteria/Specifications for optional filters and joins.
+- Relevant finding: Spring Data JPA documenta Specifications/Criteria como mecanismo para construir predicados programaticos y ejecutar consultas dinamicas.
+- Decision impact: La consulta de ventas para reportes se implementa con Criteria API en el repositorio custom, siguiendo el patron ya existente de documentos electronicos.
+
+### TASK-232 - Scanner POS silencioso y sin accion manual
+- Estado: Implementado.
+- Fase: Fase transversal: Bugs y estabilizacion operativa.
+- Decision de diseno: El scanner USB HID se trata como entrada controlada de teclado en el campo dedicado; la accion de escaneo no usa modal global de exito y solo muestra error si la busqueda falla.
+- UX: Se elimina `Agregar linea` del modulo Ventas porque el flujo operativo agrega lineas por scanner. Despues de cada escaneo valido, el campo se limpia y recupera foco.
+
+#### Context7 evidence
+- Library/tool: React.
+- Topic consulted: Controlled inputs and interaction-specific event handlers.
+- Relevant finding: React recomienda manejar logica causada por interacciones en event handlers y prevenir submits nativos con `preventDefault`.
+- Decision impact: El scanner se procesa desde el input controlado/evento dedicado y se evita disparar estados modales globales para una accion repetitiva.
+
+### TASK-233 - Selector de autorizador en override fiscal
+- Estado: Implementado.
+- Fase: Fase transversal: Bugs y estabilizacion operativa.
+- Decision de diseno: El modal de cambio documental usa un selector/buscador de usuario autorizador alimentado por usuarios empresariales, mostrando nombre/correo y enviando `authorizedBy` como UUID. Si el usuario autenticado autoriza la operacion, el selector puede quedar vacio.
+- Seguridad: El PIN sigue siendo obligatorio, no se persiste despues del uso y la autorizacion real se valida en backend.
 
 <!-- END SDD TASK DESIGN TRACEABILITY -->

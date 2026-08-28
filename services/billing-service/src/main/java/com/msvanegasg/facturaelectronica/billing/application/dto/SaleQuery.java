@@ -8,9 +8,10 @@ import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
 
 public record SaleQuery(UUID companyId, SaleStatus status, LocalDate from, LocalDate to, UUID sellerId,
-        UUID customerId, PaymentMethodCode paymentMethodCode, ElectronicDocumentStatus documentStatus) {
+        UUID customerId, UUID productId, PaymentMethodCode paymentMethodCode,
+        ElectronicDocumentStatus documentStatus) {
 
     public SaleQuery(UUID companyId, SaleStatus status, LocalDate from, LocalDate to) {
-        this(companyId, status, from, to, null, null, null, null);
+        this(companyId, status, from, to, null, null, null, null, null);
     }
 }

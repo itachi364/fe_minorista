@@ -11,7 +11,7 @@ export function FormPanel({ title, submitLabel, onSubmit, busy, children }) {
   </form>;
 }
 
-export function Field({ label, value, onChange, type = 'text', readOnly = false, disabled = false, placeholder = '', autoComplete, inputRef, onKeyDown, error = '', min, max, step, maxLength, inputMode, pattern }) {
+export function Field({ label, value, onChange, type = 'text', readOnly = false, disabled = false, placeholder = '', autoComplete, inputRef, onKeyDown, error = '', min, max, step, maxLength, inputMode, pattern, list }) {
   const inputId = useId();
   const errorId = `${inputId}-error`;
   return <label className={error ? 'field invalid' : 'field'}>
@@ -32,6 +32,7 @@ export function Field({ label, value, onChange, type = 'text', readOnly = false,
       maxLength={maxLength}
       inputMode={inputMode}
       pattern={pattern}
+      list={list}
       aria-invalid={Boolean(error)}
       aria-describedby={error ? errorId : undefined}
     />

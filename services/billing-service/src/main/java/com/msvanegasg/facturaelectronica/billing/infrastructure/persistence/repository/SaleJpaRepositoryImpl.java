@@ -7,8 +7,11 @@ import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
+import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
+import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
 import com.msvanegasg.facturaelectronica.billing.infrastructure.persistence.entity.ElectronicDocumentJpaEntity;
 import com.msvanegasg.facturaelectronica.billing.infrastructure.persistence.entity.SaleJpaEntity;
+import com.msvanegasg.facturaelectronica.billing.infrastructure.persistence.entity.SaleLineJpaEntity;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -69,6 +72,52 @@ public class SaleJpaRepositoryImpl implements SaleJpaRepositoryCustom {
                 .distinct(true)
                 .where(predicates.toArray(Predicate[]::new))
                 .orderBy(builder.desc(document.get("issuedAt")));
+        return entityManager.createQuery(query).getResultList();
+    }
+
+    @Override
+    public List<SaleJpaEntity> findSalesDynamic(UUID companyId, SaleStatus status, UUID sellerId, UUID customerId,
+            UUID productId, PaymentMethodCode paymentMethodCode, ElectronicDocumentStatus documentStatus,
+            Instant from, Instant to) {
+        CriteriaBuilder builder = entityManager.getCriteriaBuilder();
+        CriteriaQuery<SaleJpaEntity> query = builder.createQuery(SaleJpaEntity.class);
+        Root<SaleJpaEntity> sale = query.from(SaleJpaEntity.class);
+        sale.fetch("lines", JoinType.LEFT);
+        sale.fetch("electronicDocument", JoinType.LEFT);
+
+        List<Predicate> predicates = new ArrayList<>();
+        predicates.add(builder.equal(sale.get("companyId"), companyId));
+        if (status != null) {
+            predicates.add(builder.equal(sale.get("status"), status));
+        }
+        if (sellerId != null) {
+            predicates.add(builder.equal(sale.get("createdBy"), sellerId));
+        }
+        if (customerId != null) {
+            predicates.add(builder.equal(sale.get("customerId"), customerId));
+        }
+        if (productId != null) {
+            Join<SaleJpaEntity, SaleLineJpaEntity> line = sale.join("lines", JoinType.INNER);
+            predicates.add(builder.equal(line.get("productId"), productId));
+        }
+        if (paymentMethodCode != null) {
+            predicates.add(builder.equal(sale.get("paymentMethodCode"), paymentMethodCode));
+        }
+        if (documentStatus != null) {
+            Join<SaleJpaEntity, ElectronicDocumentJpaEntity> document = sale.join("electronicDocument", JoinType.LEFT);
+            predicates.add(builder.equal(document.get("status"), documentStatus));
+        }
+        if (from != null) {
+            predicates.add(builder.greaterThanOrEqualTo(sale.get("createdAt"), from));
+        }
+        if (to != null) {
+            predicates.add(builder.lessThan(sale.get("createdAt"), to));
+        }
+
+        query.select(sale)
+                .distinct(true)
+                .where(predicates.toArray(Predicate[]::new))
+                .orderBy(builder.desc(sale.get("createdAt")));
         return entityManager.createQuery(query).getResultList();
     }
 }

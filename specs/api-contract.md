@@ -1954,8 +1954,15 @@ Desde TASK-185 existe `reporting-service` como microservicio fisico para catalog
 
 #### billing-service
 
-- `GET /api/v1/reports/sales?status=&from=&to=`
+- `GET /api/v1/reports/sales?status=&from=&to=&sellerId=&customerId=&productId=&paymentMethodCode=&documentStatus=`
 - `GET /api/v1/reports/electronic-documents?documentType=&status=&customerId=&from=&to=&prefix=&number=&cufeCude=`
+
+Reglas:
+
+- `sellerId`, `customerId`, `productId`, `paymentMethodCode` y `documentStatus` son filtros opcionales.
+- `productId` filtra ventas que tengan al menos una linea asociada al producto/servicio indicado.
+- Los filtros opcionales se construyen como predicados dinamicos en backend; no se deben implementar con JPQL que dependa de parametros nulos.
+- `reporting-service` usa este contrato como fuente canonica para `SALES_BY_SELLER` y `SALES_BY_PRODUCT`.
 
 #### inventory-service
 

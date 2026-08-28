@@ -1,6 +1,8 @@
 package com.msvanegasg.facturaelectronica.billing.interfaces.rest;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -14,6 +16,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
@@ -62,6 +65,32 @@ class BillingReportControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(SALE_ID.toString()))
                 .andExpect(jsonPath("$[0].total").value(35700));
+    }
+
+    @Test
+    void reportsSalesWithProductAndSellerFilters() throws Exception {
+        UUID sellerId = UUID.fromString("66666666-6666-6666-6666-666666666666");
+        when(saleUseCase.find(any())).thenReturn(List.of(sale()));
+
+        mockMvc.perform(get("/api/v1/reports/sales")
+                .header("X-Company-Id", COMPANY_ID)
+                .param("status", "CONFIRMED")
+                .param("from", "2026-05-01")
+                .param("to", "2026-05-31")
+                .param("sellerId", sellerId.toString())
+                .param("productId", PRODUCT_ID.toString())
+                .param("paymentMethodCode", "CASH")
+                .param("documentStatus", "VALIDATED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(SALE_ID.toString()));
+
+        ArgumentCaptor<com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery> query =
+                ArgumentCaptor.forClass(com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery.class);
+        verify(saleUseCase).find(query.capture());
+        assertThat(query.getValue().sellerId()).isEqualTo(sellerId);
+        assertThat(query.getValue().productId()).isEqualTo(PRODUCT_ID);
+        assertThat(query.getValue().paymentMethodCode()).isEqualTo(PaymentMethodCode.CASH);
+        assertThat(query.getValue().documentStatus()).isEqualTo(ElectronicDocumentStatus.VALIDATED);
     }
 
     @Test

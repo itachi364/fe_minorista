@@ -10,10 +10,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
-import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
-import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
-import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
 import com.msvanegasg.facturaelectronica.billing.infrastructure.persistence.entity.SaleJpaEntity;
 
 public interface SaleJpaRepository extends JpaRepository<SaleJpaEntity, UUID>, SaleJpaRepositoryCustom {
@@ -23,26 +19,6 @@ public interface SaleJpaRepository extends JpaRepository<SaleJpaEntity, UUID>, S
 
     @EntityGraph(attributePaths = { "lines", "electronicDocument" })
     Optional<SaleJpaEntity> findByCompanyIdAndIdempotencyKey(UUID companyId, String idempotencyKey);
-
-    @EntityGraph(attributePaths = { "lines", "electronicDocument" })
-    @Query("""
-            select s from SaleJpaEntity s
-            left join s.electronicDocument d
-            where s.companyId = :companyId
-              and (:status is null or s.status = :status)
-              and (:sellerId is null or s.createdBy = :sellerId)
-              and (:customerId is null or s.customerId = :customerId)
-              and (:paymentMethodCode is null or s.paymentMethodCode = :paymentMethodCode)
-              and (:documentStatus is null or d.status = :documentStatus)
-              and (:from is null or s.createdAt >= :from)
-              and (:to is null or s.createdAt < :to)
-            order by s.createdAt desc
-            """)
-    List<SaleJpaEntity> findSales(@Param("companyId") UUID companyId, @Param("status") SaleStatus status,
-            @Param("sellerId") UUID sellerId, @Param("customerId") UUID customerId,
-            @Param("paymentMethodCode") PaymentMethodCode paymentMethodCode,
-            @Param("documentStatus") ElectronicDocumentStatus documentStatus,
-            @Param("from") Instant from, @Param("to") Instant to);
 
     @EntityGraph(attributePaths = { "lines", "electronicDocument" })
     @Query("select s from SaleJpaEntity s join s.electronicDocument d where s.companyId = :companyId and d.id = :documentId")

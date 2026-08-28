@@ -5522,6 +5522,8 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
 
 ## Fase transversal: Bugs y estabilizacion operativa
 
+Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos. No se renumeran tareas DONE para conservar trazabilidad con commits, pruebas y documentacion. Las nuevas incidencias posteriores a `TASK-229` continuan desde `TASK-230`.
+
 - [x] TASK-218: Corregir reconocimiento ROOT y catalogo de permisos
   - Estado: DONE
   - Requisitos: RF-193, RF-194, RF-195.
@@ -5698,6 +5700,85 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
     - `specs/tasks.md`
   - Validacion:
     - Vitest frontend.
+
+- [x] TASK-230: Orden documental de bugs QA
+  - Estado: DONE
+  - Requisitos: RF-104.
+  - Acceptance criteria:
+    - AC-189: La documentacion SDD debe mantener trazabilidad sin renumerar tareas historicas ya cerradas.
+  - Descripcion: Aclarar que la fase transversal agrupa bugs detectados en QA y que las nuevas tareas siguen el consecutivo desde `TASK-230`.
+  - Archivos:
+    - `specs/tasks.md`
+    - `specs/design.md`
+  - Validacion:
+    - Revision documental.
+
+- [x] TASK-231: Corregir reportes de ventas por producto/vendedor
+  - Estado: DONE
+  - Requisitos: RF-136, RF-138, RF-139, RF-221.
+  - Acceptance criteria:
+    - AC-318: `SALES_BY_PRODUCT` consulta ventas con `productId` opcional sin generar `500`.
+    - AC-319: `SALES_BY_SELLER` consulta ventas con `sellerId` opcional y conserva filtros combinables.
+  - Descripcion: Corregir el `500` detectado en `POST /api/v1/reports/query` para ventas por producto, ampliando `/api/v1/reports/sales` y reemplazando JPQL con parametros nulos por Criteria API.
+  - Archivos:
+    - `services/billing-service/src/main/java/**/SaleQuery.java`
+    - `services/billing-service/src/main/java/**/BillingReportController.java`
+    - `services/billing-service/src/main/java/**/SalePersistenceAdapter.java`
+    - `services/billing-service/src/main/java/**/SaleJpaRepository*.java`
+    - `services/billing-service/src/test/java/**`
+    - `specs/requirements.md`
+    - `specs/acceptance-criteria.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/tasks.md`
+  - Dependencias:
+    - TASK-185.
+    - TASK-225.
+  - Validacion:
+    - Maven targeted de `billing-service`.
+    - Prueba Docker de reporte `SALES_BY_PRODUCT`.
+  - Resultado:
+    - `billing-service` usa Criteria API para `findSalesDynamic`.
+    - `/api/v1/reports/sales` acepta `sellerId`, `customerId`, `productId`, `paymentMethodCode` y `documentStatus`.
+    - Validacion Docker: `POST http://localhost:8094/api/v1/reports/query` con `SALES_BY_PRODUCT` respondio `200` sin `INTERNAL_ERROR`.
+
+- [x] TASK-232: Scanner POS silencioso y sin accion manual
+  - Estado: DONE
+  - Requisitos: RF-043, RF-222.
+  - Acceptance criteria:
+    - AC-320: Escanear un codigo valido agrega/incrementa linea sin modal de exito.
+    - AC-321: El campo scanner se limpia y queda enfocado despues del escaneo.
+    - AC-322: El modulo Ventas no muestra boton `Agregar linea`.
+  - Descripcion: Ajustar la UX POS para que el scanner USB HID sea el flujo principal de captura, sin botones redundantes ni modales repetitivos.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/features/sales/SaleForm.jsx`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+    - `specs/*.md`
+  - Validacion:
+    - Vitest frontend.
+    - Build frontend.
+  - Resultado:
+    - `Ventas` ya no muestra `Agregar linea`.
+    - El scanner ejecuta busqueda de producto como accion silenciosa y no abre modal de exito.
+    - Vitest cubre escaneo valido, limpieza del campo y ausencia de modal.
+
+- [x] TASK-233: Selector de autorizador en override fiscal
+  - Estado: DONE
+  - Requisitos: RF-182, RF-183, RF-184, RF-223.
+  - Acceptance criteria:
+    - AC-323: El modal de cambio documental permite seleccionar usuario autorizador por lista/busqueda y envia `authorizedBy` como `userId`.
+  - Descripcion: Mejorar el modal de cambio documental para que el autorizador sea seleccionable por usuario empresarial y no digitado como texto libre.
+  - Archivos:
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/features/sales/SaleForm.jsx`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+    - `specs/*.md`
+  - Validacion:
+    - Vitest frontend.
+  - Resultado:
+    - El modal de cambio documental muestra buscador de usuario autorizador por correo/nombre.
+    - El payload envia `authorizedBy` como UUID cuando se selecciona un usuario, o `null` para autorizar con el usuario actual.
 
 ## Fase 28: Configuracion contable empresarial
 

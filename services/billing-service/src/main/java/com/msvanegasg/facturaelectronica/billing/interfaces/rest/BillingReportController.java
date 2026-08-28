@@ -15,6 +15,7 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.SaleQuery;
 import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageSaleUseCase;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentStatus;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
+import com.msvanegasg.facturaelectronica.billing.domain.model.PaymentMethodCode;
 import com.msvanegasg.facturaelectronica.billing.domain.model.SaleStatus;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.ElectronicDocumentResponse;
 import com.msvanegasg.facturaelectronica.billing.interfaces.rest.dto.SaleResponse;
@@ -33,8 +34,14 @@ public class BillingReportController {
     public List<SaleResponse> sales(@RequestHeader("X-Company-Id") UUID companyId,
             @RequestParam(required = false) SaleStatus status,
             @RequestParam(required = false) LocalDate from,
-            @RequestParam(required = false) LocalDate to) {
-        return saleUseCase.find(new SaleQuery(companyId, status, from, to)).stream()
+            @RequestParam(required = false) LocalDate to,
+            @RequestParam(required = false) UUID sellerId,
+            @RequestParam(required = false) UUID customerId,
+            @RequestParam(required = false) UUID productId,
+            @RequestParam(required = false) PaymentMethodCode paymentMethodCode,
+            @RequestParam(required = false) ElectronicDocumentStatus documentStatus) {
+        return saleUseCase.find(new SaleQuery(companyId, status, from, to, sellerId, customerId, productId,
+                paymentMethodCode, documentStatus)).stream()
                 .map(BillingRestMapper::toResponse)
                 .toList();
     }

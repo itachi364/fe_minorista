@@ -704,6 +704,37 @@ test('creates POS sale with controlled virtual wallet payment method', async () 
   expect(salePayload.paymentMethodId).toBeUndefined();
 });
 
+test('adds scanned product without showing success modal or manual add line action', async () => {
+  const scannedProduct = {
+    id: '44444444-4444-4444-4444-444444444444',
+    sku: 'SKU-SCAN',
+    barcode: '123456789',
+    name: 'Cafe escaneado',
+    itemType: 'PHYSICAL_GOOD',
+    salePrice: 5042.02,
+    taxCode: 'IVA_19',
+    taxRate: 19,
+  };
+  const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
+    .mockResolvedValueOnce(jsonResponse(scannedProduct));
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
+  expect(screen.queryByRole('button', { name: 'Agregar linea' })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Scanner codigo de barras'), { target: { value: '123456789' } });
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
+  expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/v1/products/by-barcode/123456789', expect.objectContaining({
+    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(screen.getByDisplayValue('Cafe escaneado')).toBeInTheDocument();
+  expect(screen.getByLabelText('Scanner codigo de barras')).toHaveValue('');
+  expect(screen.queryByText('La accion se realizo correctamente.')).not.toBeInTheDocument();
+});
+
 test('clears product form after successful item creation', async () => {
   const createdProduct = {
     id: '44444444-4444-4444-4444-444444444444',
@@ -1016,6 +1047,12 @@ test('searches customer by document and sends selected customer id in POS sale',
 });
 
 test('requests fiscal document override before confirming the same sale draft', async () => {
+  const authorizer = {
+    id: '99999999-9999-9999-9999-999999999999',
+    email: 'admin@example.com',
+    fullName: 'Administrador Empresa',
+    status: 'ACTIVE',
+  };
   const draftSale = {
     id: '33333333-3333-3333-3333-333333333333',
     saleDate: '2026-08-28',
@@ -1031,6 +1068,7 @@ test('requests fiscal document override before confirming the same sale draft', 
     },
   };
   const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
+    .mockResolvedValueOnce(jsonResponse([authorizer]))
     .mockResolvedValueOnce(jsonResponse(draftSale))
     .mockResolvedValueOnce(jsonResponse({ saleId: draftSale.id, documentType: 'ELECTRONIC_POS' }))
     .mockResolvedValueOnce(jsonResponse(confirmedSale))
@@ -1043,21 +1081,27 @@ test('requests fiscal document override before confirming the same sale draft', 
   fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
   expect(screen.getAllByRole('button', { name: 'Cerrar venta' })).toHaveLength(1);
   fireEvent.click(screen.getByRole('button', { name: 'Solicitar cambio de documento fiscal' }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
+  fireEvent.change(screen.getByLabelText('Usuario autorizador'), { target: { value: authorizer.email } });
   fireEvent.change(screen.getByLabelText('PIN operacional'), { target: { value: '123456' } });
   fireEvent.change(screen.getByLabelText('Motivo del cambio'), { target: { value: 'Cliente solicita POS electronico' } });
   fireEvent.click(screen.getByRole('button', { name: 'Autorizar cambio' }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(7));
-  expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/v1/sales', expect.objectContaining({ method: 'POST' }));
-  expect(fetchMock).toHaveBeenNthCalledWith(7, `/api/v1/sales/${draftSale.id}/document-type-override`, expect.objectContaining({
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(8));
+  expect(fetchMock).toHaveBeenNthCalledWith(6, `/api/v1/companies/${COMPANY_ID}/users`, expect.objectContaining({
+    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(fetchMock).toHaveBeenNthCalledWith(7, '/api/v1/sales', expect.objectContaining({ method: 'POST' }));
+  expect(fetchMock).toHaveBeenNthCalledWith(8, `/api/v1/sales/${draftSale.id}/document-type-override`, expect.objectContaining({
     method: 'POST',
     headers: expect.objectContaining({
       'X-Company-Id': COMPANY_ID,
       'Idempotency-Key': expect.stringContaining('sale-document-type-override-'),
     }),
   }));
-  expect(JSON.parse(fetchMock.mock.calls[6][1].body)).toMatchObject({
+  expect(JSON.parse(fetchMock.mock.calls[7][1].body)).toMatchObject({
     documentType: 'ELECTRONIC_POS',
+    authorizedBy: authorizer.id,
     pin: '123456',
     reason: 'Cliente solicita POS electronico',
   });
@@ -1065,9 +1109,9 @@ test('requests fiscal document override before confirming the same sale draft', 
 
   fireEvent.click(screen.getByRole('button', { name: 'Cerrar venta' }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(9));
-  expect(fetchMock).toHaveBeenNthCalledWith(8, `/api/v1/sales/${draftSale.id}/confirm`, expect.objectContaining({ method: 'POST' }));
-  expect(fetchMock).toHaveBeenNthCalledWith(9, `/api/v1/sales/${draftSale.id}/receipt?widthMm=80`, expect.objectContaining({ method: 'POST' }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(10));
+  expect(fetchMock).toHaveBeenNthCalledWith(9, `/api/v1/sales/${draftSale.id}/confirm`, expect.objectContaining({ method: 'POST' }));
+  expect(fetchMock).toHaveBeenNthCalledWith(10, `/api/v1/sales/${draftSale.id}/receipt?widthMm=80`, expect.objectContaining({ method: 'POST' }));
 });
 
 test('creates fiscal credit note from dedicated fiscal documents module', async () => {

@@ -433,6 +433,9 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-218: Debe existir una pantalla `PIN operacional` en Configuracion para que usuarios con `OPERATIONAL_PIN_MANAGE`, administradores empresariales o ROOT consulten estado, creen/cambien y desbloqueen el PIN operacional sin exponer el valor guardado.
 - RF-219: En Ventas no deben existir acciones duplicadas en el encabezado; las acciones operativas deben estar concentradas en la zona inferior del formulario para evitar cierres accidentales.
 - RF-220: En Ventas debe existir una accion para solicitar cambio excepcional del tipo de documento fiscal de la venta mediante PIN operacional, creando un borrador interno si la venta aun no existe y confirmando luego ese mismo borrador.
+- RF-221: El reporte `SALES_BY_PRODUCT` debe consultar ventas por empresa, rango de fechas y producto opcional sin generar errores internos por parametros nulos; los filtros opcionales deben construirse dinamicamente en backend.
+- RF-222: El scanner POS debe agregar o incrementar productos sin mostrar modales de exito ni solicitar acciones manuales; despues de cada lectura debe limpiar el campo y quedar listo para el siguiente codigo.
+- RF-223: El cambio excepcional de tipo documental debe permitir seleccionar el usuario autorizador desde una lista/busqueda de usuarios autorizados de la empresa, manteniendo el autorizador opcional cuando el usuario autenticado pueda autorizarse a si mismo.
 
 ## Requisitos fase productizacion operativa
 
