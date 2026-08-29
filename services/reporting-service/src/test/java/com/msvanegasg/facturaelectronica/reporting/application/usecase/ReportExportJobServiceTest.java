@@ -198,10 +198,22 @@ class ReportExportJobServiceTest {
         public JsonNode fetchReport(UUID companyId, String reportCode, LocalDate from, LocalDate to,
                 Map<String, String> filters, String authorizationHeader) {
             var mapper = new ObjectMapper();
-            var row = mapper.createObjectNode();
-            row.put("productName", "Cafe");
-            row.put("total", 15000);
-            return mapper.createArrayNode().add(row);
+            var sale = mapper.createObjectNode();
+            sale.put("id", "sale-1");
+            sale.put("status", "CONFIRMED");
+            sale.put("createdBy", USER_ID.toString());
+            sale.put("subtotal", "15000.00");
+            sale.put("taxTotal", "2850.00");
+            sale.put("total", "17850.00");
+            var line = mapper.createObjectNode();
+            line.put("productId", "product-1");
+            line.put("productName", "Cafe");
+            line.put("quantity", 1);
+            line.put("subtotal", "15000.00");
+            line.put("taxAmount", "2850.00");
+            line.put("total", "17850.00");
+            sale.set("lines", mapper.createArrayNode().add(line));
+            return mapper.createArrayNode().add(sale);
         }
 
         @Override

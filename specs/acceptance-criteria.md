@@ -342,3 +342,14 @@
 - AC-321: Dado el modulo Ventas, cuando el scanner agregue una linea, entonces el campo de scanner queda vacio y enfocado para el siguiente codigo.
 - AC-322: Dado el modulo Ventas, entonces no debe existir boton manual `Agregar linea`; las lineas se originan por scanner o busqueda de producto aprobada.
 - AC-323: Dado el modal de cambio documental, cuando existan usuarios autorizadores, entonces debe mostrarse un selector/buscador por correo/nombre que envie `authorizedBy` como `userId`; si el actor actual autoriza, el campo puede quedar vacio.
+
+## Reportes normalizados y visualizacion de negocio
+
+- AC-324: Dado un reporte `SALES_BY_PRODUCT` con datos de ventas, cuando el usuario seleccione visualizacion `Barras`, entonces la SPA debe mostrar barras agregadas por producto/servicio y no una tabla cruda de ventas/documentos.
+- AC-325: Dado un reporte `SALES_BY_PRODUCT`, cuando se muestre tabla o se exporte, entonces las columnas visibles deben ser funcionales y en espanol: `Producto`, `Cantidad vendida`, `Subtotal`, `IVA`, `Total` y `Ventas` o `Documentos` si aplica.
+- AC-326: Dado un reporte `SALES_BY_SELLER` con datos de ventas, cuando el usuario seleccione visualizacion `Barras`, entonces la SPA debe mostrar barras agregadas por vendedor y no registros transaccionales individuales.
+- AC-327: Dado cualquier reporte normalizado, cuando se renderice tabla o grafica, entonces no deben aparecer columnas tecnicas no solicitadas como `Company Id`, `Idempotency Key`, `Created By`, rutas anidadas tipo `Electronic Document / ...` ni columnas numeradas como `1 / Id`, `2 / Id`.
+- AC-328: Dado un reporte sin datos agregables, cuando el usuario seleccione grafica, entonces debe mostrarse un estado vacio funcional y no una tabla deformada o una grafica con datos incorrectos.
+- AC-329: Dado un reporte tabular historico que requiera detalle transaccional, cuando se muestre informacion tecnica necesaria como CUFE/CUDE, entonces debe tener etiqueta funcional en espanol y estar limitado a las columnas aprobadas para ese reporte.
+- AC-330: Dado un reporte exportado a CSV o Excel, cuando el archivo se genere, entonces debe usar el mismo dataset normalizado que la UI y no el JSON crudo de microservicios.
+- AC-331: Dado el flujo SDD vigente, cuando se implemente normalizacion de reportes, entonces deben existir pruebas backend y frontend que validen columnas, series graficas, ausencia de campos tecnicos y compatibilidad con exportacion.

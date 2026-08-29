@@ -5944,3 +5944,127 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
     - `buildProductPayload` envia `salePrice` como base sin IVA.
     - Ventas muestra resumen estimado `Subtotal`, `IVA` y `Total` antes de cerrar.
     - Las lineas escaneadas conservan `taxCode` y `taxRate` desde inventario para mostrar valores fiscales.
+
+## Fase 30: Reportes normalizados y visualizacion gerencial
+
+- [x] TASK-234: Normalizar datasets de reportes por tipo de negocio
+  - Estado: DONE
+  - Requisitos: RF-224, RF-225, RF-226, RF-227, RF-136, RF-138, RF-141.
+  - Acceptance criteria:
+    - AC-324: Dado un reporte `SALES_BY_PRODUCT` con datos de ventas, cuando el usuario seleccione visualizacion `Barras`, entonces la SPA debe mostrar barras agregadas por producto/servicio y no una tabla cruda de ventas/documentos.
+    - AC-325: Dado un reporte `SALES_BY_PRODUCT`, cuando se muestre tabla o se exporte, entonces las columnas visibles deben ser funcionales y en espanol: `Producto`, `Cantidad vendida`, `Subtotal`, `IVA`, `Total` y `Ventas` o `Documentos` si aplica.
+    - AC-326: Dado un reporte `SALES_BY_SELLER` con datos de ventas, cuando el usuario seleccione visualizacion `Barras`, entonces la SPA debe mostrar barras agregadas por vendedor y no registros transaccionales individuales.
+    - AC-327: Dado cualquier reporte normalizado, cuando se renderice tabla o grafica, entonces no deben aparecer columnas tecnicas no solicitadas como `Company Id`, `Idempotency Key`, `Created By`, rutas anidadas tipo `Electronic Document / ...` ni columnas numeradas como `1 / Id`, `2 / Id`.
+  - Descripcion: Crear una capa de normalizacion en `reporting-service` que convierta respuestas transaccionales de billing/inventory/accounting en datasets funcionales `columns`, `rows` y `series`.
+  - Alcance:
+    - Normalizador para `SALES_BY_PRODUCT`.
+    - Normalizador para `SALES_BY_SELLER`.
+    - Contrato de columnas con labels en espanol y tipos de dato.
+    - Series graficas con `label`, `value` y metrica secundaria opcional.
+  - Fuera de alcance:
+    - Crear tablas materializadas de reporting.
+    - Implementar motor BI externo.
+    - Reportes asincronos S3 de Fase 24.
+  - Archivos propuestos:
+    - `services/reporting-service/src/main/java/com/msvanegasg/facturaelectronica/reporting/**`
+    - `services/reporting-service/src/test/java/com/msvanegasg/facturaelectronica/reporting/**`
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+    - `specs/tasks.md`
+  - Dependencias:
+    - TASK-173.
+    - TASK-231.
+  - Validacion propuesta:
+    - Unit tests de agregacion por producto y vendedor.
+    - Contract tests de `POST /api/v1/reports/query`.
+  - Resultado:
+    - `ReportQueryResult` agrega `columns`, `rows` y `series` sin eliminar `data`.
+    - `SALES_BY_PRODUCT` agrupa ventas confirmadas por producto/servicio.
+    - `SALES_BY_SELLER` agrupa ventas confirmadas por vendedor.
+    - Los datasets normalizados omiten campos tecnicos no aprobados.
+  - Validacion:
+    - `.\mvnw.cmd -pl services/reporting-service -am test`: 9 tests OK.
+
+- [x] TASK-235: Visualizacion profesional de graficas de reportes
+  - Estado: DONE
+  - Requisitos: RF-224, RF-225, RF-226, RF-227, RF-141.
+  - Acceptance criteria:
+    - AC-324: Dado un reporte `SALES_BY_PRODUCT` con datos de ventas, cuando el usuario seleccione visualizacion `Barras`, entonces la SPA debe mostrar barras agregadas por producto/servicio y no una tabla cruda de ventas/documentos.
+    - AC-326: Dado un reporte `SALES_BY_SELLER` con datos de ventas, cuando el usuario seleccione visualizacion `Barras`, entonces la SPA debe mostrar barras agregadas por vendedor y no registros transaccionales individuales.
+    - AC-328: Dado un reporte sin datos agregables, cuando el usuario seleccione grafica, entonces debe mostrarse un estado vacio funcional y no una tabla deformada o una grafica con datos incorrectos.
+    - AC-329: Dado un reporte tabular historico que requiera detalle transaccional, cuando se muestre informacion tecnica necesaria como CUFE/CUDE, entonces debe tener etiqueta funcional en espanol y estar limitado a las columnas aprobadas para ese reporte.
+  - Descripcion: Ajustar la SPA para renderizar graficas desde `series` normalizadas y tablas desde `columns`/`rows`, evitando introspeccion generica de JSON transaccional.
+  - Alcance:
+    - Barras legibles para productos/vendedores.
+    - Tabla de resultado con columnas aprobadas.
+    - Estado vacio profesional cuando no existan datos.
+    - Formato monetario y numerico `es-CO`.
+  - Fuera de alcance:
+    - Libreria avanzada de charts.
+    - Dashboards ejecutivos KPI.
+  - Archivos propuestos:
+    - `apps/facturaelectronica-web/src/features/reports/ReportsForm.jsx`
+    - `apps/facturaelectronica-web/src/styles.css`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+  - Dependencias:
+    - TASK-234.
+  - Validacion propuesta:
+    - Vitest para barras por producto/vendedor.
+    - Prueba visual manual en `localhost:5173`.
+  - Resultado:
+    - `ReportsForm` renderiza tablas desde `columns`/`rows` y graficas desde `series`.
+    - La visualizacion `Barras` ya no deriva puntos desde JSON transaccional crudo cuando existe dataset normalizado.
+    - Los valores monetarios se formatean en `es-CO`.
+  - Validacion:
+    - `npm test -- --run App.test.jsx`: 31 tests OK.
+    - `npm run build`: OK.
+
+- [x] TASK-236: Exportar CSV/Excel usando datasets normalizados
+  - Estado: DONE
+  - Requisitos: RF-224, RF-225, RF-226, RF-227, RF-142.
+  - Acceptance criteria:
+    - AC-325: Dado un reporte `SALES_BY_PRODUCT`, cuando se muestre tabla o se exporte, entonces las columnas visibles deben ser funcionales y en espanol: `Producto`, `Cantidad vendida`, `Subtotal`, `IVA`, `Total` y `Ventas` o `Documentos` si aplica.
+    - AC-327: Dado cualquier reporte normalizado, cuando se renderice tabla o grafica, entonces no deben aparecer columnas tecnicas no solicitadas como `Company Id`, `Idempotency Key`, `Created By`, rutas anidadas tipo `Electronic Document / ...` ni columnas numeradas como `1 / Id`, `2 / Id`.
+    - AC-330: Dado un reporte exportado a CSV o Excel, cuando el archivo se genere, entonces debe usar el mismo dataset normalizado que la UI y no el JSON crudo de microservicios.
+  - Descripcion: Cambiar la exportacion de reportes para que use el contrato normalizado `columns` y `rows`, manteniendo consistencia entre pantalla y archivos descargados.
+  - Archivos propuestos:
+    - `services/reporting-service/src/main/java/com/msvanegasg/facturaelectronica/reporting/application/usecase/ReportTabularExporter.java`
+    - `services/reporting-service/src/test/java/com/msvanegasg/facturaelectronica/reporting/application/usecase/ReportManagementServiceTest.java`
+  - Dependencias:
+    - TASK-234.
+  - Validacion propuesta:
+    - Tests de CSV/XLS sin campos tecnicos ni columnas anidadas.
+  - Resultado:
+    - `ReportTabularExporter` exporta primero `columns` y `rows` normalizados.
+    - El fallback de JSON legacy se conserva solo para reportes aun no normalizados.
+  - Validacion:
+    - `.\mvnw.cmd -pl services/reporting-service -am test`: 9 tests OK.
+
+- [x] TASK-237: Cobertura de QA para reportes normalizados
+  - Estado: DONE
+  - Requisitos: RF-224, RF-225, RF-226, RF-227, RF-104.
+  - Acceptance criteria:
+    - AC-331: Dado el flujo SDD vigente, cuando se implemente normalizacion de reportes, entonces deben existir pruebas backend y frontend que validen columnas, series graficas, ausencia de campos tecnicos y compatibilidad con exportacion.
+  - Descripcion: Agregar pruebas automatizadas y validacion manual para impedir regresiones como tablas crudas, graficas sin agregacion o exportaciones con JSON anidado.
+  - Alcance:
+    - Unit tests backend de normalizadores.
+    - Tests frontend de renderizado de tabla/grafica.
+    - Prueba manual de `SALES_BY_PRODUCT` con visualizacion `Barras`.
+    - Evidencia de `npm test`, `npm run build` y Maven focalizado.
+  - Dependencias:
+    - TASK-234.
+    - TASK-235.
+    - TASK-236.
+  - Validacion propuesta:
+    - `.\mvnw.cmd -pl services/reporting-service -am test`
+    - `npm test -- --run App.test.jsx`
+    - `npm run build`
+  - Resultado:
+    - Se agregaron pruebas backend de normalizacion y exportacion.
+    - Se agrego prueba frontend para tabla/grafica normalizada sin columnas tecnicas.
+  - Validacion:
+    - `.\mvnw.cmd -pl services/reporting-service -am test`: 9 tests OK.
+    - `npm test -- --run App.test.jsx`: 31 tests OK.
+    - `npm run build`: OK.

@@ -57,10 +57,11 @@ public class ReportManagementService implements ManageReportsUseCase {
             throw new IllegalArgumentException("chartType is not allowed for report " + definition.code());
         }
         Map<String, String> filters = normalizedFilters(command);
+        var rawData = dataGateway.fetchReport(command.companyId(), definition.code(), command.from(), command.to(),
+                filters, command.authorizationHeader());
+        var dataset = ReportDatasetNormalizer.normalize(definition.code(), rawData);
         return new ReportQueryResult(command.companyId(), definition.code(), chartType, filters,
-                dataGateway.fetchReport(command.companyId(), definition.code(), command.from(), command.to(), filters,
-                        command.authorizationHeader()),
-                Instant.now());
+                rawData, dataset.columns(), dataset.rows(), dataset.series(), Instant.now());
     }
 
     @Override

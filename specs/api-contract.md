@@ -2889,6 +2889,79 @@ Respuesta fase 1:
 
 Regla: en la fase inicial la respuesta es una lista de `SaleResponse` filtrada por empresa. Paginacion, nombres enriquecidos de vendedor/cliente, descarga historica de artefactos y ordenamiento avanzado quedan como evolucion posterior cuando exista volumen real.
 
+### Reportes normalizados para UI y exportacion
+
+Consulta normalizada:
+
+```http
+POST /api/v1/reports/query
+X-Company-Id: {companyId}
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+Payload:
+
+```json
+{
+  "reportCode": "SALES_BY_PRODUCT",
+  "from": "2026-08-01",
+  "to": "2026-08-28",
+  "filters": {
+    "productId": "uuid-opcional"
+  },
+  "chartType": "BAR"
+}
+```
+
+Respuesta objetivo:
+
+```json
+{
+  "companyId": "uuid",
+  "reportCode": "SALES_BY_PRODUCT",
+  "chartType": "BAR",
+  "columns": [
+    { "key": "productName", "label": "Producto", "type": "TEXT" },
+    { "key": "quantitySold", "label": "Cantidad vendida", "type": "NUMBER" },
+    { "key": "subtotal", "label": "Subtotal", "type": "MONEY" },
+    { "key": "taxTotal", "label": "IVA", "type": "MONEY" },
+    { "key": "total", "label": "Total", "type": "MONEY" },
+    { "key": "salesCount", "label": "Ventas", "type": "NUMBER" }
+  ],
+  "rows": [
+    {
+      "productName": "Cafe 500g",
+      "quantitySold": 4,
+      "subtotal": 20168.08,
+      "taxTotal": 3831.92,
+      "total": 24000.00,
+      "salesCount": 2
+    }
+  ],
+  "series": [
+    {
+      "label": "Cafe 500g",
+      "value": 24000.00,
+      "secondaryValue": 4
+    }
+  ],
+  "generatedAt": "2026-08-28T16:30:00Z"
+}
+```
+
+Reglas:
+
+- `reporting-service` debe normalizar datasets por `reportCode` antes de responder a la SPA o exportar.
+- `SALES_BY_PRODUCT` agrupa por producto/servicio usando lineas de venta confirmadas.
+- `SALES_BY_SELLER` agrupa por vendedor usando ventas confirmadas y usuarios con rol/permiso de venta.
+- `columns` define solo columnas aprobadas para usuario final, con labels en espanol y tipos de presentacion.
+- `rows` contiene datos tabulares ya listos para UI/exportacion.
+- `series` contiene los puntos que usaran graficas `BAR`, `LINE`, `PIE` o `KPI` segun aplique.
+- La SPA no debe inferir columnas finales a partir de JSON transaccional cuando exista `columns`/`rows`.
+- Campos tecnicos como `companyId`, `idempotencyKey`, rutas anidadas de `electronicDocument` o IDs internos solo pueden exponerse si el reporte los declara explicitamente en `columns`.
+- Exportaciones CSV/Excel deben usar `columns` y `rows` normalizados, no el payload crudo del microservicio fuente.
+
 ### Artefactos e impresion POS
 
 ```http

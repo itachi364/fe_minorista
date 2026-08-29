@@ -539,3 +539,15 @@ Reglas:
 - `operational_pin.failed_attempts >= 3` bloquea el PIN y exige desbloqueo administrativo.
 - Desbloquear PIN no lo deja usable: debe quedar `CHANGE_REQUIRED` hasta que el titular lo cambie.
 - Notas credito, debito y ajuste POS deben conservar numeracion propia y no reutilizar consecutivos.
+
+## Reportes normalizados fase 30
+
+Estado: diseno pendiente, sin nuevas tablas obligatorias en primera iteracion.
+
+Reglas:
+
+- La normalizacion de TASK-234 usa datos transaccionales existentes y produce datasets en memoria dentro de `reporting-service`.
+- No se crean tablas nuevas para `SALES_BY_PRODUCT` ni `SALES_BY_SELLER` hasta que volumen, latencia o costo justifiquen proyecciones materializadas.
+- Si se implementan proyecciones futuras, deben quedar en schema `reporting`, con `company_id`, `report_code`, periodo, metrica, dimensiones, auditoria y fecha de refresco.
+- Las exportaciones pesadas siguen usando `reporting.report_export_job` y `reporting.report_export_download_attempt`.
+- Los datasets normalizados no deben persistir campos tecnicos innecesarios para UI como `idempotency_key`, `created_by` o rutas anidadas de documentos fiscales.

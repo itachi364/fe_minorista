@@ -436,6 +436,10 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-221: El reporte `SALES_BY_PRODUCT` debe consultar ventas por empresa, rango de fechas y producto opcional sin generar errores internos por parametros nulos; los filtros opcionales deben construirse dinamicamente en backend.
 - RF-222: El scanner POS debe agregar o incrementar productos sin mostrar modales de exito ni solicitar acciones manuales; despues de cada lectura debe limpiar el campo y quedar listo para el siguiente codigo.
 - RF-223: El cambio excepcional de tipo documental debe permitir seleccionar el usuario autorizador desde una lista/busqueda de usuarios autorizados de la empresa, manteniendo el autorizador opcional cuando el usuario autenticado pueda autorizarse a si mismo.
+- RF-224: El modulo de reportes debe transformar respuestas transaccionales de microservicios en datasets de negocio antes de mostrarlas o exportarlas, evitando tablas con JSON crudo, IDs tecnicos innecesarios o columnas anidadas repetidas.
+- RF-225: El reporte `SALES_BY_PRODUCT` debe presentar datos agregados por producto/servicio con columnas funcionales en espanol: producto, cantidad vendida, subtotal/base gravable, IVA, total y cantidad de ventas/documentos cuando aplique.
+- RF-226: El reporte `SALES_BY_SELLER` debe presentar datos agregados por vendedor con columnas funcionales en espanol: vendedor, ventas cerradas, subtotal/base gravable, IVA, total y documentos emitidos cuando aplique.
+- RF-227: Las visualizaciones graficas de reportes deben usar series derivadas del dataset normalizado por tipo de reporte; una grafica de barras no debe caer a una tabla transaccional cruda ni mostrar columnas tecnicas como `Company Id`, `Idempotency Key` o rutas anidadas de documento electronico.
 
 ## Requisitos fase productizacion operativa
 

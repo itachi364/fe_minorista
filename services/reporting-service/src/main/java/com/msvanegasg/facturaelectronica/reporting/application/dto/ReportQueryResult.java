@@ -1,6 +1,7 @@
 package com.msvanegasg.facturaelectronica.reporting.application.dto;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -13,5 +14,8 @@ public record ReportQueryResult(
         ChartType chartType,
         Map<String, String> appliedFilters,
         JsonNode data,
+        List<ReportColumn> columns,
+        List<Map<String, Object>> rows,
+        List<ReportSeriesPoint> series,
         Instant generatedAt) {
 }

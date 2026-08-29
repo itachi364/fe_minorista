@@ -25,7 +25,7 @@ export function ReportsForm({
   busy,
 }) {
   const selectedReport = definitions.find((report) => report.code === form.reportCode);
-  const rows = extractRows(data?.data);
+  const dataset = extractReportDataset(data);
 
   return <section className="tool-panel report-workspace">
     <header className="panel-header">
@@ -94,19 +94,19 @@ export function ReportsForm({
       </section>
 
       <section className="report-visual">
-        <ReportSummary data={data} report={selectedReport} rowCount={rows.values.length} />
-        {data && form.chartType !== 'TABLE' && <SimpleChart rows={rows.values} chartType={form.chartType} />}
+        <ReportSummary data={data} report={selectedReport} rowCount={dataset.values.length} />
+        {data && form.chartType !== 'TABLE' && <SimpleChart points={dataset.series} chartType={form.chartType} />}
       </section>
     </div>
 
     {data && <DataTable
       title="Resultado"
       titleLevel={2}
-      rows={rows.values}
-      columns={rows.columns}
+      rows={dataset.values}
+      columns={dataset.columns}
       emptyMessage="Sin datos para los filtros seleccionados."
       sectionClassName="report-table-panel"
-      rowKey={(_row, index) => `report-row-${index}`}
+      rowKey={(row, index) => `report-row-${row.join('|') || index}`}
     />}
 
     <DataTable
@@ -174,14 +174,14 @@ function ReportSummary({ data, report, rowCount }) {
   </div>;
 }
 
-function SimpleChart({ rows, chartType }) {
-  const points = chartPoints(rows);
-  if (points.length === 0) {
+function SimpleChart({ points, chartType }) {
+  const safePoints = chartPoints(points);
+  if (safePoints.length === 0) {
     return <div className="report-chart empty">No hay datos numericos para graficar.</div>;
   }
-  const max = Math.max(...points.map((point) => point.value), 1);
+  const max = Math.max(...safePoints.map((point) => point.value), 1);
   return <div className={`report-chart ${chartType.toLowerCase()}`}>
-    {points.slice(0, 12).map((point) => (
+    {safePoints.slice(0, 12).map((point) => (
       <div className="chart-row" key={point.label}>
         <span>{point.label}</span>
         <div><i style={{ width: `${Math.max(4, (point.value / max) * 100)}%` }} /></div>
@@ -189,6 +189,22 @@ function SimpleChart({ rows, chartType }) {
       </div>
     ))}
   </div>;
+}
+
+function extractReportDataset(result) {
+  if (Array.isArray(result?.columns) && Array.isArray(result?.rows)) {
+    const columns = result.columns;
+    return {
+      columns: columns.map((column) => column.label || formatColumn(column.key)),
+      values: result.rows.map((row) => columns.map((column) => formatCell(row?.[column.key], column.type))),
+      series: Array.isArray(result.series) ? result.series : [],
+    };
+  }
+  const rows = extractRows(result?.data);
+  return {
+    ...rows,
+    series: rows.values.map((row, index) => legacyChartPoint(row, index)).filter((point) => point.value > 0),
+  };
 }
 
 function extractRows(payload) {
@@ -235,14 +251,21 @@ function flattenObject(value, prefix = '') {
   }, {});
 }
 
-function chartPoints(rows) {
-  return rows.map((row, index) => {
-    const numericCell = row.find((cell) => typeof rawNumber(cell) === 'number');
-    return {
-      label: String(row.find((cell) => cell && Number.isNaN(Number(cell))) || `Dato ${index + 1}`).slice(0, 34),
-      value: rawNumber(numericCell) || 0,
-    };
-  }).filter((point) => point.value > 0);
+function chartPoints(points) {
+  return (points || [])
+    .map((point, index) => ({
+      label: String(point.label || `Dato ${index + 1}`).slice(0, 34),
+      value: rawNumber(point.value) || 0,
+    }))
+    .filter((point) => point.value > 0);
+}
+
+function legacyChartPoint(row, index) {
+  const numericCell = row.find((cell) => typeof rawNumber(cell) === 'number');
+  return {
+    label: String(row.find((cell) => cell && Number.isNaN(Number(cell))) || `Dato ${index + 1}`).slice(0, 34),
+    value: rawNumber(numericCell) || 0,
+  };
 }
 
 function rawNumber(value) {
@@ -266,12 +289,18 @@ function formatColumn(value) {
     .replace(/^\w|\s\w/g, (letter) => letter.toUpperCase());
 }
 
-function formatCell(value) {
+function formatCell(value, type = 'text') {
   if (value === null || value === undefined) {
     return '';
   }
   if (typeof value === 'number') {
+    if (type === 'money') {
+      return formatMoney(value);
+    }
     return Number(value).toLocaleString('es-CO');
+  }
+  if (type === 'money' && typeof rawNumber(value) === 'number') {
+    return formatMoney(rawNumber(value));
   }
   if (typeof value === 'boolean') {
     return value ? 'Si' : 'No';
@@ -280,6 +309,10 @@ function formatCell(value) {
     return value.length;
   }
   return String(value);
+}
+
+function formatMoney(value) {
+  return Number(value).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 2 });
 }
 
 function formatNumber(value) {

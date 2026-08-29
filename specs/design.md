@@ -3048,4 +3048,41 @@ Context7 evidence:
 - Decision de diseno: El modal de cambio documental usa un selector/buscador de usuario autorizador alimentado por usuarios empresariales, mostrando nombre/correo y enviando `authorizedBy` como UUID. Si el usuario autenticado autoriza la operacion, el selector puede quedar vacio.
 - Seguridad: El PIN sigue siendo obligatorio, no se persiste despues del uso y la autorizacion real se valida en backend.
 
+### TASK-234 - Normalizacion de datasets de reportes por negocio
+- Estado: Implementada.
+- Fase: Fase 30: Reportes normalizados y visualizacion gerencial.
+- Decision de diseno: `reporting-service` debe dejar de entregar al frontend el JSON transaccional crudo para reportes visuales y exportables. Cada `reportCode` tendra un normalizador que convierta la respuesta canonica de los microservicios fuente en `columns`, `rows` y `series`.
+- Alcance funcional: `SALES_BY_PRODUCT` agrupa lineas confirmadas por producto/servicio; `SALES_BY_SELLER` agrupa ventas confirmadas por vendedor; otros reportes pueden seguir tabla simple hasta que tengan normalizador especifico.
+- Contrato: La respuesta normalizada incluye columnas funcionales en espanol y tipos de presentacion (`TEXT`, `NUMBER`, `MONEY`, `DATE`, `DATETIME`, `STATUS`). La SPA renderiza tabla/grafica desde ese contrato, no desde introspeccion de objetos anidados.
+- Seguridad/UX: No se exponen IDs tecnicos, `companyId`, `idempotencyKey`, claves internas, rutas anidadas ni payloads fiscales completos salvo que el reporte los declare explicitamente.
+- Resultado: `ReportQueryResult` conserva `data` por compatibilidad y agrega `columns`, `rows` y `series`. `SALES_BY_PRODUCT` agrupa lineas de ventas confirmadas por producto/servicio y `SALES_BY_SELLER` agrupa ventas confirmadas por vendedor.
+
+### TASK-235 - Visualizacion profesional de graficas de reportes
+- Estado: Implementada.
+- Fase: Fase 30: Reportes normalizados y visualizacion gerencial.
+- Decision de diseno: Las graficas usan `series` normalizada del backend. Para barras, `label` representa producto/vendedor/categoria y `value` representa la metrica principal del reporte, usualmente total vendido o cantidad.
+- UX: Si la visualizacion seleccionada no tiene datos agregables, se muestra estado vacio funcional. La tabla de resultados se mantiene debajo solo con columnas aprobadas, evitando desplazamiento horizontal innecesario.
+- Accesibilidad: Las barras deben conservar texto legible, valores formateados en `es-CO` y estructura estable en desktop/mobile.
+- Resultado: `ReportsForm` consume `columns`, `rows` y `series` normalizados cuando existen, y mantiene fallback legacy solo para reportes no migrados.
+
+### TASK-236 - Exportacion CSV/Excel con datasets normalizados
+- Estado: Implementada.
+- Fase: Fase 30: Reportes normalizados y visualizacion gerencial.
+- Decision de diseno: `ReportTabularExporter` debe exportar `columns` y `rows` normalizados. Si un reporte aun no tiene normalizador, debe usar una tabla explicita aprobada o rechazar exportacion avanzada con mensaje funcional.
+- Riesgo mitigado: Evita archivos con columnas tecnicas repetidas, JSON anidado, IDs internos innecesarios o datos que el usuario final no entiende.
+- Resultado: CSV y Excel usan las etiquetas funcionales del dataset normalizado antes de recurrir al fallback legacy.
+
+### TASK-237 - Pruebas de reportes normalizados
+- Estado: Implementada.
+- Fase: Fase 30: Reportes normalizados y visualizacion gerencial.
+- Decision de diseno: La fase se valida con pruebas de backend para agregacion/contrato y pruebas frontend para renderizado de tabla/grafica sin columnas tecnicas.
+- Pruebas minimas: `SALES_BY_PRODUCT` con dos ventas del mismo producto debe sumar cantidad/subtotal/IVA/total; `SALES_BY_SELLER` debe agrupar por vendedor; la SPA debe mostrar barras con labels funcionales y no renderizar `Company Id`, `Idempotency Key` ni columnas `1 / Id`.
+- Resultado: pruebas focalizadas de reporting-service y frontend validan agregacion, columnas funcionales, ausencia de campos tecnicos y build productivo.
+
+#### Context7 evidence
+- Library/tool: React.
+- Topic consulted: Derived rendering data and list rendering with stable keys.
+- Relevant finding: React recomienda calcular datos derivados durante renderizado desde props/estado y renderizar colecciones con keys estables tomadas del dato.
+- Decision impact: La SPA debe derivar vista desde `columns`, `rows` y `series` normalizados, evitando duplicar estado o inferir tablas desde JSON crudo.
+
 <!-- END SDD TASK DESIGN TRACEABILITY -->

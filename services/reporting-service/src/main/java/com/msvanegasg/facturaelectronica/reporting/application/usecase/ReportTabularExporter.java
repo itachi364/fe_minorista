@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.msvanegasg.facturaelectronica.reporting.application.dto.ReportColumn;
 import com.msvanegasg.facturaelectronica.reporting.application.dto.ReportExportResult;
 import com.msvanegasg.facturaelectronica.reporting.application.dto.ReportQueryResult;
 import com.msvanegasg.facturaelectronica.reporting.domain.model.ReportExportFormat;
@@ -20,7 +21,7 @@ final class ReportTabularExporter {
     }
 
     static ReportExportResult export(ReportQueryResult result, ReportExportFormat format) {
-        Table table = tableFrom(result.data());
+        Table table = tableFrom(result);
         String content = switch (format) {
             case CSV -> csv(table);
             case XLS -> spreadsheetXml(table, result.reportCode());
@@ -30,20 +31,38 @@ final class ReportTabularExporter {
         return new ReportExportResult(filename, format.contentType(), content.getBytes(StandardCharsets.UTF_8), format);
     }
 
-    private static Table tableFrom(JsonNode payload) {
+    private static Table tableFrom(ReportQueryResult result) {
+        if (result.columns() != null && !result.columns().isEmpty()) {
+            List<String> labels = result.columns().stream().map(ReportColumn::label).toList();
+            List<List<String>> rows = result.rows() == null ? List.of()
+                    : result.rows().stream()
+                            .map(row -> result.columns().stream()
+                                    .map(column -> formatCell(row.get(column.key())))
+                                    .toList())
+                            .toList();
+            return new Table(labels, rows);
+        }
+        return tableFromLegacyData(result.data());
+    }
+
+    private static Table tableFromLegacyData(JsonNode payload) {
         JsonNode source = selectTabularSource(payload);
         if (source == null || !source.isArray() || source.size() == 0) {
             Map<String, String> row = flatten(payload, "");
-            return new Table(new ArrayList<>(row.keySet()), row.isEmpty() ? List.of() : List.of(row));
+            return new Table(new ArrayList<>(row.keySet()), row.isEmpty() ? List.of()
+                    : List.of(new ArrayList<>(row.values())));
         }
-        List<Map<String, String>> rows = new ArrayList<>();
+        List<Map<String, String>> mappedRows = new ArrayList<>();
         Set<String> columns = new LinkedHashSet<>();
         source.forEach(item -> {
             Map<String, String> row = flatten(item, "");
-            rows.add(row);
+            mappedRows.add(row);
             columns.addAll(row.keySet());
         });
-        return new Table(new ArrayList<>(columns), rows);
+        List<String> safeColumns = new ArrayList<>(columns);
+        return new Table(safeColumns, mappedRows.stream()
+                .map(row -> safeColumns.stream().map(column -> row.getOrDefault(column, "")).toList())
+                .toList());
     }
 
     private static JsonNode selectTabularSource(JsonNode payload) {
@@ -89,8 +108,8 @@ final class ReportTabularExporter {
     private static String csv(Table table) {
         StringBuilder builder = new StringBuilder("\uFEFF");
         builder.append(row(table.columns()));
-        for (Map<String, String> item : table.rows()) {
-            builder.append(row(table.columns().stream().map(column -> item.getOrDefault(column, "")).toList()));
+        for (List<String> item : table.rows()) {
+            builder.append(row(item));
         }
         return builder.toString();
     }
@@ -114,8 +133,8 @@ final class ReportTabularExporter {
         builder.append(xml(reportCode));
         builder.append("\"><Table>");
         builder.append(excelRow(table.columns()));
-        for (Map<String, String> item : table.rows()) {
-            builder.append(excelRow(table.columns().stream().map(column -> item.getOrDefault(column, "")).toList()));
+        for (List<String> item : table.rows()) {
+            builder.append(excelRow(item));
         }
         builder.append("</Table></Worksheet></Workbook>");
         return builder.toString();
@@ -148,6 +167,13 @@ final class ReportTabularExporter {
         return value.toString();
     }
 
-    private record Table(List<String> columns, List<Map<String, String>> rows) {
+    private static String formatCell(Object value) {
+        if (value == null) {
+            return "";
+        }
+        return String.valueOf(value);
+    }
+
+    private record Table(List<String> columns, List<List<String>> rows) {
     }
 }

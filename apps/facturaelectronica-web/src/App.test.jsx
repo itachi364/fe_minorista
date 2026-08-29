@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import App from './App.jsx';
 import { AccountingConfigurationPanel } from './features/accounting/AccountingConfigurationPanel.jsx';
+import { ReportsForm } from './features/reports/ReportsForm.jsx';
 import { loadStoredSession, saveStoredSession, SESSION_TIMEOUT_MS } from './utils/sessionStorage.js';
 
 const COMPANY_ID = '11111111-1111-1111-1111-111111111111';
@@ -299,6 +300,61 @@ test('company user sees only modules allowed by effective permissions', async ()
   expect(screen.queryByRole('button', { name: 'Empresa' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Usuarios' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Generar reporte' })).toBeInTheDocument();
+});
+
+test('renders normalized sales by product report without technical columns', () => {
+  render(<ReportsForm
+    definitions={[{
+      code: 'SALES_BY_PRODUCT',
+      category: 'Ventas',
+      label: 'Ventas por producto',
+      description: 'Ventas confirmadas por producto o servicio.',
+      filters: [],
+      chartTypes: ['TABLE', 'BAR'],
+    }]}
+    options={{}}
+    form={{ reportCode: 'SALES_BY_PRODUCT', chartType: 'BAR', filters: {}, exportFormat: 'XLS' }}
+    setForm={vi.fn()}
+    data={{
+      reportCode: 'SALES_BY_PRODUCT',
+      chartType: 'BAR',
+      columns: [
+        { key: 'product', label: 'Producto', type: 'text' },
+        { key: 'quantitySold', label: 'Cantidad vendida', type: 'number' },
+        { key: 'subtotal', label: 'Subtotal', type: 'money' },
+        { key: 'taxTotal', label: 'IVA', type: 'money' },
+        { key: 'total', label: 'Total', type: 'money' },
+        { key: 'sales', label: 'Ventas', type: 'number' },
+      ],
+      rows: [{
+        product: 'Cafe',
+        quantitySold: 3,
+        subtotal: 30000,
+        taxTotal: 5700,
+        total: 35700,
+        sales: 2,
+      }],
+      series: [{ label: 'Cafe', value: 35700 }],
+      data: [{ companyId: COMPANY_ID, idempotencyKey: 'technical-key' }],
+      generatedAt: '2026-08-28T16:31:42Z',
+    }}
+    jobs={[]}
+    onReportChange={vi.fn()}
+    onLoadDefinitions={vi.fn()}
+    onSubmit={vi.fn()}
+    onExport={vi.fn()}
+    onCreateExportJob={vi.fn()}
+    onLoadExportJobs={vi.fn()}
+    onDownloadExportJob={vi.fn()}
+    busy={false}
+  />);
+
+  expect(screen.getAllByText('Cafe').length).toBeGreaterThan(0);
+  expect(screen.getByText('Cantidad vendida')).toBeInTheDocument();
+  expect(screen.getByText(/\$\s*35\.700/)).toBeInTheDocument();
+  expect(screen.queryByText('Company Id')).not.toBeInTheDocument();
+  expect(screen.queryByText('Idempotency Key')).not.toBeInTheDocument();
+  expect(screen.queryByText('Electronic Document / Id')).not.toBeInTheDocument();
 });
 
 test('sales user can access POS without fiscal advanced permission', async () => {
