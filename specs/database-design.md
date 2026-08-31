@@ -551,3 +551,92 @@ Reglas:
 - Si se implementan proyecciones futuras, deben quedar en schema `reporting`, con `company_id`, `report_code`, periodo, metrica, dimensiones, auditoria y fecha de refresco.
 - Las exportaciones pesadas siguen usando `reporting.report_export_job` y `reporting.report_export_download_attempt`.
 - Los datasets normalizados no deben persistir campos tecnicos innecesarios para UI como `idempotency_key`, `created_by` o rutas anidadas de documentos fiscales.
+
+## Bugs Fiscales Y Finanzas Operativas
+
+Estado: diseno pendiente para TASK-238 a TASK-245.
+
+### Resoluciones fiscales
+
+Tablas reutilizadas:
+
+- `billing.numbering_resolution`
+- `billing.electronic_document`
+- `billing.fiscal_note`
+- tablas de auditoria existentes.
+
+Reglas de persistencia:
+
+- Una resolucion sin documentos asociados puede eliminarse fisicamente si la accion queda auditada.
+- Una resolucion con documentos, notas fiscales o trazas asociadas no se elimina; solo cambia a `active=false`.
+- La condicion `used` se calcula desde documentos fiscales que referencian la resolucion o, si el modelo actual aun no tiene FK directa, desde numero/prefijo/tipo de documento asociados al historico.
+- El cierre de venta solo consulta resoluciones `active=true`, con rango vigente, ambiente compatible y `document_type` compatible con la politica fiscal de la venta.
+
+### Compras, reabastecimiento, activos y gastos
+
+Modelo objetivo:
+
+- `inventory.purchase`: encabezado de compra operativa.
+  - `classification`: `INVENTORY_REPLENISHMENT`, `ASSET_PURCHASE`, `OPERATING_EXPENSE`.
+  - `supplier_id`, `purchase_date`, `payment_method_code`, `status`, `subtotal`, `tax_total`, `total`, `correlation_id`.
+- `inventory.purchase_line`: detalle de compra.
+  - `purchase_id`, `product_id` opcional, `description`, `quantity`, `unit_cost`, `tax_code`, `tax_rate`, `line_total`.
+- `accounting.operating_expense`: gastos que no son inventario ni activos.
+  - `category_code`, `supplier_id`, `expense_date`, `concept`, `payment_method_code`, `subtotal`, `tax_total`, `total`, `status`.
+- `accounting.business_asset`: activos del negocio.
+  - `asset_code`, `name`, `purchase_id`, `purchase_date`, `cost`, `status`.
+
+Reglas:
+
+- Reabastecimiento incrementa stock y genera asiento por `INVENTORY_REPLENISHMENT_CONFIRMED`.
+- Compra de activo no incrementa stock vendible y genera asiento por `ASSET_PURCHASE_CONFIRMED`.
+- Gasto operativo no crea movimiento de inventario y genera asiento por `OPERATING_EXPENSE_CONFIRMED`.
+- El boton `Consultar compras` solo debe leer datos persistidos de compras actuales; nunca catalogos locales ni estado inicial de frontend.
+
+### Pagos diarios de empleados
+
+Tablas reutilizadas:
+
+- `payroll.worker`
+- `payroll.employment_contract`
+- `payroll.payroll_payment` o equivalente vigente del microservicio.
+- `accounting.accounting_entry`
+- `accounting.accounting_entry_line`
+- `accounting.accounting_rule`
+
+Reglas:
+
+- Todo pago diario/verbal confirmado se contabiliza con `DAILY_PAYROLL_PAID`.
+- Si la regla no existe o esta incompleta, el pago no queda confirmado.
+- Las lineas contables deben permitir clasificar el pago como gasto operacional/egreso para reportes diarios.
+
+### Deudores y cuentas por cobrar
+
+Modelo objetivo:
+
+- `accounting.account_receivable`
+  - `id`, `company_id`, `debtor_third_party_id`, `source_type`, `source_id`, `issue_date`, `due_date`, `concept`, `original_amount`, `balance`, `status`, `created_at`, `updated_at`.
+- `accounting.account_receivable_payment`
+  - `id`, `company_id`, `account_receivable_id`, `payment_date`, `payment_method_code`, `amount`, `accounting_entry_id`, `created_at`.
+
+Reglas:
+
+- Estados: `PENDING`, `PARTIALLY_PAID`, `PAID`, `OVERDUE`.
+- Los abonos no pueden superar el saldo pendiente.
+- Cada registro y abono crea auditoria y asiento contable.
+
+### Reporte diario de ganancias y gastos
+
+Persistencia:
+
+- Primera iteracion sin tabla materializada; `reporting-service` consulta ventas confirmadas, movimientos de costo y asientos contables por periodo.
+- Si el volumen lo exige, se creara proyeccion en `reporting.daily_financial_summary` con `company_id`, `business_date`, metricas monetarias y fecha de refresco.
+
+Metricas minimas:
+
+- Ingresos por ventas.
+- Costo de ventas.
+- Gastos operativos.
+- Pagos diarios de empleados.
+- Otros egresos.
+- Utilidad/perdida neta.

@@ -3093,3 +3093,198 @@ Reglas de UI/contrato:
 - Crear administrador usa `POST /api/v1/users` y luego `POST /api/v1/companies/{companyId}/memberships`; el `{companyId}` proviene de la fila `Crear administrador`.
 - Marca empresarial usa `PUT /api/v1/companies/{companyId}/branding` y `POST /api/v1/companies/{companyId}/branding/assets`; el `{companyId}` proviene de la fila `Crear marca empresarial`.
 - El campo `Empresa` en modales es informativo y bloqueado; no forma parte editable del payload.
+
+### Gestion segura de resoluciones fiscales con error
+
+```http
+DELETE /api/v1/numbering-resolutions/{resolutionId}
+X-Company-Id: {companyId}
+Authorization: Bearer {token}
+```
+
+Reglas:
+
+- Elimina fisicamente solo resoluciones sin documentos asociados ni consecutivos usados.
+- Si la resolucion ya fue usada, retorna `409 BUSINESS_RULE_VIOLATION` indicando que debe inactivarse.
+- La operacion requiere permiso de configuracion fiscal y auditoria.
+
+```http
+PUT /api/v1/numbering-resolutions/{resolutionId}/deactivate
+X-Company-Id: {companyId}
+Authorization: Bearer {token}
+```
+
+Reglas:
+
+- Inactiva resoluciones usadas o no usadas.
+- Una resolucion inactiva no puede ser seleccionada por `POST /api/v1/sales/close` ni `POST /api/v1/sales/{saleId}/confirm`.
+- La UI debe ofrecer `Eliminar` solo si `used=false`; de lo contrario solo `Inactivar`.
+
+### Compras, reabastecimiento y activos
+
+```http
+GET /api/v1/purchases?status={status}&supplierId={supplierId}&from={yyyy-MM-dd}&to={yyyy-MM-dd}
+X-Company-Id: {companyId}
+```
+
+Reglas:
+
+- `Consultar compras` consume este contrato y muestra la respuesta real del backend.
+- `status`, `supplierId`, `from` y `to` son opcionales.
+
+```http
+POST /api/v1/purchases
+X-Company-Id: {companyId}
+Idempotency-Key: {key}
+Content-Type: application/json
+```
+
+Payload objetivo:
+
+```json
+{
+  "supplierId": "uuid",
+  "purchaseDate": "2026-08-31",
+  "classification": "INVENTORY_REPLENISHMENT",
+  "paymentMethodCode": "CASH",
+  "dueDate": null,
+  "description": "Reabastecimiento semanal",
+  "lines": [
+    {
+      "productId": "uuid",
+      "quantity": 10,
+      "unitCost": 5000,
+      "taxCode": "IVA_19",
+      "taxRate": 19
+    }
+  ]
+}
+```
+
+Clasificaciones:
+
+- `INVENTORY_REPLENISHMENT`: incrementa stock de producto/insumo.
+- `ASSET_PURCHASE`: compra activo del negocio y no incrementa stock vendible.
+- `OPERATING_EXPENSE`: deriva a gasto operativo y no incrementa stock.
+
+### Gastos operativos
+
+```http
+POST /api/v1/expenses
+X-Company-Id: {companyId}
+Idempotency-Key: {key}
+Content-Type: application/json
+```
+
+Payload objetivo:
+
+```json
+{
+  "supplierId": "uuid",
+  "expenseDate": "2026-08-31",
+  "categoryCode": "PUBLIC_SERVICES",
+  "concept": "Energia local comercial",
+  "paymentMethodCode": "CASH",
+  "dueDate": null,
+  "subtotal": 100000,
+  "taxTotal": 19000,
+  "total": 119000
+}
+```
+
+Reglas:
+
+- No crea movimientos de inventario.
+- Si `paymentMethodCode` implica credito, crea cuenta por pagar.
+- Genera asiento mediante `OPERATING_EXPENSE_CONFIRMED`.
+
+### Deudores y cuentas por cobrar
+
+```http
+POST /api/v1/accounts-receivable
+X-Company-Id: {companyId}
+Idempotency-Key: {key}
+Content-Type: application/json
+```
+
+Payload objetivo:
+
+```json
+{
+  "debtorThirdPartyId": "uuid",
+  "sourceType": "MANUAL",
+  "sourceId": null,
+  "issueDate": "2026-08-31",
+  "dueDate": "2026-09-30",
+  "concept": "Prestamo temporal al negocio",
+  "amount": 500000
+}
+```
+
+```http
+POST /api/v1/accounts-receivable/{accountReceivableId}/payments
+X-Company-Id: {companyId}
+Idempotency-Key: {key}
+Content-Type: application/json
+```
+
+Payload objetivo:
+
+```json
+{
+  "paymentDate": "2026-09-05",
+  "paymentMethodCode": "TRANSFER",
+  "amount": 100000
+}
+```
+
+Reglas:
+
+- La cuenta por cobrar conserva saldo, estado `PENDING`, `PARTIALLY_PAID`, `PAID` u `OVERDUE`.
+- Todo abono genera asiento contable y auditoria.
+
+### Reporte diario de ganancias y gastos
+
+```http
+POST /api/v1/reports/query
+X-Company-Id: {companyId}
+Content-Type: application/json
+```
+
+Payload:
+
+```json
+{
+  "reportCode": "DAILY_PROFIT_AND_LOSS",
+  "chartType": "TABLE",
+  "from": "2026-08-31",
+  "to": "2026-08-31",
+  "filters": {}
+}
+```
+
+Respuesta normalizada:
+
+```json
+{
+  "reportCode": "DAILY_PROFIT_AND_LOSS",
+  "columns": [
+    { "key": "metric", "label": "Concepto", "type": "text" },
+    { "key": "amount", "label": "Valor", "type": "money" }
+  ],
+  "rows": [
+    { "metric": "Ingresos por ventas", "amount": 800000 },
+    { "metric": "Costos de venta", "amount": 350000 },
+    { "metric": "Gastos operativos", "amount": 120000 },
+    { "metric": "Pagos diarios", "amount": 90000 },
+    { "metric": "Utilidad / perdida neta", "amount": 240000 }
+  ],
+  "series": [
+    { "label": "Ingresos por ventas", "value": 800000 },
+    { "label": "Costos de venta", "value": 350000 },
+    { "label": "Gastos operativos", "value": 120000 },
+    { "label": "Pagos diarios", "value": 90000 },
+    { "label": "Utilidad / perdida neta", "value": 240000 }
+  ]
+}
+```

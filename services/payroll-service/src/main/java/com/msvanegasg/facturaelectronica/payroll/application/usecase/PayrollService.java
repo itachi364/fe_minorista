@@ -73,15 +73,11 @@ public class PayrollService implements PayrollUseCase {
         Objects.requireNonNull(command, "command is required");
         repository.findWorker(companyId, command.workerId())
                 .orElseThrow(() -> new IllegalArgumentException("workerId does not belong to company"));
-        DailyLaborPayment payment = repository.saveDailyPayment(new DailyLaborPayment(idGenerator.newId(), companyId, command.workerId(),
+        DailyLaborPayment payment = new DailyLaborPayment(idGenerator.newId(), companyId, command.workerId(),
                 command.workDate(), command.activityDescription(), command.agreedAmount(), command.paidAmount(),
-                command.paymentMethodCode(), command.legalNoticeAccepted(), command.notes(), clock.now()));
-        try {
-            accountingPort.applyDailyPayment(payment);
-        } catch (RuntimeException ignored) {
-            // La contabilidad es best-effort hasta cerrar el flujo asincrono productivo.
-        }
-        return payment;
+                command.paymentMethodCode(), command.legalNoticeAccepted(), command.notes(), clock.now());
+        accountingPort.applyDailyPayment(payment);
+        return repository.saveDailyPayment(payment);
     }
 
     @Override

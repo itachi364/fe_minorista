@@ -35,14 +35,27 @@ public class CreateNumberingResolutionService implements CreateNumberingResoluti
     public NumberingResolutionResult activate(UUID companyId, UUID resolutionId) {
         NumberingResolution resolution = numberingResolutionRepository.findByCompanyIdAndId(companyId, resolutionId)
                 .orElseThrow(() -> new IllegalArgumentException("No existe la resolucion de numeracion indicada."));
-        return BillingResultMapper.toNumberingResolutionResult(
-                numberingResolutionRepository.saveAsOnlyActive(resolution.activate()));
+        NumberingResolution saved = numberingResolutionRepository.saveAsOnlyActive(resolution.activate());
+        return BillingResultMapper.toNumberingResolutionResult(saved, numberingResolutionRepository.usageCount(saved));
     }
 
     @Override
     public NumberingResolutionResult deactivate(UUID companyId, UUID resolutionId) {
         NumberingResolution resolution = numberingResolutionRepository.findByCompanyIdAndId(companyId, resolutionId)
                 .orElseThrow(() -> new IllegalArgumentException("No existe la resolucion de numeracion indicada."));
-        return BillingResultMapper.toNumberingResolutionResult(numberingResolutionRepository.save(resolution.deactivate()));
+        NumberingResolution saved = numberingResolutionRepository.save(resolution.deactivate());
+        return BillingResultMapper.toNumberingResolutionResult(saved, numberingResolutionRepository.usageCount(saved));
+    }
+
+    @Override
+    public void delete(UUID companyId, UUID resolutionId) {
+        NumberingResolution resolution = numberingResolutionRepository.findByCompanyIdAndId(companyId, resolutionId)
+                .orElseThrow(() -> new IllegalArgumentException("No existe la resolucion de numeracion indicada."));
+        long usageCount = numberingResolutionRepository.usageCount(resolution);
+        if (usageCount > 0) {
+            throw new IllegalStateException(
+                    "La resolucion de numeracion ya fue usada en documentos fiscales. Inactivala para conservar trazabilidad.");
+        }
+        numberingResolutionRepository.delete(resolution);
     }
 }

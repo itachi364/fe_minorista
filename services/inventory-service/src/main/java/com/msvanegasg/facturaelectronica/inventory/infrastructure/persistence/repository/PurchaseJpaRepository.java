@@ -13,7 +13,7 @@ import org.springframework.data.repository.query.Param;
 import com.msvanegasg.facturaelectronica.inventory.domain.model.PurchaseStatus;
 import com.msvanegasg.facturaelectronica.inventory.infrastructure.persistence.entity.PurchaseJpaEntity;
 
-public interface PurchaseJpaRepository extends JpaRepository<PurchaseJpaEntity, UUID> {
+public interface PurchaseJpaRepository extends JpaRepository<PurchaseJpaEntity, UUID>, PurchaseJpaRepositoryCustom {
 
     @EntityGraph(attributePaths = "lines")
     Optional<PurchaseJpaEntity> findByCompanyIdAndId(UUID companyId, UUID id);

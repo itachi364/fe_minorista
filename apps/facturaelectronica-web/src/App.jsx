@@ -1370,6 +1370,17 @@ export default function App() {
     return result;
   }
 
+  async function deleteResolution(resolution) {
+    requireCompany();
+    await requestJson(`/api/v1/numbering-resolutions/${resolution.id}`, {
+      method: 'DELETE',
+      ...context,
+      idempotencyKey: createIdempotencyKey('resolution-delete'),
+    });
+    await loadFiscalConfiguration();
+    return null;
+  }
+
   function hydrateDianConfigurationForm(configuration) {
     setDianConfigurationForm({
       ...createDianConfigurationForm(),
@@ -2238,13 +2249,19 @@ export default function App() {
                   issuer.active ? 'Activo' : 'Inactivo',
                   { searchText: issuer.active ? 'activo' : 'inactivo', content: <button className="secondary" disabled={busy} onClick={() => execute(() => toggleIssuerActive(issuer))} type="button">{issuer.active ? 'Inactivar' : 'Activar'}</button> },
                 ])} rowKey={(row) => row[1]} pageSize={5} />
-                <DataTable title="Resoluciones registradas" description="La resolucion de numeracion autoriza prefijo, rango, vigencia y tipo de documento fiscal ante la DIAN." columns={['Tipo', 'Resolucion', 'Rango', 'Vigencia', 'Estado', 'Acciones']} rows={numberingResolutions.map((resolution) => [
+                <DataTable title="Resoluciones registradas" description="La resolucion de numeracion autoriza prefijo, rango, vigencia y tipo de documento fiscal ante la DIAN." columns={['Tipo', 'Resolucion', 'Rango', 'Vigencia', 'Uso', 'Estado', 'Acciones']} rows={numberingResolutions.map((resolution) => [
                   resolution.documentType,
                   `${resolution.prefix || 'Sin prefijo'} ${resolution.resolutionNumber}`,
                   `${resolution.fromNumber} - ${resolution.toNumber} actual ${resolution.currentNumber}`,
                   `${resolution.validFrom} / ${resolution.validTo}`,
+                  resolution.used ? `Usada (${resolution.usageCount || 0})` : 'Sin uso',
                   resolution.active ? 'Activa' : 'Inactiva',
-                  { searchText: resolution.active ? 'activa' : 'inactiva', content: <button className="secondary" disabled={busy} onClick={() => execute(() => toggleResolutionActive(resolution))} type="button">{resolution.active ? 'Inactivar' : 'Activar'}</button> },
+                  { searchText: `${resolution.active ? 'activa' : 'inactiva'} ${resolution.used ? 'usada' : 'sin uso'}`, content: (
+                    <div className="row-actions">
+                      <button className="secondary" disabled={busy} onClick={() => execute(() => toggleResolutionActive(resolution))} type="button">{resolution.active ? 'Inactivar' : 'Activar'}</button>
+                      {!resolution.used && <button className="secondary danger-soft" disabled={busy} onClick={() => execute(() => deleteResolution(resolution), { successMessage: 'Resolucion eliminada correctamente.', silentNullSuccess: false })} type="button">Eliminar</button>}
+                    </div>
+                  ) },
                 ])} rowKey={(row) => row[1]} pageSize={5} />
               </div>
             </>

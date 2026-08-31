@@ -62,6 +62,19 @@ class PurchasePersistenceAdapterTest {
         assertThat(result.orElseThrow().lines()).hasSize(1);
     }
 
+    @Test
+    void findsPurchasesWithDynamicFilters() {
+        when(repository.findPurchasesDynamic(any(), any(), any(), any(), any())).thenReturn(List.of(entity()));
+        PurchasePersistenceAdapter adapter = new PurchasePersistenceAdapter(repository);
+
+        List<Purchase> result = adapter.find(new com.msvanegasg.facturaelectronica.inventory.application.dto.PurchaseQuery(
+                COMPANY_ID, PurchaseStatus.PENDING, null, LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 30)));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).id()).isEqualTo(PURCHASE_ID);
+    }
+
     private static Purchase purchase() {
         return Purchase.pending(PURCHASE_ID, COMPANY_ID, null, new BigDecimal("90000.00"),
                 new BigDecimal("17100.00"), new BigDecimal("107100.00"), PaymentCondition.CREDIT,

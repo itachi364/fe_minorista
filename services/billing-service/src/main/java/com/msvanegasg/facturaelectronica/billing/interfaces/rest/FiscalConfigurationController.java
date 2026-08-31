@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -121,5 +122,12 @@ public class FiscalConfigurationController {
     public NumberingResolutionResponse deactivateNumberingResolution(@RequestHeader(COMPANY_HEADER) UUID companyId,
             @PathVariable UUID resolutionId) {
         return BillingRestMapper.toResponse(createNumberingResolutionUseCase.deactivate(companyId, resolutionId));
+    }
+
+    @DeleteMapping("/numbering-resolutions/{resolutionId}")
+    public ResponseEntity<Void> deleteNumberingResolution(@RequestHeader(COMPANY_HEADER) UUID companyId,
+            @PathVariable UUID resolutionId) {
+        createNumberingResolutionUseCase.delete(companyId, resolutionId);
+        return ResponseEntity.noContent().build();
     }
 }

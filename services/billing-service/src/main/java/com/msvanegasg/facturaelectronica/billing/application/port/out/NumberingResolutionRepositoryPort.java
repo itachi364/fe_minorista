@@ -20,4 +20,8 @@ public interface NumberingResolutionRepositoryPort {
     Optional<NumberingResolution> findByCompanyIdAndId(UUID companyId, UUID resolutionId);
 
     NumberingResolution saveAsOnlyActive(NumberingResolution numberingResolution);
+
+    long usageCount(NumberingResolution numberingResolution);
+
+    void delete(NumberingResolution numberingResolution);
 }

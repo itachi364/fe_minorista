@@ -1,6 +1,7 @@
 package com.msvanegasg.facturaelectronica.payroll.infrastructure.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -53,6 +54,21 @@ class PayrollAccountingHttpAdapterTest {
         PayrollAccountingHttpAdapter adapter = new PayrollAccountingHttpAdapter(RestClient.builder(), "");
 
         adapter.applyDailyPayment(payment());
+    }
+
+    @Test
+    void propagatesAccountingFailures() throws IOException {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/accounting-entries", exchange -> {
+            exchange.sendResponseHeaders(400, -1);
+            exchange.close();
+        });
+        server.start();
+        String baseUrl = "http://localhost:" + server.getAddress().getPort();
+        PayrollAccountingHttpAdapter adapter = new PayrollAccountingHttpAdapter(RestClient.builder(), baseUrl);
+
+        assertThatThrownBy(() -> adapter.applyDailyPayment(payment()))
+                .isInstanceOf(RuntimeException.class);
     }
 
     private static DailyLaborPayment payment() {

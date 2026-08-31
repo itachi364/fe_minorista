@@ -18,5 +18,7 @@ public record NumberingResolutionResponse(
         LocalDate validFrom,
         LocalDate validTo,
         FiscalEnvironment environment,
-        boolean active) {
+        boolean active,
+        boolean used,
+        long usageCount) {
 }

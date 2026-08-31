@@ -105,6 +105,52 @@ class IssuerAndNumberingConfigurationServiceTest {
     }
 
     @Test
+    void deletesUnusedResolution() {
+        InMemoryNumberingResolutionRepository repository = new InMemoryNumberingResolutionRepository();
+        repository.save(NumberingResolution.create(RESOLUTION_ID, COMPANY_ID, ElectronicDocumentType.ELECTRONIC_POS,
+                "18760000001", "POS", 50, 51, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
+                FiscalEnvironment.TEST));
+        var service = new CreateNumberingResolutionService(repository, () -> RESOLUTION_ID_2);
+
+        service.delete(COMPANY_ID, RESOLUTION_ID);
+
+        assertThat(repository.findByCompanyIdAndId(COMPANY_ID, RESOLUTION_ID)).isEmpty();
+    }
+
+    @Test
+    void rejectsDeletingUsedResolution() {
+        InMemoryNumberingResolutionRepository repository = new InMemoryNumberingResolutionRepository();
+        NumberingResolution resolution = repository.save(NumberingResolution.create(RESOLUTION_ID, COMPANY_ID,
+                ElectronicDocumentType.ELECTRONIC_POS, "18760000001", "POS", 50, 51,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), FiscalEnvironment.TEST));
+        repository.markUsed(resolution.id(), 1);
+        var service = new CreateNumberingResolutionService(repository, () -> RESOLUTION_ID_2);
+
+        assertThatThrownBy(() -> service.delete(COMPANY_ID, RESOLUTION_ID))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("La resolucion de numeracion ya fue usada en documentos fiscales. Inactivala para conservar trazabilidad.");
+    }
+
+    @Test
+    void listsResolutionUsageMetadata() {
+        InMemoryNumberingResolutionRepository repository = new InMemoryNumberingResolutionRepository();
+        NumberingResolution resolution = repository.save(NumberingResolution.create(RESOLUTION_ID, COMPANY_ID,
+                ElectronicDocumentType.ELECTRONIC_POS, "18760000001", "POS", 50, 51,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), FiscalEnvironment.TEST));
+        repository.markUsed(resolution.id(), 2);
+        var service = new QueryFiscalConfigurationService(new InMemoryIssuerProfileRepository(), repository);
+
+        var result = service.findNumberingResolutions(COMPANY_ID, null, null);
+
+        assertThat(result).singleElement()
+                .satisfies(item -> {
+                    assertThat(item.used()).isTrue();
+                    assertThat(item.usageCount()).isEqualTo(2);
+                });
+    }
+
+
+    @Test
     void assignFiscalNumberRequiresActiveIssuer() {
         var service = new AssignFiscalNumberService(new InMemoryIssuerProfileRepository(),
                 new InMemoryNumberingResolutionRepository());
@@ -189,6 +235,7 @@ class IssuerAndNumberingConfigurationServiceTest {
 
     private static final class InMemoryNumberingResolutionRepository implements NumberingResolutionRepositoryPort {
         private final Map<UUID, NumberingResolution> resolutions = new HashMap<>();
+        private final Map<UUID, Long> usageCounts = new HashMap<>();
         private NumberingResolution savedResolution;
 
         @Override
@@ -226,6 +273,20 @@ class IssuerAndNumberingConfigurationServiceTest {
         public Optional<NumberingResolution> findByCompanyIdAndId(UUID companyId, UUID resolutionId) {
             return Optional.ofNullable(resolutions.get(resolutionId))
                     .filter(resolution -> resolution.companyId().equals(companyId));
+        }
+
+        @Override
+        public long usageCount(NumberingResolution numberingResolution) {
+            return usageCounts.getOrDefault(numberingResolution.id(), 0L);
+        }
+
+        @Override
+        public void delete(NumberingResolution numberingResolution) {
+            resolutions.remove(numberingResolution.id());
+        }
+
+        void markUsed(UUID resolutionId, long usageCount) {
+            usageCounts.put(resolutionId, usageCount);
         }
 
         NumberingResolution savedResolution() {

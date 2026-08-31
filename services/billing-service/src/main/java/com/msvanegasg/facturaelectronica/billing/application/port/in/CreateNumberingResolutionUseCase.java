@@ -11,4 +11,6 @@ public interface CreateNumberingResolutionUseCase {
     NumberingResolutionResult activate(UUID companyId, UUID resolutionId);
 
     NumberingResolutionResult deactivate(UUID companyId, UUID resolutionId);
+
+    void delete(UUID companyId, UUID resolutionId);
 }

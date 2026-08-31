@@ -353,3 +353,22 @@
 - AC-329: Dado un reporte tabular historico que requiera detalle transaccional, cuando se muestre informacion tecnica necesaria como CUFE/CUDE, entonces debe tener etiqueta funcional en espanol y estar limitado a las columnas aprobadas para ese reporte.
 - AC-330: Dado un reporte exportado a CSV o Excel, cuando el archivo se genere, entonces debe usar el mismo dataset normalizado que la UI y no el JSON crudo de microservicios.
 - AC-331: Dado el flujo SDD vigente, cuando se implemente normalizacion de reportes, entonces deben existir pruebas backend y frontend que validen columnas, series graficas, ausencia de campos tecnicos y compatibilidad con exportacion.
+
+## Bugs fiscales, compras y contabilidad diaria
+
+- AC-332: Dada una resolucion fiscal no usada, cuando ROOT o un administrador autorizado solicite eliminarla desde UI/API, entonces se elimina fisicamente y queda auditoria de la accion.
+- AC-333: Dada una resolucion fiscal usada por documentos, cuando se solicite quitarla de operacion, entonces el backend debe rechazar eliminacion fisica y permitir inactivacion conservando historial.
+- AC-334: Dada una resolucion fiscal con error operativo, cuando quede inactiva, entonces no puede ser seleccionada por el cierre de venta FE/POS.
+- AC-335: Dado el boton `Consultar compras`, cuando existan compras de la empresa activa, entonces la SPA debe mostrar la tabla de compras reales desde `/api/v1/purchases`; si no existen, debe mostrar estado vacio funcional.
+- AC-336: Dado un pago diario a empleado/jornalero, cuando se confirme, entonces debe generar asiento contable como egreso/gasto operacional mediante regla `DAILY_PAYROLL_PAID`.
+- AC-337: Dado que falte la regla contable de pago diario, cuando se intente confirmar el pago, entonces el backend debe responder error funcional indicando configurar contabilidad.
+- AC-338: Dado el reporte diario de ganancias y gastos, cuando se consulte una fecha, entonces debe mostrar ingresos por ventas, costos de venta, gastos operativos, pagos diarios y utilidad/perdida neta.
+- AC-339: Dado un reporte diario sin informacion, cuando se consulte, entonces debe responder ceros funcionales y no error interno.
+
+## Separacion financiera operativa
+
+- AC-340: Dada una compra clasificada como reabastecimiento de inventario, cuando se confirme, entonces incrementa stock y registra asiento contable de inventario/proveedor o caja/banco.
+- AC-341: Dada una compra clasificada como activo, cuando se confirme, entonces no incrementa stock vendible y registra activo/caja, banco o cuenta por pagar.
+- AC-342: Dado un gasto operativo, cuando se confirme, entonces no incrementa stock y registra gasto, IVA descontable cuando aplique, caja/banco o cuenta por pagar.
+- AC-343: Dado un deudor/cuenta por cobrar, cuando se registre una obligacion y abonos, entonces el sistema mantiene saldo pendiente, estado y asientos contables correspondientes.
+- AC-344: Dadas compras, gastos, deudores y pagos diarios, cuando se consulten reportes, entonces todos los resultados deben estar aislados por empresa, permisos y licencia.

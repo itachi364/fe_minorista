@@ -3085,4 +3085,78 @@ Context7 evidence:
 - Relevant finding: React recomienda calcular datos derivados durante renderizado desde props/estado y renderizar colecciones con keys estables tomadas del dato.
 - Decision impact: La SPA debe derivar vista desde `columns`, `rows` y `series` normalizados, evitando duplicar estado o inferir tablas desde JSON crudo.
 
+### TASK-238 - Gestion segura de resoluciones fiscales con error
+- Estado: Pendiente.
+- Fase: Fase transversal: Bugs detectados 2026-08-31.
+- Decision de diseno: Las resoluciones fiscales no deben tratarse como una configuracion descartable cuando ya participaron en documentos fiscales. Si nunca fueron usadas, pueden eliminarse para limpiar errores de captura; si tienen uso historico, solo pueden inactivarse.
+- Backend: `billing-service` expone acciones separadas para eliminar resoluciones sin uso e inactivar resoluciones usadas o no usadas. La busqueda de resolucion activa para cierre de venta solo considera resoluciones activas y compatibles con `document_type`, ambiente y rango.
+- UI: El modulo Fiscal muestra tabla de resoluciones con estado, uso y acciones. La accion `Eliminar` solo se muestra cuando `used=false`; `Inactivar` queda disponible para retirar una resolucion de operacion.
+- Auditoria: Toda eliminacion o inactivacion registra actor, empresa, resolucion, motivo si aplica y correlacion.
+- Error esperado: Si no hay resolucion activa compatible, el cierre de venta debe mostrar error funcional claro, no `500`.
+
+### TASK-239 - Corregir boton Consultar compras
+- Estado: Pendiente.
+- Fase: Fase transversal: Bugs detectados 2026-08-31.
+- Decision de diseno: El boton `Consultar compras` debe consumir un contrato backend real, aislado por empresa y permisos, y no depender de datos locales ni estados ficticios.
+- Backend: `inventory-service` debe exponer o corregir el listado de compras/reabastecimientos actuales con filtros basicos. Si aun no existen compras, responde lista vacia.
+- UI: La pantalla de inventario muestra tabla profesional de compras consultadas y estado vacio. Los errores se muestran con modal de error funcional y correlacion.
+- Evolucion: TASK-241 separara el concepto completo de compras, pero este bug repara el flujo actual para no dejar controles rotos.
+
+### TASK-240 - Contabilizar pagos diarios como egreso operativo
+- Estado: Pendiente.
+- Fase: Fase transversal: Bugs detectados 2026-08-31.
+- Decision de diseno: El pago diario/verbal de un trabajador es un egreso operativo del negocio y debe generar asiento contable usando una regla PUC empresarial.
+- Regla: `DAILY_PAYROLL_PAID` debita gasto operacional de personal/jornales y acredita caja/banco segun el metodo de pago. La regla puede ser plantilla sugerida, pero cada empresa puede ajustarla antes de usarla.
+- Consistencia: El pago no debe quedar confirmado si el asiento contable falla por regla inexistente o incompleta. El error debe ser funcional y auditable.
+- Reportes: Estos pagos alimentan `DAILY_PROFIT_AND_LOSS` como egresos operativos/pagos diarios.
+
+### TASK-241 - Separar compras de reabastecimiento, activos y gastos
+- Estado: Pendiente.
+- Fase: Fase 31: Finanzas operativas para pequeno negocio.
+- Decision de diseno: El negocio necesita registrar distintos hechos economicos que hoy se confunden como compras. Se separan tres flujos: reabastecimiento de inventario/insumos, compra de activos del negocio y gastos operativos.
+- Reabastecimiento: Incrementa stock controlado, actualiza costo operativo y contabiliza inventario o costo segun configuracion.
+- Activos: Registra un activo de negocio, no aparece en POS ni inventario vendible, y genera asiento de activo/caja o cuenta por pagar.
+- Gastos: No modifica stock; se registra en el modulo de gastos de TASK-242.
+
+### TASK-242 - Modulo de gastos operativos
+- Estado: Pendiente.
+- Fase: Fase 31: Finanzas operativas para pequeno negocio.
+- Decision de diseno: Los gastos operativos deben ser primera clase para pequenos negocios: servicios publicos, impuestos, reparaciones, imprevistos, arriendo, transporte, pagos de deuda y conceptos personalizados.
+- Backend: `accounting-service` o un servicio financiero dedicado valida categoria, tercero/proveedor opcional, fecha, metodo de pago, valores fiscales y regla PUC.
+- UI: Modulo independiente `Gastos` bajo Contabilidad, con formulario, historico y filtros por fecha/categoria/proveedor.
+- Contabilidad: Cada gasto confirmado crea asiento contable con `OPERATING_EXPENSE_CONFIRMED`.
+
+### TASK-243 - Modulo de deudores y cuentas por cobrar
+- Estado: Pendiente.
+- Fase: Fase 31: Finanzas operativas para pequeno negocio.
+- Decision de diseno: Las cuentas por cobrar permiten saber quien le debe dinero al negocio, vencimientos, abonos y saldo pendiente sin modificar ventas historicas.
+- Backend: El agregado mantiene obligacion, saldo, estado y pagos. Los recaudos son idempotentes y generan asientos contables.
+- UI: Modulo `Deudores` bajo Contabilidad, con registro de deuda, lista de saldos, vencimientos y abonos.
+- Reportes: Alimenta cartera por vencimiento y flujo de caja.
+
+### TASK-244 - Reporte diario de ganancias, gastos y perdida
+- Estado: Pendiente.
+- Fase: Fase 31: Finanzas operativas para pequeno negocio.
+- Decision de diseno: El reporte diario debe responder la pregunta operativa del negocio: cuanto vendio, cuanto costo operar, cuanto gasto y si gano o perdio.
+- Dataset: `DAILY_PROFIT_AND_LOSS` normaliza ingresos por ventas, costo de ventas, gastos operativos, pagos diarios, otros egresos y utilidad/perdida neta.
+- Presentacion: Tabla y grafica simple con valores monetarios `es-CO`; si no hay datos, todas las metricas salen en cero.
+- Fuente: Ventas confirmadas, movimientos de inventario/costo, asientos contables y pagos de nomina diaria.
+
+### TASK-245 - Plantillas contables minimas para operaciones financieras
+- Estado: Pendiente.
+- Fase: Fase 31: Finanzas operativas para pequeno negocio.
+- Decision de diseno: Para que el sistema sea usable sin exigir conocimiento contable profundo, se entregan plantillas PUC sugeridas por evento, pero la empresa conserva control de sus cuentas y reglas.
+- Plantillas minimas: `DAILY_PAYROLL_PAID`, `OPERATING_EXPENSE_CONFIRMED`, `ASSET_PURCHASE_CONFIRMED`, `INVENTORY_REPLENISHMENT_CONFIRMED`, `ACCOUNT_RECEIVABLE_REGISTERED`.
+- Seguridad contable: Las reglas usadas por asientos historicos no se modifican ni inactivan directamente; se versionan mediante nueva regla.
+
+#### Context7 evidence
+- Library/tool: React.
+- Topic consulted: Controlled inputs, dynamic forms and stable derived UI.
+- Relevant finding: React recomienda controlar formularios desde estado, derivar UI desde datos y usar keys estables en listas/tablas.
+- Decision impact: Las acciones de resoluciones, compras, gastos, deudores y reportes se modelan como formularios/tabla controlados y estados vacios explicitos.
+- Library/tool: Spring Boot.
+- Topic consulted: Validation and error handling for REST request bodies.
+- Relevant finding: Spring Boot/Spring MVC soporta validacion con `@Valid @RequestBody` y manejo centralizado de excepciones para respuestas funcionales.
+- Decision impact: Los nuevos endpoints deben devolver errores 400/409 funcionales y no filtrar `500` para reglas de negocio esperadas.
+
 <!-- END SDD TASK DESIGN TRACEABILITY -->

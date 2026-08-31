@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalEnvironment;
+import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalNoteType;
 import com.msvanegasg.facturaelectronica.billing.infrastructure.persistence.entity.NumberingResolutionJpaEntity;
 
 public interface NumberingResolutionJpaRepository extends JpaRepository<NumberingResolutionJpaEntity, UUID> {
@@ -45,4 +46,32 @@ public interface NumberingResolutionJpaRepository extends JpaRepository<Numberin
             @Param("documentType") ElectronicDocumentType documentType,
             @Param("environment") FiscalEnvironment environment,
             @Param("exceptId") UUID exceptId);
+
+    @Query("""
+            select count(d.id)
+            from SaleJpaEntity s join s.electronicDocument d
+            where d.companyId = :companyId
+              and d.documentType = :documentType
+              and d.prefix = :prefix
+              and d.documentNumber between :fromNumber and :toNumber
+            """)
+    long countElectronicDocumentUsage(@Param("companyId") UUID companyId,
+            @Param("documentType") ElectronicDocumentType documentType,
+            @Param("prefix") String prefix,
+            @Param("fromNumber") long fromNumber,
+            @Param("toNumber") long toNumber);
+
+    @Query("""
+            select count(n.id)
+            from FiscalNoteJpaEntity n
+            where n.companyId = :companyId
+              and n.noteType = :noteType
+              and n.prefix = :prefix
+              and n.documentNumber between :fromNumber and :toNumber
+            """)
+    long countFiscalNoteUsage(@Param("companyId") UUID companyId,
+            @Param("noteType") FiscalNoteType noteType,
+            @Param("prefix") String prefix,
+            @Param("fromNumber") long fromNumber,
+            @Param("toNumber") long toNumber);
 }

@@ -28,7 +28,8 @@ class ReportManagementServiceTest {
 
     @Test
     void listsReportDefinitionsAndOptions() {
-        assertThat(service.definitions()).extracting("code").contains("SALES_BY_SELLER", "INVENTORY_STOCK");
+        assertThat(service.definitions()).extracting("code")
+                .contains("SALES_BY_SELLER", "INVENTORY_STOCK", "DAILY_PROFIT_AND_LOSS");
 
         var options = service.options(COMPANY_ID, "SALES_BY_SELLER", "Bearer token");
 
@@ -69,6 +70,21 @@ class ReportManagementServiceTest {
         assertThat(result.rows().get(0)).containsEntry("seller", "Vendedor 99999999")
                 .containsEntry("closedSales", 2)
                 .containsEntry("documents", 1);
+    }
+
+    @Test
+    void normalizesDailyProfitAndLossReport() {
+        ReportQueryResult result = service.query(new ReportQueryCommand(COMPANY_ID, "DAILY_PROFIT_AND_LOSS",
+                LocalDate.parse("2026-08-28"), LocalDate.parse("2026-08-28"), Map.of(), ChartType.BAR,
+                "Bearer token"));
+
+        assertThat(result.reportCode()).isEqualTo("DAILY_PROFIT_AND_LOSS");
+        assertThat(result.columns()).extracting("label").containsExactly("Concepto", "Valor");
+        assertThat(result.rows()).hasSize(3);
+        assertThat(result.rows().get(0)).containsEntry("metric", "Ingresos operacionales");
+        assertThat(result.rows().get(2)).containsEntry("metric", "Utilidad o perdida neta");
+        assertThat(result.series()).extracting("label")
+                .containsExactly("Ingresos operacionales", "Gastos operacionales");
     }
 
     @Test
@@ -114,6 +130,16 @@ class ReportManagementServiceTest {
                 Map<String, String> filters, String authorizationHeader) {
             this.reportCode = reportCode;
             var mapper = new ObjectMapper();
+            if ("DAILY_PROFIT_AND_LOSS".equals(reportCode)) {
+                var payload = mapper.createObjectNode();
+                payload.put("statementType", "INCOME_STATEMENT");
+                payload.put("total", "15000.00");
+                var groups = mapper.createArrayNode();
+                groups.add(financialGroup(mapper, "4", "Ingresos operacionales", "50000.00"));
+                groups.add(financialGroup(mapper, "5", "Gastos operacionales", "35000.00"));
+                payload.set("groups", groups);
+                return payload;
+            }
             return mapper.createArrayNode()
                     .add(sale(mapper, "sale-1", "CONFIRMED", "99999999-9999-9999-9999-999999999999", "Cafe", 1,
                             "10000.00", "1900.00", "11900.00", true))
@@ -156,6 +182,14 @@ class ReportManagementServiceTest {
                 sale.set("electronicDocument", document);
             }
             return sale;
+        }
+
+        private static JsonNode financialGroup(ObjectMapper mapper, String code, String label, String total) {
+            var group = mapper.createObjectNode();
+            group.put("code", code);
+            group.put("label", label);
+            group.put("total", total);
+            return group;
         }
     }
 }

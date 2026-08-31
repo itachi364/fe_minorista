@@ -73,7 +73,8 @@ final class BillingRestMapper {
     static NumberingResolutionResponse toResponse(NumberingResolutionResult result) {
         return new NumberingResolutionResponse(result.id(), result.companyId(), result.documentType(),
                 result.resolutionNumber(), result.prefix(), result.fromNumber(), result.toNumber(),
-                result.currentNumber(), result.validFrom(), result.validTo(), result.environment(), result.active());
+                result.currentNumber(), result.validFrom(), result.validTo(), result.environment(), result.active(),
+                result.used(), result.usageCount());
     }
 
     static CompanyFiscalPolicyCommand toCommand(UUID companyId, CompanyFiscalPolicyRequest request) {

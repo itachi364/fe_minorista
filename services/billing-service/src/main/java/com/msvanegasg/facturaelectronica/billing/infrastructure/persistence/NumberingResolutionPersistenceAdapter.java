@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.NumberingResolutionRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalEnvironment;
+import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalNoteType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.NumberingResolution;
 import com.msvanegasg.facturaelectronica.billing.infrastructure.persistence.entity.NumberingResolutionJpaEntity;
 import com.msvanegasg.facturaelectronica.billing.infrastructure.persistence.repository.NumberingResolutionJpaRepository;
@@ -71,6 +72,25 @@ public class NumberingResolutionPersistenceAdapter implements NumberingResolutio
                 .map(NumberingResolutionPersistenceAdapter::toDomain);
     }
 
+    @Override
+    public long usageCount(NumberingResolution numberingResolution) {
+        long documentUsage = numberingResolution.documentType().isSaleDocument()
+                ? repository.countElectronicDocumentUsage(numberingResolution.companyId(),
+                        numberingResolution.documentType(), numberingResolution.prefix(),
+                        numberingResolution.fromNumber(), numberingResolution.toNumber())
+                : 0;
+        FiscalNoteType noteType = toNoteType(numberingResolution.documentType());
+        long noteUsage = noteType == null ? 0 : repository.countFiscalNoteUsage(numberingResolution.companyId(),
+                noteType, numberingResolution.prefix(), numberingResolution.fromNumber(),
+                numberingResolution.toNumber());
+        return documentUsage + noteUsage;
+    }
+
+    @Override
+    public void delete(NumberingResolution numberingResolution) {
+        repository.deleteById(numberingResolution.id());
+    }
+
     private static NumberingResolutionJpaEntity toEntity(NumberingResolution resolution) {
         NumberingResolutionJpaEntity entity = new NumberingResolutionJpaEntity();
         entity.setId(resolution.id());
@@ -93,5 +113,14 @@ public class NumberingResolutionPersistenceAdapter implements NumberingResolutio
                 entity.getResolutionNumber(), entity.getPrefix(), entity.getFromNumber(), entity.getToNumber(),
                 entity.getCurrentNumber(), entity.getValidFrom(), entity.getValidTo(), entity.getEnvironment(),
                 entity.isActive());
+    }
+
+    private static FiscalNoteType toNoteType(ElectronicDocumentType documentType) {
+        return switch (documentType) {
+            case CREDIT_NOTE -> FiscalNoteType.CREDIT_NOTE;
+            case DEBIT_NOTE -> FiscalNoteType.DEBIT_NOTE;
+            case POS_ADJUSTMENT_NOTE -> FiscalNoteType.POS_ADJUSTMENT_NOTE;
+            default -> null;
+        };
     }
 }

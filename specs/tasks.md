@@ -6068,3 +6068,151 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
     - `.\mvnw.cmd -pl services/reporting-service -am test`: 9 tests OK.
     - `npm test -- --run App.test.jsx`: 31 tests OK.
     - `npm run build`: OK.
+
+## Fase transversal: Bugs detectados 2026-08-31
+
+- [x] TASK-238: Gestion segura de resoluciones fiscales con error
+  - Estado: DONE
+  - Requisitos: RF-228, RF-229.
+  - Acceptance criteria:
+    - AC-332: Una resolucion fiscal sin uso puede eliminarse desde UI/API por ROOT o administrador autorizado y debe dejar auditoria.
+    - AC-333: Una resolucion fiscal usada no puede eliminarse fisicamente; el backend debe rechazar con error funcional y permitir inactivarla.
+    - AC-334: Una resolucion inactiva o marcada con error no puede ser usada para cerrar ventas FE/POS.
+  - Descripcion: Permitir retirar de operacion resoluciones fiscales mal configuradas sin romper trazabilidad fiscal ni historico de documentos.
+  - Archivos propuestos:
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/**`
+    - `apps/facturaelectronica-web/src/features/fiscal/FiscalConfigurationForm.jsx`
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+    - `specs/tasks.md`
+  - Dependencias:
+    - TASK-123.
+    - TASK-215.
+  - Validacion propuesta:
+    - Tests backend de eliminar sin uso, rechazar eliminacion con uso e inactivar.
+    - Vitest frontend para acciones condicionadas por `used`.
+  - Resultado:
+    - Se agrego `DELETE /api/v1/numbering-resolutions/{resolutionId}` para retirar resoluciones sin uso.
+    - El backend calcula `used` y `usageCount` desde documentos electronicos/notas fiscales y rechaza eliminacion fisica cuando ya existe trazabilidad.
+    - La UI muestra uso de la resolucion y habilita `Eliminar` solo cuando no esta usada; las usadas se inactivan.
+  - Validacion:
+    - `.\mvnw.cmd -pl services/billing-service -am test`: 66 tests OK.
+    - `npm test -- --run App.test.jsx`: 31 tests OK.
+    - `npm run build`: OK.
+
+- [x] TASK-239: Corregir boton Consultar compras
+  - Estado: DONE
+  - Requisitos: RF-230.
+  - Acceptance criteria:
+    - AC-335: El boton `Consultar compras` consume el endpoint vigente de compras, respeta empresa activa y permisos, y muestra tabla o estado vacio sin error silencioso.
+  - Descripcion: Reparar el flujo de consulta de compras para que permita validar compras operativas antes de separar reabastecimiento, activos y gastos.
+  - Archivos propuestos:
+    - `services/inventory-service/src/main/java/com/msvanegasg/facturaelectronica/inventory/**`
+    - `apps/facturaelectronica-web/src/features/inventory/ProductForm.jsx`
+    - `apps/facturaelectronica-web/src/utils/apiClient.js`
+  - Dependencias:
+    - TASK-017.
+    - TASK-115.
+  - Validacion propuesta:
+    - Tests backend de listado de compras.
+    - Vitest para carga de compras y estado vacio.
+  - Resultado:
+    - Se reemplazo la consulta JPQL con filtros opcionales por Criteria API para evitar errores de inferencia de tipos con PostgreSQL.
+    - El adaptador de persistencia de compras usa `findPurchasesDynamic` para consultar compras con filtros opcionales.
+  - Validacion:
+    - `.\mvnw.cmd -pl services/inventory-service -am test`: 54 tests OK.
+    - `npm test -- --run App.test.jsx`: 31 tests OK.
+
+- [x] TASK-240: Contabilizar pagos diarios de empleados como egreso operativo
+  - Estado: DONE
+  - Requisitos: RF-231, RF-237.
+  - Acceptance criteria:
+    - AC-336: Un pago diario/verbal de empleado genera asiento contable usando la regla `DAILY_PAYROLL_PAID`.
+    - AC-337: Si falta la regla contable de pago diario, el backend devuelve error funcional de configuracion contable y no deja el pago parcialmente cerrado.
+  - Descripcion: Corregir el flujo de nomina diaria para que afecte egresos/gastos operativos y pueda aparecer en reportes de utilidad diaria.
+  - Archivos propuestos:
+    - `services/payroll-service/src/main/java/com/msvanegasg/facturaelectronica/payroll/**`
+    - `services/accounting-service/src/main/java/com/msvanegasg/facturaelectronica/accounting/**`
+    - `apps/facturaelectronica-web/src/features/payroll/PayrollForm.jsx`
+  - Dependencias:
+    - TASK-180.
+    - TASK-223.
+  - Validacion propuesta:
+    - Tests de integracion por contrato payroll-accounting.
+    - Unit tests de error por regla faltante.
+  - Resultado:
+    - El pago diario/verbal ahora exige que contabilidad acepte la aplicacion del asiento antes de guardar el pago.
+    - Si contabilidad rechaza o no existe configuracion aplicable, el flujo falla de forma verificable y evita pagos parcialmente cerrados.
+  - Validacion:
+    - `.\mvnw.cmd -pl services/payroll-service -am test`: 9 tests OK.
+
+## Fase 31: Finanzas operativas para pequeno negocio
+
+- [ ] TASK-241: Separar compras de reabastecimiento, activos y gastos
+  - Estado: TODO
+  - Requisitos: RF-233, RF-234.
+  - Acceptance criteria:
+    - AC-340: Una compra clasificada como reabastecimiento incrementa inventario y genera contabilizacion de inventario/cuentas por pagar o caja.
+    - AC-341: Una compra clasificada como activo del negocio no incrementa inventario vendible y genera contabilizacion de activo.
+  - Descripcion: Diferenciar compras de mercancia/insumos, compras de activos operativos y gastos para evitar que todo se mezcle en inventario.
+  - Archivos propuestos:
+    - `services/inventory-service/**`
+    - `services/accounting-service/**`
+    - `apps/facturaelectronica-web/src/features/purchases/**`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+
+- [ ] TASK-242: Modulo de gastos operativos
+  - Estado: TODO
+  - Requisitos: RF-235.
+  - Acceptance criteria:
+    - AC-342: Un gasto operativo registra concepto, proveedor opcional, metodo de pago, IVA si aplica y asiento contable sin movimiento de inventario.
+  - Descripcion: Crear flujo para servicios publicos, impuestos, reparaciones, imprevistos, arriendo, transporte, deudas y otros gastos del negocio.
+  - Archivos propuestos:
+    - `services/accounting-service/**`
+    - `apps/facturaelectronica-web/src/features/expenses/**`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+
+- [ ] TASK-243: Modulo de deudores y cuentas por cobrar
+  - Estado: TODO
+  - Requisitos: RF-236.
+  - Acceptance criteria:
+    - AC-343: Una cuenta por cobrar mantiene saldo, vencimiento, estado y abonos, y cada movimiento genera asiento contable y auditoria.
+  - Descripcion: Permitir registrar clientes o terceros que deben dinero al negocio, consultar saldos y registrar recaudos.
+  - Archivos propuestos:
+    - `services/accounting-service/**`
+    - `apps/facturaelectronica-web/src/features/receivables/**`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+
+- [x] TASK-244: Reporte diario de ganancias, gastos y perdida
+  - Estado: DONE
+  - Requisitos: RF-232.
+  - Acceptance criteria:
+    - AC-338: El reporte diario muestra ingresos por ventas, costo de venta, gastos operativos, pagos diarios y utilidad/perdida neta.
+    - AC-339: Si no hay datos en el periodo, el reporte responde en ceros y no genera error interno.
+  - Descripcion: Agregar reporte gerencial diario para que el negocio sepa cuanto gano o perdio en una fecha o rango corto.
+  - Archivos propuestos:
+    - `services/reporting-service/**`
+    - `services/accounting-service/**`
+    - `apps/facturaelectronica-web/src/features/reports/ReportsForm.jsx`
+  - Resultado:
+    - Se agrego el reporte `DAILY_PROFIT_AND_LOSS` al catalogo de reporting.
+    - El reporte consume el estado de resultados del servicio contable y normaliza la salida como conceptos financieros en espanol.
+    - La grafica usa ingresos/costos/gastos con valores positivos y la tabla conserva la utilidad o perdida neta.
+  - Validacion:
+    - `.\mvnw.cmd -pl services/reporting-service -am test`: 10 tests OK.
+
+- [ ] TASK-245: Plantillas contables minimas para operaciones financieras
+  - Estado: TODO
+  - Requisitos: RF-237.
+  - Acceptance criteria:
+    - AC-344: Compras, gastos, deudores, pagos diarios y reportes respetan empresa, licencia, permisos y auditoria.
+  - Descripcion: Completar reglas PUC sugeridas para `DAILY_PAYROLL_PAID`, `OPERATING_EXPENSE_CONFIRMED`, `ASSET_PURCHASE_CONFIRMED`, `INVENTORY_REPLENISHMENT_CONFIRMED` y `ACCOUNT_RECEIVABLE_REGISTERED`.
+  - Archivos propuestos:
+    - `services/accounting-service/**`
+    - `services/payroll-service/**`
+    - `apps/facturaelectronica-web/src/features/accounting/AccountingForm.jsx`

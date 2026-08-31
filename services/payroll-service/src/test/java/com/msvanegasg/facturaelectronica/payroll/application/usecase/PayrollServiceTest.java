@@ -68,7 +68,7 @@ class PayrollServiceTest {
     }
 
     @Test
-    void keepsDailyPaymentRegisteredWhenAccountingFails() {
+    void rejectsDailyPaymentWhenAccountingFails() {
         PayrollService serviceWithFailingAccounting = new PayrollService(repository, new SequenceIdGenerator(), () -> NOW,
                 payment -> {
                     throw new IllegalStateException("accounting unavailable");
@@ -76,12 +76,13 @@ class PayrollServiceTest {
         Worker worker = serviceWithFailingAccounting.registerWorker(COMPANY_ID, new WorkerCommand(13, "1234567890",
                 null, "Trabajador Diario", "DAILY_VERBAL", true));
 
-        DailyLaborPayment payment = serviceWithFailingAccounting.registerDailyPayment(COMPANY_ID,
+        assertThatThrownBy(() -> serviceWithFailingAccounting.registerDailyPayment(COMPANY_ID,
                 new DailyLaborPaymentCommand(worker.id(), LocalDate.parse("2026-08-11"), "Apoyo en ventas",
-                        new BigDecimal("80000.00"), new BigDecimal("80000.00"), "CASH", true, null));
+                        new BigDecimal("80000.00"), new BigDecimal("80000.00"), "CASH", true, null)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("accounting unavailable");
 
-        assertThat(payment.id()).isEqualTo(PAYMENT_ID);
-        assertThat(repository.findDailyPayment(COMPANY_ID, PAYMENT_ID)).contains(payment);
+        assertThat(repository.findDailyPayment(COMPANY_ID, PAYMENT_ID)).isEmpty();
     }
 
     @Test

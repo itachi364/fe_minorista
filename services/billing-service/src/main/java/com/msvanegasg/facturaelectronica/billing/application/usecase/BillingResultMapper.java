@@ -55,9 +55,13 @@ final class BillingResultMapper {
     }
 
     static NumberingResolutionResult toNumberingResolutionResult(NumberingResolution resolution) {
+        return toNumberingResolutionResult(resolution, 0);
+    }
+
+    static NumberingResolutionResult toNumberingResolutionResult(NumberingResolution resolution, long usageCount) {
         return new NumberingResolutionResult(resolution.id(), resolution.companyId(), resolution.documentType(),
                 resolution.resolutionNumber(), resolution.prefix(), resolution.fromNumber(), resolution.toNumber(),
                 resolution.currentNumber(), resolution.validFrom(), resolution.validTo(), resolution.environment(),
-                resolution.active());
+                resolution.active(), usageCount > 0, usageCount);
     }
 }

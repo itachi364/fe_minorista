@@ -32,6 +32,10 @@ final class ReportDatasetNormalizer {
             new ReportColumn("total", "Total", "money"),
             new ReportColumn("documents", "Documentos emitidos", "number"));
 
+    private static final List<ReportColumn> PROFIT_AND_LOSS_COLUMNS = List.of(
+            new ReportColumn("metric", "Concepto", "text"),
+            new ReportColumn("amount", "Valor", "money"));
+
     private ReportDatasetNormalizer() {
     }
 
@@ -39,6 +43,7 @@ final class ReportDatasetNormalizer {
         return switch (reportCode) {
             case "SALES_BY_PRODUCT" -> salesByProduct(payload);
             case "SALES_BY_SELLER" -> salesBySeller(payload);
+            case "PROFITABILITY", "DAILY_PROFIT_AND_LOSS" -> profitAndLoss(payload);
             default -> genericDataset(payload);
         };
     }
@@ -96,6 +101,24 @@ final class ReportDatasetNormalizer {
         return new NormalizedReportDataset(SALES_BY_SELLER_COLUMNS, rows, series(rows, "seller", "total"));
     }
 
+    private static NormalizedReportDataset profitAndLoss(JsonNode payload) {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        JsonNode groups = payload.path("groups");
+        if (groups.isArray()) {
+            for (JsonNode group : groups) {
+                rows.add(metricRow(text(group, "label", "Concepto"), decimal(group, "total")));
+            }
+        }
+        rows.add(metricRow("Utilidad o perdida neta", decimal(payload, "total")));
+        List<ReportSeriesPoint> series = rows.stream()
+                .filter(row -> !"Utilidad o perdida neta".equals(row.get("metric")))
+                .map(row -> new ReportSeriesPoint(String.valueOf(row.get("metric")),
+                        ((BigDecimal) row.getOrDefault("amount", BigDecimal.ZERO)).abs()))
+                .filter(point -> point.value().compareTo(BigDecimal.ZERO) > 0)
+                .toList();
+        return new NormalizedReportDataset(PROFIT_AND_LOSS_COLUMNS, rows, series);
+    }
+
     private static NormalizedReportDataset genericDataset(JsonNode payload) {
         JsonNode source = selectArray(payload);
         if (!source.isArray() || source.size() == 0) {
@@ -132,6 +155,13 @@ final class ReportDatasetNormalizer {
                         (BigDecimal) row.getOrDefault(valueKey, BigDecimal.ZERO)))
                 .filter(point -> point.value().compareTo(BigDecimal.ZERO) > 0)
                 .toList();
+    }
+
+    private static Map<String, Object> metricRow(String metric, BigDecimal amount) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("metric", metric);
+        row.put("amount", amount);
+        return row;
     }
 
     private static JsonNode selectArray(JsonNode payload) {

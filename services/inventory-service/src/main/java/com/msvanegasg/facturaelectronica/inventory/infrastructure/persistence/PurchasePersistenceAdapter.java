@@ -37,7 +37,7 @@ public class PurchasePersistenceAdapter implements PurchaseRepositoryPort {
 
     @Override
     public List<Purchase> find(PurchaseQuery query) {
-        return repository.findPurchases(query.companyId(), query.status(), query.supplierId(),
+        return repository.findPurchasesDynamic(query.companyId(), query.status(), query.supplierId(),
                 query.from() == null ? null : query.from().atStartOfDay().toInstant(ZoneOffset.UTC),
                 query.to() == null ? null : query.to().plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC))
                 .stream().map(PurchasePersistenceAdapter::toDomain).toList();

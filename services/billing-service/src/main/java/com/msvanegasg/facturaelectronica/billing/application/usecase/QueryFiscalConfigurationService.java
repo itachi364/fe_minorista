@@ -41,7 +41,8 @@ public class QueryFiscalConfigurationService implements QueryFiscalConfiguration
     public List<NumberingResolutionResult> findNumberingResolutions(UUID companyId,
             ElectronicDocumentType documentType, Boolean active) {
         return numberingResolutionRepository.findByCompanyId(companyId, documentType, active).stream()
-                .map(BillingResultMapper::toNumberingResolutionResult)
+                .map(resolution -> BillingResultMapper.toNumberingResolutionResult(resolution,
+                        numberingResolutionRepository.usageCount(resolution)))
                 .toList();
     }
 }

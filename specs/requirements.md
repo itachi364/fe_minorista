@@ -440,6 +440,16 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-225: El reporte `SALES_BY_PRODUCT` debe presentar datos agregados por producto/servicio con columnas funcionales en espanol: producto, cantidad vendida, subtotal/base gravable, IVA, total y cantidad de ventas/documentos cuando aplique.
 - RF-226: El reporte `SALES_BY_SELLER` debe presentar datos agregados por vendedor con columnas funcionales en espanol: vendedor, ventas cerradas, subtotal/base gravable, IVA, total y documentos emitidos cuando aplique.
 - RF-227: Las visualizaciones graficas de reportes deben usar series derivadas del dataset normalizado por tipo de reporte; una grafica de barras no debe caer a una tabla transaccional cruda ni mostrar columnas tecnicas como `Company Id`, `Idempotency Key` o rutas anidadas de documento electronico.
+- RF-228: El modulo Fiscal debe permitir quitar de operacion una resolucion que genero error. Si no fue usada por ningun documento fiscal, puede eliminarse; si fue usada, solo puede inactivarse para conservar trazabilidad DIAN.
+- RF-229: El sistema debe impedir que una resolucion con estado de error quede como resolucion activa usada por cierres de venta FE/POS, mostrando una accion clara para inactivarla o reemplazarla.
+- RF-230: El boton `Consultar compras` debe consultar y mostrar compras reales o indicar que no existen registros, sin fallar silenciosamente ni depender de datos precargados.
+- RF-231: Los pagos diarios a empleados, jornaleros o contratacion verbal deben contabilizarse como egreso/gasto operacional segun regla PUC empresarial, y no deben quedar fuera del estado de resultados.
+- RF-232: El modulo de reportes debe incluir reporte diario de ganancias y gastos que muestre ventas, costos de venta, gastos, pagos diarios y utilidad o perdida neta del dia por empresa.
+- RF-233: El sistema debe separar funcionalmente reabastecimiento de inventario, compras de activos, gastos operativos y cuentas por cobrar/deudores; no toda salida de dinero debe tratarse como entrada de stock.
+- RF-234: El modulo de compras debe permitir clasificar una compra como inventario/insumo, activo del negocio o gasto derivado, aplicando efectos distintos en inventario, contabilidad y cuentas por pagar.
+- RF-235: Debe existir un modulo de gastos operativos para registrar servicios publicos, impuestos, reparaciones, imprevistos, arriendo, transporte, deudas y otros egresos del negocio sin afectar stock.
+- RF-236: Debe existir un modulo de deudores/cuentas por cobrar para registrar deudores, obligaciones, abonos, saldos, vencimientos y estado, integrado con contabilidad y reportes.
+- RF-237: La configuracion contable recomendada debe incluir reglas explicitas para `DAILY_PAYROLL_PAID`, `OPERATING_EXPENSE_CONFIRMED`, `ASSET_PURCHASE_CONFIRMED`, `INVENTORY_REPLENISHMENT_CONFIRMED` y `ACCOUNT_RECEIVABLE_REGISTERED`.
 
 ## Requisitos fase productizacion operativa
 

@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -182,12 +183,19 @@ class FiscalConfigurationControllerTest {
         when(createNumberingResolutionUseCase.deactivate(COMPANY_ID, RESOLUTION_ID))
                 .thenReturn(new NumberingResolutionResult(RESOLUTION_ID, COMPANY_ID,
                         ElectronicDocumentType.ELECTRONIC_POS, "18760000001", "POS", 100, 200, 99,
-                        LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), FiscalEnvironment.TEST, false));
+                        LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), FiscalEnvironment.TEST, false, false, 0));
 
         mockMvc.perform(put("/api/v1/numbering-resolutions/{resolutionId}/deactivate", RESOLUTION_ID)
                 .header("X-Company-Id", COMPANY_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.active").value(false));
+    }
+
+    @Test
+    void deletesUnusedNumberingResolution() throws Exception {
+        mockMvc.perform(delete("/api/v1/numbering-resolutions/{resolutionId}", RESOLUTION_ID)
+                .header("X-Company-Id", COMPANY_ID))
+                .andExpect(status().isNoContent());
     }
 
     private static IssuerProfileResult issuer() {
@@ -198,7 +206,7 @@ class FiscalConfigurationControllerTest {
     private static NumberingResolutionResult resolution() {
         return new NumberingResolutionResult(RESOLUTION_ID, COMPANY_ID, ElectronicDocumentType.ELECTRONIC_POS,
                 "18760000001", "POS", 100, 200, 99, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
-                FiscalEnvironment.TEST, true);
+                FiscalEnvironment.TEST, true, false, 0);
     }
 
     private static CompanyFiscalPolicyResult policy() {
