@@ -846,7 +846,7 @@ Tabla planificada para fase posterior. Todavia no existe en Flyway.
 
 ## Extensiones TASK-153 a TASK-163
 
-Estado: objetivo DIAN real pendiente de implementacion; no existe en Flyway hasta ejecutar Fase 20.
+Estado: implementado por `dian-provider-service` mediante migracion Flyway V003 para trazas tecnicas, artefactos y validaciones del flujo DIAN configurable por empresa.
 
 ### `dian_provider.dian_submission_event`
 
@@ -925,7 +925,7 @@ Tabla implementada por Flyway `V005__create_company_branding.sql` para branding 
 
 ### `reporting.report_definition`
 
-Tabla objetivo para catalogo backend de reportes avanzados. Todavia no existe en Flyway hasta ejecutar TASK-185.
+Catalogo backend objetivo de reportes avanzados. En la implementacion actual el catalogo se resuelve desde codigo/configuracion de `reporting-service`; no existe tabla `report_definition` en Flyway hasta justificar administracion dinamica persistida.
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -955,29 +955,53 @@ Tabla objetivo para catalogo backend de reportes avanzados. Todavia no existe en
 | status | varchar(40) | Si | `SUCCESS`, `FAILED` o `VALIDATION_ERROR`. |
 | correlation_id | varchar(120) | No | Identificador de correlacion. |
 
-### `reporting.report_export`
+### `reporting.report_export_job`
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
-| id | uuid | Si | Identificador de exportacion. |
+| id | uuid | Si | Identificador del job de exportacion. |
 | company_id | uuid | Si | Empresa propietaria. |
+| requested_by_user_id | uuid | No | Usuario solicitante. |
 | report_code | varchar(80) | Si | Reporte exportado. |
-| format | varchar(20) | Si | `CSV`, `XLSX` o `PDF` cuando aplique. |
-| status | varchar(40) | Si | `PROCESSING`, `READY`, `FAILED` o `EXPIRED`. |
+| format | varchar(12) | Si | Formato solicitado, por ejemplo `CSV` o `XLSX`. |
+| chart_type | varchar(20) | Si | Tipo de visualizacion solicitado. |
+| from_date | date | No | Fecha inicial del reporte. |
+| to_date | date | No | Fecha final del reporte. |
+| filters_json | text | Si | Filtros normalizados sin secretos. |
+| notify_by_email | boolean | Si | Indica si se debe notificar disponibilidad. |
+| status | varchar(20) | Si | `PENDING`, `PROCESSING`, `READY`, `FAILED`, `EXPIRED` o `REVOKED`. |
+| requested_at | timestamptz | Si | Fecha/hora de solicitud. |
+| started_at | timestamptz | No | Fecha/hora de inicio del procesamiento. |
+| completed_at | timestamptz | No | Fecha/hora de finalizacion. |
+| expires_at | timestamptz | Si | Fecha/hora de expiracion del archivo/job. |
+| token_hash | varchar(128) | No | Hash del token intermediado; no almacena token plano. |
+| token_expires_at | timestamptz | No | Expiracion del token intermediado. |
 | storage_key | varchar(500) | No | Referencia segura del archivo generado. |
 | content_type | varchar(120) | No | Tipo MIME del archivo. |
-| file_name | varchar(220) | No | Nombre de descarga sugerido. |
-| content_hash | varchar(120) | No | Hash del archivo generado. |
-| requested_by | uuid | Si | Usuario solicitante. |
-| requested_at | timestamptz | Si | Fecha/hora de solicitud. |
-| ready_at | timestamptz | No | Fecha/hora en que quedo disponible. |
-| expires_at | timestamptz | No | Fecha/hora de expiracion de descarga. |
-| error_code | varchar(80) | No | Codigo de error sanitizado. |
-| error_message | varchar(500) | No | Mensaje de error no sensible. |
+| filename | varchar(220) | No | Nombre de descarga sugerido. |
+| file_size | bigint | No | Tamano del archivo generado. |
+| failure_message | varchar(500) | No | Mensaje de fallo sanitizado. |
+| notification_status | varchar(20) | Si | Estado de notificacion, por defecto `NOT_REQUESTED`. |
+| notification_message | varchar(500) | No | Mensaje seguro asociado a la notificacion. |
+| download_attempts | integer | Si | Conteo de intentos de descarga. |
+| last_downloaded_at | timestamptz | No | Fecha/hora de ultima descarga. |
+| created_at | timestamptz | Si | Fecha/hora de creacion del registro. |
+| updated_at | timestamptz | Si | Fecha/hora de ultima actualizacion. |
+
+### `reporting.report_export_download_attempt`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del intento. |
+| job_id | uuid | Si | Job de exportacion asociado. |
+| company_id | uuid | Si | Empresa propietaria. |
+| attempted_at | timestamptz | Si | Fecha/hora del intento. |
+| result | varchar(20) | Si | Resultado del intento. |
+| detail | varchar(300) | No | Detalle sanitizado. |
 
 ### `billing.fiscal_document_artifact`
 
-Tabla objetivo para artefactos POS/documento fiscal. Todavia no existe en Flyway hasta ejecutar TASK-188.
+Tabla objetivo para artefactos POS/documento fiscal persistidos en `billing-service`. En la implementacion actual los artefactos fiscales tecnicos se conservan principalmente desde `dian-provider-service` y las salidas imprimibles se generan/controlan desde el flujo de documento; esta tabla queda como extension si se requiere almacenamiento fiscal propio en billing.
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|

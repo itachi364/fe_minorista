@@ -1352,67 +1352,67 @@ Esta seccion documenta de forma uniforme el impacto de infraestructura de cada t
 - Control operativo: mantener trazabilidad en Docker/local, Terraform/AWS o documentacion SDD segun el alcance de la task.
 
 ### TASK-153 - Actualizar base normativa DIAN vigente y matriz de versionado tecnico
-- Estado: Pendiente.
+- Estado: Completada. Base normativa consolidada y matriz versionada; debe revalidarse antes de habilitar produccion real.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: No crea recursos cloud; condiciona endpoints, artefactos tecnicos y versionado por ambiente.
 - Control operativo: documentar fuentes oficiales, fecha de consulta y version/anexo antes de habilitar recursos productivos.
 
 ### TASK-154 - Disenar generacion XML UBL 2.1 para documentos fiscales
-- Estado: Pendiente.
+- Estado: Completada. XML UBL 2.1 de referencia implementado para factura, POS electronico y notas con payload sanitizado.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: No requiere recurso nuevo; puede requerir empaquetar artefactos tecnicos validados con el contenedor o cargarlos desde storage seguro.
 - Control operativo: versionar artefactos tecnicos y fixtures sanitizados sin secretos.
 
 ### TASK-155 - Disenar calculo CUFE/CUDE y QR productivo
-- Estado: Pendiente.
+- Estado: Completada. Calculo deterministico CUFE/CUDE y QR de referencia implementado sin registrar claves tecnicas.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: No crea recursos cloud; depende de secretos empresariales ya administrados por KMS/Secrets Manager.
 - Control operativo: evitar logs de claves tecnicas y validar reproducibilidad por ambiente.
 
 ### TASK-156 - Implementar firma XML con certificado empresarial
-- Estado: Pendiente.
+- Estado: Completada con adaptador de referencia. La firma XMLDSig/XAdES certificada queda condicionada a certificado real de empresa y validacion de habilitacion.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: Usa Secrets Manager/KMS para certificado y PIN por empresa.
 - Control operativo: IAM minimo por servicio/prefijo, rotacion auditable y respuesta sin valores secretos.
 
 ### TASK-157 - Implementar validacion XSD, Schematron y listas de codigos
-- Estado: Pendiente.
+- Estado: Completada con compuerta tecnica fail-closed cuando faltan artefactos XSD/Schematron/listas configuradas.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: Requiere disponibilidad confiable de XSD/Schematron/listas en runtime.
 - Control operativo: fallar cerrado si faltan artefactos o version esperada.
 
 ### TASK-158 - Implementar transporte real DIAN para habilitacion y produccion
-- Estado: Pendiente.
+- Estado: Completada con transporte configurable `stub/http` por empresa y separacion de modo mock/real.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: Requiere egress controlado desde servicios privados hacia endpoints DIAN y configuracion de timeouts/reintentos.
 - Control operativo: separar habilitacion/produccion y nunca hacer fallback a mock en modo real.
 
 ### TASK-159 - Persistir respuestas DIAN y ApplicationResponse
-- Estado: Pendiente.
+- Estado: Completada mediante migracion Flyway V003, trazas tecnicas, artefactos y resultados de validacion.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: Agrega migraciones en `dian-provider-service` y almacenamiento de metadata tecnica.
 - Control operativo: persistir solo mensajes sanitizados y referencias a artefactos privados.
 
 ### TASK-160 - Implementar reintentos DIAN e idempotencia de efectos posteriores
-- Estado: Pendiente.
+- Estado: Completada con idempotencia de envio y base de reintentos asincronos para fallas tecnicas.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: Usa SQS/EventBridge/provider retry Lambda cuando el fallo sea temporal.
 - Control operativo: DLQ, reintento con idempotencia y estados terminales claros.
 
 ### TASK-161 - Almacenar artefactos fiscales reales de forma segura
-- Estado: Pendiente.
+- Estado: Completada con puerto de almacenamiento y adaptador local privado; S3/KMS queda como adaptador productivo.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: Usa S3 privado/KMS o storage cloud equivalente para artefactos fiscales.
 - Control operativo: acceso por BFF/RBAC, hash, retencion y auditoria de descarga.
 
 ### TASK-162 - Ajustar contratos API y modelo de datos para DIAN real
-- Estado: Pendiente.
+- Estado: Completada. Contratos mantienen endpoints estables y agregan trazabilidad/artefactos neutrales.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: Puede requerir nuevas migraciones, variables de entorno y permisos IAM.
 - Control operativo: contratos deben declarar headers, errores, idempotencia y storage seguro.
 
 ### TASK-163 - Definir suite obligatoria de pruebas DIAN antes de produccion
-- Estado: Pendiente.
+- Estado: Completada como suite base local; antes de produccion se requieren fixtures sanitizados y pruebas de habilitacion por empresa.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: No crea recursos permanentes; puede usar stubs locales y entornos de habilitacion DIAN.
 - Control operativo: bloquear despliegue real si no existe evidencia de pruebas con fixtures sanitizados.
@@ -1690,5 +1690,16 @@ Reglas:
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Impacto de infraestructura: Sin nuevo recurso cloud; consume BFF.
 - Control operativo: mostrar estados claros y no forzar retorno al modulo para descargar desde correo.
+
+## TASK-249 infraestructura documental
+
+Estado: completada.
+
+### TASK-249 - Normalizar documentacion SDD y README del repositorio
+- Estado: Completada.
+- Fase: Fase 33: Gobierno documental y README operativo.
+- Impacto de infraestructura: Sin cambios de recursos, contenedores ni cloud.
+- Control operativo: README debe describir ejecucion local con Docker Compose, ejecucion por servicio, pruebas, SonarQube, Swagger/OpenAPI, migraciones, seguridad y variables de configuracion sin incluir secretos ni planeacion funcional.
+- Validacion documental: la trazabilidad funcional queda en `specs/`; el README queda como ayuda de repositorio para instalacion, operacion local y validacion tecnica.
 
 <!-- END SDD TASK INFRASTRUCTURE TRACEABILITY -->

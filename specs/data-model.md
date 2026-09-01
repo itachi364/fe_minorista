@@ -445,14 +445,13 @@ Reglas:
 
 - `billing.issuer_profile`
 - `billing.numbering_resolution`
-- `billing.number_sequence`
 - `billing.sale`
 - `billing.sale_line`
 - `billing.electronic_document`
 - `billing.electronic_document_line`
 - `billing.electronic_document_tax`
-- `billing.electronic_document_artifact`
-- `billing.adjustment_document`
+- `billing.fiscal_note`
+- Artefactos fiscales tecnicos gestionados por `dian-provider-service`; almacenamiento propio en billing queda como extension documentada.
 
 Estado TASK-035:
 
@@ -460,7 +459,7 @@ Estado TASK-035:
 - `billing.sale` registra venta POS/factura base, totales calculados e idempotencia.
 - `billing.sale_line` registra producto, cantidad, precio, descuento, impuesto y total por linea.
 - `billing.electronic_document` registra documento POS mock emitido en confirmacion, CUDE/QR simulado, estado fiscal y estado del proveedor.
-- La numeracion autorizada real y resoluciones migradas desde legacy se conectaran en una tarea posterior; en este corte se usa secuencia local mock para pruebas funcionales.
+- La numeracion fiscal se resuelve desde `billing.numbering_resolution`, que conserva `from_number`, `to_number` y `current_number`, con una resolucion activa por empresa, tipo documental y ambiente. El modo mock local puede emitir documentos de prueba, pero no reemplaza la configuracion DIAN real de cada empresa.
 
 Estado TASK-049:
 

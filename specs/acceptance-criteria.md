@@ -194,21 +194,6 @@
 - AC-150: Dado un pago clasificado como contratista independiente, cuando se contabilice, entonces debe registrarse como egreso/proveedor o gasto operativo y no como empleado de nomina formal.
 - AC-151: Dada la suite E2E actualizada, cuando se ejecute desde cero, entonces debe crear empresa, administrador, catalogos requeridos, tercero, inventario, venta, factura mock, contabilidad, logs y un flujo minimo de nomina/pago diario sin depender de datos demo del frontend.
 
-## UX operativa y carga automatica
-
-- AC-345: La barra lateral muestra como entradas principales `Ventas`, `Reportes`, `Contabilidad` y `Configuracion`; los submodulos no quedan desplegados permanentemente hacia abajo.
-- AC-346: Al pasar el mouse o enfocar con teclado un menu con submodulos, se muestra un menu flotante lateral con opciones autorizadas por licencia, rol y permisos.
-- AC-347: La opcion activa conserva resaltado visible tanto en el menu principal como en el submodulo seleccionado.
-- AC-348: Al abrir `Terceros`, `Inventario`, `Compras`, `Gastos`, `Deudores`, `Registro de Ventas` o `Nomina`, la SPA carga automaticamente datos de tabla y listas requeridas sin exigir botones `Consultar` o `Cargar`.
-- AC-349: Las tablas historicas usan por defecto rango desde ayer hasta hoy; las listas desplegables cargan todos los registros activos requeridos para operar.
-- AC-350: Los botones manuales de consulta/carga usados como prerequisito se eliminan de los modulos indicados y las pruebas frontend validan la carga por entrada a modulo.
-- AC-351: Dado el modulo `Compras`, cuando se cree o confirme una compra/factura de proveedor, entonces no debe crear movimientos `PURCHASE_IN` ni aumentar stock.
-- AC-352: Dado el formulario de `Compras`, cuando el usuario registre una factura, entonces captura conceptos libres y no selecciona `Producto/Insumo`.
-- AC-353: Dado el formulario de `Inventario`, cuando se seleccione uso de item, entonces no se ofrece la opcion `Compra sin inventario`; los egresos sin stock se registran en `Gastos` o `Compras` segun corresponda.
-- AC-354: Dado un tercero creado correctamente, cuando el backend responda OK, entonces el formulario se limpia para capturar otro cliente/proveedor sin arrastrar datos.
-- AC-355: Dado un menu principal con flyout, cuando el usuario mueva el mouse hacia una opcion, entonces el menu no debe cerrarse por el titulo o por un espacio entre barra y panel.
-- AC-356: Dado el modulo `Compras`, cuando el BFF autoriza lectura o escritura, entonces acepta permisos funcionales de compras/contabilidad y no exige permiso de inventario.
-
 ## Productizacion operativa y cierre funcional
 
 - AC-152: Dado un entorno local limpio con solo ROOT semilla, cuando se ejecute el E2E desde cero, entonces debe crear empresa, licencia, OWNER, tercero, producto, stock, venta POS, factura electronica mock, descuento de inventario, asiento contable y auditoria.
@@ -387,3 +372,23 @@
 - AC-342: Dado un gasto operativo, cuando se confirme, entonces no incrementa stock y registra gasto, IVA descontable cuando aplique, caja/banco o cuenta por pagar.
 - AC-343: Dado un deudor/cuenta por cobrar, cuando se registre una obligacion y abonos, entonces el sistema mantiene saldo pendiente, estado y asientos contables correspondientes.
 - AC-344: Dadas compras, gastos, deudores y pagos diarios, cuando se consulten reportes, entonces todos los resultados deben estar aislados por empresa, permisos y licencia.
+
+## UX operativa y carga automatica
+
+- AC-345: La barra lateral muestra como entradas principales `Ventas`, `Reportes`, `Contabilidad` y `Configuracion`; los submodulos no quedan desplegados permanentemente hacia abajo.
+- AC-346: Al pasar el mouse o enfocar con teclado un menu con submodulos, se muestra un menu flotante lateral con opciones autorizadas por licencia, rol y permisos.
+- AC-347: La opcion activa conserva resaltado visible tanto en el menu principal como en el submodulo seleccionado.
+- AC-348: Al abrir `Terceros`, `Inventario`, `Compras`, `Gastos`, `Deudores`, `Registro de Ventas` o `Nomina`, la SPA carga automaticamente datos de tabla y listas requeridas sin exigir botones `Consultar` o `Cargar`.
+- AC-349: Las tablas historicas usan por defecto rango desde ayer hasta hoy; las listas desplegables cargan todos los registros activos requeridos para operar.
+- AC-350: Los botones manuales de consulta/carga usados como prerequisito se eliminan de los modulos indicados y las pruebas frontend validan la carga por entrada a modulo.
+- AC-351: Dado el modulo `Compras`, cuando se cree o confirme una compra/factura de proveedor, entonces no debe crear movimientos `PURCHASE_IN` ni aumentar stock.
+- AC-352: Dado el formulario de `Compras`, cuando el usuario registre una factura, entonces captura conceptos libres y no selecciona `Producto/Insumo`.
+- AC-353: Dado el formulario de `Inventario`, cuando se seleccione uso de item, entonces no se ofrece la opcion `Compra sin inventario`; los egresos sin stock se registran en `Gastos` o `Compras` segun corresponda.
+- AC-354: Dado un tercero creado correctamente, cuando el backend responda OK, entonces el formulario se limpia para capturar otro cliente/proveedor sin arrastrar datos.
+- AC-355: Dado un menu principal con flyout, cuando el usuario mueva el mouse hacia una opcion, entonces el menu no debe cerrarse por el titulo o por un espacio entre barra y panel.
+- AC-356: Dado el modulo `Compras`, cuando el BFF autoriza lectura o escritura, entonces acepta permisos funcionales de compras/contabilidad y no exige permiso de inventario.
+
+## Gobierno documental del repositorio
+
+- AC-357: Dado el README del repositorio, cuando se revise su contenido, entonces debe servir como guia practica de instalacion, ejecucion, despliegue local, pruebas, SonarQube, Swagger, seguridad y estructura tecnica, sin mezclar planeacion funcional.
+- AC-358: Dado el flujo SDD, cuando se actualice documentacion transversal, entonces requisitos, diseno, criterios, infraestructura, diccionario, arquitectura, diagramas y casos de uso deben quedar sin numeraciones duplicadas, estados contradictorios o modelos desalineados con el comportamiento vigente.

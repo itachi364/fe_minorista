@@ -136,6 +136,10 @@ Respuesta en `AUTH_MODE=cognito`:
 }
 ```
 
+## Gobierno documental
+
+TASK-249 no introduce endpoints, payloads ni eventos nuevos. Su alcance es documental: README como guia operativa del repositorio y `specs/` como fuente de trazabilidad funcional, tecnica, contractual, de persistencia e infraestructura.
+
 Reglas:
 
 - El BFF genera `state`, `nonce`, PKCE `code_verifier` y `code_challenge`.

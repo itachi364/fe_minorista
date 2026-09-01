@@ -457,6 +457,7 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-242: Los botones manuales de consulta que sean prerequisito de uso deben eliminarse de la UI; la recarga posterior debe resolverse por cambio de filtros, entrada al modulo o accion contextual no obstructiva.
 - RF-243: El aumento, disminucion, ajuste y consumo de inventario debe realizarse desde `Inventario` o desde efectos de venta/servicio aprobados; `Compras` solo conserva soporte financiero/documental.
 - RF-244: El formulario de `Compras` debe capturar conceptos libres de factura y no exigir seleccion de `Producto/Insumo`; el selector de uso de item en `Inventario` no debe incluir `Compra sin inventario`.
+- RF-245: El README debe funcionar como guia operativa del repositorio, sin planeacion ni backlog funcional; la trazabilidad de trabajo vive en los documentos SDD especializados.
 
 ## Requisitos fase productizacion operativa
 

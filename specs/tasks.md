@@ -311,7 +311,7 @@
   - Estado: DONE
   - Acceptance criteria: AC-010, AC-011, AC-013.
   - Tests requeridos: unit tests de entradas, salidas y trazabilidad.
-  - Resultado local: se implemento el nucleo de inventario en Clean Architecture con `StockBalance`, `InventoryMovement`, tipos de movimiento, tipo de documento origen, puertos de entrada/salida y `RegisterInventoryMovementService`. Las compras incrementan stock con movimiento `PURCHASE_IN`; las ventas disminuyen stock con `SALE_OUT`; cada movimiento conserva trazabilidad de empresa, producto, cantidad, documento origen, usuario, fecha, stock previo y stock resultante. El dominio impide stock negativo.
+  - Resultado local: se implemento el nucleo de inventario en Clean Architecture con `StockBalance`, `InventoryMovement`, tipos de movimiento, tipo de documento origen, puertos de entrada/salida y `RegisterInventoryMovementService`. Las entradas fisicas de inventario pueden usar movimiento `PURCHASE_IN` o ajuste autorizado; las ventas disminuyen stock con `SALE_OUT`; cada movimiento conserva trazabilidad de empresa, producto, cantidad, documento origen, usuario, fecha, stock previo y stock resultante. El dominio impide stock negativo. Regla vigente: las compras documentales de `Compras` no incrementan stock automaticamente; ver TASK-241 y TASK-248.
   - Verificacion: `mvnw.cmd "-Dtest=RegisterInventoryMovementServiceTest" test` ejecutado con exito: 4 tests, 0 fallos. Suite completa `mvnw.cmd test` con PostgreSQL local: 60 tests, 0 fallos.
 
 - [x] TASK-017: Implementar validacion de disponibilidad
@@ -1756,10 +1756,10 @@
     - Unit tests de compras/gastos/pagos.
     - Controller tests.
     - Persistence tests.
-    - E2E parcial compra -> stock -> contabilidad.
+    - E2E parcial compra documental -> contabilidad.
   - Resultado local:
     - `inventory-service` soporta compras `CASH` y `CREDIT`; las compras a credito requieren `dueDate`.
-    - La confirmacion de compra sigue incrementando stock y ejecuta contabilizacion/CxP best-effort contra `accounting-service` si `ACCOUNTING_SERVICE_URL` esta configurado.
+    - La confirmacion de compra documental ejecuta contabilizacion/CxP best-effort contra `accounting-service` si `ACCOUNTING_SERVICE_URL` esta configurado. Regla vigente: no incrementa stock automaticamente; el reabastecimiento fisico se registra desde `Inventario`.
     - `accounting-service` implementa gastos, confirmacion de gastos, creacion/listado de cuentas por pagar y pagos parciales/totales.
     - Los pagos actualizan saldo y estado de CxP (`OPEN`, `PARTIALLY_PAID`, `PAID`) y generan asiento contable por regla PUC.
   - Nota de arquitectura: la integracion compra -> contabilidad no impide confirmar compras si `accounting-service` falla; Outbox/Inbox con EventBridge/SQS y Lambdas reemplazara esta llamada best-effort en la tarea correspondiente.
@@ -3682,7 +3682,7 @@
   - Acceptance criteria: AC-153, AC-160, AC-161.
   - Alcance:
     - Crear o completar endpoints de compra/entrada.
-    - Confirmar compra incrementando stock y generando asiento/cuenta por pagar o egreso.
+    - Confirmar compra documental generando asiento/cuenta por pagar o egreso sin aumentar stock automaticamente.
     - Auditar acciones mutables.
   - Resultado local:
     - `PurchaseAccountingHttpAdapter` ahora serializa fechas como ISO `yyyy-MM-dd` para `accounting-service` y propaga fallos HTTP de contabilidad en vez de ocultarlos.
@@ -3691,7 +3691,7 @@
     - `.\mvnw.cmd -q -pl services\inventory-service -am test`: OK.
     - `.\mvnw.cmd -q test`: OK.
     - `docker compose up -d --build inventory-service bff-service frontend`: OK; recreo `inventory-service`.
-    - `.\scripts\e2e-from-zero.ps1`: OK; compra confirmada incremento stock y genero asiento contable de compra y cuenta por pagar.
+    - `.\scripts\e2e-from-zero.ps1`: OK historico para flujo anterior. Regla vigente desde TASK-241/TASK-248: compra documental no incrementa stock y el movimiento fisico se registra desde `Inventario`.
 
 - [x] TASK-131: Completar servicios facturables con consumo manual de insumos
   - Estado: DONE
@@ -6278,6 +6278,40 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
   - Validacion:
     - `npm test -- App.test.jsx`: 31 tests OK.
 
+- [x] TASK-247: Carga automatica de datos al entrar a modulos
+  - Estado: DONE
+  - Requisitos: RF-240, RF-241, RF-242.
+  - Acceptance criteria:
+    - AC-348: Al abrir `Terceros`, `Inventario`, `Compras`, `Gastos`, `Deudores`, `Registro de Ventas` o `Nomina`, la SPA carga automaticamente datos de tabla y listas requeridas sin exigir botones `Consultar` o `Cargar`.
+    - AC-349: Las tablas historicas usan por defecto rango desde ayer hasta hoy; las listas desplegables cargan todos los registros activos requeridos para operar.
+    - AC-350: Los botones manuales de consulta/carga usados como prerequisito se eliminan de los modulos indicados y las pruebas frontend validan la carga por entrada a modulo.
+  - Descripcion: Reducir friccion operativa haciendo que cada modulo llegue listo para uso, con estados vacios claros y sin acciones manuales redundantes.
+  - Archivos propuestos:
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/features/thirdparties/ThirdPartyForm.jsx`
+    - `apps/facturaelectronica-web/src/features/inventory/ProductForm.jsx`
+    - `apps/facturaelectronica-web/src/features/purchases/PurchasesPanel.jsx`
+    - `apps/facturaelectronica-web/src/features/expenses/ExpensesPanel.jsx`
+    - `apps/facturaelectronica-web/src/features/receivables/ReceivablesPanel.jsx`
+    - `apps/facturaelectronica-web/src/features/payroll/PayrollPanel.jsx`
+    - `apps/facturaelectronica-web/src/features/sales/SalesRegistryPanel.jsx`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+    - `README.md`
+  - Dependencias:
+    - TASK-241.
+    - TASK-242.
+    - TASK-243.
+    - TASK-229.
+  - Validacion propuesta:
+    - `npm test -- --run App.test.jsx`
+    - `npm run build`
+  - Resultado:
+    - `Terceros`, `Inventario`, `Compras`, `Gastos`, `Deudores`, `Registro de Ventas`, `Nomina`, `Catalogos`, `DIAN`, `Logs` y `PIN operacional` cargan datos al entrar cuando hay permisos y empresa activa.
+    - Las tablas historicas operativas inician con rango ayer-hoy y los botones manuales de consulta/carga como prerequisito fueron retirados.
+    - Las respuestas de lista se normalizan para arreglos directos y envolturas paginadas comunes.
+  - Validacion:
+    - `npm test -- App.test.jsx`: 31 tests OK.
+
 - [x] TASK-248: Corregir flyout, terceros y compras documentales sin inventario
   - Estado: DONE
   - Requisitos: RF-234, RF-243, RF-244.
@@ -6324,36 +6358,39 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
     - `npm test -- App.test.jsx`: OK, 31 tests.
     - `npm run build`: OK.
 
-- [x] TASK-247: Carga automatica de datos al entrar a modulos
+## Fase 33: Gobierno documental y README operativo
+
+- [x] TASK-249: Normalizar documentacion SDD y README del repositorio
   - Estado: DONE
-  - Requisitos: RF-240, RF-241, RF-242.
+  - Requisitos: RF-104, RF-245.
   - Acceptance criteria:
-    - AC-348: Al abrir `Terceros`, `Inventario`, `Compras`, `Gastos`, `Deudores`, `Registro de Ventas` o `Nomina`, la SPA carga automaticamente datos de tabla y listas requeridas sin exigir botones `Consultar` o `Cargar`.
-    - AC-349: Las tablas historicas usan por defecto rango desde ayer hasta hoy; las listas desplegables cargan todos los registros activos requeridos para operar.
-    - AC-350: Los botones manuales de consulta/carga usados como prerequisito se eliminan de los modulos indicados y las pruebas frontend validan la carga por entrada a modulo.
-  - Descripcion: Reducir friccion operativa haciendo que cada modulo llegue listo para uso, con estados vacios claros y sin acciones manuales redundantes.
+    - AC-357: README como guia practica de instalacion, ejecucion, despliegue local, pruebas, SonarQube, Swagger, seguridad y estructura tecnica, sin planeacion funcional.
+    - AC-358: SDD sin numeraciones duplicadas, estados contradictorios o modelos desalineados con el comportamiento vigente.
+  - Descripcion: Revisar y alinear documentacion del repositorio para que README sea ayuda operativa y `specs/` conserve la trazabilidad funcional, tecnica y de trabajo.
   - Archivos propuestos:
-    - `apps/facturaelectronica-web/src/App.jsx`
-    - `apps/facturaelectronica-web/src/features/thirdparties/ThirdPartyForm.jsx`
-    - `apps/facturaelectronica-web/src/features/inventory/ProductForm.jsx`
-    - `apps/facturaelectronica-web/src/features/purchases/PurchasesPanel.jsx`
-    - `apps/facturaelectronica-web/src/features/expenses/ExpensesPanel.jsx`
-    - `apps/facturaelectronica-web/src/features/receivables/ReceivablesPanel.jsx`
-    - `apps/facturaelectronica-web/src/features/payroll/PayrollPanel.jsx`
-    - `apps/facturaelectronica-web/src/features/sales/SalesRegistryPanel.jsx`
-    - `apps/facturaelectronica-web/src/App.test.jsx`
     - `README.md`
+    - `specs/requirements.md`
+    - `specs/design.md`
+    - `specs/tasks.md`
+    - `specs/acceptance-criteria.md`
+    - `specs/database-design.md`
+    - `specs/data-dictionary.md`
+    - `specs/architecture.md`
+    - `specs/use-cases.md`
+    - `specs/diagrams/entity-relationship.mmd`
   - Dependencias:
-    - TASK-241.
-    - TASK-242.
-    - TASK-243.
-    - TASK-229.
+    - TASK-246.
+    - TASK-247.
+    - TASK-248.
   - Validacion propuesta:
-    - `npm test -- --run App.test.jsx`
-    - `npm run build`
+    - Revisar que `README.md` no contenga IDs `TASK-*`, backlog ni planeacion funcional.
+    - Revisar que no existan casos de uso duplicados.
+    - Revisar que estados de tareas implementadas no sigan marcados como pendientes en diseno/base de datos.
   - Resultado:
-    - `Terceros`, `Inventario`, `Compras`, `Gastos`, `Deudores`, `Registro de Ventas`, `Nomina`, `Catalogos`, `DIAN`, `Logs` y `PIN operacional` cargan datos al entrar cuando hay permisos y empresa activa.
-    - Las tablas historicas operativas inician con rango ayer-hoy y los botones manuales de consulta/carga como prerequisito fueron retirados.
-    - Las respuestas de lista se normalizan para arreglos directos y envolturas paginadas comunes.
+    - README reemplazado por guia tecnica del repositorio con arquitectura, stack, configuracion, Docker Compose, ejecucion local, pruebas, SonarQube, Swagger, migraciones, seguridad y documentacion.
+    - Casos de uso renumerados desde UC-022 hasta UC-035 para eliminar duplicados.
+    - Estados de TASK-196 y TASK-238 a TASK-240 sincronizados como completados/implementados.
+    - Diccionario, base de datos, arquitectura y ERD alineados con DIAN implementado y compras documentales sin aumento automatico de inventario.
   - Validacion:
-    - `npm test -- App.test.jsx`: 31 tests OK.
+    - `rg -n "TASK-|Backlog|backlog|Fase|fase|Pendiente|pendiente|tarea|tareas" README.md`
+    - `rg -n "^## UC-" specs/use-cases.md`

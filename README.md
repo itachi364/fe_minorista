@@ -1,1030 +1,253 @@
 # NexoFiscal
 
-Backend Java/Spring Boot y SPA React para una plataforma multiempresa de facturacion electronica colombiana, POS electronico, inventario simple, contabilidad basica con PUC colombiano y operaciones administrativas para pequenos negocios.
+NexoFiscal es una plataforma modular para gestionar ventas, facturacion fiscal configurable por empresa, inventario, terceros, contabilidad operativa, nomina, reportes y administracion multiempresa.
 
-El proyecto migro desde una estructura legacy CRUD hacia Clean Architecture por bounded contexts. Actualmente usa una estructura Maven multi-modulo con microservicios fisicos activos en `services/*`; el codigo del monolito legacy fue removido del repositorio en TASK-059 y las tablas `public.*` legacy se conservan temporalmente solo para auditoria/migracion de datos.
+El repositorio contiene una SPA React, un BFF Spring Boot, microservicios de dominio, lambdas de proyeccion o procesamiento asincrono, migraciones Flyway, despliegue local con Docker Compose y configuracion de calidad con SonarQube.
 
-## Estado Actual
+## Arquitectura General
 
-- Arquitectura Clean Architecture implementada por modulos.
-- PostgreSQL con migraciones Flyway versionadas.
-- Docker Compose local para PostgreSQL, `bff-service`, frontend SPA, `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `audit-service`, `payroll-service` y `reporting-service`.
-- POS electronico con emisor/resolucion fiscal persistidos en `billing-service`, conector DIAN mock configurable como microservicio HTTP y efectos posteriores idempotentes sobre inventario/contabilidad.
-- Persistencia JPA y endpoints REST para billing/POS, accounting, audit y nomina.
-- Limpieza legacy en curso: monolito removido, catalogos/terceros legacy de microservicios retirados mediante migraciones nuevas y datos historicos `public.*` preservados hasta migracion aprobada.
-- Suite multi-modulo activa validada con `tenant-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `audit-service` y `payroll-service`.
+La aplicacion esta organizada en servicios autonomos comunicados por HTTP interno y eventos operativos:
 
-## Alcance Funcional
+- `apps/facturaelectronica-web`: frontend React/Vite.
+- `services/bff-service`: puerta de entrada para la SPA, sesion, CSRF y orquestacion.
+- `services/tenant-service`: empresas contratantes, branding, licencias y alcance multiempresa.
+- `services/identity-service`: usuarios, roles, permisos y PIN operacional.
+- `services/catalog-service`: catalogos parametrizables almacenados en base de datos.
+- `services/thirdparty-service`: clientes, proveedores y terceros empresariales.
+- `services/inventory-service`: items, stock, movimientos de inventario y registro documental de compras.
+- `services/billing-service`: ventas, cierre fiscal, documentos fiscales y consecutivos.
+- `services/dian-provider-service`: integracion fiscal configurable por empresa hacia DIAN o modo mock local.
+- `services/accounting-service`: plan de cuentas, reglas contables, egresos, deudores y asientos.
+- `services/payroll-service`: empleados, periodos y pagos de nomina.
+- `services/reporting-service`: reportes operativos y exportaciones.
+- `services/audit-service`: auditoria funcional y tecnica.
+- `services/*-lambda`: procesos asincronos para auditoria, inventario, contabilidad, reintentos DIAN y reporteria.
 
-- Catalogos versionados: tipos de documento DIAN, responsabilidades fiscales, regimenes tributarios, metodos de pago, billeteras virtuales y DIVIPOLA por departamentos/municipios.
-- Terceros: clientes y proveedores.
-- Inventario: productos multiempresa, costos, stock simple, movimientos y kardex.
-- Compras, gastos y deudores: facturas de proveedor sin afectacion de stock, egresos operativos, compras de activos y cuentas por cobrar con efectos contables.
-- Billing/POS: emisor, resoluciones, emision POS electronico, consulta y envio a conector DIAN mock.
-- Contabilidad: cuentas PUC por empresa, reglas contables configurables, asientos `POSTED`, libro diario, libro mayor y plantillas base para ventas, compras, gastos, activos, deudores y nomina diaria.
-- Nomina: configuracion por empresa, trabajadores, pagos diarios verbales, documento soporte electronico mock opcional y contabilizacion base de pagos diarios.
-- Reportes: catalogo backend avanzado, ventas, inventario, compras, rentabilidad, gastos, cuentas por cobrar, libro diario y libro mayor.
-- UX operativa: navegacion principal con flyouts autorizados por permisos y carga automatica de datos al entrar a modulos, con historicos iniciales de ayer y hoy.
-- Errores API: contrato estandar con `timestamp`, `status`, `code`, `message`, `correlationId` y `details`.
-- Observabilidad HTTP: correlation ID por request y logs estructurados de inicio/fin.
-
-## Backlog Aprobado Fase 23
-
-La fase vigente de producto define la evolucion visual y operativa de NexoFiscal:
-
-- Marca publica `NexoFiscal` en frontend, login, titulo del navegador, sidebar y textos visibles.
-- Branding empresarial parametrizable por empresa: logo principal, logo de login, logo de encabezado y favicon.
-- Storage seguro de assets de branding, exportaciones y artefactos POS: metadata en PostgreSQL y archivos en storage local controlado o S3 privado/KMS en AWS.
-- Reportes avanzados mediante `reporting-service`: selector de reporte, filtros dinamicos, opciones de datos, graficos permitidos, exportaciones sincronas y jobs asincronos descargables.
-- Reportes objetivo iniciales: ventas por vendedor, ventas por producto, compras, inventario/kardex, rentabilidad basica, cuentas por cobrar, cuentas por pagar, contabilidad, nomina/pagos diarios y uso de licencia.
-- Historico avanzado de ventas/documentos con detalle, vendedor, cliente/consumidor final, items, totales, estado DIAN/mock, artefactos, descargas y reimpresiones.
-- Comprobante POS imprimible con estrategia gradual: primero impresion web 58/80 mm; conectores ESC/POS, WebUSB, WebSerial o agente local quedan para una tarea posterior con hardware validado.
-
-Estado: `TASK-179` a `TASK-189` ya tienen implementacion inicial validada. Quedan evoluciones de volumen como paginacion avanzada, conectores directos de impresora y almacenamiento asincrono de artefactos pesados.
-
-## Fase 24 Implementada: Reportes Asincronos
-
-La evolucion de reportes asincronos ya tiene implementacion inicial local/Docker:
-
-- Reportes pesados asincronos con jobs `PENDING`, `PROCESSING`, `READY`, `FAILED`, `EXPIRED` y `REVOKED`.
-- Worker programado local para generar archivos pesados sin bloquear HTTP; en AWS se proyecta Lambda/SQS/EventBridge.
-- Almacenamiento privado en volumen Docker local; en AWS se proyecta S3/KMS.
-- Notificacion local por adaptador controlado; en AWS se proyecta SES.
-- Link de descarga intermediado por NexoFiscal usando `APP_PUBLIC_BASE_URL`, no URL directa de S3.
-- Descarga intermediada con TTL inicial de `REPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS=5`; S3 prefirmado queda como adaptador productivo.
-- Token de link parametrizable con `REPORT_LINK_TOKEN_TTL_HOURS`.
-- Auditoria de solicitud, procesamiento, envio, fallo, expiracion, revocacion y descarga.
-
-## Configuracion DIAN y seguridad productiva
-
-- El modulo `DIAN` permite configurar por empresa el modo mock/real, ambiente, Software ID, metadata de certificado, prueba y activacion. Los secretos se reciben solo como entrada y el backend guarda referencias seguras.
-- NexoFiscal se declara como software parametrizable por empresa; cada empresa es responsable de su habilitacion, certificado y credenciales DIAN.
-- El BFF soporta `AUTH_MODE=local|cognito`. El modo `local` queda para desarrollo/E2E; en entorno productivo el BFF falla cerrado si no usa `AUTH_MODE=cognito` y `BFF_SESSION_ENCRYPTION_KEY`.
-- El BFF agrega Hosted UI + PKCE, callback Cognito, puente Cognito -> identidad interna por `sub` persistente con alta previa por correo, sesion cifrada server-side persistente en PostgreSQL (`bff.secure_sessions`) con fallback memoria explicito, logout con revocacion de sesion interna auditada y revocacion best-effort de `refresh_token`, headers de seguridad, token CSRF para sesiones por cookie y bloqueo MFA de mutaciones criticas. La SPA envia cookies same-origin, propaga `X-CSRF-Token` cuando existe cookie `NF_CSRF`, hidrata sesion desde `/api/v1/auth/session` y no persiste tokens para sesiones Cognito/cookie.
-
-## Arquitectura
-
-La estructura objetivo por microservicio es:
+## Estructura Del Repositorio
 
 ```text
-services/<service>
-  src/main/java/.../<service>
-    domain/
-    application/
-    infrastructure/
-    interfaces/
+.
+|-- apps/
+|   `-- facturaelectronica-web/
+|-- services/
+|   |-- bff-service/
+|   |-- tenant-service/
+|   |-- identity-service/
+|   |-- catalog-service/
+|   |-- thirdparty-service/
+|   |-- inventory-service/
+|   |-- billing-service/
+|   |-- dian-provider-service/
+|   |-- accounting-service/
+|   |-- payroll-service/
+|   |-- audit-service/
+|   |-- reporting-service/
+|   `-- *-lambda/
+|-- specs/
+|-- infra/
+|-- scripts/
+|-- docker-compose.yml
+|-- pom.xml
+`-- sonar-project.properties
 ```
-
-Estructura actual:
-
-- `services/bff-service`: frontera publica para la SPA y API Gateway.
-- `apps/facturaelectronica-web`: SPA React/Vite para pruebas funcionales.
-- `services/tenant-service`: microservicio fisico para empresas/tenants.
-- `services/catalog-service`: microservicio fisico para catalogos oficiales y configurables.
-- `services/thirdparty-service`: microservicio fisico para clientes/proveedores.
-- `services/inventory-service`: microservicio fisico para productos, costos, stock, compras documentales y kardex.
-- `services/billing-service`: microservicio fisico para ventas POS, emisor fiscal, resoluciones, numeracion fiscal y emision electronica mock.
-- `services/dian-provider-service`: microservicio fisico para mock DIAN y conexion real DIAN parametrizable por empresa.
-- `services/accounting-service`: microservicio fisico para PUC, reglas contables, asientos, libro diario y mayor.
-- `services/audit-service`: microservicio fisico para auditoria fiscal y tecnica.
-- `services/payroll-service`: microservicio fisico para trabajadores, pagos diarios verbales y nomina electronica mock opcional.
-- `services/reporting-service`: microservicio fisico para catalogo/opciones/query/export de reportes, jobs asincronos y descarga temporal, orquestando fuentes canonicas sin duplicar datos de negocio.
-
-
-La unidad de despliegue objetivo es un artefacto/contenedor por microservicio, no uno por endpoint individual.
 
 ## Stack Tecnico
 
-- Java 17
-- Spring Boot 3.5.14
-- Spring Web MVC
-- Spring WebFlux
-- Spring Data JPA
-- Spring Validation
-- Spring Actuator
-- Springdoc OpenAPI UI
-- PostgreSQL
-- Flyway
-- Maven Wrapper
-- Docker Compose
-- Node.js 20 y npm 11 para la SPA local
-- JUnit 5, Mockito y AssertJ
+- Backend: Java 17, Spring Boot 3.5, Spring Web, Spring Security, Spring Data JPA, Bean Validation, OpenAPI.
+- Frontend: React 19, TypeScript, Vite 7, i18next, React Testing Library, Vitest.
+- Base de datos: PostgreSQL con migraciones Flyway por servicio.
+- Contenedores: Docker y Docker Compose.
+- Calidad: Maven, JaCoCo, Vitest Coverage, SonarQube local.
+- Infraestructura: Terraform y artefactos AWS para despliegues productivos.
 
-## Requisitos
+## Requisitos Locales
 
-- Java 17.
-- Docker Desktop o Docker Engine con Docker Compose.
-- PostgreSQL local o contenedor PostgreSQL del proyecto.
-- Git.
-- PowerShell en Windows para los comandos mostrados.
+- JDK 17.
+- Maven Wrapper incluido en el repositorio.
+- Node.js compatible con Vite 7.
+- Docker Desktop o Docker Engine con Compose.
+- PostgreSQL si se ejecutan servicios fuera de Docker.
+- SonarQube local opcional en `http://localhost:9000`.
 
-## Calidad Y Cobertura Con SonarQube
+## Configuracion
 
-El proyecto incluye configuracion local para SonarQube en `http://localhost:9000` con cobertura Java por JaCoCo y cobertura frontend por LCOV.
-
-1. Crear un token en SonarQube: `My Account > Security > Generate Tokens`.
-2. Cargar el token solo en la terminal actual:
+1. Crea el archivo local de entorno desde la plantilla:
 
 ```powershell
-$env:SONAR_TOKEN="tu_token"
+Copy-Item .env.example .env
 ```
 
-3. Ejecutar cobertura y analisis completo:
+2. Ajusta puertos, credenciales locales y banderas de integracion segun el modo de ejecucion.
 
-```powershell
-.\scripts\sonar-local.ps1
-```
+3. No versionar `.env`, certificados, tokens, llaves privadas ni contrasenas reales.
 
-4. Consultar el resultado en:
-
-```text
-http://localhost:9000/dashboard?id=nexofiscal
-```
-
-Comandos utiles:
-
-```powershell
-.\scripts\sonar-local.ps1 -SkipAnalysis
-.\scripts\sonar-local.ps1 -SkipMavenCoverage -SkipFrontendCoverage
-```
-
-El token no debe guardarse en `.env`, `README.md`, `sonar-project.properties` ni en archivos versionados.
-
-## Variables De Entorno
-
-El archivo seguro de referencia es `.env.example`.
-
-Variables principales:
-
-```text
-POSTGRES_DB=facturaelectronica
-POSTGRES_USER=factura_user
-POSTGRES_PASSWORD=change_me
-POSTGRES_HOST_PORT=5432
-
-TENANT_SERVICE_PORT=8084
-CATALOG_SERVICE_PORT=8085
-THIRDPARTY_SERVICE_PORT=8086
-
-DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
-DB_USERNAME=factura_user
-DB_PASSWORD=change_me
-
-TENANT_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
-TENANT_DB_USERNAME=factura_user
-TENANT_DB_PASSWORD=change_me
-
-CATALOG_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
-CATALOG_DB_USERNAME=factura_user
-CATALOG_DB_PASSWORD=change_me
-
-THIRDPARTY_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
-THIRDPARTY_DB_USERNAME=factura_user
-THIRDPARTY_DB_PASSWORD=change_me
-
-INVENTORY_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
-INVENTORY_DB_USERNAME=factura_user
-INVENTORY_DB_PASSWORD=change_me
-INVENTORY_SERVICE_URL=http://inventory-service:8087
-
-BILLING_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
-BILLING_DB_USERNAME=factura_user
-BILLING_DB_PASSWORD=change_me
-DIAN_PROVIDER_SERVICE_URL=http://dian-provider-service:8089
-ACCOUNTING_SERVICE_URL=http://accounting-service:8090
-AUDIT_SERVICE_URL=http://audit-service:8091
-
-DIAN_PROVIDER_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
-DIAN_PROVIDER_DB_USERNAME=factura_user
-DIAN_PROVIDER_DB_PASSWORD=change_me
-
-ACCOUNTING_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
-ACCOUNTING_DB_USERNAME=factura_user
-ACCOUNTING_DB_PASSWORD=change_me
-
-AUDIT_DB_URL=jdbc:postgresql://postgres:5432/facturaelectronica
-AUDIT_DB_USERNAME=factura_user
-AUDIT_DB_PASSWORD=change_me
-
-JPA_SHOW_SQL=false
-
-DIAN_PROVIDER_MODE=mock
-DIAN_MOCK_DEFAULT_STATUS=ACCEPTED
-DIAN_MOCK_ERROR_CODE=
-DIAN_MOCK_ERROR_MESSAGE=
-```
-
-Para ejecucion local fuera de Docker, usa una URL como:
-
-```text
-DB_URL=jdbc:postgresql://localhost:15432/facturaelectronica
-```
-
-No se deben versionar `.env`, certificados, API keys ni credenciales reales.
-
-## Configuracion DIAN Por Empresa
-
-La plataforma se define como software parametrizable para empresas facturadoras. No presta ni comercializa servicio de proveedor tecnologico DIAN.
-
-Cada empresa que compre y use el software es responsable de su registro, habilitacion, certificacion, certificado digital, resoluciones, software ID/PIN, claves tecnicas y cumplimiento ante DIAN. La aplicacion proveera un modulo de configuracion por empresa para registrar referencias seguras a esos parametros, probar la conexion y operar el modo que la empresa tenga aprobado.
-
-Reglas de seguridad aprobadas:
-
-- No existe certificado global compartido para emitir documentos de empresas clientes.
-- Certificados, PIN, claves y credenciales DIAN deben vivir en gestor de secretos; PostgreSQL solo guarda referencias, alias, huellas, vencimientos y estados.
-- En desarrollo local se usa `DIAN_PROVIDER_MODE=mock` para E2E sin llamadas externas.
-- El `dian-provider-service` ya valida una compuerta tecnica para modo real: existencia de XSD UBL 2.1, Schematron DIAN, XSL compilado y lista de codigos configurados por variables `DIAN_TECHNICAL_ARTIFACTS_ROOT`, `DIAN_UBL_*`, `DIAN_MODEL_SCHEMATRON_PATH`, `DIAN_COMPILED_XSL_PATH` y `DIAN_CODE_LIST_SCHEMATRON_PATH`.
-- El pipeline DIAN real parametrizable por empresa quedo implementado en Fase 20 `TASK-153` a `TASK-163` con XML UBL base, CUFE/CUDE/QR deterministas, firma/validacion de referencia, transporte `stub/http`, respuestas y artefactos seguros. Antes de operacion comercial real debe reemplazarse la firma de referencia por XMLDSig/XAdES certificado y ejecutar habilitacion DIAN con credenciales reales de cada empresa.
-- El modo mock no valida cumplimiento tecnico DIAN productivo ni reemplaza el proceso de habilitacion/certificacion de cada empresa.
-- Antes de operacion comercial real, esta interpretacion debe validarse con asesor legal/tributario.
-
-
-
-## Identidad Y Roles
-
-El modelo objetivo aprobado para identidad usa RBAC modular:
-
-- `ROOT` es un usuario global de plataforma, no pertenece a ninguna empresa y no depende de licencia empresarial.
-- `ROOT` registra empresas contratantes, gestiona licencias y entrega el administrador inicial de cada empresa.
-- Todos los roles distintos de `ROOT` son roles por empresa y se aislan por `company_id`.
-- Cada empresa puede crear roles propios y asignar permisos modulares a sus usuarios.
-- Un administrador empresarial no puede crear ni asignar roles con permisos iguales, superiores o no poseidos por el mismo.
-- Los permisos `GLOBAL_*` son exclusivos de `ROOT`.
-- `SALES_CREATE` habilita el flujo completo de venta POS: registrar venta, confirmar POS y emitir el documento electronico asociado. `FISCAL_DOCUMENTS_ISSUE` se reserva para configuracion fiscal, resoluciones, notas, ajustes y gestion avanzada.
-- El frontend debe ocultar modulos no permitidos, pero la autorizacion real siempre debe validarse en backend.
-Credenciales ROOT locales dummy para pruebas Docker:
-
-```text
-Usuario: root@example.com
-Password: RootDemo#2026!
-```
-
-Estas credenciales se controlan con `IDENTITY_ROOT_USER_*` y no deben usarse en produccion.
-
-ROOT puede crear, actualizar, activar e inactivar empresas contratantes desde la SPA. Al crear una empresa, el `companyId` retornado queda como empresa activa y permite crear el administrador inicial con email, nombre completo, password inicial y rol empresarial `OWNER`. Los usuarios empresariales ven su empresa por nombre como dato informativo y solo pueden actualizar los datos de su propia empresa autorizada; no pueden crear empresas nuevas.
-
-## Frontend Y BFF
-
-El frontend inicial vive en:
-
-```text
-apps/facturaelectronica-web
-```
-
-La SPA consume solamente el BFF por `/api/v1`. En desarrollo Vite usa proxy hacia `BFF_SERVICE_PORT`.
-
-El flujo operativo local/transitorio inicia con login desde la UI. Sin sesion activa solo se muestra la pantalla de login; los menus y formularios no se renderizan. La SPA llama `POST /api/v1/auth/login`, consulta `GET /api/v1/me/companies`, selecciona una empresa autorizada y valida internamente su licencia con `GET /api/v1/companies/{companyId}/license/validation?action=CREATE_TRANSACTION`.
-
-Despues del login exitoso con licencia activa, la SPA muestra un shell operativo profesional con sidebar, panel superior de sesion/empresa y formularios de empresa, terceros, inventario, configuracion fiscal, venta POS/factura y reportes con campos editables. En el modo local actual, el JSON de request se arma al enviar cada formulario y se envia al BFF con `Authorization`, `X-Company-Id`, `X-User-Id`, `X-Correlation-Id` e `Idempotency-Key` cuando aplica. En produccion, `Authorization` no sera construido por JavaScript: el BFF resolvera identidad desde cookie segura. El campo `companyId` ya no se digita manualmente en la UI operativa; proviene de las empresas asociadas al usuario autenticado. ROOT selecciona empresas desde una lista; los usuarios empresariales ven el nombre de su empresa como informacion de solo lectura. Si la licencia no esta activa, la UI muestra un modal informativo, limpia la sesion automaticamente y vuelve al login. El encabezado autenticado incluye `Cerrar sesion`.
-
-El BFF endurece acceso para catálogos administrables, contabilidad, nomina y logs: `ROOT` conserva acceso global, las mutaciones de plataforma quedan reservadas a `ROOT` y las acciones empresariales validan permisos efectivos contra `identity-service`.
-
-La UI operativa no muestra paneles permanentes de JSON tecnico. Cada accion usa un modal de proceso/exito/error y los detalles de trazabilidad se consultan en el modulo `Logs`, visible para `ROOT`, administradores de empresa y usuarios con permiso de auditoria. Los permisos y modulos RBAC se presentan en espanol mediante `react-i18next`/`i18next`, aunque sus codigos internos sigan en ingles para mantener contratos estables.
-
-### Autenticacion Productiva Objetivo
-
-El login actual con `POST /api/v1/auth/login` y bearer token es un modo local/transitorio para desarrollo y E2E. No debe exponerse en produccion.
-
-El target productivo aprobado es:
-
-```text
-CloudFront HTTPS
-  -> Cognito Hosted UI con Authorization Code + PKCE
-  -> BFF callback OAuth
-  -> sesion server-side cifrada
-  -> cookie HttpOnly/Secure/SameSite en navegador
-  -> SPA consulta /api/v1/auth/session sin recibir tokens
-```
-
-Reglas:
-
-- La SPA productiva no captura password ni recibe `accessToken`, `refreshToken`, `idToken` o bearer token.
-- El navegador no guarda tokens en `localStorage`, `sessionStorage`, IndexedDB ni estado serializado.
-- El BFF intercambia el codigo OAuth, cifra tokens server-side y emite cookie opaca `HttpOnly`, `Secure`, `SameSite`.
-- Las mutaciones protegidas por cookie requieren CSRF.
-- ROOT y administradores requieren MFA en produccion.
-- CloudFront/BFF deben aplicar HSTS, CSP, proteccion anti-frame, `X-Content-Type-Options` y `Referrer-Policy`.
-- Las builds productivas no deben publicar sourcemaps sin control ni logs con payloads sensibles.
-
-Esta arquitectura reduce el impacto de DevTools, XSS y storage inseguro: un atacante que inspeccione el navegador no debe encontrar tokens reutilizables ni passwords manejados por la SPA.
-
-Ejecutar BFF fuera de Docker:
-
-```powershell
-$env:BFF_SERVICE_PORT='8083'
-$env:TENANT_SERVICE_URL='http://localhost:8084'
-$env:IDENTITY_SERVICE_URL='http://localhost:8092'
-$env:CATALOG_SERVICE_URL='http://localhost:8085'
-$env:THIRDPARTY_SERVICE_URL='http://localhost:8086'
-$env:INVENTORY_SERVICE_URL='http://localhost:8087'
-$env:BILLING_SERVICE_URL='http://localhost:8088'
-$env:ACCOUNTING_SERVICE_URL='http://localhost:8090'
-$env:AUDIT_SERVICE_URL='http://localhost:8091'
-.\mvnw.cmd -pl services/bff-service spring-boot:run
-```
-
-Ejecutar SPA fuera de Docker:
-
-```powershell
-cd apps/facturaelectronica-web
-npm install
-npm run dev
-```
-
-URLs locales por defecto:
-
-```text
-BFF: http://localhost:8083
-SPA: http://localhost:5173
-```
-
-## Ejecucion Local Sin Docker
-
-Primero asegurese de tener PostgreSQL disponible y las variables de entorno configuradas.
-
-El monolito legacy fue removido. La ejecucion local activa se realiza unicamente sobre microservicios fisicos.
-
-Ejecutar `tenant-service` fuera de Docker:
-
-```powershell
-$env:TENANT_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
-$env:TENANT_DB_USERNAME='factura_user'
-$env:TENANT_DB_PASSWORD='change_me'
-.\mvnw.cmd -pl services/tenant-service spring-boot:run
-```
-
-Ejecutar `catalog-service` fuera de Docker:
-
-```powershell
-$env:CATALOG_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
-$env:CATALOG_DB_USERNAME='factura_user'
-$env:CATALOG_DB_PASSWORD='change_me'
-.\mvnw.cmd -pl services/catalog-service spring-boot:run
-```
-
-Ejecutar `thirdparty-service` fuera de Docker:
-
-```powershell
-$env:THIRDPARTY_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
-$env:THIRDPARTY_DB_USERNAME='factura_user'
-$env:THIRDPARTY_DB_PASSWORD='change_me'
-.\mvnw.cmd -pl services/thirdparty-service spring-boot:run
-```
-
-Ejecutar `inventory-service` fuera de Docker:
-
-```powershell
-$env:INVENTORY_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
-$env:INVENTORY_DB_USERNAME='factura_user'
-$env:INVENTORY_DB_PASSWORD='change_me'
-.\mvnw.cmd -pl services/inventory-service spring-boot:run
-```
-
-Ejecutar `billing-service` fuera de Docker:
-
-```powershell
-$env:BILLING_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
-$env:BILLING_DB_USERNAME='factura_user'
-$env:BILLING_DB_PASSWORD='change_me'
-$env:INVENTORY_SERVICE_URL='http://localhost:8087'
-$env:DIAN_PROVIDER_SERVICE_URL='http://localhost:8089'
-.\mvnw.cmd -pl services/billing-service spring-boot:run
-```
-
-Ejecutar `dian-provider-service` fuera de Docker:
-
-```powershell
-$env:DIAN_PROVIDER_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
-$env:DIAN_PROVIDER_DB_USERNAME='factura_user'
-$env:DIAN_PROVIDER_DB_PASSWORD='change_me'
-$env:DIAN_PROVIDER_MODE='mock'
-$env:DIAN_MOCK_DEFAULT_STATUS='ACCEPTED'
-.\mvnw.cmd -pl services/dian-provider-service spring-boot:run
-```
-
-`tenant-service` inicia en:
-
-```text
-http://localhost:8084
-```
-
-`catalog-service` inicia en:
-
-```text
-http://localhost:8085
-```
-
-`thirdparty-service` inicia en:
-
-```text
-http://localhost:8086
-```
-
-`inventory-service` inicia en:
-
-```text
-http://localhost:8087
-```
-
-`billing-service` inicia en:
-
-```text
-http://localhost:8088
-```
-
-`dian-provider-service` inicia en:
-
-```text
-http://localhost:8089
-```
+La integracion DIAN real se configura por empresa mediante referencias seguras a secretos. En local se puede usar el modo mock para validar el flujo completo sin enviar documentos a entidades externas.
 
 ## Ejecucion Con Docker Compose
 
-El proyecto incluye `docker-compose.yml` con:
-
-- `postgres`: `postgres:16-alpine`.
-- `bff-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/bff-service clean spring-boot:run`.
-- `frontend`: `node:22-alpine`, ejecutando `npm install && npm run dev`.
-- `tenant-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/tenant-service clean spring-boot:run`.
-- `catalog-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/catalog-service clean spring-boot:run`.
-- `thirdparty-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/thirdparty-service clean spring-boot:run`.
-- `inventory-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/inventory-service clean spring-boot:run`.
-- `billing-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/billing-service clean spring-boot:run`.
-- `dian-provider-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/dian-provider-service clean spring-boot:run`.
-- `accounting-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/accounting-service clean spring-boot:run`.
-- `audit-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/audit-service clean spring-boot:run`.
-- `payroll-service`: `eclipse-temurin:17-jdk`, ejecutando `./mvnw -pl services/payroll-service clean spring-boot:run`.
-
-Politica de arranque local:
-
-- Los microservicios no tienen `depends_on` hacia otros microservicios.
-- La unica dependencia de arranque declarada para servicios de aplicacion es `postgres`.
-- Las llamadas REST entre servicios ocurren en runtime; si un servicio par no esta disponible, el contenedor llamador debe permanecer iniciado y el caso de uso debe fallar de forma controlada.
-- La prueba E2E espera la salud de cada servicio requerido antes de ejecutar el flujo completo.
-
-Crear `.env` desde `.env.example` y ajustar puertos si es necesario. En esta maquina se uso PostgreSQL en el puerto host `15432` porque `5432` y `5433` estaban ocupados o reservados.
-
-Levantar todo:
+Levantar todo el entorno local:
 
 ```powershell
-docker compose up -d
+docker compose up -d --build
 ```
 
-Levantar solo PostgreSQL:
-
-```powershell
-docker compose up -d postgres
-```
-
-Ver logs:
-
-```powershell
-docker compose logs -f bff-service
-docker compose logs -f frontend
-docker compose logs -f tenant-service
-docker compose logs -f catalog-service
-docker compose logs -f thirdparty-service
-docker compose logs -f inventory-service
-docker compose logs -f billing-service
-docker compose logs -f dian-provider-service
-docker compose logs -f accounting-service
-docker compose logs -f audit-service
-docker compose logs -f payroll-service
-docker compose logs -f postgres
-```
-
-Ver estado:
+Ver estado de contenedores:
 
 ```powershell
 docker compose ps
 ```
 
-Apagar contenedores:
+Consultar logs del BFF:
+
+```powershell
+docker compose logs -f bff-service
+```
+
+Detener el entorno:
 
 ```powershell
 docker compose down
 ```
 
-Apagar y eliminar volumen local de PostgreSQL:
+Servicios locales principales:
+
+| Componente | URL local |
+|---|---|
+| Frontend | `http://localhost:5173` |
+| BFF | `http://localhost:8083` |
+| Tenant | `http://localhost:8084` |
+| Catalog | `http://localhost:8085` |
+| Thirdparty | `http://localhost:8086` |
+| Inventory | `http://localhost:8087` |
+| Billing | `http://localhost:8088` |
+| DIAN Provider | `http://localhost:8089` |
+| Accounting | `http://localhost:8090` |
+| Audit | `http://localhost:8091` |
+| Identity | `http://localhost:8092` |
+| Reporting | `http://localhost:8094` |
+
+## Ejecucion Local Por Servicio
+
+Compilar todos los modulos backend:
 
 ```powershell
-docker compose down -v
+.\mvnw.cmd clean package
 ```
 
-## Base De Datos
-
-Motor seleccionado: PostgreSQL.
-
-Las migraciones activas se ejecutan con Flyway desde cada microservicio:
-
-```text
-services/tenant-service/src/main/resources/db/migration
-services/catalog-service/src/main/resources/db/migration
-services/thirdparty-service/src/main/resources/db/migration
-services/inventory-service/src/main/resources/db/migration
-services/billing-service/src/main/resources/db/migration
-services/dian-provider-service/src/main/resources/db/migration
-services/accounting-service/src/main/resources/db/migration
-services/payroll-service/src/main/resources/db/migration
-services/audit-service/src/main/resources/db/migration
-```
-
-Las migraciones legacy del monolito ya no forman parte del repositorio activo. Las tablas public.* existentes en bases locales o ambientes previos se conservan hasta ejecutar un plan de migracion/respaldo aprobado.
-
-Migracion de `tenant-service`:
-
-- `services/tenant-service/src/main/resources/db/migration/V001__create_tenant_schema.sql`
-
-Migraciones de servicios extraidos:
-
-- `services/catalog-service/src/main/resources/db/migration/V001__create_catalog_schema.sql`
-- `services/thirdparty-service/src/main/resources/db/migration/V001__create_thirdparty_schema.sql`
-- `services/inventory-service/src/main/resources/db/migration/V001__create_inventory_schema.sql`
-- `services/billing-service/src/main/resources/db/migration/V001__create_billing_sales_schema.sql`
-- `services/billing-service/src/main/resources/db/migration/V002__add_post_validation_effect_tracking.sql`
-- `services/billing-service/src/main/resources/db/migration/V003__create_billing_fiscal_configuration.sql`
-- `services/dian-provider-service/src/main/resources/db/migration/V001__create_dian_provider_schema.sql`
-- `services/audit-service/src/main/resources/db/migration/V001__create_audit_schema.sql`
-
-
-Auditar conteos de tablas `public.*` heredadas y tablas de destino antes de proponer eliminaciones:
+Ejecutar un servicio concreto:
 
 ```powershell
-Get-Content .\scripts\legacy-data-audit.sql | docker compose exec -T postgres psql -U factura_user -d facturaelectronica
+.\mvnw.cmd -pl services/bff-service spring-boot:run
 ```
 
-Este script no elimina ni modifica datos de negocio. Reporta tablas presentes o faltantes y conteos exactos para apoyar la limpieza controlada de `TASK-040`.
-
-Para limpiar solo tablas `public.*` heredadas que esten vacias en la base local:
+Instalar dependencias del frontend:
 
 ```powershell
-Get-Content .\scripts\db\drop-empty-legacy-public-tables.sql | docker compose exec -T postgres psql -U factura_user -d facturaelectronica
+cd apps/facturaelectronica-web
+npm install
 ```
 
-El script conserva automaticamente cualquier tabla con filas. Las tablas con datos requieren migracion, respaldo o descarte aprobado.
+Ejecutar la SPA:
 
-Tablas relevantes:
-
-- Billing/POS legacy/public: `billing_issuer_profile`, `billing_numbering_resolution`, `billing_electronic_pos_document`, `billing_provider_submission`, `billing_electronic_document_trace_event`, `billing_fiscal_audit_event`.
-- Billing/POS activo: `billing.issuer_profile`, `billing.numbering_resolution`, `billing.sale`, `billing.sale_line`, `billing.electronic_document`.
-- Accounting: `accounting_account`, `accounting_rule`, `accounting_rule_line`, `accounting_entry`, `accounting_entry_line`.
-- Tenant: `tenant.company`.
-- Catalog activo: `catalog.catalog_definition`, `catalog.catalog_item`, `catalog.company_catalog_item_setting`, `catalog.department`, `catalog.municipality`.
-- Catalog legacy retirado por TASK-088: `catalog.tipodocumento`, `catalog.pais`, `catalog.impuesto`, `catalog.metodo_pago`, `catalog.tipo_gasto`, `catalog.parametros`, `catalog.categoria`, `catalog.producto`.
-- Thirdparty activo: `thirdparty.third_party`, `thirdparty.third_party_role`, `thirdparty.third_party_tax_responsibility`.
-- Thirdparty legacy retirado por TASK-088: `thirdparty.cliente`, `thirdparty.proveedor`.
-- DIAN provider: `dian_provider.provider_submission`.
-- Audit: `audit.audit_event`.
-
-Conexion sugerida en PgAdmin/Navicat:
-
-```text
-Host: localhost
-Port: 15432
-Database: facturaelectronica
-User: factura_user
-Password: change_me
+```powershell
+npm run dev
 ```
 
-El puerto depende de `POSTGRES_HOST_PORT`.
+Generar build productivo del frontend:
 
-## Endpoints Principales
-
-Todos los endpoints de negocio usan versionado:
-
-```text
-/api/v1
+```powershell
+npm run build
 ```
-
-Header multiempresa:
-
-```text
-X-Company-Id: <uuid>
-```
-
-### Billing/POS
-
-- `POST /api/v1/issuers`
-- `GET /api/v1/issuers/current`
-- `POST /api/v1/numbering-resolutions`
-- `GET /api/v1/numbering-resolutions?documentType=&active=`
-- `POST /api/v1/electronic-pos`
-- `GET /api/v1/electronic-pos/{documentId}`
-- `POST /api/v1/electronic-pos/{documentId}/submit`
-
-Para enviar POS al proveedor mock tambien se usa:
-
-```text
-Idempotency-Key: <valor-unico>
-```
-
-### Accounting
-
-- `POST /api/v1/accounts`
-- `GET /api/v1/accounts?code=`
-- `POST /api/v1/accounting-rules`
-- `POST /api/v1/accounting-entries`
-- `GET /api/v1/reports/journal?from=&to=`
-- `GET /api/v1/reports/ledger?from=&to=&accountCode=`
-
-`POST /api/v1/accounting-entries` genera asientos `POSTED` inmediatamente desde reglas contables activas por empresa.
-
-### Tenant
-
-`tenant-service` expone en `http://localhost:8084`:
-
-- `POST /api/v1/companies`
-- `GET /api/v1/companies/{companyId}`
-- `PUT /api/v1/companies/{companyId}`
-- `PUT /api/v1/companies/{companyId}/activate`
-- `PUT /api/v1/companies/{companyId}/suspend`
-
-### Catalog
-
-`catalog-service` expone en `http://localhost:8085` los endpoints canonicos:
-
-- `GET /api/v1/catalog-definitions`
-- `GET /api/v1/catalogs/{catalogCode}/items?includeInactive=`
-- `POST /api/v1/catalogs/{catalogCode}/items`
-- `PUT /api/v1/catalogs/{catalogCode}/items/{itemCode}`
-- `PUT /api/v1/catalogs/{catalogCode}/items/{itemCode}/activation`
-- `GET /api/v1/company-catalogs/{catalogCode}/items`
-- `POST /api/v1/company-catalogs/{catalogCode}/items`
-- `PUT /api/v1/company-catalogs/{catalogCode}/items/{itemCode}/activation`
-- `GET /api/v1/departments`
-- `GET /api/v1/departments/{departmentCode}/municipalities`
-
-Las rutas legacy de catalogo fueron retiradas en TASK-088. Los consumidores deben usar catalogos versionados o los endpoints duenos del bounded context correspondiente.
-
-### Thirdparty
-
-`thirdparty-service` expone en `http://localhost:8086` los endpoints canonicos:
-
-- `POST /api/v1/third-parties`
-- `GET /api/v1/third-parties/{thirdPartyId}`
-- `GET /api/v1/third-parties/by-document?identificationTypeCode=&identificationNumber=`
-- `PUT /api/v1/third-parties/{thirdPartyId}`
-- `PUT /api/v1/third-parties/{thirdPartyId}/activate`
-- `PUT /api/v1/third-parties/{thirdPartyId}/deactivate`
-- `POST /api/v1/customers`
-- `GET /api/v1/customers?active=`
-- `POST /api/v1/suppliers`
-- `GET /api/v1/suppliers?active=`
-
-Las rutas legacy `/api/clientes` y `/api/proveedores` fueron retiradas en TASK-059 lote 2. Los tipos de documento se reciben como codigo fiscal en el contrato v1 y el DV NIT se calcula en dominio.
-
-### Inventory
-
-`inventory-service` expone en `http://localhost:8087`:
-
-- `POST /api/v1/products`
-- `GET /api/v1/products/{productId}`
-- `GET /api/v1/products/by-barcode/{barcode}`
-- `GET /api/v1/products/{productId}/availability?quantity=`
-- `GET /api/v1/products/{productId}/kardex`
-- `POST /api/v1/inventory-movements`
-- `POST /api/v1/purchases`
-- `POST /api/v1/purchases/{purchaseId}/confirm`
-
-Las operaciones de negocio requieren `X-Company-Id`; los movimientos y compras requieren `Idempotency-Key`. Cada producto vendible guarda su impuesto de venta como snapshot configurable desde catalogos (`SALES_TAX`), junto con precio, costo, SKU y codigo de barras para operacion POS con lector USB HID. Las compras registran facturas de proveedor para control financiero y no aumentan inventario; el stock se ajusta desde `Inventario`.
-
-### Billing
-
-`billing-service` expone en `http://localhost:8088`:
-
-- `POST /api/v1/sales`
-- `POST /api/v1/sales/{saleId}/confirm`
-- `GET /api/v1/sales/{saleId}`
-
-La creacion de venta valida disponibilidad contra `inventory-service`. El POS usa siempre canal POS/equivalente electronico; precio e impuesto de cada linea se toman del producto en inventario, no del vendedor. Si el comprador no solicita factura nominada, `billing-service` resuelve el perfil `FINAL_CONSUMER` desde configuracion persistida. La confirmacion envia el POS a `dian-provider-service`, que responde con CUDE/QR mock y estado configurable con `DIAN_MOCK_DEFAULT_STATUS`.
-
-Cuando la conexion DIAN responde `ACCEPTED`, `billing-service`:
-
-- registra `SALE_OUT` en `inventory-service` por cada linea vendida;
-- genera un asiento `SALE_CONFIRMED` en `accounting-service`;
-- marca `inventoryAppliedAt` y `accountingAppliedAt` en el documento electronico para reintentos idempotentes.
-
-### Conector DIAN
-
-`dian-provider-service` expone en `http://localhost:8089`:
-
-- `POST /api/v1/provider/electronic-pos`
-- `POST /api/v1/provider/electronic-invoices`
-- `GET /api/v1/provider/submissions/{trackingId}`
-
-Los comandos requieren `Idempotency-Key`. Las consultas requieren `X-Company-Id`. El servicio persiste el envio mock en `dian_provider.provider_submission`.
-
-### Accounting
-
-`accounting-service` expone en `http://localhost:8090`:
-
-- `POST /api/v1/accounts`
-- `GET /api/v1/accounts?code=`
-- `POST /api/v1/accounting-setup/basic`
-- `POST /api/v1/accounting-rules`
-- `POST /api/v1/accounting-entries`
-- `GET /api/v1/reports/expenses?status=&from=&to=`
-- `GET /api/v1/accounts-payable?status=&from=&to=`
-- `GET /api/v1/reports/accounts-receivable?status=&from=&to=`
-- `GET /api/v1/reports/journal?from=&to=`
-- `GET /api/v1/reports/ledger?from=&to=&accountCode=`
-
-Los asientos se generan desde reglas activas por empresa y son idempotentes por `companyId`, `sourceType` y `sourceId`. La plantilla basica crea cuentas PUC iniciales y reglas para ventas, compras documentales, gastos, cuentas por cobrar, cuentas por pagar y pago diario de nomina.
-
-### Payroll
-
-`payroll-service` expone en `http://localhost:8093`:
-
-- `GET /api/v1/payroll/settings`
-- `PUT /api/v1/payroll/settings`
-- `GET /api/v1/payroll/workers`
-- `POST /api/v1/payroll/workers`
-- `GET /api/v1/payroll/daily-payments`
-- `POST /api/v1/payroll/daily-payments`
-- `GET /api/v1/payroll/electronic-documents`
-- `POST /api/v1/payroll/electronic-documents`
-
-La nomina electronica es configurable por empresa. Si `electronicPayrollEnabled=false`, la empresa puede registrar nomina interna, pero no emitir documento soporte electronico mock. Los pagos diarios verbales se registran con advertencia legal y clasificacion laboral/contractual; no se tratan automaticamente como exentos de obligaciones laborales. Al registrar un pago diario, `payroll-service` intenta crear el asiento contable `PAYROLL_DAILY_PAYMENT_REGISTERED` en `accounting-service` de forma best-effort usando `ACCOUNTING_SERVICE_URL`; si contabilidad no esta disponible, el pago ya persistido no se revierte.
-
-### Audit
-
-`audit-service` expone en `http://localhost:8091`:
-
-- `POST /api/v1/audit-events`
-- `GET /api/v1/audit-events?resourceType=&from=&to=&userId=`
-
-Los eventos requieren `X-Company-Id` y almacenan detalle seguro sin secretos en `audit.audit_event`.
-
-El BFF propaga `X-User-Id`, valida permisos efectivos con `identity-service` para recursos protegidos y registra auditoria best-effort para mutaciones `POST`, `PUT`, `PATCH` y `DELETE` que pasen por `/api/v1/**`. Para creacion de empresas sin `X-Company-Id`, toma el `id` de la empresa creada y registra la auditoria contra esa empresa. `catalog-service` tambien registra eventos especificos para crear, actualizar, activar e inactivar catalogos globales o configuracion empresarial. La falla de auditoria no detiene la operacion principal en el flujo sincrono local.
-
-`billing-service` registra eventos canonicos en Outbox al confirmar una venta POS/factura y obtener resultado del conector DIAN mock. `inventory-service` registra `InventoryMovementRegistered` al crear movimientos y `accounting-service` registra `AccountingEntryPosted` al postear asientos. La entrega hacia EventBridge/SQS ya cuenta con dispatcher condicional, consumidor Lambda `audit-event-writer-lambda` para auditoria, consumidor Lambda `inventory-sale-effect-lambda` para descontar stock desde `SaleConfirmed`, consumidor Lambda `accounting-sale-entry-lambda` para generar asientos contables de forma idempotente, consumidor `provider-submission-retry-lambda` para reintentos tecnicos de conexion DIAN y consumidor `reporting-projection-lambda` para proyecciones de reportes.
-
-### Eventing AWS
-
-El dispatcher Outbox hacia EventBridge esta apagado por defecto para desarrollo local:
-
-```text
-EVENTING_EVENTBRIDGE_ENABLED=false
-EVENTING_EVENT_BUS_NAME=facturaelectronica-dev-events
-EVENTING_OUTBOX_BATCH_SIZE=25
-EVENTING_OUTBOX_MAX_ATTEMPTS=5
-```
-
-Cuando `EVENTING_EVENTBRIDGE_ENABLED=true`, los servicios productores `billing-service`, `inventory-service` y `accounting-service` leen eventos `PENDING`/`FAILED` de su Outbox, publican a EventBridge usando `detailType=eventType` y marcan `PUBLISHED` o `FAILED` sin detener el microservicio.
-
-Lambdas iniciales:
-
-- `audit-event-writer-lambda`: consume `audit-events` y persiste auditoria central con Inbox.
-- `inventory-sale-effect-lambda`: consume `inventory-effects`, procesa `SaleConfirmed`, descuenta lineas `stockTracked=true` y evita duplicados con la clave de idempotencia de la venta.
-- `accounting-sale-entry-lambda`: consume `accounting-effects`, procesa `SaleConfirmed`, aplica reglas `SALE_CONFIRMED`/`SALE` y crea asientos contables sin duplicar ventas ya contabilizadas.
-- `provider-submission-retry-lambda`: consume `provider-retries`, reintenta fallas tecnicas `FAILED` contra el conector DIAN mock y republica eventos si la validacion queda aceptada.
-- `reporting-projection-lambda`: consume `reporting-projections` y materializa eventos de ventas, documentos, inventario y contabilidad en `reporting.reporting_event_projection`.
-
-## Guia De Pruebas Docker
-
-La guia E2E desde cero para microservicios, con empresa nueva, inventario, venta POS, conector DIAN mock, asiento contable, auditoria central, nomina minima con pago diario verbal, documento soporte mock, consultas SQL y checklist AC-024/AC-031/AC-032/AC-035 esta en:
-
-En Windows el script usa `127.0.0.1` por defecto para evitar bloqueos de resolucion de `localhost`.
-
-```text
-docs/e2e-from-zero-test-guide.md
-```
-
-## Conector DIAN Mock
-
-Mientras no existan configuraciones DIAN reales por empresa, certificados y credenciales, la plataforma usa `dian-provider-service` en modo mock.
-
-Variables:
-
-```text
-DIAN_PROVIDER_MODE=mock
-DIAN_MOCK_DEFAULT_STATUS=ACCEPTED
-```
-
-Valores soportados para `DIAN_MOCK_DEFAULT_STATUS`:
-
-- `ACCEPTED`
-- `REJECTED`
-- `FAILED`
-
-Esta simulacion no reemplaza la conexion real DIAN configurada por cada empresa ni valida cumplimiento final de anexos tecnicos.
 
 ## Pruebas
 
-Ejecutar suite completa:
+Ejecutar pruebas backend:
 
 ```powershell
-$env:DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
-$env:DB_USERNAME='factura_user'
-$env:DB_PASSWORD='change_me'
-$env:DIAN_PROVIDER_MODE='mock'
 .\mvnw.cmd test
 ```
 
-Ejecutar prueba enfocada de un microservicio activo usando -pl services/<servicio> y -Dtest=<ClaseTest> cuando aplique.
-
-Ejecutar pruebas de `tenant-service`:
+Ejecutar pruebas de un modulo:
 
 ```powershell
-$env:TENANT_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
-$env:TENANT_DB_USERNAME='factura_user'
-$env:TENANT_DB_PASSWORD='change_me'
-.\mvnw.cmd -pl services/tenant-service test
-```
-
-Ejecutar pruebas de `catalog-service`:
-
-```powershell
-$env:CATALOG_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
-$env:CATALOG_DB_USERNAME='factura_user'
-$env:CATALOG_DB_PASSWORD='change_me'
-.\mvnw.cmd -pl services/catalog-service test
-```
-
-Ejecutar pruebas de `thirdparty-service`:
-
-```powershell
-$env:THIRDPARTY_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
-$env:THIRDPARTY_DB_USERNAME='factura_user'
-$env:THIRDPARTY_DB_PASSWORD='change_me'
-.\mvnw.cmd -pl services/thirdparty-service test
-```
-
-Ejecutar pruebas de `inventory-service`:
-
-```powershell
-$env:INVENTORY_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
-$env:INVENTORY_DB_USERNAME='factura_user'
-$env:INVENTORY_DB_PASSWORD='change_me'
-.\mvnw.cmd -pl services/inventory-service test
-```
-
-Ejecutar pruebas de `billing-service`:
-
-```powershell
-$env:BILLING_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
-$env:BILLING_DB_USERNAME='factura_user'
-$env:BILLING_DB_PASSWORD='change_me'
-$env:INVENTORY_SERVICE_URL='http://localhost:8087'
-$env:DIAN_PROVIDER_SERVICE_URL='http://localhost:8089'
-$env:ACCOUNTING_SERVICE_URL='http://localhost:8090'
 .\mvnw.cmd -pl services/billing-service test
 ```
 
-Ejecutar pruebas de `dian-provider-service`:
+Ejecutar pruebas frontend:
 
 ```powershell
-$env:DIAN_PROVIDER_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
-$env:DIAN_PROVIDER_DB_USERNAME='factura_user'
-$env:DIAN_PROVIDER_DB_PASSWORD='change_me'
-$env:DIAN_PROVIDER_MODE='mock'
-.\mvnw.cmd -pl services/dian-provider-service test
+cd apps/facturaelectronica-web
+npm test
 ```
 
-Ejecutar pruebas de `accounting-service`:
+Ejecutar cobertura frontend:
 
 ```powershell
-$env:ACCOUNTING_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
-$env:ACCOUNTING_DB_USERNAME='factura_user'
-$env:ACCOUNTING_DB_PASSWORD='change_me'
-.\mvnw.cmd -pl services/accounting-service test
+npm run coverage
 ```
 
-Ejecutar pruebas de `audit-service`:
+## SonarQube
+
+Con SonarQube levantado en `http://localhost:9000`, define un token local y ejecuta el analisis:
 
 ```powershell
-$env:AUDIT_DB_URL='jdbc:postgresql://localhost:15432/facturaelectronica'
-$env:AUDIT_DB_USERNAME='factura_user'
-$env:AUDIT_DB_PASSWORD='change_me'
-.\mvnw.cmd -pl services/audit-service test
+$env:SONAR_TOKEN="token-local"
+.\scripts\sonar-local.ps1
 ```
 
-## Especificaciones SDD
+La configuracion base esta en `sonar-project.properties` e integra fuentes backend, frontend, infraestructura, cobertura JaCoCo y cobertura LCOV.
 
-La especificacion vive en:
+## Infraestructura AWS
 
-```text
-specs/
-```
-
-Archivos principales:
-
-- `specs/requirements.md`
-- `specs/design.md`
-- `specs/tasks.md`
-- `specs/api-contract.md`
-- `specs/database-design.md`
-- `specs/data-model.md`
-- `specs/data-dictionary.md`
-- `specs/architecture.md`
-- `specs/acceptance-criteria.md`
-- `specs/use-cases.md`
-
-Toda modificacion funcional debe estar trazada a requisitos, criterios de aceptacion y tareas SDD.
-
-Fuentes vigentes:
-
-- Arquitectura: `specs/architecture.md` y `specs/design.md`.
-- Infraestructura cloud: `specs/infrastructure.md`.
-- Persistencia: `specs/database-design.md` y `specs/data-dictionary.md`.
-- Contratos: `specs/api-contract.md`.
-- `specs/data-model.md` se conserva como documento historico/transitorio de evolucion y matriz legacy; no debe contradecir la fuente vigente.
-
-## Seguridad
-
-- No versionar `.env`.
-- No versionar certificados DIAN.
-- No versionar API keys ni passwords reales.
-- La conexion DIAN real por empresa existe como pipeline configurable `stub/http`; la habilitacion productiva requiere certificado real, URLs oficiales, secretos AWS y pruebas DIAN de cada empresa.
-- No exponer `AUTH_MODE=local` en produccion.
-- No guardar tokens productivos en storage del navegador.
-- No imprimir en consola passwords, tokens, cookies, headers sensibles ni payloads completos.
-- Los errores publicos deben usar mensajes seguros y no exponer stack traces.
-- Las variables DIAN reales deben moverse a un gestor de secretos o mecanismo aprobado antes de produccion.
-
-## Infraestructura
-
-Estado actual:
-
-- Docker Compose local disponible.
-- PostgreSQL local en contenedor.
-- `bff-service`, frontend SPA, `tenant-service`, `identity-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `audit-service` y `payroll-service` locales montados como volumen y ejecutados con Maven/npm. Los comandos Compose usan `clean spring-boot:run` para evitar clases obsoletas durante la migracion.
-- El monolito legacy fue removido del repositorio activo; Docker Compose solo levanta microservicios fisicos y PostgreSQL.
-- Terraform AWS inicial existe en `infra/aws` para el target cloud con red, RDS, ECS/Fargate, API/BFF, frontend, secretos, EventBridge/SQS y Lambdas event-driven.
-
-Pendiente:
-
-- `Dockerfile` productivo multi-stage.
-- Storage productivo para branding, exportaciones y artefactos POS en S3 privado/KMS.
-- `reporting-service` ECS/Fargate privado para reportes avanzados y exportaciones.
-- Endurecimiento final de Cognito: dominio/custom domain, flujo productivo de invitacion/provisionamiento en Cognito y auditoria global platform-scoped para eventos OAuth sin empresa.
-- Configuracion cloud final por ambiente, certificados ACM y variables productivas.
-- Pipeline CI/CD.
-- Escaneo de imagenes con Docker Scout, Trivy, Grype o herramienta equivalente.
-- Runbooks productivos para DLQ, reintentos DIAN, restauracion RDS, rotacion de secretos, incidentes de seguridad y vencimiento de licencias.
-
-## Pendientes Relevantes
-
-- Certificados digitales reales y habilitacion DIAN por empresa.
-- Branding empresarial y adopcion visual completa de NexoFiscal en la SPA.
-- `reporting-service`, reportes avanzados, graficos y exportaciones CSV/Excel.
-- Historico avanzado de ventas/documentos, artefactos fiscales descargables y reimpresion POS.
-- Impresion POS web 58/80 mm; conectores directos a impresoras termicas quedan diferidos.
-- Representacion grafica oficial.
-- XML UBL y anexos tecnicos definitivos.
-- Autenticacion productiva Cognito Hosted UI + BFF session con cookie segura, CSRF, MFA y bloqueo de login dummy en produccion.
-- OpenAPI formal versionado por servicio/BFF; Springdoc runtime esta disponible, pero falta publicar artefactos controlados.
-
-## Git
-
-Rama actual usada durante el ultimo push:
-
-```text
-master
-```
-
-Formato recomendado de commits:
-
-```text
-<gitmoji> <type>(<scope>): <descripcion-corta>
-```
-
-Ejemplo:
-
-```text
-arch: clean backend
-```
-
-## Nota Legal Y Contable
-
-La implementacion tecnica debe ser validada antes de produccion contra la normatividad colombiana vigente, los anexos tecnicos DIAN aplicables, el modo de operacion configurado por cada empresa y el criterio de un contador publico o asesor tributario.
-
-
-## Arquitectura cloud AWS objetivo
-
-El target productivo aprobado es 100% cloud en AWS:
-
-- Frontend SPA en Amazon S3 privado servido por CloudFront.
-- Entrada publica mediante API Gateway hacia un BFF.
-- BFF y microservicios Spring Boot en ECS Fargate.
-- Procesos event-driven cortos e idempotentes en Lambda con EventBridge/SQS.
-- Persistencia en RDS/Aurora PostgreSQL.
-- Secretos, certificados y credenciales en Secrets Manager o Parameter Store.
-- Cognito User Pool/App Client para autenticacion productiva, Authorization Code + PKCE y MFA.
-- BFF con sesion server-side cifrada y cookie segura.
-
-Docker Compose se mantiene como entorno local de desarrollo y pruebas. La arquitectura productiva documentada usa exclusivamente EventBridge/SQS + Lambda para mensajeria asincrona administrada en AWS.
-
-## Terraform AWS
-
-El esqueleto IaC inicial vive en `infra/aws`.
+El esqueleto de infraestructura vive en `infra/aws`. Para validar formato y definicion sin crear recursos:
 
 ```powershell
 cd infra/aws/envs/dev
-terraform init
+terraform init -backend=false
 terraform fmt -recursive -check ..\..
 terraform validate
-terraform plan -out dev.tfplan
 ```
 
-No ejecutar `terraform apply` sin aprobacion explicita. El ambiente `dev` crea recursos cloud objetivo con servicios ECS en `desired_count = 0` hasta publicar imagenes productivas en ECR. `payroll-service` queda incluido como artefacto ECS/Fargate privado y el BFF usa URLs internas Cloud Map hacia todos los microservicios.
+La arquitectura objetivo usa frontend en S3/CloudFront, BFF y microservicios privados en ECS/Fargate, PostgreSQL administrado, Secrets Manager/KMS, CloudWatch, EventBridge/SQS y lambdas para procesos asincronos.
+
+## API Y Swagger
+
+Cada microservicio Spring Boot expone OpenAPI cuando esta levantado:
+
+```text
+http://localhost:<puerto>/v3/api-docs
+http://localhost:<puerto>/swagger-ui.html
+```
+
+El consumo normal desde la SPA se realiza por el BFF en `http://localhost:8083`.
+
+## Datos Y Migraciones
+
+Cada servicio mantiene sus migraciones en:
+
+```text
+services/<servicio>/src/main/resources/db/migration
+```
+
+Flyway crea y evoluciona las tablas al iniciar el servicio. Los catalogos funcionales viven en base de datos y el entorno local mantiene solo los datos minimos necesarios para validar acceso inicial y flujos operativos.
+
+## Seguridad
+
+- La SPA no debe registrar credenciales, tokens, certificados ni datos sensibles en consola.
+- Las credenciales viajan por TLS en despliegues reales; cifrado adicional en payload solo aplica con un modelo formal de llaves.
+- La sesion web se protege desde el BFF con cookies, CSRF, validaciones de permisos y correlacion de errores.
+- La configuracion DIAN real, certificados y secretos por empresa deben guardarse en un gestor de secretos.
+- Los errores publicos deben ser claros para el usuario y no exponer trazas internas.
+
+## Documentacion Tecnica
+
+La documentacion de especificacion vive en `specs/`:
+
+- `requirements.md`: requisitos funcionales, reglas y criterios.
+- `design.md`: arquitectura funcional, flujos, decisiones y evidencias tecnicas.
+- `api-contract.md`: contratos HTTP y eventos.
+- `database-design.md`: persistencia y migraciones.
+- `infrastructure.md`: ejecucion local, calidad, seguridad e infraestructura.
+- `diagrams/`: diagramas Mermaid de arquitectura, secuencia y modelo de datos.
+
+El README se mantiene como guia practica del repositorio para instalacion, ejecucion, validacion y orientacion tecnica.

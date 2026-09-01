@@ -28,11 +28,10 @@ erDiagram
   COMPANY ||--o{ PURCHASE : owns
   THIRD_PARTY ||--o{ PURCHASE : supplies
   PURCHASE ||--o{ PURCHASE_LINE : contains
-  PRODUCT ||--o{ PURCHASE_LINE : purchased
+  PRODUCT ||--o{ PURCHASE_LINE : optional_reference
 
   COMPANY ||--o{ ISSUER_PROFILE : configures
   COMPANY ||--o{ NUMBERING_RESOLUTION : owns
-  NUMBERING_RESOLUTION ||--o{ NUMBER_SEQUENCE : allocates
   COMPANY ||--o{ FINAL_CONSUMER_PROFILE : configures
   COMPANY ||--o{ SALE : owns
   THIRD_PARTY ||--o{ SALE : buyer
@@ -166,6 +165,29 @@ erDiagram
     boolean stock_tracked
   }
 
+  PURCHASE {
+    uuid id PK
+    uuid company_id FK
+    uuid supplier_id FK
+    date purchase_date
+    varchar payment_method_code
+    varchar status
+    numeric subtotal
+    numeric tax_total
+    numeric total
+  }
+
+  PURCHASE_LINE {
+    uuid id PK
+    uuid purchase_id FK
+    uuid product_id FK "optional historical reference"
+    varchar description
+    numeric quantity
+    numeric unit_cost
+    numeric tax_rate
+    numeric line_total
+  }
+
   INVENTORY_MOVEMENT {
     uuid id PK
     uuid company_id FK
@@ -175,6 +197,37 @@ erDiagram
     numeric resulting_stock
     varchar source_document_type
     uuid source_document_id
+  }
+
+  ISSUER_PROFILE {
+    uuid id PK
+    uuid company_id FK
+    varchar identification_number
+    varchar legal_name
+    varchar environment
+    boolean active
+  }
+
+  NUMBERING_RESOLUTION {
+    uuid id PK
+    uuid company_id FK
+    varchar document_type
+    varchar resolution_number
+    varchar prefix
+    bigint from_number
+    bigint to_number
+    bigint current_number
+    varchar environment
+    boolean active
+  }
+
+  FINAL_CONSUMER_PROFILE {
+    uuid id PK
+    uuid company_id FK
+    varchar profile_code
+    varchar identification_number
+    varchar display_name
+    boolean active
   }
 
   SALE {

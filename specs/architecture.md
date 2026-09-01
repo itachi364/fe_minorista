@@ -214,7 +214,7 @@ Orden recomendado:
 
 1. `catalog`: `Categoria`, `Producto`, `Impuesto`, `Pais`, `MetodoPago`, `TipoDocumento`, `TipoGasto`.
 2. `thirdparty`: `Cliente`, `Proveedor`.
-3. `inventory`: stock, compras, productos inventariables y movimientos.
+3. `inventory`: stock, productos inventariables, movimientos fisicos y compras documentales sin aumento automatico de inventario.
 4. `billing`: facturas, POS, numeracion, configuracion/conexion DIAN y documentos electronicos.
 5. `accounting`: PUC, asientos, libro diario y libro mayor.
 6. `audit`: auditoria y registro de accesos.

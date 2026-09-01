@@ -355,7 +355,7 @@ Toda transicion fiscal debe registrar evento de trazabilidad con estado anterior
 ### Politica inicial de movimientos de inventario
 
 - El stock se modela por empresa y producto mediante `StockBalance`.
-- Los movimientos `PURCHASE_IN`, `RETURN_IN` y `ADJUSTMENT_IN` incrementan el stock actual.
+- Los movimientos fisicos registrados desde `Inventario`, como `PURCHASE_IN`, `RETURN_IN` y `ADJUSTMENT_IN`, incrementan el stock actual. Las compras documentales del modulo `Compras` no disparan estos movimientos automaticamente.
 - Los movimientos `SALE_OUT` y `ADJUSTMENT_OUT` disminuyen el stock actual.
 - Todo movimiento debe registrar empresa, producto, cantidad, stock anterior, stock resultante, documento origen, usuario y fecha.
 - El dominio no permite que un movimiento deje el stock resultante en valor negativo.
@@ -2659,7 +2659,7 @@ Context7 evidence:
 - Componentes/capas: SES, `reporting-service`, `audit-service`.
 
 ### TASK-196 - Disenar UI de reportes avanzados asincronos
-- Estado: Pendiente.
+- Estado: Completada.
 - Fase: Fase 24: Reportes asincronos avanzados con S3 y notificacion.
 - Decision de diseno: Agregar modo "generar en segundo plano", listado de jobs, estados, descarga disponible y mensajes claros.
 
@@ -3087,7 +3087,7 @@ Context7 evidence:
 - Decision impact: La SPA debe derivar vista desde `columns`, `rows` y `series` normalizados, evitando duplicar estado o inferir tablas desde JSON crudo.
 
 ### TASK-238 - Gestion segura de resoluciones fiscales con error
-- Estado: Pendiente.
+- Estado: Implementada.
 - Fase: Fase transversal: Bugs detectados 2026-08-31.
 - Decision de diseno: Las resoluciones fiscales no deben tratarse como una configuracion descartable cuando ya participaron en documentos fiscales. Si nunca fueron usadas, pueden eliminarse para limpiar errores de captura; si tienen uso historico, solo pueden inactivarse.
 - Backend: `billing-service` expone acciones separadas para eliminar resoluciones sin uso e inactivar resoluciones usadas o no usadas. La busqueda de resolucion activa para cierre de venta solo considera resoluciones activas y compatibles con `document_type`, ambiente y rango.
@@ -3096,7 +3096,7 @@ Context7 evidence:
 - Error esperado: Si no hay resolucion activa compatible, el cierre de venta debe mostrar error funcional claro, no `500`.
 
 ### TASK-239 - Corregir boton Consultar compras
-- Estado: Pendiente.
+- Estado: Implementada.
 - Fase: Fase transversal: Bugs detectados 2026-08-31.
 - Decision de diseno: El boton `Consultar compras` debe consumir un contrato backend real, aislado por empresa y permisos, y no depender de datos locales ni estados ficticios.
 - Backend: `inventory-service` debe exponer o corregir el listado de compras/reabastecimientos actuales con filtros basicos. Si aun no existen compras, responde lista vacia.
@@ -3104,7 +3104,7 @@ Context7 evidence:
 - Evolucion: TASK-241 separara el concepto completo de compras, pero este bug repara el flujo actual para no dejar controles rotos.
 
 ### TASK-240 - Contabilizar pagos diarios como egreso operativo
-- Estado: Pendiente.
+- Estado: Implementada.
 - Fase: Fase transversal: Bugs detectados 2026-08-31.
 - Decision de diseno: El pago diario/verbal de un trabajador es un egreso operativo del negocio y debe generar asiento contable usando una regla PUC empresarial.
 - Regla: `DAILY_PAYROLL_PAID` debita gasto operacional de personal/jornales y acredita caja/banco segun el metodo de pago. La regla puede ser plantilla sugerida, pero cada empresa puede ajustarla antes de usarla.
@@ -3192,5 +3192,19 @@ Context7 evidence:
 - Topic consulted: `useEffect` para data fetching con dependencias, limpieza y renderizado condicional con listas estables.
 - Relevant finding: React documenta que los efectos sincronizan componentes con sistemas externos, deben declarar dependencias y usar limpieza para evitar respuestas obsoletas; las listas deben renderizarse con keys estables.
 - Decision impact: TASK-246 y TASK-247 usan menus derivados de estado autorizado y carga automatica por vista/empresa/filtros sin botones manuales de prerequisito.
+
+### TASK-249 - Gobierno documental y README operativo
+- Estado: Implementada.
+- Fase: Fase 33: Gobierno documental y README operativo.
+- Decision de diseno: El README queda como guia estable para instalar, configurar, ejecutar, probar y entender el repositorio. La planeacion funcional, trazabilidad de trabajo y criterios viven en `specs/` para evitar mezclar ayuda operativa con backlog.
+- Alcance SDD: Requisitos, criterios, casos de uso, arquitectura, base de datos, diccionario, diagramas y tareas deben mantenerse alineados con el estado vigente del producto.
+- Correcciones aplicadas: numeracion de casos de uso sin duplicados, estados de tareas implementadas sincronizados, DIAN real documentado como implementado en diccionario y compras documentales representadas sin aumento automatico de inventario.
+- README: Debe contener arquitectura, stack, estructura, configuracion local, Docker Compose, ejecucion por servicio, pruebas, SonarQube, Swagger/OpenAPI, migraciones, seguridad y ubicacion de specs.
+
+#### Context7 evidence
+- Library/tool: Vite.
+- Topic consulted: comandos de desarrollo y build para proyectos Vite.
+- Relevant finding: Vite documenta `npm run dev` para servidor de desarrollo y `npm run build` para generar el build productivo.
+- Decision impact: El README usa comandos actuales de Vite y evita instrucciones desactualizadas para ejecutar la SPA.
 
 <!-- END SDD TASK DESIGN TRACEABILITY -->

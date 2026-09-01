@@ -259,7 +259,7 @@ Flujos alternos:
 Acceptance criteria: AC-049.
 
 Nota UC-021 consumidores implementados en TASK-058: `billing-service` valida `CREATE_TRANSACTION` e `ISSUE_FISCAL_DOCUMENT`; `identity-service` valida `CREATE_USER` al asociar usuarios a una empresa mediante membresia/roles.
-## UC-019: Registrar cuenta por cobrar
+## UC-022: Registrar cuenta por cobrar
 
 Actor: Cajero, administrador o proceso de facturacion.
 
@@ -271,7 +271,7 @@ Flujo principal:
 
 Acceptance criteria: AC-052, AC-047.
 
-## UC-020: Registrar pago de cuenta por cobrar
+## UC-023: Registrar pago de cuenta por cobrar
 
 Actor: Cajero, administrador o contador.
 
@@ -283,7 +283,7 @@ Flujo principal:
 
 Acceptance criteria: AC-053, AC-014, AC-015.
 
-## UC-022: Crear empresa contratante y administrador inicial
+## UC-024: Crear empresa contratante y administrador inicial
 
 Actor: Usuario `ROOT`.
 
@@ -306,7 +306,7 @@ Reglas:
 
 Acceptance criteria: AC-059, AC-060, AC-061, AC-063, AC-018, AC-032.
 
-## UC-023: Crear rol empresarial configurable
+## UC-025: Crear rol empresarial configurable
 
 Actor: Administrador empresarial con `COMPANY_ROLES_MANAGE`.
 
@@ -329,7 +329,7 @@ Flujos alternos:
 
 Acceptance criteria: AC-061, AC-062, AC-063, AC-064, AC-018, AC-032.
 
-## UC-024: Asignar roles empresariales a usuarios
+## UC-026: Asignar roles empresariales a usuarios
 
 Actor: Administrador empresarial con `COMPANY_USERS_MANAGE` y permisos suficientes.
 
@@ -343,7 +343,7 @@ Flujo principal:
 
 Acceptance criteria: AC-061, AC-062, AC-064, AC-018, AC-032.
 
-## UC-025: Registrar producto con impuesto fiscal
+## UC-027: Registrar producto con impuesto fiscal
 
 Actor: Administrador o responsable de inventario.
 
@@ -355,7 +355,7 @@ Flujo principal:
 
 Acceptance criteria: AC-116, AC-120, AC-123.
 
-## UC-026: Vender por POS con scanner y consumidor final
+## UC-028: Vender por POS con scanner y consumidor final
 
 Actor: Cajero o vendedor.
 
@@ -370,7 +370,7 @@ Flujo principal:
 
 Acceptance criteria: AC-117, AC-118, AC-119, AC-121, AC-122, AC-033.
 
-## UC-027: Iniciar sesion productiva sin exponer tokens al navegador
+## UC-029: Iniciar sesion productiva sin exponer tokens al navegador
 
 Actor: Usuario ROOT, administrador empresarial o usuario operativo.
 
@@ -402,7 +402,7 @@ Reglas:
 
 Acceptance criteria: AC-176, AC-177, AC-178, AC-179, AC-180, AC-181, AC-182.
 
-## UC-028: Crear secretos AWS por empresa al crear tenant
+## UC-030: Crear secretos AWS por empresa al crear tenant
 
 Actor: Usuario ROOT.
 
@@ -424,7 +424,7 @@ Flujos alternos:
 
 Acceptance criteria: AC-170, AC-171, AC-186, AC-188.
 
-## UC-029: Emitir documento fiscal real ante DIAN
+## UC-031: Emitir documento fiscal real ante DIAN
 
 Actor: Sistema, iniciado por vendedor/cajero o proceso fiscal autorizado.
 
@@ -452,7 +452,7 @@ Flujos alternos:
 
 Acceptance criteria: AC-218, AC-219, AC-220, AC-221, AC-222, AC-223, AC-224, AC-226, AC-227.
 
-## UC-030: Consultar artefactos fiscales reales
+## UC-032: Consultar artefactos fiscales reales
 
 Actor: ROOT, administrador empresarial, contador o usuario con permiso fiscal/documental.
 
@@ -473,7 +473,7 @@ Flujos alternos:
 
 Acceptance criteria: AC-225, AC-158, AC-201, AC-207.
 
-## UC-031: Configurar politica fiscal por empresa
+## UC-033: Configurar politica fiscal por empresa
 
 Actor: Administrador empresarial o ROOT.
 
@@ -494,7 +494,7 @@ Flujos alternos:
 
 Acceptance criteria: AC-244, AC-245, AC-252, AC-253.
 
-## UC-032: Autorizar cambio de tipo documental con PIN
+## UC-034: Autorizar cambio de tipo documental con PIN
 
 Actor: Vendedor y administrador/supervisor autorizador.
 
@@ -519,7 +519,7 @@ Flujos alternos:
 
 Acceptance criteria: AC-246, AC-247, AC-248, AC-249, AC-250, AC-251, AC-256.
 
-## UC-033: Emitir notas fiscales independientes
+## UC-035: Emitir notas fiscales independientes
 
 Actor: Contador, administrador o usuario con permiso fiscal especifico.
 

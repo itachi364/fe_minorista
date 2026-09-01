@@ -542,7 +542,7 @@ Reglas:
 
 ## Reportes normalizados fase 30
 
-Estado: diseno pendiente, sin nuevas tablas obligatorias en primera iteracion.
+Estado: implementado sin nuevas tablas obligatorias en primera iteracion.
 
 Reglas:
 
@@ -554,7 +554,7 @@ Reglas:
 
 ## Bugs Fiscales Y Finanzas Operativas
 
-Estado: diseno pendiente para TASK-238 a TASK-245.
+Estado: implementado para TASK-238 a TASK-245 con tablas existentes y migraciones incrementales cuando aplica.
 
 ### Resoluciones fiscales
 
