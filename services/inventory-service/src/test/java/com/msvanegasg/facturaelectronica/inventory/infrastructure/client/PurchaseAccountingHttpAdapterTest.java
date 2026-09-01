@@ -46,7 +46,7 @@ class PurchaseAccountingHttpAdapterTest {
 
         adapter().applyConfirmedPurchase(confirmedPurchase(), USER_ID);
 
-        assertThat(entryHandler.requestBody).contains("\"eventType\":\"PURCHASE_CONFIRMED\"");
+        assertThat(entryHandler.requestBody).contains("\"eventType\":\"INVENTORY_REPLENISHMENT_CONFIRMED\"");
         assertThat(entryHandler.requestBody).contains("\"sourceType\":\"PURCHASE\"");
         assertThat(entryHandler.requestBody).contains("\"sourceId\":\"" + PURCHASE_ID + "\"");
         assertThat(entryHandler.requestBody).contains("\"entryDate\":\"2026-08-18\"");

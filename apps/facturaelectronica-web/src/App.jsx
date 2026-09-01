@@ -8,10 +8,12 @@ import {
   createCatalogItemForm,
   createCompanyBrandingForm,
   createCompanyAdminForm,
+  createAccountsReceivableForm,
   createCompanyForm,
   createCompanyRoleForm,
   createDailyLaborPaymentForm,
   createDianConfigurationForm,
+  createExpenseForm,
   createFiscalNoteForm,
   createFiscalPolicyForm,
   createIssuerForm,
@@ -22,6 +24,8 @@ import {
   createPayrollSettingsForm,
   createPayrollWorkerForm,
   createProductForm,
+  createReceivablePaymentForm,
+  createPurchaseForm,
   createReportsForm,
   createResolutionForm,
   createSaleDocumentOverrideForm,
@@ -39,6 +43,7 @@ import { CompanyForm } from './features/company/CompanyForm.jsx';
 import { CompanySessionPanel } from './features/company/CompanySessionPanel.jsx';
 import { IssuerForm } from './features/company/IssuerForm.jsx';
 import { DianConfigurationPanel } from './features/dian/DianConfigurationPanel.jsx';
+import { ExpensesPanel } from './features/expenses/ExpensesPanel.jsx';
 import { FiscalNotesPanel } from './features/fiscal/FiscalNotesPanel.jsx';
 import { FiscalPolicyForm } from './features/fiscal/FiscalPolicyForm.jsx';
 import { ResolutionForm } from './features/fiscal/ResolutionForm.jsx';
@@ -46,6 +51,8 @@ import { RolesPanel, UsersPanel } from './features/identity/IdentityAdminPanel.j
 import { OperationalPinPanel } from './features/identity/OperationalPinPanel.jsx';
 import { ProductForm } from './features/inventory/ProductForm.jsx';
 import { PayrollPanel } from './features/payroll/PayrollPanel.jsx';
+import { PurchasesPanel } from './features/purchases/PurchasesPanel.jsx';
+import { ReceivablesPanel } from './features/receivables/ReceivablesPanel.jsx';
 import { LicenseAdminPanel } from './features/licenses/LicenseAdminPanel.jsx';
 import { ReportsForm } from './features/reports/ReportsForm.jsx';
 import { SaleForm } from './features/sales/SaleForm.jsx';
@@ -55,11 +62,15 @@ import { companyScopedPermissions, hasAnyPermission, hasAnyRole, stepPermissionR
 import { buildIssuerFromCompany } from './utils/company.js';
 import {
   buildCompanyAdminPayload,
+  buildAccountsReceivablePayload,
   buildCompanyPayload,
+  buildExpensePayload,
   buildFiscalNotePayload,
   buildIssuerPayload,
   buildLicensePayload,
   buildProductPayload,
+  buildPurchasePayload,
+  buildReceivablePaymentPayload,
   buildResolutionPayload,
   buildSalePayload,
   buildThirdPartyPayload,
@@ -134,8 +145,16 @@ export default function App() {
   const [serviceConsumption, setServiceConsumption] = useState(createServiceConsumptionState);
   const [operationalListFilters, setOperationalListFilters] = useState(createOperationalListFilters);
   const [thirdPartyList, setThirdPartyList] = useState([]);
+  const [supplierList, setSupplierList] = useState([]);
+  const [customerList, setCustomerList] = useState([]);
   const [productList, setProductList] = useState([]);
+  const [purchaseForm, setPurchaseForm] = useState(createPurchaseForm);
   const [purchaseList, setPurchaseList] = useState([]);
+  const [expenseForm, setExpenseForm] = useState(createExpenseForm);
+  const [expenseList, setExpenseList] = useState([]);
+  const [accountsReceivableForm, setAccountsReceivableForm] = useState(createAccountsReceivableForm);
+  const [receivablePaymentForm, setReceivablePaymentForm] = useState(createReceivablePaymentForm);
+  const [accountsReceivableList, setAccountsReceivableList] = useState([]);
   const [salesList, setSalesList] = useState([]);
   const [selectedSaleDetail, setSelectedSaleDetail] = useState(null);
   const [customerSearch, setCustomerSearch] = useState('');
@@ -673,8 +692,16 @@ export default function App() {
     setCustomerOptions([]);
     setSelectedCustomer(null);
     setThirdPartyList([]);
+    setSupplierList([]);
+    setCustomerList([]);
     setProductList([]);
+    setPurchaseForm(createPurchaseForm());
     setPurchaseList([]);
+    setExpenseForm(createExpenseForm());
+    setExpenseList([]);
+    setAccountsReceivableForm(createAccountsReceivableForm());
+    setReceivablePaymentForm(createReceivablePaymentForm());
+    setAccountsReceivableList([]);
     setSalesList([]);
     setOperationalListFilters(createOperationalListFilters());
     setAuditEvents([]);
@@ -1616,6 +1643,126 @@ export default function App() {
     return items || [];
   }
 
+  async function loadFinancialReferenceData() {
+    requireCompany();
+    const [products, suppliers, customers] = await Promise.all([
+      requestJson('/api/v1/products?active=true', context),
+      requestJson('/api/v1/suppliers?active=true', context),
+      requestJson('/api/v1/customers?active=true', context),
+    ]);
+    setProductList(products || []);
+    setSupplierList(suppliers || []);
+    setCustomerList(customers || []);
+    return { products: products || [], suppliers: suppliers || [], customers: customers || [] };
+  }
+
+  async function createPurchase() {
+    requireCompany();
+    if (productList.length === 0 || supplierList.length === 0) {
+      await loadFinancialReferenceData();
+    }
+    const purchase = await requestJson('/api/v1/purchases', {
+      method: 'POST',
+      body: buildPurchasePayload(purchaseForm),
+      ...context,
+      idempotencyKey: createIdempotencyKey('purchase'),
+    });
+    setPurchaseForm(createPurchaseForm());
+    setPurchaseList((current) => [purchase, ...current.filter((item) => item.id !== purchase.id)]);
+    return purchase;
+  }
+
+  async function confirmPurchase(purchaseId) {
+    requireCompany();
+    const purchase = await requestJson(`/api/v1/purchases/${purchaseId}/confirm`, {
+      method: 'POST',
+      ...context,
+      idempotencyKey: createIdempotencyKey('purchase-confirm'),
+    });
+    setPurchaseList((current) => [purchase, ...current.filter((item) => item.id !== purchase.id)]);
+    return purchase;
+  }
+
+  async function loadExpenseList() {
+    requireCompany();
+    const items = await requestJson(`/api/v1/reports/expenses${buildQuery({
+      status: operationalListFilters.expenseStatus,
+      from: operationalListFilters.expenseFrom,
+      to: operationalListFilters.expenseTo,
+    })}`, context);
+    setExpenseList(items || []);
+    return items || [];
+  }
+
+  async function createExpense() {
+    requireCompany();
+    const expense = await requestJson('/api/v1/expenses', {
+      method: 'POST',
+      body: buildExpensePayload(expenseForm),
+      ...context,
+      idempotencyKey: createIdempotencyKey('expense'),
+    });
+    setExpenseForm(createExpenseForm());
+    setExpenseList((current) => [expense, ...current.filter((item) => item.id !== expense.id)]);
+    return expense;
+  }
+
+  async function confirmExpense(expenseId) {
+    requireCompany();
+    const expense = await requestJson(`/api/v1/expenses/${expenseId}/confirm`, {
+      method: 'POST',
+      ...context,
+      idempotencyKey: createIdempotencyKey('expense-confirm'),
+    });
+    setExpenseList((current) => [expense, ...current.filter((item) => item.id !== expense.id)]);
+    return expense;
+  }
+
+  async function loadAccountsReceivableList() {
+    requireCompany();
+    const items = await requestJson(`/api/v1/reports/accounts-receivable${buildQuery({
+      status: operationalListFilters.receivableStatus,
+      from: operationalListFilters.receivableFrom,
+      to: operationalListFilters.receivableTo,
+    })}`, context);
+    setAccountsReceivableList(items || []);
+    return items || [];
+  }
+
+  async function createAccountsReceivable() {
+    requireCompany();
+    if (customerList.length === 0) {
+      await loadFinancialReferenceData();
+    }
+    const sourceId = crypto.randomUUID();
+    const receivable = await requestJson('/api/v1/accounts-receivable', {
+      method: 'POST',
+      body: buildAccountsReceivablePayload(accountsReceivableForm, sourceId),
+      ...context,
+      idempotencyKey: sourceId,
+    });
+    setAccountsReceivableForm(createAccountsReceivableForm());
+    setAccountsReceivableList((current) => [receivable, ...current.filter((item) => item.id !== receivable.id)]);
+    return receivable;
+  }
+
+  async function registerReceivablePayment() {
+    requireCompany();
+    const receivableId = receivablePaymentForm.receivableId;
+    if (!receivableId) {
+      throw new Error('Selecciona una cuenta por cobrar.');
+    }
+    const payment = await requestJson(`/api/v1/accounts-receivable/${receivableId}/payments`, {
+      method: 'POST',
+      body: buildReceivablePaymentPayload(receivablePaymentForm),
+      ...context,
+      idempotencyKey: createIdempotencyKey('receivable-payment'),
+    });
+    setReceivablePaymentForm(createReceivablePaymentForm());
+    setAccountsReceivableList((current) => [payment.receivable, ...current.filter((item) => item.id !== payment.receivable.id)]);
+    return payment;
+  }
+
   async function loadSalesList() {
     requireCompany();
     const items = await requestJson(`/api/v1/sales/history${buildQuery({
@@ -2128,6 +2275,15 @@ export default function App() {
     setSaleId('');
     setServiceConsumption(createServiceConsumptionState());
     setSaleForm((current) => ({ ...current, customerId: '' }));
+    setPurchaseForm(createPurchaseForm());
+    setPurchaseList([]);
+    setExpenseForm(createExpenseForm());
+    setExpenseList([]);
+    setAccountsReceivableForm(createAccountsReceivableForm());
+    setReceivablePaymentForm(createReceivablePaymentForm());
+    setAccountsReceivableList([]);
+    setSupplierList([]);
+    setCustomerList([]);
     setSaleDocumentOverrideForm(createSaleDocumentOverrideForm());
     setSaleDocumentOverride(null);
     setIssuerProfiles([]);
@@ -2232,7 +2388,25 @@ export default function App() {
             <ThirdPartyForm form={thirdPartyForm} setForm={setThirdPartyForm} companyMunicipalityCode={companyMunicipalityCode} onSubmit={() => execute(createThirdParty)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Terceros)} documentTypeOptionsSource={runtimeCatalogs.dianDocumentTypes} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} taxRegimeOptionsSource={runtimeCatalogs.taxRegimeOptions} thirdPartyRoleCatalog={runtimeCatalogs.thirdPartyRoleCatalog} personTypeCatalog={runtimeCatalogs.personTypeCatalog} locations={runtimeCatalogs.locations} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} thirdParties={thirdPartyList} onLoadThirdParties={() => execute(loadThirdPartyList)} />
           )}
           {currentStep === 'Inventario' && (
-            <ProductForm form={productForm} setForm={setProductForm} onSubmit={() => execute(createProduct)} busy={busy || !activeCompanyId || !canUse(['INVENTORY_MANAGE'])} taxOptions={runtimeCatalogs.salesTaxOptions} itemTypeCatalog={runtimeCatalogs.itemTypeCatalog} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} products={productList} purchases={purchaseList} onLoadProducts={() => execute(loadProductList)} onLoadPurchases={() => execute(loadPurchaseList)} />
+            <ProductForm form={productForm} setForm={setProductForm} onSubmit={() => execute(createProduct)} busy={busy || !activeCompanyId || !canUse(['INVENTORY_MANAGE'])} taxOptions={runtimeCatalogs.salesTaxOptions} itemTypeCatalog={runtimeCatalogs.itemTypeCatalog} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} products={productList} onLoadProducts={() => execute(loadProductList)} />
+          )}
+          {currentStep === 'Compras' && (
+            <PurchasesPanel form={purchaseForm} setForm={setPurchaseForm} products={productList} suppliers={supplierList} purchases={purchaseList} filters={operationalListFilters} setFilters={setOperationalListFilters} onCreate={() => execute(createPurchase, { successMessage: 'Compra creada correctamente.' })} onConfirm={(purchaseId) => execute(() => confirmPurchase(purchaseId), { successMessage: 'Compra confirmada correctamente.' })} onLoad={() => execute(async () => {
+              await loadFinancialReferenceData();
+              return loadPurchaseList();
+            }, { successMessage: 'Compras actualizadas.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Compras)} />
+          )}
+          {currentStep === 'Gastos' && (
+            <ExpensesPanel form={expenseForm} setForm={setExpenseForm} suppliers={supplierList} expenses={expenseList} filters={operationalListFilters} setFilters={setOperationalListFilters} onCreate={() => execute(createExpense, { successMessage: 'Gasto creado correctamente.' })} onConfirm={(expenseId) => execute(() => confirmExpense(expenseId), { successMessage: 'Gasto confirmado correctamente.' })} onLoad={() => execute(async () => {
+              await loadFinancialReferenceData();
+              return loadExpenseList();
+            }, { successMessage: 'Gastos actualizados.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Gastos)} />
+          )}
+          {currentStep === 'Deudores' && (
+            <ReceivablesPanel form={accountsReceivableForm} setForm={setAccountsReceivableForm} paymentForm={receivablePaymentForm} setPaymentForm={setReceivablePaymentForm} customers={customerList} receivables={accountsReceivableList} filters={operationalListFilters} setFilters={setOperationalListFilters} paymentOptions={runtimeCatalogs.paymentMethodOptions} onCreate={() => execute(createAccountsReceivable, { successMessage: 'Deudor creado correctamente.' })} onRegisterPayment={() => execute(registerReceivablePayment, { successMessage: 'Abono registrado correctamente.' })} onLoad={() => execute(async () => {
+              await loadFinancialReferenceData();
+              return loadAccountsReceivableList();
+            }, { successMessage: 'Deudores actualizados.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Deudores)} />
           )}
           {currentStep === 'Fiscal' && (
             <>
@@ -2390,6 +2564,12 @@ function createOperationalListFilters() {
     purchaseStatus: '',
     purchaseFrom: '',
     purchaseTo: '',
+    expenseStatus: '',
+    expenseFrom: '',
+    expenseTo: '',
+    receivableStatus: '',
+    receivableFrom: '',
+    receivableTo: '',
     saleStatus: '',
     saleFrom: '',
     saleTo: '',

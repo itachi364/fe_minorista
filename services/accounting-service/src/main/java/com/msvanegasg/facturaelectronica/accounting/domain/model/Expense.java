@@ -10,6 +10,7 @@ public record Expense(
         UUID id,
         UUID companyId,
         UUID supplierId,
+        ExpenseType expenseType,
         LocalDate expenseDate,
         String concept,
         BigDecimal subtotal,
@@ -26,6 +27,7 @@ public record Expense(
     public Expense {
         require(id, "id");
         require(companyId, "companyId");
+        expenseType = expenseType == null ? ExpenseType.OPERATING_EXPENSE : expenseType;
         require(expenseDate, "expenseDate");
         concept = normalizeRequired(concept, 250, "concept");
         requireMoney(subtotal, "subtotal");
@@ -41,10 +43,11 @@ public record Expense(
         require(createdAt, "createdAt");
     }
 
-    public static Expense pending(UUID id, UUID companyId, UUID supplierId, LocalDate expenseDate, String concept,
-            BigDecimal subtotal, BigDecimal taxTotal, BigDecimal total, PaymentCondition paymentCondition,
-            LocalDate dueDate, String evidenceUrl, String idempotencyKey, Instant createdAt) {
-        return new Expense(id, companyId, supplierId, expenseDate, concept, subtotal, taxTotal, total,
+    public static Expense pending(UUID id, UUID companyId, UUID supplierId, ExpenseType expenseType,
+            LocalDate expenseDate, String concept, BigDecimal subtotal, BigDecimal taxTotal, BigDecimal total,
+            PaymentCondition paymentCondition, LocalDate dueDate, String evidenceUrl, String idempotencyKey,
+            Instant createdAt) {
+        return new Expense(id, companyId, supplierId, expenseType, expenseDate, concept, subtotal, taxTotal, total,
                 paymentCondition, dueDate, evidenceUrl, ExpenseStatus.PENDING, idempotencyKey, createdAt, null);
     }
 
@@ -52,7 +55,7 @@ public record Expense(
         if (status == ExpenseStatus.CONFIRMED) {
             return this;
         }
-        return new Expense(id, companyId, supplierId, expenseDate, concept, subtotal, taxTotal, total,
+        return new Expense(id, companyId, supplierId, expenseType, expenseDate, concept, subtotal, taxTotal, total,
                 paymentCondition, dueDate, evidenceUrl, ExpenseStatus.CONFIRMED, idempotencyKey, createdAt,
                 confirmedAt);
     }

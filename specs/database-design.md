@@ -581,10 +581,10 @@ Modelo objetivo:
   - `supplier_id`, `purchase_date`, `payment_method_code`, `status`, `subtotal`, `tax_total`, `total`, `correlation_id`.
 - `inventory.purchase_line`: detalle de compra.
   - `purchase_id`, `product_id` opcional, `description`, `quantity`, `unit_cost`, `tax_code`, `tax_rate`, `line_total`.
-- `accounting.operating_expense`: gastos que no son inventario ni activos.
-  - `category_code`, `supplier_id`, `expense_date`, `concept`, `payment_method_code`, `subtotal`, `tax_total`, `total`, `status`.
-- `accounting.business_asset`: activos del negocio.
-  - `asset_code`, `name`, `purchase_id`, `purchase_date`, `cost`, `status`.
+- `accounting.accounting_expense`: egresos que no incrementan inventario.
+  - `expense_type`: `OPERATING_EXPENSE` o `ASSET_PURCHASE`.
+  - `supplier_id`, `expense_date`, `concept`, `payment_condition`, `due_date`, `evidence_url`, `subtotal`, `tax_total`, `total`, `status`.
+- Activos del negocio en etapa actual: se contabilizan con `expense_type=ASSET_PURCHASE` y cuenta PUC `1520`; una tabla de maestro/depreciacion de activos queda como evolucion futura si se requiere control patrimonial avanzado.
 
 Reglas:
 

@@ -407,7 +407,9 @@ class AccountingControllerOperationsTest {
     }
 
     private static ExpenseResult expense(ExpenseStatus status) {
-        return new ExpenseResult(EXPENSE_ID, COMPANY_ID, null, LocalDate.of(2026, 5, 20),
+        return new ExpenseResult(EXPENSE_ID, COMPANY_ID, null,
+                com.msvanegasg.facturaelectronica.accounting.domain.model.ExpenseType.OPERATING_EXPENSE,
+                LocalDate.of(2026, 5, 20),
                 "Servicio publico energia", money("100000.00"), money("19000.00"), money("119000.00"),
                 PaymentCondition.CREDIT, LocalDate.of(2026, 6, 20), null, status, "expense-1", NOW,
                 status == ExpenseStatus.CONFIRMED ? NOW : null);

@@ -6150,8 +6150,8 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
 
 ## Fase 31: Finanzas operativas para pequeno negocio
 
-- [ ] TASK-241: Separar compras de reabastecimiento, activos y gastos
-  - Estado: TODO
+- [x] TASK-241: Separar compras de reabastecimiento, activos y gastos
+  - Estado: DONE
   - Requisitos: RF-233, RF-234.
   - Acceptance criteria:
     - AC-340: Una compra clasificada como reabastecimiento incrementa inventario y genera contabilizacion de inventario/cuentas por pagar o caja.
@@ -6163,9 +6163,19 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
     - `apps/facturaelectronica-web/src/features/purchases/**`
     - `specs/api-contract.md`
     - `specs/database-design.md`
+  - Resultado:
+    - `Inventario` queda enfocado en productos, servicios e insumos, sin consulta de compras dentro del formulario.
+    - `Compras` queda como pantalla independiente para reabastecimiento de mercancia/insumos con confirmacion posterior.
+    - `Gastos` distingue `OPERATING_EXPENSE` y `ASSET_PURCHASE`; el gasto operativo se contabiliza con `OPERATING_EXPENSE_CONFIRMED`, la compra de activo con `ASSET_PURCHASE_CONFIRMED` y ninguno incrementa inventario.
+    - Flyway agrega `accounting.accounting_expense.expense_type` con valor por defecto `OPERATING_EXPENSE`.
+  - Validacion:
+    - `.\mvnw.cmd -pl services/inventory-service -am test`: 54 tests OK.
+    - `.\mvnw.cmd -pl services/accounting-service -am test`: 68 tests OK.
+    - `npm test -- --run App.test.jsx`: 31 tests OK.
+    - `npm run build`: OK.
 
-- [ ] TASK-242: Modulo de gastos operativos
-  - Estado: TODO
+- [x] TASK-242: Modulo de gastos operativos
+  - Estado: DONE
   - Requisitos: RF-235.
   - Acceptance criteria:
     - AC-342: Un gasto operativo registra concepto, proveedor opcional, metodo de pago, IVA si aplica y asiento contable sin movimiento de inventario.
@@ -6175,9 +6185,17 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
     - `apps/facturaelectronica-web/src/features/expenses/**`
     - `specs/api-contract.md`
     - `specs/database-design.md`
+  - Resultado:
+    - Se agrego pantalla `Gastos` bajo Contabilidad con formulario, filtros, listado y accion de confirmacion.
+    - El payload envia proveedor opcional, fecha, concepto, subtotal, IVA, total, condicion de pago, vencimiento y soporte.
+    - Al confirmar, el backend genera asiento contable `OPERATING_EXPENSE_CONFIRMED` y cuenta por pagar cuando corresponde.
+  - Validacion:
+    - `.\mvnw.cmd -pl services/accounting-service -am test`: 68 tests OK.
+    - `npm test -- --run App.test.jsx`: 31 tests OK.
+    - `npm run build`: OK.
 
-- [ ] TASK-243: Modulo de deudores y cuentas por cobrar
-  - Estado: TODO
+- [x] TASK-243: Modulo de deudores y cuentas por cobrar
+  - Estado: DONE
   - Requisitos: RF-236.
   - Acceptance criteria:
     - AC-343: Una cuenta por cobrar mantiene saldo, vencimiento, estado y abonos, y cada movimiento genera asiento contable y auditoria.
@@ -6187,6 +6205,14 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
     - `apps/facturaelectronica-web/src/features/receivables/**`
     - `specs/api-contract.md`
     - `specs/database-design.md`
+  - Resultado:
+    - Se agrego pantalla `Deudores` bajo Contabilidad para crear cuentas por cobrar, consultar saldos y registrar abonos.
+    - El registro de una cuenta por cobrar ahora genera asiento `ACCOUNT_RECEIVABLE_REGISTERED`.
+    - Los abonos conservan el flujo existente de recaudo con actualizacion de saldo y estado.
+  - Validacion:
+    - `.\mvnw.cmd -pl services/accounting-service -am test`: 68 tests OK.
+    - `npm test -- --run App.test.jsx`: 31 tests OK.
+    - `npm run build`: OK.
 
 - [x] TASK-244: Reporte diario de ganancias, gastos y perdida
   - Estado: DONE
@@ -6206,8 +6232,8 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
   - Validacion:
     - `.\mvnw.cmd -pl services/reporting-service -am test`: 10 tests OK.
 
-- [ ] TASK-245: Plantillas contables minimas para operaciones financieras
-  - Estado: TODO
+- [x] TASK-245: Plantillas contables minimas para operaciones financieras
+  - Estado: DONE
   - Requisitos: RF-237.
   - Acceptance criteria:
     - AC-344: Compras, gastos, deudores, pagos diarios y reportes respetan empresa, licencia, permisos y auditoria.
@@ -6216,3 +6242,10 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
     - `services/accounting-service/**`
     - `services/payroll-service/**`
     - `apps/facturaelectronica-web/src/features/accounting/AccountingForm.jsx`
+  - Resultado:
+    - La plantilla basica PUC incluye reglas para ventas, compras de inventario, gastos operativos, compras de activos, cuentas por cobrar, pagos de cuentas por pagar, recaudos de cuentas por cobrar y pagos diarios de nomina.
+    - Se agrego cuenta PUC `1520 Maquinaria y equipo` para compras de activos.
+    - Las cuentas por cobrar manuales crean asiento contable en el momento del registro.
+  - Validacion:
+    - `.\mvnw.cmd -pl services/accounting-service -am test`: 68 tests OK.
+    - `.\mvnw.cmd -pl services/payroll-service -am test`: 9 tests OK.

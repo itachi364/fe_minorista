@@ -90,6 +90,69 @@ export function buildProductPayload(form) {
   });
 }
 
+export function buildPurchasePayload(form) {
+  const lines = (form.lines || []).map((line) => {
+    const quantity = toNumber(line.quantity) ?? 0;
+    const unitCost = toNumber(line.unitCost) ?? 0;
+    const subtotal = Number((quantity * unitCost).toFixed(2));
+    const tax = toNumber(line.tax) ?? 0;
+    return compactObject({
+      productId: line.productId,
+      quantity,
+      unitCost,
+      subtotal,
+      tax,
+      total: Number((subtotal + tax).toFixed(2)),
+    });
+  });
+  return compactObject({
+    supplierId: form.supplierId || null,
+    subtotal: Number(lines.reduce((total, line) => total + Number(line.subtotal || 0), 0).toFixed(2)),
+    taxTotal: Number(lines.reduce((total, line) => total + Number(line.tax || 0), 0).toFixed(2)),
+    total: Number(lines.reduce((total, line) => total + Number(line.total || 0), 0).toFixed(2)),
+    paymentCondition: form.paymentCondition,
+    dueDate: form.paymentCondition === 'CREDIT' ? form.dueDate : undefined,
+    evidenceUrl: form.evidenceUrl,
+    lines,
+  });
+}
+
+export function buildExpensePayload(form) {
+  return compactObject({
+    supplierId: form.supplierId || null,
+    expenseType: form.expenseType || 'OPERATING_EXPENSE',
+    expenseDate: form.expenseDate,
+    concept: form.concept,
+    subtotal: toNumber(form.subtotal),
+    taxTotal: toNumber(form.taxTotal) ?? 0,
+    total: toNumber(form.total),
+    paymentCondition: form.paymentCondition,
+    dueDate: form.paymentCondition === 'CREDIT' ? form.dueDate : undefined,
+    evidenceUrl: form.evidenceUrl,
+  });
+}
+
+export function buildAccountsReceivablePayload(form, sourceId) {
+  return compactObject({
+    customerId: form.customerId,
+    sourceType: 'ADJUSTMENT',
+    sourceId,
+    issueDate: form.issueDate,
+    dueDate: form.dueDate,
+    totalAmount: toNumber(form.totalAmount),
+    idempotencyKey: sourceId,
+  });
+}
+
+export function buildReceivablePaymentPayload(form) {
+  return compactObject({
+    paymentDate: form.paymentDate,
+    amount: toNumber(form.amount),
+    paymentMethod: form.paymentMethod,
+    reference: form.reference,
+  });
+}
+
 export function buildIssuerPayload(form) {
   return compactObject({
     ...form,

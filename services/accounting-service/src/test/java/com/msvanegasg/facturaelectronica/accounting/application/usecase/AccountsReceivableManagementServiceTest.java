@@ -69,6 +69,14 @@ class AccountsReceivableManagementServiceTest {
         assertThat(result.id()).isEqualTo(RECEIVABLE_ID);
         assertThat(result.status()).isEqualTo(AccountsReceivableStatus.OPEN);
         assertThat(result.balance()).isEqualByComparingTo("119000.00");
+        ArgumentCaptor<GenerateAccountingEntryCommand> entryCaptor =
+                ArgumentCaptor.forClass(GenerateAccountingEntryCommand.class);
+        verify(accountingEntryUseCase).generate(entryCaptor.capture());
+        assertThat(entryCaptor.getValue().eventType().name()).isEqualTo("ACCOUNT_RECEIVABLE_REGISTERED");
+        assertThat(entryCaptor.getValue().sourceType()).isEqualTo(AccountingSourceType.ADJUSTMENT);
+        assertThat(entryCaptor.getValue().sourceId()).isEqualTo(RECEIVABLE_ID);
+        assertThat(entryCaptor.getValue().thirdpartyId()).isEqualTo(CUSTOMER_ID);
+        assertThat(entryCaptor.getValue().total()).isEqualByComparingTo("119000.00");
     }
 
     @Test

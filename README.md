@@ -18,9 +18,10 @@ El proyecto migro desde una estructura legacy CRUD hacia Clean Architecture por 
 
 - Catalogos versionados: tipos de documento DIAN, responsabilidades fiscales, regimenes tributarios, metodos de pago, billeteras virtuales y DIVIPOLA por departamentos/municipios.
 - Terceros: clientes y proveedores.
-- Inventario: productos multiempresa, costos, compras, stock simple, movimientos y kardex.
+- Inventario: productos multiempresa, costos, stock simple, movimientos y kardex.
+- Compras, gastos y deudores: reabastecimiento de inventario, egresos operativos, compras de activos y cuentas por cobrar con efectos contables.
 - Billing/POS: emisor, resoluciones, emision POS electronico, consulta y envio a conector DIAN mock.
-- Contabilidad: cuentas PUC por empresa, reglas contables configurables, asientos `POSTED`, libro diario y libro mayor.
+- Contabilidad: cuentas PUC por empresa, reglas contables configurables, asientos `POSTED`, libro diario, libro mayor y plantillas base para ventas, compras, gastos, activos, deudores y nomina diaria.
 - Nomina: configuracion por empresa, trabajadores, pagos diarios verbales, documento soporte electronico mock opcional y contabilizacion base de pagos diarios.
 - Reportes: catalogo backend avanzado, ventas, inventario, compras, rentabilidad, gastos, cuentas por cobrar, libro diario y libro mayor.
 - Errores API: contrato estandar con `timestamp`, `status`, `code`, `message`, `correlationId` y `details`.

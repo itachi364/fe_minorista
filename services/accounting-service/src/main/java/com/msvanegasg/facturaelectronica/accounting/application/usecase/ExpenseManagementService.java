@@ -19,6 +19,7 @@ import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingSourc
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountsPayable;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.Expense;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.ExpenseStatus;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.ExpenseType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.PaymentCondition;
 
 public class ExpenseManagementService implements ManageExpenseUseCase {
@@ -65,10 +66,13 @@ public class ExpenseManagementService implements ManageExpenseUseCase {
             return AccountingOperationsMapper.toResult(expense);
         }
         Expense confirmed = expenseRepository.save(expense.confirm(clock.instant()));
+        AccountingEventType eventType = confirmed.expenseType() == ExpenseType.ASSET_PURCHASE
+                ? AccountingEventType.ASSET_PURCHASE_CONFIRMED
+                : AccountingEventType.OPERATING_EXPENSE_CONFIRMED;
         accountingEntryUseCase.generate(new GenerateAccountingEntryCommand(confirmed.companyId(),
-                AccountingEventType.EXPENSE_CONFIRMED, AccountingSourceType.EXPENSE, confirmed.id(),
-                confirmed.expenseDate(), confirmed.concept(), confirmed.supplierId(), confirmed.subtotal(),
-                confirmed.taxTotal(), confirmed.total()));
+                eventType, AccountingSourceType.EXPENSE, confirmed.id(), confirmed.expenseDate(),
+                confirmed.concept(), confirmed.supplierId(), confirmed.subtotal(), confirmed.taxTotal(),
+                confirmed.total()));
         if (confirmed.paymentCondition() == PaymentCondition.CREDIT) {
             payableRepository.findByCompanyIdAndSource(confirmed.companyId(), AccountingSourceType.EXPENSE,
                     confirmed.id()).orElseGet(() -> payableRepository.save(AccountsPayable.open(idGenerator.newId(),
@@ -83,8 +87,9 @@ public class ExpenseManagementService implements ManageExpenseUseCase {
         PaymentCondition paymentCondition = command.paymentCondition() == null ? PaymentCondition.CASH
                 : command.paymentCondition();
         Expense expense = Expense.pending(idGenerator.newId(), command.companyId(), command.supplierId(),
-                command.expenseDate(), command.concept(), command.subtotal(), command.taxTotal(), command.total(),
-                paymentCondition, command.dueDate(), command.evidenceUrl(), command.idempotencyKey(), clock.instant());
+                command.expenseType(), command.expenseDate(), command.concept(), command.subtotal(),
+                command.taxTotal(), command.total(), paymentCondition, command.dueDate(), command.evidenceUrl(),
+                command.idempotencyKey(), clock.instant());
         return AccountingOperationsMapper.toResult(expenseRepository.save(expense));
     }
 

@@ -25,10 +25,12 @@ import com.msvanegasg.facturaelectronica.accounting.application.port.in.Generate
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountsPayableRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.ExpenseRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.IdGeneratorPort;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEventType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingSourceType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountsPayable;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.Expense;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.ExpenseStatus;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.ExpenseType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.PaymentCondition;
 
 @ExtendWith(MockitoExtension.class)
@@ -80,10 +82,29 @@ class ExpenseManagementServiceTest {
         ArgumentCaptor<GenerateAccountingEntryCommand> entryCaptor =
                 ArgumentCaptor.forClass(GenerateAccountingEntryCommand.class);
         verify(accountingEntryUseCase).generate(entryCaptor.capture());
+        assertThat(entryCaptor.getValue().eventType()).isEqualTo(AccountingEventType.OPERATING_EXPENSE_CONFIRMED);
         assertThat(entryCaptor.getValue().sourceType()).isEqualTo(AccountingSourceType.EXPENSE);
         ArgumentCaptor<AccountsPayable> payableCaptor = ArgumentCaptor.forClass(AccountsPayable.class);
         verify(payableRepository).save(payableCaptor.capture());
         assertThat(payableCaptor.getValue().totalAmount()).isEqualByComparingTo("119000.00");
+    }
+
+    @Test
+    void confirmAssetPurchaseUsesAssetAccountingEvent() {
+        Expense assetPurchase = Expense.pending(EXPENSE_ID, COMPANY_ID, SUPPLIER_ID, ExpenseType.ASSET_PURCHASE,
+                LocalDate.of(2026, 5, 20), "Nevera para el negocio", money("2000000.00"), money("380000.00"),
+                money("2380000.00"), PaymentCondition.CASH, null, null, "asset-1", NOW);
+        when(expenseRepository.findByCompanyIdAndId(COMPANY_ID, EXPENSE_ID)).thenReturn(Optional.of(assetPurchase));
+        when(expenseRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        ExpenseManagementService service = service();
+
+        service.confirm(COMPANY_ID, EXPENSE_ID);
+
+        ArgumentCaptor<GenerateAccountingEntryCommand> entryCaptor =
+                ArgumentCaptor.forClass(GenerateAccountingEntryCommand.class);
+        verify(accountingEntryUseCase).generate(entryCaptor.capture());
+        assertThat(entryCaptor.getValue().eventType()).isEqualTo(AccountingEventType.ASSET_PURCHASE_CONFIRMED);
+        assertThat(entryCaptor.getValue().sourceType()).isEqualTo(AccountingSourceType.EXPENSE);
     }
 
     private ExpenseManagementService service() {
@@ -92,14 +113,16 @@ class ExpenseManagementServiceTest {
     }
 
     private static CreateExpenseCommand command() {
-        return new CreateExpenseCommand(COMPANY_ID, SUPPLIER_ID, LocalDate.of(2026, 5, 20),
+        return new CreateExpenseCommand(COMPANY_ID, SUPPLIER_ID, ExpenseType.OPERATING_EXPENSE,
+                LocalDate.of(2026, 5, 20),
                 "Servicio publico energia", money("100000.00"), money("19000.00"), money("119000.00"),
                 PaymentCondition.CREDIT, LocalDate.of(2026, 6, 20), "https://example.local/evidence.pdf",
                 "expense-1");
     }
 
     private static Expense expense() {
-        return Expense.pending(EXPENSE_ID, COMPANY_ID, SUPPLIER_ID, LocalDate.of(2026, 5, 20),
+        return Expense.pending(EXPENSE_ID, COMPANY_ID, SUPPLIER_ID, ExpenseType.OPERATING_EXPENSE,
+                LocalDate.of(2026, 5, 20),
                 "Servicio publico energia", money("100000.00"), money("19000.00"), money("119000.00"),
                 PaymentCondition.CREDIT, LocalDate.of(2026, 6, 20), null, "expense-1", NOW);
     }

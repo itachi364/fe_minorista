@@ -100,8 +100,8 @@ public final class AccountingRestMapper {
     }
 
     public static CreateExpenseCommand toCommand(UUID companyId, ExpenseRequest request, String idempotencyKey) {
-        return new CreateExpenseCommand(companyId, request.supplierId(), request.expenseDate(), request.concept(),
-                request.subtotal(), request.taxTotal(), request.total(), request.paymentCondition(),
+        return new CreateExpenseCommand(companyId, request.supplierId(), request.expenseType(),
+                request.expenseDate(), request.concept(), request.subtotal(), request.taxTotal(), request.total(), request.paymentCondition(),
                 request.dueDate(), request.evidenceUrl(), idempotencyKey);
     }
 
@@ -180,10 +180,10 @@ public final class AccountingRestMapper {
     }
 
     public static ExpenseResponse toResponse(ExpenseResult result) {
-        return new ExpenseResponse(result.id(), result.companyId(), result.supplierId(), result.expenseDate(),
-                result.concept(), result.subtotal(), result.taxTotal(), result.total(), result.paymentCondition(),
-                result.dueDate(), result.evidenceUrl(), result.status(), result.idempotencyKey(), result.createdAt(),
-                result.confirmedAt());
+        return new ExpenseResponse(result.id(), result.companyId(), result.supplierId(), result.expenseType(),
+                result.expenseDate(), result.concept(), result.subtotal(), result.taxTotal(), result.total(),
+                result.paymentCondition(), result.dueDate(), result.evidenceUrl(), result.status(),
+                result.idempotencyKey(), result.createdAt(), result.confirmedAt());
     }
 
 

@@ -3111,31 +3111,31 @@ Context7 evidence:
 - Reportes: Estos pagos alimentan `DAILY_PROFIT_AND_LOSS` como egresos operativos/pagos diarios.
 
 ### TASK-241 - Separar compras de reabastecimiento, activos y gastos
-- Estado: Pendiente.
+- Estado: Implementada.
 - Fase: Fase 31: Finanzas operativas para pequeno negocio.
 - Decision de diseno: El negocio necesita registrar distintos hechos economicos que hoy se confunden como compras. Se separan tres flujos: reabastecimiento de inventario/insumos, compra de activos del negocio y gastos operativos.
-- Reabastecimiento: Incrementa stock controlado, actualiza costo operativo y contabiliza inventario o costo segun configuracion.
-- Activos: Registra un activo de negocio, no aparece en POS ni inventario vendible, y genera asiento de activo/caja o cuenta por pagar.
-- Gastos: No modifica stock; se registra en el modulo de gastos de TASK-242.
+- Reabastecimiento: Se gestiona desde el modulo `Compras`, incrementa stock controlado al confirmar y contabiliza mediante `INVENTORY_REPLENISHMENT_CONFIRMED`.
+- Activos: Se registran desde `Gastos` con tipo `ASSET_PURCHASE`, no aparecen en POS ni incrementan inventario vendible, y generan asiento `ASSET_PURCHASE_CONFIRMED`.
+- Gastos: Se registran desde `Gastos` con tipo `OPERATING_EXPENSE`, no modifican stock y generan asiento `OPERATING_EXPENSE_CONFIRMED`.
 
 ### TASK-242 - Modulo de gastos operativos
-- Estado: Pendiente.
+- Estado: Implementada.
 - Fase: Fase 31: Finanzas operativas para pequeno negocio.
 - Decision de diseno: Los gastos operativos deben ser primera clase para pequenos negocios: servicios publicos, impuestos, reparaciones, imprevistos, arriendo, transporte, pagos de deuda y conceptos personalizados.
-- Backend: `accounting-service` o un servicio financiero dedicado valida categoria, tercero/proveedor opcional, fecha, metodo de pago, valores fiscales y regla PUC.
-- UI: Modulo independiente `Gastos` bajo Contabilidad, con formulario, historico y filtros por fecha/categoria/proveedor.
-- Contabilidad: Cada gasto confirmado crea asiento contable con `OPERATING_EXPENSE_CONFIRMED`.
+- Backend: `accounting-service` valida proveedor opcional, fecha, concepto, valores fiscales, condicion de pago y tipo de egreso.
+- UI: Modulo independiente `Gastos` bajo Contabilidad, con formulario, historico y filtros por fecha/estado.
+- Contabilidad: Cada gasto confirmado crea asiento contable con `OPERATING_EXPENSE_CONFIRMED`; si es a credito crea cuenta por pagar.
 
 ### TASK-243 - Modulo de deudores y cuentas por cobrar
-- Estado: Pendiente.
+- Estado: Implementada.
 - Fase: Fase 31: Finanzas operativas para pequeno negocio.
 - Decision de diseno: Las cuentas por cobrar permiten saber quien le debe dinero al negocio, vencimientos, abonos y saldo pendiente sin modificar ventas historicas.
-- Backend: El agregado mantiene obligacion, saldo, estado y pagos. Los recaudos son idempotentes y generan asientos contables.
+- Backend: El agregado mantiene obligacion, saldo, estado y pagos. El registro inicial genera `ACCOUNT_RECEIVABLE_REGISTERED` y los recaudos generan `ACCOUNTS_RECEIVABLE_PAYMENT_REGISTERED`.
 - UI: Modulo `Deudores` bajo Contabilidad, con registro de deuda, lista de saldos, vencimientos y abonos.
 - Reportes: Alimenta cartera por vencimiento y flujo de caja.
 
 ### TASK-244 - Reporte diario de ganancias, gastos y perdida
-- Estado: Pendiente.
+- Estado: Implementada.
 - Fase: Fase 31: Finanzas operativas para pequeno negocio.
 - Decision de diseno: El reporte diario debe responder la pregunta operativa del negocio: cuanto vendio, cuanto costo operar, cuanto gasto y si gano o perdio.
 - Dataset: `DAILY_PROFIT_AND_LOSS` normaliza ingresos por ventas, costo de ventas, gastos operativos, pagos diarios, otros egresos y utilidad/perdida neta.
@@ -3143,10 +3143,10 @@ Context7 evidence:
 - Fuente: Ventas confirmadas, movimientos de inventario/costo, asientos contables y pagos de nomina diaria.
 
 ### TASK-245 - Plantillas contables minimas para operaciones financieras
-- Estado: Pendiente.
+- Estado: Implementada.
 - Fase: Fase 31: Finanzas operativas para pequeno negocio.
 - Decision de diseno: Para que el sistema sea usable sin exigir conocimiento contable profundo, se entregan plantillas PUC sugeridas por evento, pero la empresa conserva control de sus cuentas y reglas.
-- Plantillas minimas: `DAILY_PAYROLL_PAID`, `OPERATING_EXPENSE_CONFIRMED`, `ASSET_PURCHASE_CONFIRMED`, `INVENTORY_REPLENISHMENT_CONFIRMED`, `ACCOUNT_RECEIVABLE_REGISTERED`.
+- Plantillas minimas implementadas: `PAYROLL_DAILY_PAYMENT_REGISTERED`, `OPERATING_EXPENSE_CONFIRMED`, `ASSET_PURCHASE_CONFIRMED`, `INVENTORY_REPLENISHMENT_CONFIRMED`, `ACCOUNT_RECEIVABLE_REGISTERED`, mas pagos de CxP/CxC.
 - Seguridad contable: Las reglas usadas por asientos historicos no se modifican ni inactivan directamente; se versionan mediante nueva regla.
 
 #### Context7 evidence

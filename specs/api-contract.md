@@ -3181,11 +3181,12 @@ Payload objetivo:
 ```json
 {
   "supplierId": "uuid",
+  "expenseType": "OPERATING_EXPENSE",
   "expenseDate": "2026-08-31",
-  "categoryCode": "PUBLIC_SERVICES",
   "concept": "Energia local comercial",
-  "paymentMethodCode": "CASH",
+  "paymentCondition": "CASH",
   "dueDate": null,
+  "evidenceUrl": "https://example.local/soporte.pdf",
   "subtotal": 100000,
   "taxTotal": 19000,
   "total": 119000
@@ -3195,8 +3196,9 @@ Payload objetivo:
 Reglas:
 
 - No crea movimientos de inventario.
-- Si `paymentMethodCode` implica credito, crea cuenta por pagar.
-- Genera asiento mediante `OPERATING_EXPENSE_CONFIRMED`.
+- `expenseType=OPERATING_EXPENSE` genera asiento mediante `OPERATING_EXPENSE_CONFIRMED`.
+- `expenseType=ASSET_PURCHASE` genera asiento mediante `ASSET_PURCHASE_CONFIRMED`.
+- Si `paymentCondition=CREDIT`, crea cuenta por pagar.
 
 ### Deudores y cuentas por cobrar
 

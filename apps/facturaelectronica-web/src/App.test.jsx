@@ -992,6 +992,12 @@ test('loads operational lists for sales third parties products and purchases', a
     total: 107100,
     dueDate: '2026-09-18',
   };
+  const supplier = {
+    id: '66666666-6666-6666-6666-666666666666',
+    identificationNumber: '900987654',
+    businessName: 'Proveedor Operativo SAS',
+    active: true,
+  };
   const sale = {
     id: '77777777-7777-7777-7777-777777777777',
     saleDate: '2026-08-18',
@@ -1026,6 +1032,9 @@ test('loads operational lists for sales third parties products and purchases', a
   const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
     .mockResolvedValueOnce(jsonResponse([customer]))
     .mockResolvedValueOnce(jsonResponse([product]))
+    .mockResolvedValueOnce(jsonResponse([product]))
+    .mockResolvedValueOnce(jsonResponse([supplier]))
+    .mockResolvedValueOnce(jsonResponse([customer]))
     .mockResolvedValueOnce(jsonResponse([purchase]))
     .mockResolvedValueOnce(jsonResponse([sale]))
     .mockResolvedValueOnce(jsonResponse(sale));
@@ -1041,8 +1050,10 @@ test('loads operational lists for sales third parties products and purchases', a
   fireEvent.click(screen.getByRole('button', { name: 'Inventario' }));
   fireEvent.click(screen.getByRole('button', { name: 'Consultar productos' }));
   await waitFor(() => expect(screen.getByText('Cafe 500g')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Compras' }));
   fireEvent.click(screen.getByRole('button', { name: 'Consultar compras' }));
-  await waitFor(() => expect(screen.getByText('66666666-6666-6666-6666-666666666666')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText('Proveedor Operativo SAS')).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
   expect(screen.queryByText('Ventas registradas')).not.toBeInTheDocument();
@@ -1060,13 +1071,22 @@ test('loads operational lists for sales third parties products and purchases', a
   expect(fetchMock).toHaveBeenNthCalledWith(7, '/api/v1/products?active=true', expect.objectContaining({
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
-  expect(fetchMock).toHaveBeenNthCalledWith(8, '/api/v1/purchases', expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(8, '/api/v1/products?active=true', expect.objectContaining({
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
-  expect(fetchMock).toHaveBeenNthCalledWith(9, '/api/v1/sales/history', expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(9, '/api/v1/suppliers?active=true', expect.objectContaining({
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
-  expect(fetchMock).toHaveBeenNthCalledWith(10, '/api/v1/sales/77777777-7777-7777-7777-777777777777', expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(10, '/api/v1/customers?active=true', expect.objectContaining({
+    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(fetchMock).toHaveBeenNthCalledWith(11, '/api/v1/purchases', expect.objectContaining({
+    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(fetchMock).toHaveBeenNthCalledWith(12, '/api/v1/sales/history', expect.objectContaining({
+    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(fetchMock).toHaveBeenNthCalledWith(13, '/api/v1/sales/77777777-7777-7777-7777-777777777777', expect.objectContaining({
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
 });

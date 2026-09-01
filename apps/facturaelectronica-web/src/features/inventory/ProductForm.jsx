@@ -47,9 +47,7 @@ export function ProductForm({
   listFilters,
   setListFilters,
   products = [],
-  purchases = [],
   onLoadProducts,
-  onLoadPurchases,
 }) {
   const selectedUsage = findUsageProfile(form);
   const priceBreakdown = calculateTaxIncludedAmounts(form.finalSalePrice, form.taxRate);
@@ -133,30 +131,6 @@ export function ProductForm({
         sectionClassName="embedded-table"
       />
     </section>
-    <section className="tool-panel">
-      <header className="panel-header">
-        <div>
-          <h1>Compras registradas</h1>
-          <p className="hint">Consulta compras por estado y fechas para revisar entradas y cuentas por pagar.</p>
-        </div>
-        <button className="secondary" disabled={busy} onClick={onLoadPurchases} type="button">Consultar compras</button>
-      </header>
-      <div className="form-grid compact">
-        <SelectField label="Estado" value={listFilters.purchaseStatus} onChange={(value) => setListFilters({ ...listFilters, purchaseStatus: value })} options={[
-          { value: 'PENDING', label: 'Pendiente' },
-          { value: 'CONFIRMED', label: 'Confirmada' },
-        ]} placeholder="Todos" />
-        <Field label="Desde" value={listFilters.purchaseFrom} onChange={(value) => setListFilters({ ...listFilters, purchaseFrom: value })} type="date" />
-        <Field label="Hasta" value={listFilters.purchaseTo} onChange={(value) => setListFilters({ ...listFilters, purchaseTo: value })} type="date" />
-      </div>
-      <DataTable
-        columns={['Fecha', 'Estado', 'Proveedor', 'Subtotal', 'IVA', 'Total', 'Vence']}
-        rows={purchases.map(purchaseRow)}
-        rowKey={(_row, index) => purchases[index]?.id || index}
-        emptyMessage="Sin compras consultadas."
-        sectionClassName="embedded-table"
-      />
-    </section>
   </div>;
 }
 
@@ -180,35 +154,12 @@ function productRow(product) {
   ];
 }
 
-function purchaseRow(purchase) {
-  return [
-    shortDate(purchase.createdAt),
-    labelPurchaseStatus(purchase.status),
-    purchase.supplierId || '',
-    money(purchase.subtotal),
-    money(purchase.taxTotal),
-    money(purchase.total),
-    shortDate(purchase.dueDate),
-  ];
-}
-
 function labelItemType(value) {
   return {
     PHYSICAL_GOOD: 'Bien fisico',
     SERVICE: 'Servicio',
     SUPPLY: 'Insumo',
   }[value] || value || '';
-}
-
-function labelPurchaseStatus(value) {
-  return {
-    PENDING: 'Pendiente',
-    CONFIRMED: 'Confirmada',
-  }[value] || value || '';
-}
-
-function shortDate(value) {
-  return value ? String(value).slice(0, 10) : '';
 }
 
 function money(value) {

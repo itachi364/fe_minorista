@@ -48,10 +48,17 @@ public class AccountsReceivableManagementService implements ManageAccountsReceiv
                 .or(() -> receivableRepository.findByCompanyIdAndSource(command.companyId(), command.sourceType(),
                         command.sourceId()))
                 .map(AccountingOperationsMapper::toResult)
-                .orElseGet(() -> AccountingOperationsMapper.toResult(receivableRepository.save(AccountsReceivable.open(
-                        idGenerator.newId(), command.companyId(), command.customerId(), command.sourceType(),
-                        command.sourceId(), command.issueDate(), command.dueDate(), command.totalAmount(),
-                        command.idempotencyKey(), clock.instant()))));
+                .orElseGet(() -> {
+                    AccountsReceivable saved = receivableRepository.save(AccountsReceivable.open(
+                            idGenerator.newId(), command.companyId(), command.customerId(), command.sourceType(),
+                            command.sourceId(), command.issueDate(), command.dueDate(), command.totalAmount(),
+                            command.idempotencyKey(), clock.instant()));
+                    accountingEntryUseCase.generate(new GenerateAccountingEntryCommand(command.companyId(),
+                            AccountingEventType.ACCOUNT_RECEIVABLE_REGISTERED, AccountingSourceType.ADJUSTMENT, saved.id(),
+                            command.issueDate(), "Cuenta por cobrar registrada", command.customerId(),
+                            command.totalAmount(), BigDecimal.ZERO, command.totalAmount()));
+                    return AccountingOperationsMapper.toResult(saved);
+                });
     }
 
     @Override

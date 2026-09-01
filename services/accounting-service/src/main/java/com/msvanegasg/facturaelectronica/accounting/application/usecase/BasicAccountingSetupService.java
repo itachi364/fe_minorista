@@ -84,6 +84,7 @@ public class BasicAccountingSetupService implements InitializeBasicAccountingSet
                 new AccountTemplate("1110", "Bancos"),
                 new AccountTemplate("1305", "Clientes"),
                 new AccountTemplate("1435", "Inventarios"),
+                new AccountTemplate("1520", "Maquinaria y equipo"),
                 new AccountTemplate("2205", "Proveedores nacionales"),
                 new AccountTemplate("2408", "Impuesto sobre las ventas"),
                 new AccountTemplate("4135", "Ingresos operacionales"),
@@ -101,7 +102,7 @@ public class BasicAccountingSetupService implements InitializeBasicAccountingSet
                                         "Ingreso operacional"),
                                 new RuleLineTemplate("2408", AccountingEntrySide.CREDIT, AccountingAmountType.TAX_TOTAL,
                                         "IVA generado"))),
-                new RuleTemplate(AccountingEventType.PURCHASE_CONFIRMED, AccountingSourceType.PURCHASE,
+                new RuleTemplate(AccountingEventType.INVENTORY_REPLENISHMENT_CONFIRMED, AccountingSourceType.PURCHASE,
                         "Compra inventario - plantilla basica", List.of(
                                 new RuleLineTemplate("1435", AccountingEntrySide.DEBIT, AccountingAmountType.SUBTOTAL,
                                         "Inventario"),
@@ -109,7 +110,7 @@ public class BasicAccountingSetupService implements InitializeBasicAccountingSet
                                         "IVA descontable"),
                                 new RuleLineTemplate("2205", AccountingEntrySide.CREDIT, AccountingAmountType.TOTAL,
                                         "Proveedor"))),
-                new RuleTemplate(AccountingEventType.EXPENSE_CONFIRMED, AccountingSourceType.EXPENSE,
+                new RuleTemplate(AccountingEventType.OPERATING_EXPENSE_CONFIRMED, AccountingSourceType.EXPENSE,
                         "Gasto operativo - plantilla basica", List.of(
                                 new RuleLineTemplate("5135", AccountingEntrySide.DEBIT, AccountingAmountType.SUBTOTAL,
                                         "Gasto operacional"),
@@ -117,6 +118,20 @@ public class BasicAccountingSetupService implements InitializeBasicAccountingSet
                                         "IVA descontable"),
                                 new RuleLineTemplate("2205", AccountingEntrySide.CREDIT, AccountingAmountType.TOTAL,
                                         "Proveedor o cuenta por pagar"))),
+                new RuleTemplate(AccountingEventType.ASSET_PURCHASE_CONFIRMED, AccountingSourceType.EXPENSE,
+                        "Compra de activo - plantilla basica", List.of(
+                                new RuleLineTemplate("1520", AccountingEntrySide.DEBIT, AccountingAmountType.SUBTOTAL,
+                                        "Activo operativo"),
+                                new RuleLineTemplate("2408", AccountingEntrySide.DEBIT, AccountingAmountType.TAX_TOTAL,
+                                        "IVA descontable"),
+                                new RuleLineTemplate("2205", AccountingEntrySide.CREDIT, AccountingAmountType.TOTAL,
+                                        "Proveedor o cuenta por pagar"))),
+                new RuleTemplate(AccountingEventType.ACCOUNT_RECEIVABLE_REGISTERED, AccountingSourceType.ADJUSTMENT,
+                        "Cuenta por cobrar - plantilla basica", List.of(
+                                new RuleLineTemplate("1305", AccountingEntrySide.DEBIT, AccountingAmountType.TOTAL,
+                                        "Cartera cliente"),
+                                new RuleLineTemplate("4135", AccountingEntrySide.CREDIT, AccountingAmountType.TOTAL,
+                                        "Ingreso reconocido"))),
                 new RuleTemplate(AccountingEventType.ACCOUNTS_PAYABLE_PAYMENT_REGISTERED,
                         AccountingSourceType.ACCOUNTS_PAYABLE_PAYMENT,
                         "Pago cuenta por pagar - plantilla basica", List.of(

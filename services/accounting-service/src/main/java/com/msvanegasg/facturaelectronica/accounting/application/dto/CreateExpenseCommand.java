@@ -4,9 +4,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import com.msvanegasg.facturaelectronica.accounting.domain.model.ExpenseType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.PaymentCondition;
 
-public record CreateExpenseCommand(UUID companyId, UUID supplierId, LocalDate expenseDate, String concept,
-        BigDecimal subtotal, BigDecimal taxTotal, BigDecimal total, PaymentCondition paymentCondition,
+public record CreateExpenseCommand(UUID companyId, UUID supplierId, ExpenseType expenseType, LocalDate expenseDate,
+        String concept, BigDecimal subtotal, BigDecimal taxTotal, BigDecimal total, PaymentCondition paymentCondition,
         LocalDate dueDate, String evidenceUrl, String idempotencyKey) {
 }

@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.accounting.domain.model.ExpenseStatus;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.ExpenseType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.PaymentCondition;
 
 import jakarta.persistence.Column;
@@ -29,6 +30,9 @@ public class ExpenseJpaEntity {
     private UUID companyId;
     @Column(name = "supplier_id")
     private UUID supplierId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "expense_type", nullable = false)
+    private ExpenseType expenseType;
     @Column(name = "expense_date", nullable = false)
     private LocalDate expenseDate;
     @Column(nullable = false, length = 250)

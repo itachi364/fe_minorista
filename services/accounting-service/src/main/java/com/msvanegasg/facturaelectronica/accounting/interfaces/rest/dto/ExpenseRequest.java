@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import com.msvanegasg.facturaelectronica.accounting.domain.model.ExpenseType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.PaymentCondition;
 
 import jakarta.validation.constraints.DecimalMin;
@@ -12,6 +13,7 @@ import jakarta.validation.constraints.NotNull;
 
 public record ExpenseRequest(
         UUID supplierId,
+        ExpenseType expenseType,
         @NotNull LocalDate expenseDate,
         @NotBlank String concept,
         @NotNull @DecimalMin("0.0") BigDecimal subtotal,

@@ -106,6 +106,53 @@ export function createProductForm() {
   };
 }
 
+export function createPurchaseForm() {
+  return {
+    supplierId: '',
+    paymentCondition: 'CASH',
+    dueDate: '',
+    evidenceUrl: '',
+    lines: [{ productId: '', quantity: '1', unitCost: '', tax: '0' }],
+  };
+}
+
+export function createExpenseForm() {
+  return {
+    supplierId: '',
+    expenseType: 'OPERATING_EXPENSE',
+    expenseDate: toDateInputValue(new Date()),
+    concept: '',
+    subtotal: '',
+    taxTotal: '0',
+    total: '',
+    paymentCondition: 'CASH',
+    dueDate: '',
+    evidenceUrl: '',
+  };
+}
+
+export function createAccountsReceivableForm() {
+  const today = new Date();
+  const dueDate = new Date(today);
+  dueDate.setDate(today.getDate() + 30);
+  return {
+    customerId: '',
+    issueDate: toDateInputValue(today),
+    dueDate: toDateInputValue(dueDate),
+    totalAmount: '',
+  };
+}
+
+export function createReceivablePaymentForm() {
+  return {
+    receivableId: '',
+    paymentDate: toDateInputValue(new Date()),
+    amount: '',
+    paymentMethod: '',
+    reference: '',
+  };
+}
+
 export function createIssuerForm() {
   return {
     legalName: '',

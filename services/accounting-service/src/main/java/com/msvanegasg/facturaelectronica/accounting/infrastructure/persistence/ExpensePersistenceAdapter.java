@@ -44,8 +44,8 @@ public class ExpensePersistenceAdapter implements ExpenseRepositoryPort {
     }
 
     private static Expense toDomain(ExpenseJpaEntity entity) {
-        return new Expense(entity.getId(), entity.getCompanyId(), entity.getSupplierId(), entity.getExpenseDate(),
-                entity.getConcept(), entity.getSubtotal(), entity.getTaxTotal(), entity.getTotal(),
+        return new Expense(entity.getId(), entity.getCompanyId(), entity.getSupplierId(), entity.getExpenseType(),
+                entity.getExpenseDate(), entity.getConcept(), entity.getSubtotal(), entity.getTaxTotal(), entity.getTotal(),
                 entity.getPaymentCondition(), entity.getDueDate(), entity.getEvidenceUrl(), entity.getStatus(),
                 entity.getIdempotencyKey(), entity.getCreatedAt(), entity.getConfirmedAt());
     }
@@ -55,6 +55,7 @@ public class ExpensePersistenceAdapter implements ExpenseRepositoryPort {
         entity.setId(expense.id());
         entity.setCompanyId(expense.companyId());
         entity.setSupplierId(expense.supplierId());
+        entity.setExpenseType(expense.expenseType());
         entity.setExpenseDate(expense.expenseDate());
         entity.setConcept(expense.concept());
         entity.setSubtotal(expense.subtotal());

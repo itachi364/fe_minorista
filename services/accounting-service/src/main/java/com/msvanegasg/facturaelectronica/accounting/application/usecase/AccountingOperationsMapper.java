@@ -17,10 +17,10 @@ final class AccountingOperationsMapper {
     }
 
     static ExpenseResult toResult(Expense expense) {
-        return new ExpenseResult(expense.id(), expense.companyId(), expense.supplierId(), expense.expenseDate(),
-                expense.concept(), expense.subtotal(), expense.taxTotal(), expense.total(), expense.paymentCondition(),
-                expense.dueDate(), expense.evidenceUrl(), expense.status(), expense.idempotencyKey(),
-                expense.createdAt(), expense.confirmedAt());
+        return new ExpenseResult(expense.id(), expense.companyId(), expense.supplierId(), expense.expenseType(),
+                expense.expenseDate(), expense.concept(), expense.subtotal(), expense.taxTotal(), expense.total(),
+                expense.paymentCondition(), expense.dueDate(), expense.evidenceUrl(), expense.status(),
+                expense.idempotencyKey(), expense.createdAt(), expense.confirmedAt());
     }
 
     static AccountsPayableResult toResult(AccountsPayable payable) {
