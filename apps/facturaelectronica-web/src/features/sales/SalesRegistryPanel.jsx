@@ -7,7 +7,6 @@ export function SalesRegistryPanel({
   selectedSale,
   listFilters,
   setListFilters,
-  onLoadSales,
   onViewDetail,
   onCloseDetail,
   busy,
@@ -19,9 +18,8 @@ export function SalesRegistryPanel({
         <header className="panel-header">
           <div>
             <h1>Registro de Ventas</h1>
-            <p className="hint">Consulta historica de ventas registradas. Las ventas emitidas solo se visualizan y conservan trazabilidad fiscal.</p>
+            <p className="hint">Historico cargado automaticamente por rango, estado y metodo de pago. Las ventas emitidas solo se visualizan.</p>
           </div>
-          <button className="primary" disabled={busy} onClick={onLoadSales} type="button">Consultar ventas</button>
         </header>
         <div className="form-grid compact">
           <SelectField label="Estado" value={listFilters.saleStatus} onChange={(value) => setListFilters({ ...listFilters, saleStatus: value })} options={[

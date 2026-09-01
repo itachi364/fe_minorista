@@ -450,6 +450,11 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-235: Debe existir un modulo de gastos operativos para registrar servicios publicos, impuestos, reparaciones, imprevistos, arriendo, transporte, deudas y otros egresos del negocio sin afectar stock.
 - RF-236: Debe existir un modulo de deudores/cuentas por cobrar para registrar deudores, obligaciones, abonos, saldos, vencimientos y estado, integrado con contabilidad y reportes.
 - RF-237: La configuracion contable recomendada debe incluir reglas explicitas para `DAILY_PAYROLL_PAID`, `OPERATING_EXPENSE_CONFIRMED`, `ASSET_PURCHASE_CONFIRMED`, `INVENTORY_REPLENISHMENT_CONFIRMED` y `ACCOUNT_RECEIVABLE_REGISTERED`.
+- RF-238: La SPA debe mostrar una navegacion principal profesional con menus principales `Ventas`, `Reportes`, `Contabilidad` y `Configuracion`; los submodulos deben abrirse en un menu flotante al pasar el mouse o enfocar con teclado, sin extender la barra lateral hacia abajo.
+- RF-239: La navegacion debe seguir respetando licencia, permisos y rol: cada menu flotante solo muestra los submodulos autorizados para la sesion y empresa activa.
+- RF-240: Al ingresar a un modulo operativo, la SPA debe cargar automaticamente la informacion necesaria para trabajar sin exigir botones `Cargar` o `Consultar`.
+- RF-241: Las tablas historicas operativas deben cargar por defecto el dia actual y el dia anterior para reducir volumen inicial; las listas desplegables de seleccion deben cargar toda la informacion activa requerida.
+- RF-242: Los botones manuales de consulta que sean prerequisito de uso deben eliminarse de la UI; la recarga posterior debe resolverse por cambio de filtros, entrada al modulo o accion contextual no obstructiva.
 
 ## Requisitos fase productizacion operativa
 

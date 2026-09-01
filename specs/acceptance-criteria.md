@@ -194,6 +194,15 @@
 - AC-150: Dado un pago clasificado como contratista independiente, cuando se contabilice, entonces debe registrarse como egreso/proveedor o gasto operativo y no como empleado de nomina formal.
 - AC-151: Dada la suite E2E actualizada, cuando se ejecute desde cero, entonces debe crear empresa, administrador, catalogos requeridos, tercero, inventario, venta, factura mock, contabilidad, logs y un flujo minimo de nomina/pago diario sin depender de datos demo del frontend.
 
+## UX operativa y carga automatica
+
+- AC-345: La barra lateral muestra como entradas principales `Ventas`, `Reportes`, `Contabilidad` y `Configuracion`; los submodulos no quedan desplegados permanentemente hacia abajo.
+- AC-346: Al pasar el mouse o enfocar con teclado un menu con submodulos, se muestra un menu flotante lateral con opciones autorizadas por licencia, rol y permisos.
+- AC-347: La opcion activa conserva resaltado visible tanto en el menu principal como en el submodulo seleccionado.
+- AC-348: Al abrir `Terceros`, `Inventario`, `Compras`, `Gastos`, `Deudores`, `Registro de Ventas` o `Nomina`, la SPA carga automaticamente datos de tabla y listas requeridas sin exigir botones `Consultar` o `Cargar`.
+- AC-349: Las tablas historicas usan por defecto rango desde ayer hasta hoy; las listas desplegables cargan todos los registros activos requeridos para operar.
+- AC-350: Los botones manuales de consulta/carga usados como prerequisito se eliminan de los modulos indicados y las pruebas frontend validan la carga por entrada a modulo.
+
 ## Productizacion operativa y cierre funcional
 
 - AC-152: Dado un entorno local limpio con solo ROOT semilla, cuando se ejecute el E2E desde cero, entonces debe crear empresa, licencia, OWNER, tercero, producto, stock, venta POS, factura electronica mock, descuento de inventario, asiento contable y auditoria.

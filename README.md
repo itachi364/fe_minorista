@@ -24,6 +24,7 @@ El proyecto migro desde una estructura legacy CRUD hacia Clean Architecture por 
 - Contabilidad: cuentas PUC por empresa, reglas contables configurables, asientos `POSTED`, libro diario, libro mayor y plantillas base para ventas, compras, gastos, activos, deudores y nomina diaria.
 - Nomina: configuracion por empresa, trabajadores, pagos diarios verbales, documento soporte electronico mock opcional y contabilizacion base de pagos diarios.
 - Reportes: catalogo backend avanzado, ventas, inventario, compras, rentabilidad, gastos, cuentas por cobrar, libro diario y libro mayor.
+- UX operativa: navegacion principal con flyouts autorizados por permisos y carga automatica de datos al entrar a modulos, con historicos iniciales de ayer y hoy.
 - Errores API: contrato estandar con `timestamp`, `status`, `code`, `message`, `correlationId` y `details`.
 - Observabilidad HTTP: correlation ID por request y logs estructurados de inicio/fin.
 

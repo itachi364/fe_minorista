@@ -14,7 +14,6 @@ export function PayrollPanel({
   documentTypeOptions,
   workerClassificationOptions,
   paymentMethodOptions,
-  onLoad,
   onSaveSettings,
   onCreateWorker,
   onCreateDailyPayment,
@@ -32,9 +31,8 @@ export function PayrollPanel({
         <header className="panel-header">
           <div>
             <h1>Nomina</h1>
-            <p className="hint">Registra trabajadores, pagos diarios verbales y configura si la empresa usara nomina electronica.</p>
+            <p className="hint">Trabajadores, pagos diarios verbales y soportes se cargan automaticamente al entrar al modulo.</p>
           </div>
-          <button className="secondary" type="button" onClick={onLoad} disabled={busy}>Cargar nomina</button>
         </header>
       </section>
 

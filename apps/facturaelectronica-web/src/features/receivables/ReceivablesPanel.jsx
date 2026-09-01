@@ -13,7 +13,6 @@ export function ReceivablesPanel({
   paymentOptions = [],
   onCreate,
   onRegisterPayment,
-  onLoad,
   busy,
 }) {
   const customerOptions = customers.map((thirdParty) => ({
@@ -52,9 +51,8 @@ export function ReceivablesPanel({
       <header className="panel-header">
         <div>
           <h1>Deudores registrados</h1>
-          <p className="hint">Consulta saldos, vencimientos y estado de cuentas por cobrar.</p>
+          <p className="hint">Saldos, vencimientos y estado de cuentas por cobrar cargados automaticamente.</p>
         </div>
-        <button className="secondary" disabled={busy} onClick={onLoad} type="button">Consultar deudores</button>
       </header>
       <div className="form-grid compact">
         <SelectField label="Estado" value={filters.receivableStatus} onChange={(value) => setFilters({ ...filters, receivableStatus: value })} options={[
@@ -70,7 +68,7 @@ export function ReceivablesPanel({
         columns={['Cliente', 'Emision', 'Vence', 'Valor', 'Abonado', 'Saldo', 'Estado']}
         rows={receivables.map((receivable) => receivableRow(receivable, customers))}
         rowKey={(_row, index) => receivables[index]?.id || index}
-        emptyMessage="Sin deudores consultados."
+        emptyMessage="Sin deudores registrados para el filtro actual."
         sectionClassName="embedded-table"
       />
     </section>

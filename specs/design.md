@@ -3149,6 +3149,23 @@ Context7 evidence:
 - Plantillas minimas implementadas: `PAYROLL_DAILY_PAYMENT_REGISTERED`, `OPERATING_EXPENSE_CONFIRMED`, `ASSET_PURCHASE_CONFIRMED`, `INVENTORY_REPLENISHMENT_CONFIRMED`, `ACCOUNT_RECEIVABLE_REGISTERED`, mas pagos de CxP/CxC.
 - Seguridad contable: Las reglas usadas por asientos historicos no se modifican ni inactivan directamente; se versionan mediante nueva regla.
 
+### TASK-246 - Navegacion principal con menus flotantes
+- Estado: Implementada.
+- Fase: Fase 32: UX operativa y carga automatica.
+- Decision de diseno: La SPA debe mostrar solo menus principales en la barra lateral: `Ventas`, `Reportes`, `Contabilidad` y `Configuracion`. Cuando un menu principal tenga submodulos, estos se muestran en un panel flotante al hacer hover o focus, ubicado al lado de la barra y no como lista vertical permanente.
+- Seguridad/permiso: La construccion del menu sigue partiendo de `visibleSteps`; por tanto, el flyout solo contiene opciones permitidas por licencia, rol y permisos vigentes. El frontend mejora UX, pero la autorizacion real sigue en BFF/microservicios.
+- Accesibilidad: El flyout debe abrirse tambien con foco de teclado y conservar estados activos claros. En pantallas pequenas se permite comportamiento compacto en columna para no ocultar opciones.
+- Implementacion: `App.jsx` deriva grupos visibles desde `navigationGroups` y `visibleSteps`; `styles.css` presenta flyouts laterales profesionales con estado activo y soporte de foco.
+
+### TASK-247 - Carga automatica de datos al entrar a modulos
+- Estado: Implementada.
+- Fase: Fase 32: UX operativa y carga automatica.
+- Decision de diseno: Cada modulo operativo debe ejecutar su carga inicial al entrar a la vista y al cambiar empresa/filtros relevantes, usando efectos controlados por `currentStep` y `activeCompanyId`.
+- Datos iniciales: Las tablas historicas usan por defecto rango desde ayer hasta hoy. Las listas desplegables cargan todos los registros activos necesarios para crear informacion, como terceros, productos, usuarios, roles y catalogos.
+- UX: Se eliminan botones manuales `Cargar`/`Consultar` cuando eran prerequisito para usar el modulo. El usuario ve datos cargados, estado vacio o error funcional sin tener que descubrir un boton previo.
+- Rendimiento: Las cargas automaticas usan claves por modulo/empresa/filtro para evitar llamadas duplicadas en renderizados repetidos.
+- Implementacion: Los modulos operativos cargan datos al entrar y al cambiar filtros relevantes; las respuestas de lista se normalizan para arreglos simples o envolturas paginadas.
+
 #### Context7 evidence
 - Library/tool: React.
 - Topic consulted: Controlled inputs, dynamic forms and stable derived UI.
@@ -3158,5 +3175,9 @@ Context7 evidence:
 - Topic consulted: Validation and error handling for REST request bodies.
 - Relevant finding: Spring Boot/Spring MVC soporta validacion con `@Valid @RequestBody` y manejo centralizado de excepciones para respuestas funcionales.
 - Decision impact: Los nuevos endpoints deben devolver errores 400/409 funcionales y no filtrar `500` para reglas de negocio esperadas.
+- Library/tool: React.
+- Topic consulted: `useEffect` para data fetching con dependencias, limpieza y renderizado condicional con listas estables.
+- Relevant finding: React documenta que los efectos sincronizan componentes con sistemas externos, deben declarar dependencias y usar limpieza para evitar respuestas obsoletas; las listas deben renderizarse con keys estables.
+- Decision impact: TASK-246 y TASK-247 usan menus derivados de estado autorizado y carga automatica por vista/empresa/filtros sin botones manuales de prerequisito.
 
 <!-- END SDD TASK DESIGN TRACEABILITY -->

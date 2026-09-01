@@ -4,7 +4,6 @@ export function OperationalPinPanel({
   form,
   setForm,
   status,
-  onLoad,
   onSave,
   onUnlock,
   busy,
@@ -26,9 +25,8 @@ export function OperationalPinPanel({
         <header className="panel-header">
           <div>
             <h1>PIN operacional</h1>
-            <p>Administra el PIN de 6 digitos usado para autorizar cambios excepcionales en ventas fiscales.</p>
+            <p>Estado cargado automaticamente. Administra el PIN de 6 digitos usado para autorizar cambios excepcionales en ventas fiscales.</p>
           </div>
-          <button className="secondary" disabled={busy} onClick={onLoad} type="button">Consultar estado</button>
         </header>
         <div className="summary-strip">
           <StatusBadge label="Configuracion" value={status?.configured ? 'Configurado' : 'Sin configurar'} tone={status?.configured ? 'ok' : 'warn'} />

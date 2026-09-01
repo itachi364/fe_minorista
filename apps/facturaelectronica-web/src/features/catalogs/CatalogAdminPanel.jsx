@@ -7,8 +7,6 @@ export function CatalogAdminPanel({
   items,
   form,
   setForm,
-  onLoadDefinitions,
-  onLoadItems,
   onNew,
   onEdit,
   onSave,
@@ -29,10 +27,9 @@ export function CatalogAdminPanel({
       <header className="panel-header">
         <div>
           <h1>Catalogos</h1>
-          <p className="hint">Administra catalogos desde base de datos. Los codigos tecnicos se conservan para integracion, pero las etiquetas visibles estan en espanol.</p>
+          <p className="hint">Catalogos cargados desde base de datos. Los codigos tecnicos se conservan para integracion, pero las etiquetas visibles estan en espanol.</p>
         </div>
         <div className="button-row">
-          <button className="secondary" type="button" onClick={onLoadDefinitions} disabled={busy}>Cargar catalogos</button>
           <button className="primary" type="button" onClick={onNew} disabled={busy || !selectedCatalogCode || !canEditGlobal}>Nuevo registro</button>
         </div>
       </header>
@@ -45,7 +42,6 @@ export function CatalogAdminPanel({
           </div>
         </label>
       </div>
-      <button className="secondary" type="button" onClick={onLoadItems} disabled={busy || !selectedCatalogCode}>Consultar registros</button>
     </section>
 
     {selectedCatalogCode && <section className="tool-panel">

@@ -153,16 +153,15 @@ button {
 
 nav {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .nav-group {
-  display: grid;
-  gap: 5px;
+  position: relative;
 }
 
 .nav-group + .nav-group {
-  margin-top: 10px;
+  margin-top: 2px;
 }
 
 .nav-group-label {
@@ -175,11 +174,15 @@ nav {
 }
 
 .nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   width: 100%;
-  min-height: 40px;
+  min-height: 44px;
   border: 1px solid transparent;
   border-radius: 6px;
-  padding: 9px 11px;
+  padding: 10px 12px;
   background: transparent;
   color: #d8e5ed;
   text-align: left;
@@ -193,6 +196,12 @@ nav {
   color: #c7d8e4;
 }
 
+.nav-caret {
+  color: #9cb4c4;
+  font-size: 18px;
+  line-height: 1;
+}
+
 .nav-item:hover {
   border-color: rgba(139, 177, 199, 0.34);
   background: #203241;
@@ -204,6 +213,77 @@ nav {
   background: #263b4c;
   color: #ffffff;
   box-shadow: inset 3px 0 0 #62a87c;
+}
+
+.nav-group:hover > .nav-item,
+.nav-group:focus-within > .nav-item {
+  border-color: rgba(139, 177, 199, 0.34);
+  background: #203241;
+  color: #ffffff;
+}
+
+.nav-flyout {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 10px);
+  z-index: 40;
+  display: grid;
+  gap: 4px;
+  width: 260px;
+  max-height: min(70vh, 640px);
+  overflow: auto;
+  border: 1px solid #264254;
+  border-radius: 8px;
+  padding: 10px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgba(16, 28, 38, 0.24);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-4px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.nav-group:hover .nav-flyout,
+.nav-group:focus-within .nav-flyout {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+.nav-flyout-title {
+  border-bottom: 1px solid #e2e8ee;
+  margin-bottom: 4px;
+  padding: 6px 8px 9px;
+  color: #566879;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.nav-flyout-item {
+  min-height: 38px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 9px 10px;
+  background: transparent;
+  color: #132433;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-flyout-item:hover,
+.nav-flyout-item:focus {
+  border-color: #c7d7e2;
+  background: #eef5f8;
+  outline: none;
+}
+
+.nav-flyout-item.active {
+  border-color: #7fb3c8;
+  background: #e6f3f7;
+  color: #0d4056;
+  font-weight: 800;
 }
 
 .workspace {
@@ -1568,6 +1648,13 @@ pre {
 
   nav {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nav-flyout {
+    position: static;
+    width: auto;
+    max-height: none;
+    box-shadow: none;
   }
 
   .workspace {

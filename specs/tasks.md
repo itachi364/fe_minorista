@@ -6249,3 +6249,65 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
   - Validacion:
     - `.\mvnw.cmd -pl services/accounting-service -am test`: 68 tests OK.
     - `.\mvnw.cmd -pl services/payroll-service -am test`: 9 tests OK.
+
+## Fase 32: UX operativa y carga automatica
+
+- [x] TASK-246: Navegacion principal con menus flotantes
+  - Estado: DONE
+  - Requisitos: RF-238, RF-239.
+  - Acceptance criteria:
+    - AC-345: La barra lateral muestra como entradas principales `Ventas`, `Reportes`, `Contabilidad` y `Configuracion`; los submodulos no quedan desplegados permanentemente hacia abajo.
+    - AC-346: Al pasar el mouse o enfocar con teclado un menu con submodulos, se muestra un menu flotante lateral con opciones autorizadas por licencia, rol y permisos.
+    - AC-347: La opcion activa conserva resaltado visible tanto en el menu principal como en el submodulo seleccionado.
+  - Descripcion: Mejorar la navegacion para que la aplicacion se vea profesional y no tenga listas verticales largas que rompan la experiencia de usuario.
+  - Archivos propuestos:
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/data/navigation.js`
+    - `apps/facturaelectronica-web/src/styles.css`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+    - `README.md`
+  - Dependencias:
+    - TASK-197.
+    - TASK-229.
+  - Validacion propuesta:
+    - `npm test -- --run App.test.jsx`
+    - `npm run build`
+  - Resultado:
+    - La barra lateral muestra entradas principales y los submodulos se abren como flyout lateral al hacer hover/focus.
+    - El menu se deriva de pasos autorizados para respetar licencia, rol y permisos.
+  - Validacion:
+    - `npm test -- App.test.jsx`: 31 tests OK.
+
+- [x] TASK-247: Carga automatica de datos al entrar a modulos
+  - Estado: DONE
+  - Requisitos: RF-240, RF-241, RF-242.
+  - Acceptance criteria:
+    - AC-348: Al abrir `Terceros`, `Inventario`, `Compras`, `Gastos`, `Deudores`, `Registro de Ventas` o `Nomina`, la SPA carga automaticamente datos de tabla y listas requeridas sin exigir botones `Consultar` o `Cargar`.
+    - AC-349: Las tablas historicas usan por defecto rango desde ayer hasta hoy; las listas desplegables cargan todos los registros activos requeridos para operar.
+    - AC-350: Los botones manuales de consulta/carga usados como prerequisito se eliminan de los modulos indicados y las pruebas frontend validan la carga por entrada a modulo.
+  - Descripcion: Reducir friccion operativa haciendo que cada modulo llegue listo para uso, con estados vacios claros y sin acciones manuales redundantes.
+  - Archivos propuestos:
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/features/thirdparties/ThirdPartyForm.jsx`
+    - `apps/facturaelectronica-web/src/features/inventory/ProductForm.jsx`
+    - `apps/facturaelectronica-web/src/features/purchases/PurchasesPanel.jsx`
+    - `apps/facturaelectronica-web/src/features/expenses/ExpensesPanel.jsx`
+    - `apps/facturaelectronica-web/src/features/receivables/ReceivablesPanel.jsx`
+    - `apps/facturaelectronica-web/src/features/payroll/PayrollPanel.jsx`
+    - `apps/facturaelectronica-web/src/features/sales/SalesRegistryPanel.jsx`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+    - `README.md`
+  - Dependencias:
+    - TASK-241.
+    - TASK-242.
+    - TASK-243.
+    - TASK-229.
+  - Validacion propuesta:
+    - `npm test -- --run App.test.jsx`
+    - `npm run build`
+  - Resultado:
+    - `Terceros`, `Inventario`, `Compras`, `Gastos`, `Deudores`, `Registro de Ventas`, `Nomina`, `Catalogos`, `DIAN`, `Logs` y `PIN operacional` cargan datos al entrar cuando hay permisos y empresa activa.
+    - Las tablas historicas operativas inician con rango ayer-hoy y los botones manuales de consulta/carga como prerequisito fueron retirados.
+    - Las respuestas de lista se normalizan para arreglos directos y envolturas paginadas comunes.
+  - Validacion:
+    - `npm test -- App.test.jsx`: 31 tests OK.

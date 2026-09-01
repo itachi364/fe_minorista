@@ -11,7 +11,6 @@ export function PurchasesPanel({
   setFilters,
   onCreate,
   onConfirm,
-  onLoad,
   busy,
 }) {
   const productOptions = products.map((product) => ({
@@ -65,9 +64,8 @@ export function PurchasesPanel({
       <header className="panel-header">
         <div>
           <h1>Compras registradas</h1>
-          <p className="hint">Consulta y confirma entradas reales de inventario.</p>
+          <p className="hint">Entradas reales de inventario cargadas automaticamente por rango y estado.</p>
         </div>
-        <button className="secondary" disabled={busy} onClick={onLoad} type="button">Consultar compras</button>
       </header>
       <div className="form-grid compact">
         <SelectField label="Estado" value={filters.purchaseStatus} onChange={(value) => setFilters({ ...filters, purchaseStatus: value })} options={[
@@ -81,7 +79,7 @@ export function PurchasesPanel({
         columns={['Fecha', 'Estado', 'Proveedor', 'Subtotal', 'IVA', 'Total', 'Vence', 'Acciones']}
         rows={purchases.map((purchase) => purchaseRow(purchase, onConfirm, busy))}
         rowKey={(_row, index) => purchases[index]?.id || index}
-        emptyMessage="Sin compras consultadas."
+        emptyMessage="Sin compras registradas para el filtro actual."
         sectionClassName="embedded-table"
       />
     </section>

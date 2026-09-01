@@ -24,7 +24,6 @@ export function ThirdPartyForm({
   listFilters,
   setListFilters,
   thirdParties = [],
-  onLoadThirdParties,
 }) {
   const normalizedForm = normalizeThirdPartyForm(form, companyMunicipalityCode);
   const simpleNaturalCustomer = isSimpleNaturalCustomer(normalizedForm);
@@ -91,9 +90,8 @@ export function ThirdPartyForm({
       <header className="panel-header">
         <div>
           <h1>Terceros registrados</h1>
-          <p className="hint">Consulta clientes y proveedores activos de la empresa.</p>
+          <p className="hint">Clientes y proveedores cargados automaticamente para la empresa activa.</p>
         </div>
-        <button className="secondary" disabled={busy} onClick={onLoadThirdParties} type="button">Consultar terceros</button>
       </header>
       <div className="form-grid compact">
         <SelectField label="Tipo de tercero" value={listFilters.thirdPartyType} onChange={(value) => setListFilters({ ...listFilters, thirdPartyType: value || 'CUSTOMER' })} options={listTypeOptions} />
@@ -106,7 +104,7 @@ export function ThirdPartyForm({
         columns={['Documento', 'Nombre', 'Tipo persona', 'Correo', 'Telefono', 'Estado']}
         rows={thirdParties.map(thirdPartyRow)}
         rowKey={(_row, index) => thirdParties[index]?.id || index}
-        emptyMessage="Sin terceros consultados."
+        emptyMessage="Sin terceros registrados para el filtro actual."
         sectionClassName="embedded-table"
       />
     </section>

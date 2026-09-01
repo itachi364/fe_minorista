@@ -14,7 +14,6 @@ export function DianConfigurationPanel({
   form,
   setForm,
   configuration,
-  onLoad,
   onSave,
   onTest,
   onActivate,
@@ -27,9 +26,8 @@ export function DianConfigurationPanel({
       <header className="panel-header">
         <div>
           <h1>Configuracion DIAN</h1>
-          <p>Parametros propios de la empresa facturadora. NexoFiscal no actua como proveedor tecnologico DIAN.</p>
+          <p>Parametros propios de la empresa facturadora cargados automaticamente. NexoFiscal no actua como proveedor tecnologico DIAN.</p>
         </div>
-        <button className="secondary" type="button" onClick={onLoad} disabled={busy}>Consultar estado</button>
       </header>
       <div className="status-row">
         <StatusBadge label="Estado" value={configuration?.status || 'Sin configurar'} tone={configuration?.status === 'ACTIVE' ? 'ok' : 'warn'} />

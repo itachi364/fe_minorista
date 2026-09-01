@@ -184,6 +184,9 @@ export default function App() {
   const autoReportsLoadKeyRef = useRef('');
   const autoAccountingLoadKeyRef = useRef('');
   const autoOperationalPinLoadKeyRef = useRef('');
+  const autoOperationalDataLoadKeyRef = useRef('');
+  const autoCatalogLoadKeyRef = useRef('');
+  const autoDianLoadKeyRef = useRef('');
 
   const token = session?.accessToken || '';
   const context = useMemo(() => ({ token, companyId: activeCompanyId, userId: session?.userId }), [token, activeCompanyId, session?.userId]);
@@ -210,6 +213,9 @@ export default function App() {
   };
   const visibleSteps = steps.filter((step) => licenseAllowsStep(step) && (isRoot || isCompanyAdmin || hasAnyPermission(activeAccess, stepPermissionRules[step] || [])));
   const currentStep = visibleSteps.includes(selectedStep) ? selectedStep : visibleSteps[0] || 'Ventas';
+  const visibleNavigationGroups = navigationGroups
+    .map((group) => ({ ...group, items: group.items.filter((item) => visibleSteps.includes(item)) }))
+    .filter((group) => group.items.length > 0);
   const availableCompanyPermissions = companyScopedPermissions(permissionCatalog);
   const activeBrandName = companyBranding?.displayName || activeCompany?.tradeName || activeCompany?.legalName || PRODUCT_NAME;
   const activeBrandLogo = companyBranding?.headerLogoUrl || companyBranding?.mainLogoUrl || '';
@@ -407,6 +413,63 @@ export default function App() {
   }, [currentStep, activeCompanyId, canManageOperationalPin]);
 
   useEffect(() => {
+    if (!activeCompanyId) {
+      return;
+    }
+    const key = `${currentStep}|${activeCompanyId}|${operationalListFilterKey(operationalListFilters)}`;
+    if (autoOperationalDataLoadKeyRef.current === key) {
+      return;
+    }
+
+    const loaders = {
+      Terceros: () => loadThirdPartyList(),
+      Inventario: () => loadProductList(),
+      Compras: async () => {
+        await loadFinancialReferenceData();
+        return loadPurchaseList();
+      },
+      Gastos: async () => {
+        await loadFinancialReferenceData();
+        return loadExpenseList();
+      },
+      Deudores: async () => {
+        await loadFinancialReferenceData();
+        return loadAccountsReceivableList();
+      },
+      'Registro de Ventas': () => loadSalesList(),
+      Nomina: () => loadPayrollData(),
+    };
+
+    const loader = loaders[currentStep];
+    if (!loader) {
+      return;
+    }
+
+    autoOperationalDataLoadKeyRef.current = key;
+    loader().catch(() => undefined);
+  }, [
+    currentStep,
+    activeCompanyId,
+    operationalListFilters.thirdPartyType,
+    operationalListFilters.thirdPartyActive,
+    operationalListFilters.productActive,
+    operationalListFilters.purchaseStatus,
+    operationalListFilters.purchaseFrom,
+    operationalListFilters.purchaseTo,
+    operationalListFilters.expenseStatus,
+    operationalListFilters.expenseFrom,
+    operationalListFilters.expenseTo,
+    operationalListFilters.receivableStatus,
+    operationalListFilters.receivableFrom,
+    operationalListFilters.receivableTo,
+    operationalListFilters.saleStatus,
+    operationalListFilters.saleFrom,
+    operationalListFilters.saleTo,
+    operationalListFilters.salePaymentMethodCode,
+    operationalListFilters.saleDocumentStatus,
+  ]);
+
+  useEffect(() => {
     if (currentStep !== 'Reportes' || !activeCompanyId || !canUse(stepPermissionRules.Reportes)) {
       return;
     }
@@ -417,6 +480,42 @@ export default function App() {
     autoReportsLoadKeyRef.current = key;
     Promise.all([loadReportDefinitions(), loadReportJobs()]).catch(() => undefined);
   }, [currentStep, activeCompanyId, reportDefinitions.length]);
+
+  useEffect(() => {
+    if (currentStep !== 'Catalogos' || !canManageCatalogs) {
+      return;
+    }
+    const key = `catalog-definitions|${activeCompanyId || 'root'}`;
+    if (autoCatalogLoadKeyRef.current === key) {
+      return;
+    }
+    autoCatalogLoadKeyRef.current = key;
+    loadCatalogDefinitions().catch(() => undefined);
+  }, [currentStep, activeCompanyId, canManageCatalogs]);
+
+  useEffect(() => {
+    if (currentStep !== 'Catalogos' || !canManageCatalogs || !selectedCatalogCode) {
+      return;
+    }
+    const key = `catalog-items|${activeCompanyId || 'root'}|${selectedCatalogCode}`;
+    if (autoCatalogLoadKeyRef.current === key) {
+      return;
+    }
+    autoCatalogLoadKeyRef.current = key;
+    loadCatalogItems(selectedCatalogCode).catch(() => undefined);
+  }, [currentStep, activeCompanyId, canManageCatalogs, selectedCatalogCode]);
+
+  useEffect(() => {
+    if (currentStep !== 'DIAN' || !activeCompanyId || !canUse(stepPermissionRules.DIAN)) {
+      return;
+    }
+    const key = `dian|${activeCompanyId}`;
+    if (autoDianLoadKeyRef.current === key) {
+      return;
+    }
+    autoDianLoadKeyRef.current = key;
+    loadDianConfiguration().catch(() => undefined);
+  }, [currentStep, activeCompanyId]);
 
   useEffect(() => {
     if (currentStep !== 'Configuracion contable' || !activeCompanyId || !canUse(stepPermissionRules['Configuracion contable'])) {
@@ -725,6 +824,9 @@ export default function App() {
     autoIdentityLoadKeyRef.current = '';
     autoAccountingLoadKeyRef.current = '';
     autoOperationalPinLoadKeyRef.current = '';
+    autoOperationalDataLoadKeyRef.current = '';
+    autoCatalogLoadKeyRef.current = '';
+    autoDianLoadKeyRef.current = '';
   }
 
   function closeSessionWithModal(title, message) {
@@ -1620,27 +1722,30 @@ export default function App() {
   async function loadThirdPartyList() {
     requireCompany();
     const type = operationalListFilters.thirdPartyType === 'SUPPLIER' ? 'suppliers' : 'customers';
-    const items = await requestJson(`/api/v1/${type}${buildQuery({ active: optionalBoolean(operationalListFilters.thirdPartyActive) })}`, context);
-    setThirdPartyList(items || []);
-    return items || [];
+    const response = await requestJson(`/api/v1/${type}${buildQuery({ active: optionalBoolean(operationalListFilters.thirdPartyActive) })}`, context);
+    const items = normalizeListResponse(response);
+    setThirdPartyList(items);
+    return items;
   }
 
   async function loadProductList() {
     requireCompany();
-    const items = await requestJson(`/api/v1/products${buildQuery({ active: optionalBoolean(operationalListFilters.productActive) })}`, context);
-    setProductList(items || []);
-    return items || [];
+    const response = await requestJson(`/api/v1/products${buildQuery({ active: optionalBoolean(operationalListFilters.productActive) })}`, context);
+    const items = normalizeListResponse(response);
+    setProductList(items);
+    return items;
   }
 
   async function loadPurchaseList() {
     requireCompany();
-    const items = await requestJson(`/api/v1/purchases${buildQuery({
+    const response = await requestJson(`/api/v1/purchases${buildQuery({
       status: operationalListFilters.purchaseStatus,
       from: operationalListFilters.purchaseFrom,
       to: operationalListFilters.purchaseTo,
     })}`, context);
-    setPurchaseList(items || []);
-    return items || [];
+    const items = normalizeListResponse(response);
+    setPurchaseList(items);
+    return items;
   }
 
   async function loadFinancialReferenceData() {
@@ -1650,10 +1755,13 @@ export default function App() {
       requestJson('/api/v1/suppliers?active=true', context),
       requestJson('/api/v1/customers?active=true', context),
     ]);
-    setProductList(products || []);
-    setSupplierList(suppliers || []);
-    setCustomerList(customers || []);
-    return { products: products || [], suppliers: suppliers || [], customers: customers || [] };
+    const productItems = normalizeListResponse(products);
+    const supplierItems = normalizeListResponse(suppliers);
+    const customerItems = normalizeListResponse(customers);
+    setProductList(productItems);
+    setSupplierList(supplierItems);
+    setCustomerList(customerItems);
+    return { products: productItems, suppliers: supplierItems, customers: customerItems };
   }
 
   async function createPurchase() {
@@ -1685,13 +1793,14 @@ export default function App() {
 
   async function loadExpenseList() {
     requireCompany();
-    const items = await requestJson(`/api/v1/reports/expenses${buildQuery({
+    const response = await requestJson(`/api/v1/reports/expenses${buildQuery({
       status: operationalListFilters.expenseStatus,
       from: operationalListFilters.expenseFrom,
       to: operationalListFilters.expenseTo,
     })}`, context);
-    setExpenseList(items || []);
-    return items || [];
+    const items = normalizeListResponse(response);
+    setExpenseList(items);
+    return items;
   }
 
   async function createExpense() {
@@ -1720,13 +1829,14 @@ export default function App() {
 
   async function loadAccountsReceivableList() {
     requireCompany();
-    const items = await requestJson(`/api/v1/reports/accounts-receivable${buildQuery({
+    const response = await requestJson(`/api/v1/reports/accounts-receivable${buildQuery({
       status: operationalListFilters.receivableStatus,
       from: operationalListFilters.receivableFrom,
       to: operationalListFilters.receivableTo,
     })}`, context);
-    setAccountsReceivableList(items || []);
-    return items || [];
+    const items = normalizeListResponse(response);
+    setAccountsReceivableList(items);
+    return items;
   }
 
   async function createAccountsReceivable() {
@@ -1765,15 +1875,16 @@ export default function App() {
 
   async function loadSalesList() {
     requireCompany();
-    const items = await requestJson(`/api/v1/sales/history${buildQuery({
+    const response = await requestJson(`/api/v1/sales/history${buildQuery({
       status: operationalListFilters.saleStatus,
       from: operationalListFilters.saleFrom,
       to: operationalListFilters.saleTo,
       paymentMethodCode: operationalListFilters.salePaymentMethodCode,
       documentStatus: operationalListFilters.saleDocumentStatus,
     })}`, context);
-    setSalesList(items || []);
-    return items || [];
+    const items = normalizeListResponse(response);
+    setSalesList(items);
+    return items;
   }
 
   async function openSaleDetail(sale) {
@@ -2137,29 +2248,32 @@ export default function App() {
 
   async function loadAuditEvents() {
     requireCompany();
-    const events = await requestJson(`/api/v1/audit-events${buildQuery({
+    const response = await requestJson(`/api/v1/audit-events${buildQuery({
       resourceType: auditFilters.resourceType,
       from: toInstantQuery(auditFilters.from),
       to: toInstantQuery(auditFilters.to),
     })}`, context);
-    setAuditEvents(events || []);
-    return events || [];
+    const events = normalizeListResponse(response);
+    setAuditEvents(events);
+    return events;
   }
 
   async function loadAuditResourceTypes() {
     requireCompany();
-    const resourceTypes = await requestJson('/api/v1/audit-events/resource-types', context);
-    setAuditResourceTypes(resourceTypes || []);
-    return resourceTypes || [];
+    const response = await requestJson('/api/v1/audit-events/resource-types', context);
+    const resourceTypes = normalizeListResponse(response);
+    setAuditResourceTypes(resourceTypes);
+    return resourceTypes;
   }
 
   async function loadCatalogDefinitions() {
-    const definitions = await requestJson('/api/v1/catalog-definitions', context);
-    setCatalogDefinitions(definitions || []);
-    if (!selectedCatalogCode && definitions?.length > 0) {
+    const response = await requestJson('/api/v1/catalog-definitions', context);
+    const definitions = normalizeListResponse(response);
+    setCatalogDefinitions(definitions);
+    if (!selectedCatalogCode && definitions.length > 0) {
       setSelectedCatalogCode(definitions[0].code);
     }
-    return definitions || [];
+    return definitions;
   }
 
   async function loadCatalogItems(catalogCode = selectedCatalogCode) {
@@ -2169,9 +2283,10 @@ export default function App() {
     const path = isRoot
       ? `/api/v1/catalogs/${catalogCode}/items?includeInactive=true`
       : `/api/v1/company-catalogs/${catalogCode}/items`;
-    const items = await requestJson(path, context);
-    setCatalogItems(items || []);
-    return items || [];
+    const response = await requestJson(path, context);
+    const items = normalizeListResponse(response);
+    setCatalogItems(items);
+    return items;
   }
 
   function startNewCatalogItem() {
@@ -2294,6 +2409,9 @@ export default function App() {
     setAccountingRules([]);
     autoAccountingLoadKeyRef.current = '';
     autoOperationalPinLoadKeyRef.current = '';
+    autoOperationalDataLoadKeyRef.current = '';
+    autoCatalogLoadKeyRef.current = '';
+    autoDianLoadKeyRef.current = '';
     const selectedCompany = rootCompanies.find((company) => company.id === companyId || company.companyId === companyId);
     if (selectedCompany) {
       setIssuerForm((current) => buildIssuerFromCompany(selectedCompany, current));
@@ -2329,27 +2447,34 @@ export default function App() {
           <span>{activeBrandName}</span>
         </div>
         <nav aria-label="Flujo principal">
-          {navigationGroups
-            .map((group) => ({ ...group, items: group.items.filter((item) => visibleSteps.includes(item)) }))
-            .filter((group) => group.items.length > 0)
-            .map((group) => (
-              <div className="nav-group" key={group.label}>
-                {group.items.length === 1 && group.label === group.items[0] ? (
-                  <button className={currentStep === group.items[0] ? 'nav-item active' : 'nav-item'} onClick={() => setSelectedStep(group.items[0])} type="button">
-                    {group.label}
-                  </button>
-                ) : (
-                  <>
-                    <span className="nav-group-label">{group.label}</span>
+          {visibleNavigationGroups.map((group) => {
+            const groupHasChildren = !(group.items.length === 1 && group.label === group.items[0]);
+            const groupIsActive = group.items.includes(currentStep);
+            const defaultStep = group.items[0];
+            return (
+              <div className={groupIsActive ? 'nav-group active' : 'nav-group'} key={group.label}>
+                <button
+                  aria-haspopup={groupHasChildren ? 'menu' : undefined}
+                  className={groupIsActive ? 'nav-item active' : 'nav-item'}
+                  onClick={() => setSelectedStep(defaultStep)}
+                  type="button"
+                >
+                  <span>{group.label}</span>
+                  {groupHasChildren && <span aria-hidden="true" className="nav-caret">›</span>}
+                </button>
+                {groupHasChildren && (
+                  <div className="nav-flyout" role="menu">
+                    <div className="nav-flyout-title">{group.label}</div>
                     {group.items.map((step) => (
-                      <button key={step} className={currentStep === step ? 'nav-item child active' : 'nav-item child'} onClick={() => setSelectedStep(step)} type="button">
-                        {step}
+                      <button key={step} className={currentStep === step ? 'nav-flyout-item active' : 'nav-flyout-item'} onClick={() => setSelectedStep(step)} type="button">
+                        {navigationItemLabel(group, step)}
                       </button>
                     ))}
-                  </>
+                  </div>
                 )}
               </div>
-            ))}
+            );
+          })}
         </nav>
       </aside>
 
@@ -2385,28 +2510,19 @@ export default function App() {
             <LicenseAdminPanel form={licenseForm} setForm={setLicenseForm} companies={rootCompanies} license={managedLicense} usage={licenseUsage} onCompanyChange={selectLicenseCompany} onLoad={() => execute(loadManagedLicense)} onSave={() => execute(saveManagedLicense)} onActivate={() => execute(activateManagedLicense)} onSuspend={() => execute(suspendManagedLicense)} busy={busy || !isRoot} />
           )}
           {currentStep === 'Terceros' && (
-            <ThirdPartyForm form={thirdPartyForm} setForm={setThirdPartyForm} companyMunicipalityCode={companyMunicipalityCode} onSubmit={() => execute(createThirdParty)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Terceros)} documentTypeOptionsSource={runtimeCatalogs.dianDocumentTypes} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} taxRegimeOptionsSource={runtimeCatalogs.taxRegimeOptions} thirdPartyRoleCatalog={runtimeCatalogs.thirdPartyRoleCatalog} personTypeCatalog={runtimeCatalogs.personTypeCatalog} locations={runtimeCatalogs.locations} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} thirdParties={thirdPartyList} onLoadThirdParties={() => execute(loadThirdPartyList)} />
+            <ThirdPartyForm form={thirdPartyForm} setForm={setThirdPartyForm} companyMunicipalityCode={companyMunicipalityCode} onSubmit={() => execute(createThirdParty)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Terceros)} documentTypeOptionsSource={runtimeCatalogs.dianDocumentTypes} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} taxRegimeOptionsSource={runtimeCatalogs.taxRegimeOptions} thirdPartyRoleCatalog={runtimeCatalogs.thirdPartyRoleCatalog} personTypeCatalog={runtimeCatalogs.personTypeCatalog} locations={runtimeCatalogs.locations} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} thirdParties={thirdPartyList} />
           )}
           {currentStep === 'Inventario' && (
-            <ProductForm form={productForm} setForm={setProductForm} onSubmit={() => execute(createProduct)} busy={busy || !activeCompanyId || !canUse(['INVENTORY_MANAGE'])} taxOptions={runtimeCatalogs.salesTaxOptions} itemTypeCatalog={runtimeCatalogs.itemTypeCatalog} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} products={productList} onLoadProducts={() => execute(loadProductList)} />
+            <ProductForm form={productForm} setForm={setProductForm} onSubmit={() => execute(createProduct)} busy={busy || !activeCompanyId || !canUse(['INVENTORY_MANAGE'])} taxOptions={runtimeCatalogs.salesTaxOptions} itemTypeCatalog={runtimeCatalogs.itemTypeCatalog} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} products={productList} />
           )}
           {currentStep === 'Compras' && (
-            <PurchasesPanel form={purchaseForm} setForm={setPurchaseForm} products={productList} suppliers={supplierList} purchases={purchaseList} filters={operationalListFilters} setFilters={setOperationalListFilters} onCreate={() => execute(createPurchase, { successMessage: 'Compra creada correctamente.' })} onConfirm={(purchaseId) => execute(() => confirmPurchase(purchaseId), { successMessage: 'Compra confirmada correctamente.' })} onLoad={() => execute(async () => {
-              await loadFinancialReferenceData();
-              return loadPurchaseList();
-            }, { successMessage: 'Compras actualizadas.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Compras)} />
+            <PurchasesPanel form={purchaseForm} setForm={setPurchaseForm} products={productList} suppliers={supplierList} purchases={purchaseList} filters={operationalListFilters} setFilters={setOperationalListFilters} onCreate={() => execute(createPurchase, { successMessage: 'Compra creada correctamente.' })} onConfirm={(purchaseId) => execute(() => confirmPurchase(purchaseId), { successMessage: 'Compra confirmada correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Compras)} />
           )}
           {currentStep === 'Gastos' && (
-            <ExpensesPanel form={expenseForm} setForm={setExpenseForm} suppliers={supplierList} expenses={expenseList} filters={operationalListFilters} setFilters={setOperationalListFilters} onCreate={() => execute(createExpense, { successMessage: 'Gasto creado correctamente.' })} onConfirm={(expenseId) => execute(() => confirmExpense(expenseId), { successMessage: 'Gasto confirmado correctamente.' })} onLoad={() => execute(async () => {
-              await loadFinancialReferenceData();
-              return loadExpenseList();
-            }, { successMessage: 'Gastos actualizados.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Gastos)} />
+            <ExpensesPanel form={expenseForm} setForm={setExpenseForm} suppliers={supplierList} expenses={expenseList} filters={operationalListFilters} setFilters={setOperationalListFilters} onCreate={() => execute(createExpense, { successMessage: 'Gasto creado correctamente.' })} onConfirm={(expenseId) => execute(() => confirmExpense(expenseId), { successMessage: 'Gasto confirmado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Gastos)} />
           )}
           {currentStep === 'Deudores' && (
-            <ReceivablesPanel form={accountsReceivableForm} setForm={setAccountsReceivableForm} paymentForm={receivablePaymentForm} setPaymentForm={setReceivablePaymentForm} customers={customerList} receivables={accountsReceivableList} filters={operationalListFilters} setFilters={setOperationalListFilters} paymentOptions={runtimeCatalogs.paymentMethodOptions} onCreate={() => execute(createAccountsReceivable, { successMessage: 'Deudor creado correctamente.' })} onRegisterPayment={() => execute(registerReceivablePayment, { successMessage: 'Abono registrado correctamente.' })} onLoad={() => execute(async () => {
-              await loadFinancialReferenceData();
-              return loadAccountsReceivableList();
-            }, { successMessage: 'Deudores actualizados.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Deudores)} />
+            <ReceivablesPanel form={accountsReceivableForm} setForm={setAccountsReceivableForm} paymentForm={receivablePaymentForm} setPaymentForm={setReceivablePaymentForm} customers={customerList} receivables={accountsReceivableList} filters={operationalListFilters} setFilters={setOperationalListFilters} paymentOptions={runtimeCatalogs.paymentMethodOptions} onCreate={() => execute(createAccountsReceivable, { successMessage: 'Deudor creado correctamente.' })} onRegisterPayment={() => execute(registerReceivablePayment, { successMessage: 'Abono registrado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Deudores)} />
           )}
           {currentStep === 'Fiscal' && (
             <>
@@ -2441,7 +2557,7 @@ export default function App() {
             </>
           )}
           {currentStep === 'DIAN' && (
-            <DianConfigurationPanel form={dianConfigurationForm} setForm={setDianConfigurationForm} configuration={dianConfiguration} onLoad={() => execute(loadDianConfiguration, { silentNullSuccess: true })} onSave={() => execute(saveDianConfiguration, { successMessage: 'Configuracion DIAN guardada correctamente.' })} onTest={() => execute(testDianConfiguration, { successMessage: 'Prueba de conexion DIAN finalizada.' })} onActivate={() => execute(activateDianConfiguration, { successMessage: 'Configuracion DIAN activada.' })} onDeactivate={() => execute(deactivateDianConfiguration, { successMessage: 'Configuracion DIAN inactivada.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.DIAN)} />
+            <DianConfigurationPanel form={dianConfigurationForm} setForm={setDianConfigurationForm} configuration={dianConfiguration} onSave={() => execute(saveDianConfiguration, { successMessage: 'Configuracion DIAN guardada correctamente.' })} onTest={() => execute(testDianConfiguration, { successMessage: 'Prueba de conexion DIAN finalizada.' })} onActivate={() => execute(activateDianConfiguration, { successMessage: 'Configuracion DIAN activada.' })} onDeactivate={() => execute(deactivateDianConfiguration, { successMessage: 'Configuracion DIAN inactivada.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.DIAN)} />
           )}
           {currentStep === 'Documentos fiscales' && (
             <FiscalNotesPanel forms={fiscalNoteForms} setForms={setFiscalNoteForms} results={fiscalNoteResults} onSubmit={(noteType) => execute(() => createFiscalNote(noteType), { successMessage: 'Documento fiscal creado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Documentos fiscales'])} />
@@ -2453,25 +2569,25 @@ export default function App() {
             <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode), { silentRunning: true, silentSuccess: true })} onClose={() => execute(closeSale, { successMessage: 'Venta cerrada correctamente.' })} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} fiscalPolicy={fiscalPolicy} documentOverride={saleDocumentOverride} overrideForm={saleDocumentOverrideForm} setOverrideForm={setSaleDocumentOverrideForm} fiscalDocumentTypeOptions={runtimeCatalogs.fiscalDocumentTypeOptions} authorizerOptions={managedUsers} onLoadAuthorizers={() => loadCompanyUsers('')} onRequestDocumentOverride={(payload) => execute(() => requestSaleDocumentTypeOverride(payload), { successMessage: 'Cambio de documento fiscal autorizado para esta venta.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
           )}
           {currentStep === 'Registro de Ventas' && (
-            <SalesRegistryPanel sales={salesList} selectedSale={selectedSaleDetail} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} onLoadSales={() => execute(loadSalesList)} onViewDetail={(sale) => execute(() => openSaleDetail(sale), { silentNullSuccess: true })} onCloseDetail={() => setSelectedSaleDetail(null)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Registro de Ventas'])} paymentOptions={runtimeCatalogs.paymentMethodOptions} />
+            <SalesRegistryPanel sales={salesList} selectedSale={selectedSaleDetail} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} onViewDetail={(sale) => execute(() => openSaleDetail(sale), { silentNullSuccess: true })} onCloseDetail={() => setSelectedSaleDetail(null)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Registro de Ventas'])} paymentOptions={runtimeCatalogs.paymentMethodOptions} />
           )}
           {currentStep === 'Nomina' && (
-            <PayrollPanel settingsForm={payrollSettingsForm} setSettingsForm={setPayrollSettingsForm} workerForm={payrollWorkerForm} setWorkerForm={setPayrollWorkerForm} paymentForm={dailyLaborPaymentForm} setPaymentForm={setDailyLaborPaymentForm} workers={payrollWorkers} payments={dailyLaborPayments} electronicDocuments={electronicPayrollDocuments} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} workerClassificationOptions={runtimeCatalogs.payrollWorkerClassificationOptions} paymentMethodOptions={runtimeCatalogs.paymentMethodOptions} onLoad={() => execute(loadPayrollData)} onSaveSettings={() => execute(savePayrollSettings)} onCreateWorker={() => execute(createPayrollWorker)} onCreateDailyPayment={() => execute(createDailyLaborPayment)} onIssueElectronicDocument={(paymentId) => execute(() => issueElectronicPayrollDocument(paymentId))} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Nomina)} />
+            <PayrollPanel settingsForm={payrollSettingsForm} setSettingsForm={setPayrollSettingsForm} workerForm={payrollWorkerForm} setWorkerForm={setPayrollWorkerForm} paymentForm={dailyLaborPaymentForm} setPaymentForm={setDailyLaborPaymentForm} workers={payrollWorkers} payments={dailyLaborPayments} electronicDocuments={electronicPayrollDocuments} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} workerClassificationOptions={runtimeCatalogs.payrollWorkerClassificationOptions} paymentMethodOptions={runtimeCatalogs.paymentMethodOptions} onSaveSettings={() => execute(savePayrollSettings)} onCreateWorker={() => execute(createPayrollWorker)} onCreateDailyPayment={() => execute(createDailyLaborPayment)} onIssueElectronicDocument={(paymentId) => execute(() => issueElectronicPayrollDocument(paymentId))} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Nomina)} />
           )}
           {currentStep === 'Reportes' && (
             <ReportsForm definitions={reportDefinitions} options={reportOptions} form={reportsForm} setForm={setReportsForm} data={reportsData} jobs={reportJobs} onReportChange={(reportCode) => execute(() => selectReportDefinition(reportCode), { silentNullSuccess: true })} onLoadDefinitions={() => execute(loadReportDefinitions)} onSubmit={() => execute(loadReports)} onExport={(format) => execute(() => exportReport(format), { successMessage: 'Reporte descargado correctamente.' })} onCreateExportJob={() => execute(createReportExportJob, { successMessage: 'Reporte en segundo plano creado correctamente.' })} onLoadExportJobs={() => execute(loadReportJobs, { silentNullSuccess: true })} onDownloadExportJob={(jobId) => execute(() => openReportExportDownload(jobId), { successMessage: 'Enlace de descarga generado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Reportes)} />
           )}
           {currentStep === 'Catalogos' && (
-            <CatalogAdminPanel definitions={catalogDefinitions} selectedCatalogCode={selectedCatalogCode} setSelectedCatalogCode={setSelectedCatalogCode} items={catalogItems} form={catalogItemForm} setForm={setCatalogItemForm} onLoadDefinitions={() => execute(loadCatalogDefinitions)} onLoadItems={() => execute(() => loadCatalogItems())} onNew={startNewCatalogItem} onEdit={editCatalogItem} onSave={() => execute(saveCatalogItem)} onToggleActive={(item) => execute(() => toggleCatalogItemActive(item))} busy={busy || !canManageCatalogs} isRoot={isRoot} />
+            <CatalogAdminPanel definitions={catalogDefinitions} selectedCatalogCode={selectedCatalogCode} setSelectedCatalogCode={setSelectedCatalogCode} items={catalogItems} form={catalogItemForm} setForm={setCatalogItemForm} onNew={startNewCatalogItem} onEdit={editCatalogItem} onSave={() => execute(saveCatalogItem)} onToggleActive={(item) => execute(() => toggleCatalogItemActive(item))} busy={busy || !canManageCatalogs} isRoot={isRoot} />
           )}
           {currentStep === 'Logs' && (
-            <AuditLogPanel events={auditEvents} filters={auditFilters} setFilters={setAuditFilters} onLoad={() => execute(loadAuditEvents)} busy={busy || !activeCompanyId || !canViewAudit} canViewGlobal={isRoot} activeCompanyId={activeCompanyId} resourceTypes={auditResourceTypes} />
+            <AuditLogPanel events={auditEvents} filters={auditFilters} setFilters={setAuditFilters} busy={busy || !activeCompanyId || !canViewAudit} canViewGlobal={isRoot} activeCompanyId={activeCompanyId} resourceTypes={auditResourceTypes} />
           )}
           {currentStep === 'Roles' && (
             <RolesPanel permissions={availableCompanyPermissions} roles={companyRoles} form={companyRoleForm} setForm={setCompanyRoleForm} editingRoleId={editingRoleId} onNew={startNewCompanyRole} onEdit={editCompanyRole} onSave={() => execute(saveCompanyRole)} onToggleActive={(role) => execute(() => toggleCompanyRoleActive(role))} onTogglePermission={togglePermissionCode} busy={busy || !activeCompanyId || !canManageRoles} />
           )}
           {currentStep === 'PIN operacional' && (
-            <OperationalPinPanel form={operationalPinForm} setForm={setOperationalPinForm} status={operationalPinStatus} onLoad={() => execute(loadOperationalPinStatus, { silentNullSuccess: true })} onSave={() => execute(saveOperationalPin, { successMessage: 'PIN operacional guardado correctamente.' })} onUnlock={() => execute(unlockOperationalPin, { successMessage: 'PIN desbloqueado. Ahora debe cambiarse antes de usarse.' })} busy={busy || !activeCompanyId || !canManageOperationalPin} />
+            <OperationalPinPanel form={operationalPinForm} setForm={setOperationalPinForm} status={operationalPinStatus} onSave={() => execute(saveOperationalPin, { successMessage: 'PIN operacional guardado correctamente.' })} onUnlock={() => execute(unlockOperationalPin, { successMessage: 'PIN desbloqueado. Ahora debe cambiarse antes de usarse.' })} busy={busy || !activeCompanyId || !canManageOperationalPin} />
           )}
           {currentStep === 'Usuarios' && (
             <UsersPanel users={managedUsers} roles={companyRoles} form={managedUserForm} setForm={setManagedUserForm} editingUserId={editingUserId} onNew={startNewManagedUser} onEdit={editManagedUser} onSave={() => execute(saveManagedUser)} onToggleActive={(user) => execute(() => toggleManagedUserActive(user))} busy={busy || !activeCompanyId || !canManageUsers} />
@@ -2544,6 +2660,13 @@ function openBlob(blob) {
   window.setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+function navigationItemLabel(group, step) {
+  if (group.label === 'Ventas' && step === 'Ventas') {
+    return 'Nueva venta';
+  }
+  return step;
+}
+
 function todayAuditFilters(now = new Date()) {
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
@@ -2557,25 +2680,74 @@ function todayAuditFilters(now = new Date()) {
 }
 
 function createOperationalListFilters() {
+  const range = defaultShortHistoryDateRange();
   return {
     thirdPartyType: 'CUSTOMER',
     thirdPartyActive: 'true',
     productActive: 'true',
     purchaseStatus: '',
-    purchaseFrom: '',
-    purchaseTo: '',
+    purchaseFrom: range.from,
+    purchaseTo: range.to,
     expenseStatus: '',
-    expenseFrom: '',
-    expenseTo: '',
+    expenseFrom: range.from,
+    expenseTo: range.to,
     receivableStatus: '',
-    receivableFrom: '',
-    receivableTo: '',
+    receivableFrom: range.from,
+    receivableTo: range.to,
     saleStatus: '',
-    saleFrom: '',
-    saleTo: '',
+    saleFrom: range.from,
+    saleTo: range.to,
     salePaymentMethodCode: '',
     saleDocumentStatus: '',
   };
+}
+
+function defaultShortHistoryDateRange(now = new Date()) {
+  const today = new Date(now);
+  const yesterday = new Date(now);
+  yesterday.setDate(today.getDate() - 1);
+  return {
+    from: toDateInputValue(yesterday),
+    to: toDateInputValue(today),
+  };
+}
+
+function operationalListFilterKey(filters) {
+  return [
+    filters.thirdPartyType,
+    filters.thirdPartyActive,
+    filters.productActive,
+    filters.purchaseStatus,
+    filters.purchaseFrom,
+    filters.purchaseTo,
+    filters.expenseStatus,
+    filters.expenseFrom,
+    filters.expenseTo,
+    filters.receivableStatus,
+    filters.receivableFrom,
+    filters.receivableTo,
+    filters.saleStatus,
+    filters.saleFrom,
+    filters.saleTo,
+    filters.salePaymentMethodCode,
+    filters.saleDocumentStatus,
+  ].join('|');
+}
+
+function normalizeListResponse(response) {
+  if (Array.isArray(response)) {
+    return response;
+  }
+  if (Array.isArray(response?.items)) {
+    return response.items;
+  }
+  if (Array.isArray(response?.content)) {
+    return response.content;
+  }
+  if (Array.isArray(response?.records)) {
+    return response.records;
+  }
+  return [];
 }
 
 function optionalBoolean(value) {

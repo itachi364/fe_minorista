@@ -47,7 +47,6 @@ export function ProductForm({
   listFilters,
   setListFilters,
   products = [],
-  onLoadProducts,
 }) {
   const selectedUsage = findUsageProfile(form);
   const priceBreakdown = calculateTaxIncludedAmounts(form.finalSalePrice, form.taxRate);
@@ -113,9 +112,8 @@ export function ProductForm({
       <header className="panel-header">
         <div>
           <h1>Productos registrados</h1>
-          <p className="hint">Consulta el inventario operativo cargado para la empresa activa.</p>
+          <p className="hint">Inventario operativo cargado automaticamente para la empresa activa.</p>
         </div>
-        <button className="secondary" disabled={busy} onClick={onLoadProducts} type="button">Consultar productos</button>
       </header>
       <div className="form-grid compact">
         <SelectField label="Estado" value={listFilters.productActive} onChange={(value) => setListFilters({ ...listFilters, productActive: value })} options={[
@@ -127,7 +125,7 @@ export function ProductForm({
         columns={['SKU', 'Nombre', 'Tipo', 'Stock', 'Costo', 'Precio sin IVA', 'Precio final', 'Estado']}
         rows={products.map(productRow)}
         rowKey={(_row, index) => products[index]?.id || index}
-        emptyMessage="Sin productos consultados."
+        emptyMessage="Sin productos registrados para el filtro actual."
         sectionClassName="embedded-table"
       />
     </section>

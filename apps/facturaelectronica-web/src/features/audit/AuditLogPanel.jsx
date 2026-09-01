@@ -1,7 +1,7 @@
 import { DataTable } from '../../components/DataTable.jsx';
 import { Field, SelectField } from '../../components/forms.jsx';
 
-export function AuditLogPanel({ events, filters, setFilters, onLoad, busy, canViewGlobal, activeCompanyId, resourceTypes = [] }) {
+export function AuditLogPanel({ events, filters, setFilters, busy, canViewGlobal, activeCompanyId, resourceTypes = [] }) {
   const resourceTypeOptions = resourceTypes.map((resourceType) => ({ value: resourceType, label: resourceType }));
   return (
     <section className="audit-panel stack">
@@ -9,9 +9,8 @@ export function AuditLogPanel({ events, filters, setFilters, onLoad, busy, canVi
         <header className="panel-header">
           <div>
             <h1>Logs / Auditoria</h1>
-            <p className="hint">{canViewGlobal ? 'Consulta auditoria de la empresa activa seleccionada por ROOT.' : 'Consulta auditoria de tu empresa.'}</p>
+            <p className="hint">{canViewGlobal ? 'Auditoria cargada automaticamente para la empresa activa seleccionada por ROOT.' : 'Auditoria cargada automaticamente para tu empresa.'}</p>
           </div>
-          <button className="primary" type="button" onClick={onLoad} disabled={busy || !activeCompanyId}>Consultar logs</button>
         </header>
         <div className="form-grid compact">
           <SelectField label="Tipo de recurso" value={filters.resourceType} onChange={(value) => setFilters({ ...filters, resourceType: value })} options={resourceTypeOptions} placeholder="Todos los recursos" />
@@ -32,7 +31,7 @@ export function AuditLogPanel({ events, filters, setFilters, onLoad, busy, canVi
           event.result,
           <span className="audit-detail">{event.detail || 'Sin detalle'}</span>,
         ])}
-        emptyMessage="No hay eventos cargados."
+        emptyMessage="No hay eventos para el filtro actual."
         rowKey={(_row, index) => events[index]?.id || index}
       />
     </section>

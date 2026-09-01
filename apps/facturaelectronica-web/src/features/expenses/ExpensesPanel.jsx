@@ -10,7 +10,6 @@ export function ExpensesPanel({
   setFilters,
   onCreate,
   onConfirm,
-  onLoad,
   busy,
 }) {
   const supplierOptions = suppliers.map((thirdParty) => ({
@@ -39,9 +38,8 @@ export function ExpensesPanel({
       <header className="panel-header">
         <div>
           <h1>Gastos registrados</h1>
-          <p className="hint">Consulta egresos y confirma los que deban afectar contabilidad.</p>
+          <p className="hint">Egresos cargados automaticamente por rango y estado.</p>
         </div>
-        <button className="secondary" disabled={busy} onClick={onLoad} type="button">Consultar gastos</button>
       </header>
       <div className="form-grid compact">
         <SelectField label="Estado" value={filters.expenseStatus} onChange={(value) => setFilters({ ...filters, expenseStatus: value })} options={[
@@ -55,7 +53,7 @@ export function ExpensesPanel({
         columns={['Fecha', 'Tipo', 'Concepto', 'Estado', 'Subtotal', 'IVA', 'Total', 'Vence', 'Acciones']}
         rows={expenses.map((expense) => expenseRow(expense, onConfirm, busy))}
         rowKey={(_row, index) => expenses[index]?.id || index}
-        emptyMessage="Sin gastos consultados."
+        emptyMessage="Sin gastos registrados para el filtro actual."
         sectionClassName="embedded-table"
       />
     </section>
