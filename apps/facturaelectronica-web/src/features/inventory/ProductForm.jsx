@@ -27,14 +27,6 @@ const itemUsageProfiles = [
     purchaseEnabled: true,
     stockTracked: true,
   },
-  {
-    value: 'PURCHASE_NO_STOCK',
-    label: 'Compra sin inventario',
-    description: 'No aparece en POS y no controla unidades. Util para gastos o servicios comprados.',
-    saleEnabled: false,
-    purchaseEnabled: true,
-    stockTracked: false,
-  },
 ];
 
 export function ProductForm({
@@ -104,7 +96,7 @@ export function ProductForm({
         <Field label="Stock inicial" value={form.initialStock} onChange={(value) => setForm({ ...form, initialStock: value })} type="number" />
         <SelectField label="Uso del item" value={selectedUsage?.value || ''} onChange={updateUsage} options={itemUsageProfiles} />
         <div className="field-note wide">
-          {selectedUsage?.description || 'Selecciona como se usara el item en ventas, compras e inventario.'}
+          {selectedUsage?.description || 'Selecciona como se usara el item en ventas e inventario. Las compras financieras y gastos se registran en sus modulos.'}
         </div>
       </div>
     </FormPanel>

@@ -68,7 +68,7 @@
 - AC-040: Dado un bien fisico con stock controlado, cuando se venda y el documento quede efectivo, entonces el sistema debe descontar su propio stock.
 - AC-041: Dado un servicio o intangible facturable, cuando se venda y facture, entonces el sistema debe generar la linea fiscal sin descontar automaticamente insumos asociados.
 - AC-042: Dado un insumo usado en un servicio, cuando el usuario registre consumo, desperdicio o ajuste manual, entonces el sistema debe actualizar stock y kardex con motivo, cantidad, origen, usuario y empresa.
-- AC-043: Dada una compra confirmada de productos o insumos, entonces debe incrementar stock, registrar kardex y generar contabilizacion segun reglas PUC de la empresa.
+- AC-043: Dada una entrada fisica de productos o insumos registrada desde `Inventario`, entonces debe incrementar stock, registrar kardex y generar contabilizacion segun reglas PUC de la empresa.
 - AC-044: Dado un gasto sin inventario, cuando se registre y confirme, entonces no debe afectar stock y debe generar cuenta por pagar o pago contable segun la forma de pago.
 - AC-045: Dada una cuenta por pagar, cuando se registre un pago parcial o total, entonces el saldo debe disminuir y quedar trazabilidad contable.
 - AC-046: Dada una venta de bienes o servicios, cuando se emita POS electronico o factura electronica, entonces el documento debe conservar snapshot fiscal de tercero, lineas, impuestos, totales, prefijo y consecutivo.
@@ -202,11 +202,17 @@
 - AC-348: Al abrir `Terceros`, `Inventario`, `Compras`, `Gastos`, `Deudores`, `Registro de Ventas` o `Nomina`, la SPA carga automaticamente datos de tabla y listas requeridas sin exigir botones `Consultar` o `Cargar`.
 - AC-349: Las tablas historicas usan por defecto rango desde ayer hasta hoy; las listas desplegables cargan todos los registros activos requeridos para operar.
 - AC-350: Los botones manuales de consulta/carga usados como prerequisito se eliminan de los modulos indicados y las pruebas frontend validan la carga por entrada a modulo.
+- AC-351: Dado el modulo `Compras`, cuando se cree o confirme una compra/factura de proveedor, entonces no debe crear movimientos `PURCHASE_IN` ni aumentar stock.
+- AC-352: Dado el formulario de `Compras`, cuando el usuario registre una factura, entonces captura conceptos libres y no selecciona `Producto/Insumo`.
+- AC-353: Dado el formulario de `Inventario`, cuando se seleccione uso de item, entonces no se ofrece la opcion `Compra sin inventario`; los egresos sin stock se registran en `Gastos` o `Compras` segun corresponda.
+- AC-354: Dado un tercero creado correctamente, cuando el backend responda OK, entonces el formulario se limpia para capturar otro cliente/proveedor sin arrastrar datos.
+- AC-355: Dado un menu principal con flyout, cuando el usuario mueva el mouse hacia una opcion, entonces el menu no debe cerrarse por el titulo o por un espacio entre barra y panel.
+- AC-356: Dado el modulo `Compras`, cuando el BFF autoriza lectura o escritura, entonces acepta permisos funcionales de compras/contabilidad y no exige permiso de inventario.
 
 ## Productizacion operativa y cierre funcional
 
 - AC-152: Dado un entorno local limpio con solo ROOT semilla, cuando se ejecute el E2E desde cero, entonces debe crear empresa, licencia, OWNER, tercero, producto, stock, venta POS, factura electronica mock, descuento de inventario, asiento contable y auditoria.
-- AC-153: Dada una compra confirmada, entonces debe incrementar stock, conservar costo, registrar proveedor, generar egreso/cuenta por pagar segun configuracion y crear asiento contable balanceado.
+- AC-153: Dada una compra documental confirmada, entonces debe conservar proveedor, conceptos, valores, generar egreso/cuenta por pagar segun configuracion y crear asiento contable balanceado sin incrementar stock.
 - AC-154: Dado un servicio facturable con insumos sugeridos, cuando se confirme consumo manual, entonces debe crear movimientos `CONSUMPTION_OUT` idempotentes, auditados y asociados al documento origen.
 - AC-155: Dado cualquier listado operativo, cuando se abra, entonces debe cargar datos paginados de la empresa activa, permitir busqueda/estado y no mostrar datos de otra empresa.
 - AC-156: Dado un usuario sin permiso o sin modulo licenciado, cuando invoque una accion protegida directamente por API, entonces backend/BFF debe rechazarla aunque la SPA no muestre la accion.
@@ -368,7 +374,7 @@
 - AC-332: Dada una resolucion fiscal no usada, cuando ROOT o un administrador autorizado solicite eliminarla desde UI/API, entonces se elimina fisicamente y queda auditoria de la accion.
 - AC-333: Dada una resolucion fiscal usada por documentos, cuando se solicite quitarla de operacion, entonces el backend debe rechazar eliminacion fisica y permitir inactivacion conservando historial.
 - AC-334: Dada una resolucion fiscal con error operativo, cuando quede inactiva, entonces no puede ser seleccionada por el cierre de venta FE/POS.
-- AC-335: Dado el boton `Consultar compras`, cuando existan compras de la empresa activa, entonces la SPA debe mostrar la tabla de compras reales desde `/api/v1/purchases`; si no existen, debe mostrar estado vacio funcional.
+- AC-335: Dado el modulo `Compras`, cuando existan compras de la empresa activa, entonces la SPA debe cargar automaticamente la tabla de compras reales desde `/api/v1/purchases`; si no existen, debe mostrar estado vacio funcional.
 - AC-336: Dado un pago diario a empleado/jornalero, cuando se confirme, entonces debe generar asiento contable como egreso/gasto operacional mediante regla `DAILY_PAYROLL_PAID`.
 - AC-337: Dado que falte la regla contable de pago diario, cuando se intente confirmar el pago, entonces el backend debe responder error funcional indicando configurar contabilidad.
 - AC-338: Dado el reporte diario de ganancias y gastos, cuando se consulte una fecha, entonces debe mostrar ingresos por ventas, costos de venta, gastos operativos, pagos diarios y utilidad/perdida neta.
@@ -376,7 +382,7 @@
 
 ## Separacion financiera operativa
 
-- AC-340: Dada una compra clasificada como reabastecimiento de inventario, cuando se confirme, entonces incrementa stock y registra asiento contable de inventario/proveedor o caja/banco.
+- AC-340: Dada una compra documental, cuando se confirme, entonces no incrementa stock y registra asiento contable de compra/proveedor o caja/banco mediante `PURCHASE_CONFIRMED`.
 - AC-341: Dada una compra clasificada como activo, cuando se confirme, entonces no incrementa stock vendible y registra activo/caja, banco o cuenta por pagar.
 - AC-342: Dado un gasto operativo, cuando se confirme, entonces no incrementa stock y registra gasto, IVA descontable cuando aplique, caja/banco o cuenta por pagar.
 - AC-343: Dado un deudor/cuenta por cobrar, cuando se registre una obligacion y abonos, entonces el sistema mantiene saldo pendiente, estado y asientos contables correspondientes.

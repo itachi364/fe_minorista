@@ -283,7 +283,8 @@ Reglas TASK-048:
 | id | uuid/bigint | Si | Identificador. |
 | company_id | ref | Si | Empresa. |
 | purchase_id | ref | Si | Compra. |
-| product_id | ref | Si | Producto. |
+| product_id | ref | No | Producto historico asociado, opcional por compatibilidad. |
+| description | varchar(300) | Si | Concepto documental de la factura de compra. |
 | quantity | numeric(19,4) | Si | Cantidad. |
 | unit_price | numeric(19,2) | Si | Precio unitario. |
 | tax_amount | numeric(19,2) | Si | Impuesto. |

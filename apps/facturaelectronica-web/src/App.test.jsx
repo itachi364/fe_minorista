@@ -712,6 +712,8 @@ test('creates simple natural customer with automatic fiscal profile', async () =
   expect(thirdPartyPayload.taxRegime).toBe('NO_RESPONSABLE_IVA');
   expect(thirdPartyPayload.roles).toEqual(['CUSTOMER']);
   expect(thirdPartyPayload.role).toBeUndefined();
+  expect(screen.getByLabelText('Numero de documento')).toHaveValue('');
+  expect(screen.getByLabelText('Nombre completo')).toHaveValue('');
   expect(fetchMock).toHaveBeenNthCalledWith(7, '/api/v1/third-parties', expect.objectContaining({
     method: 'POST',
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
@@ -818,6 +820,7 @@ test('clears product form after successful item creation', async () => {
   await waitFor(() => expect(screen.getByRole('button', { name: 'Cerrar sesion' })).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: 'Inventario' }));
+  expect(screen.queryByRole('option', { name: 'Compra sin inventario' })).not.toBeInTheDocument();
   fillProductForm();
   fireEvent.click(screen.getByRole('button', { name: 'Crear item' }));
 
@@ -1041,9 +1044,7 @@ test('loads operational lists for sales third parties products and purchases', a
   const fetchMock = mockLoginFlow(ACTIVE_LICENSE)
     .mockResolvedValueOnce(jsonResponse([customer]))
     .mockResolvedValueOnce(jsonResponse([product]))
-    .mockResolvedValueOnce(jsonResponse([product]))
     .mockResolvedValueOnce(jsonResponse([supplier]))
-    .mockResolvedValueOnce(jsonResponse([customer]))
     .mockResolvedValueOnce(jsonResponse([purchase]))
     .mockResolvedValueOnce(jsonResponse([sale]))
     .mockResolvedValueOnce(jsonResponse(sale));
@@ -1062,6 +1063,8 @@ test('loads operational lists for sales third parties products and purchases', a
 
   fireEvent.click(screen.getByRole('button', { name: 'Compras' }));
   await waitFor(() => expect(screen.getByText('Proveedor Operativo SAS')).toBeInTheDocument());
+  expect(screen.getByLabelText('Concepto')).toBeInTheDocument();
+  expect(screen.queryByLabelText('Producto / insumo')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Consultar compras' })).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
@@ -1080,22 +1083,16 @@ test('loads operational lists for sales third parties products and purchases', a
   expect(fetchMock).toHaveBeenNthCalledWith(7, '/api/v1/products?active=true', expect.objectContaining({
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
-  expect(fetchMock).toHaveBeenNthCalledWith(8, '/api/v1/products?active=true', expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(8, '/api/v1/suppliers?active=true', expect.objectContaining({
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
-  expect(fetchMock).toHaveBeenNthCalledWith(9, '/api/v1/suppliers?active=true', expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(9, expect.stringMatching(/^\/api\/v1\/purchases\?/), expect.objectContaining({
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
-  expect(fetchMock).toHaveBeenNthCalledWith(10, '/api/v1/customers?active=true', expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(10, expect.stringMatching(/^\/api\/v1\/sales\/history\?/), expect.objectContaining({
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
-  expect(fetchMock).toHaveBeenNthCalledWith(11, expect.stringMatching(/^\/api\/v1\/purchases\?/), expect.objectContaining({
-    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
-  }));
-  expect(fetchMock).toHaveBeenNthCalledWith(12, expect.stringMatching(/^\/api\/v1\/sales\/history\?/), expect.objectContaining({
-    headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
-  }));
-  expect(fetchMock).toHaveBeenNthCalledWith(13, '/api/v1/sales/77777777-7777-7777-7777-777777777777', expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(11, '/api/v1/sales/77777777-7777-7777-7777-777777777777', expect.objectContaining({
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
 });

@@ -50,8 +50,8 @@ public class PurchaseAccountingHttpAdapter implements PurchaseAccountingPort {
         restClient.post()
                 .uri(accountingBaseUrl + "/api/v1/accounting-entries")
                 .header("X-Company-Id", purchase.companyId().toString())
-                .body(new AccountingEntryRequest("INVENTORY_REPLENISHMENT_CONFIRMED", "PURCHASE", purchase.id(),
-                        entryDate(purchase).toString(), "Compra de inventario", purchase.supplierId(), purchase.subtotal(),
+                .body(new AccountingEntryRequest("PURCHASE_CONFIRMED", "PURCHASE", purchase.id(),
+                        entryDate(purchase).toString(), "Factura de compra", purchase.supplierId(), purchase.subtotal(),
                         purchase.taxTotal(), purchase.total()))
                 .retrieve()
                 .toBodilessEntity();

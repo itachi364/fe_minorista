@@ -97,7 +97,7 @@ export function buildPurchasePayload(form) {
     const subtotal = Number((quantity * unitCost).toFixed(2));
     const tax = toNumber(line.tax) ?? 0;
     return compactObject({
-      productId: line.productId,
+      description: line.description,
       quantity,
       unitCost,
       subtotal,

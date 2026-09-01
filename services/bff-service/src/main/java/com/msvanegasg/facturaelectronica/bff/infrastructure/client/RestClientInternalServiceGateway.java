@@ -140,6 +140,9 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         if (request.targetService() == TargetService.TENANT) {
             return tenantAccessRule(request.uri());
         }
+        if (request.targetService() == TargetService.INVENTORY) {
+            return inventoryAccessRule(request.uri());
+        }
         return ACCESS_RULES.get(request.targetService());
     }
 
@@ -149,6 +152,15 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
             return new AccessRule(Set.of("COMPANY_SETTINGS_MANAGE"), Set.of("COMPANY_SETTINGS_MANAGE"));
         }
         return null;
+    }
+
+    private static AccessRule inventoryAccessRule(URI uri) {
+        String normalized = normalizeApiPath(uri.getPath());
+        if (matchesAny(normalized, "purchases")) {
+            return new AccessRule(Set.of("PURCHASES_MANAGE", "ACCOUNTING_MANAGE"),
+                    Set.of("PURCHASES_MANAGE", "ACCOUNTING_MANAGE"));
+        }
+        return ACCESS_RULES.get(TargetService.INVENTORY);
     }
 
     private static AccessRule billingAccessRule(URI uri) {

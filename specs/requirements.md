@@ -247,7 +247,7 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - RN-022: Los insumos asociados a servicios deben afectarse mediante movimientos manuales de inventario por compra, consumo, desperdicio o ajuste.
 - RN-023: Un movimiento manual de consumo o desperdicio de insumo requiere motivo, producto/insumo, cantidad, usuario o proceso origen, fecha y empresa.
 - RN-060: El consumo asistido de insumos por servicio debe requerir confirmacion explicita del usuario, motivo, `sourceDocumentId` de la venta o documento origen, `Idempotency-Key` y cantidades mayores a cero; no puede crear consumos duplicados para el mismo insumo en una misma confirmacion.
-- RN-024: Las compras de productos o insumos incrementan inventario al confirmarse; los gastos sin inventario no deben crear stock.
+- RN-024: Las compras documentales no incrementan inventario al confirmarse; los gastos sin inventario no deben crear stock y las entradas fisicas se registran desde `Inventario`.
 - RN-025: Las compras, gastos y cuentas por pagar deben contabilizarse con reglas parametrizables por empresa y cuentas PUC aprobadas.
 - RN-026: Ninguna venta, compra, gasto, movimiento o reporte puede operar sin `company_id`.
 - RN-027: Una empresa con licencia suspendida no debe poder emitir documentos fiscales ni crear nuevas transacciones de negocio, salvo consultas y acciones administrativas permitidas.
@@ -446,20 +446,22 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-231: Los pagos diarios a empleados, jornaleros o contratacion verbal deben contabilizarse como egreso/gasto operacional segun regla PUC empresarial, y no deben quedar fuera del estado de resultados.
 - RF-232: El modulo de reportes debe incluir reporte diario de ganancias y gastos que muestre ventas, costos de venta, gastos, pagos diarios y utilidad o perdida neta del dia por empresa.
 - RF-233: El sistema debe separar funcionalmente reabastecimiento de inventario, compras de activos, gastos operativos y cuentas por cobrar/deudores; no toda salida de dinero debe tratarse como entrada de stock.
-- RF-234: El modulo de compras debe permitir clasificar una compra como inventario/insumo, activo del negocio o gasto derivado, aplicando efectos distintos en inventario, contabilidad y cuentas por pagar.
+- RF-234: El modulo de compras debe registrar facturas/compras financieras de proveedores para control administrativo, reinversion, cuentas por pagar y reportes, sin aumentar inventario ni crear movimientos de stock.
 - RF-235: Debe existir un modulo de gastos operativos para registrar servicios publicos, impuestos, reparaciones, imprevistos, arriendo, transporte, deudas y otros egresos del negocio sin afectar stock.
 - RF-236: Debe existir un modulo de deudores/cuentas por cobrar para registrar deudores, obligaciones, abonos, saldos, vencimientos y estado, integrado con contabilidad y reportes.
-- RF-237: La configuracion contable recomendada debe incluir reglas explicitas para `DAILY_PAYROLL_PAID`, `OPERATING_EXPENSE_CONFIRMED`, `ASSET_PURCHASE_CONFIRMED`, `INVENTORY_REPLENISHMENT_CONFIRMED` y `ACCOUNT_RECEIVABLE_REGISTERED`.
+- RF-237: La configuracion contable recomendada debe incluir reglas explicitas para `DAILY_PAYROLL_PAID`, `PURCHASE_CONFIRMED`, `OPERATING_EXPENSE_CONFIRMED`, `ASSET_PURCHASE_CONFIRMED`, `INVENTORY_REPLENISHMENT_CONFIRMED` y `ACCOUNT_RECEIVABLE_REGISTERED`.
 - RF-238: La SPA debe mostrar una navegacion principal profesional con menus principales `Ventas`, `Reportes`, `Contabilidad` y `Configuracion`; los submodulos deben abrirse en un menu flotante al pasar el mouse o enfocar con teclado, sin extender la barra lateral hacia abajo.
 - RF-239: La navegacion debe seguir respetando licencia, permisos y rol: cada menu flotante solo muestra los submodulos autorizados para la sesion y empresa activa.
 - RF-240: Al ingresar a un modulo operativo, la SPA debe cargar automaticamente la informacion necesaria para trabajar sin exigir botones `Cargar` o `Consultar`.
 - RF-241: Las tablas historicas operativas deben cargar por defecto el dia actual y el dia anterior para reducir volumen inicial; las listas desplegables de seleccion deben cargar toda la informacion activa requerida.
 - RF-242: Los botones manuales de consulta que sean prerequisito de uso deben eliminarse de la UI; la recarga posterior debe resolverse por cambio de filtros, entrada al modulo o accion contextual no obstructiva.
+- RF-243: El aumento, disminucion, ajuste y consumo de inventario debe realizarse desde `Inventario` o desde efectos de venta/servicio aprobados; `Compras` solo conserva soporte financiero/documental.
+- RF-244: El formulario de `Compras` debe capturar conceptos libres de factura y no exigir seleccion de `Producto/Insumo`; el selector de uso de item en `Inventario` no debe incluir `Compra sin inventario`.
 
 ## Requisitos fase productizacion operativa
 
 - RF-089: El sistema debe contar con una prueba E2E desde cero que cree empresa, licencia, administrador, catalogos requeridos, tercero, inventario, venta POS, factura electronica mock, efecto de inventario, asiento contable y auditoria.
-- RF-090: El sistema debe soportar compras/entradas de inventario con proveedor, costo, medio de pago, cuentas por pagar cuando aplique y asiento contable parametrizable.
+- RF-090: El sistema debe soportar compras documentales con proveedor, costo, medio de pago, cuentas por pagar cuando aplique y asiento contable parametrizable; las entradas de inventario se registran por movimientos de `Inventario`.
 - RF-091: El sistema debe soportar servicios facturables que consumen insumos controlados mediante confirmacion manual/asistida posterior o asociada a la venta, sin recetas automaticas obligatorias.
 - RF-092: La SPA debe ofrecer listados profesionales con busqueda, paginacion, estado y accion contextual para ventas, documentos fiscales, terceros, productos, compras, servicios, movimientos, usuarios, roles, licencias y logs.
 - RF-093: BFF y microservicios deben validar RBAC y licencia en endpoints criticos; el frontend nunca sera el control de seguridad principal.

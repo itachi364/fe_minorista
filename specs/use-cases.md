@@ -77,15 +77,15 @@ Flujo principal:
 
 Acceptance criteria: AC-008.
 
-## UC-007: Registrar compra e incrementar inventario
+## UC-007: Registrar entrada fisica de inventario
 
 Actor: Administrador.
 
 Flujo principal:
-1. El actor registra proveedor, productos, cantidades y valores.
-2. El sistema valida proveedor y productos.
-3. El sistema registra compra.
-4. El sistema incrementa stock y registra movimiento de entrada.
+1. El actor registra producto o insumo, cantidad, costo y documento soporte cuando aplique.
+2. El sistema valida item y reglas de inventario.
+3. El sistema registra movimiento de entrada.
+4. El sistema incrementa stock y registra kardex.
 5. El sistema genera asiento contable si aplica.
 
 Acceptance criteria: AC-011, AC-013, AC-014.
@@ -168,14 +168,14 @@ Flujo principal:
 
 Acceptance criteria: AC-042.
 
-## UC-015: Registrar compra de bienes o insumos
+## UC-015: Registrar compra documental de proveedor
 
 Actor: Administrador.
 
 Flujo principal:
-1. El actor selecciona proveedor, fecha, lineas, impuestos y forma de pago.
+1. El actor selecciona proveedor, fecha, conceptos, impuestos y forma de pago.
 2. El sistema crea la compra en estado pendiente.
-3. Al confirmar, el sistema incrementa stock cuando las lineas son inventariables.
+3. Al confirmar, el sistema conserva soporte financiero/documental sin mover inventario.
 4. El sistema genera asiento contable o cuenta por pagar segun reglas de la empresa.
 
 Acceptance criteria: AC-043.

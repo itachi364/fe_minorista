@@ -112,7 +112,7 @@ export function createPurchaseForm() {
     paymentCondition: 'CASH',
     dueDate: '',
     evidenceUrl: '',
-    lines: [{ productId: '', quantity: '1', unitCost: '', tax: '0' }],
+    lines: [{ description: '', quantity: '1', unitCost: '', tax: '0' }],
   };
 }
 

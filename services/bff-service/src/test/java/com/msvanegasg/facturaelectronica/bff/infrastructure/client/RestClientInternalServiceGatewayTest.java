@@ -113,7 +113,20 @@ class RestClientInternalServiceGatewayTest {
     }
 
     @Test
-    void rejectsPurchaseMutationWhenSalesUserDoesNotHaveInventoryManagePermission() throws IOException {
+    void allowsPurchaseMutationWhenUserHasPurchasesManagePermission() throws IOException {
+        startIdentityServer("[\"PURCHASES_MANAGE\"]");
+        CapturingHandler inventoryHandler = startInventoryServer("/api/v1/purchases");
+        RestClientInternalServiceGateway gateway = gateway();
+
+        ProxyResponse response = gateway.exchange(new ProxyRequest(TargetService.INVENTORY, HttpMethod.POST,
+                URI.create("/api/v1/purchases"), headers(), "{\"total\":1000}".getBytes(StandardCharsets.UTF_8)));
+
+        assertThat(response.status()).isEqualTo(HttpStatus.CREATED);
+        assertThat(inventoryHandler.requestBody).contains("1000");
+    }
+
+    @Test
+    void rejectsPurchaseMutationWhenSalesUserDoesNotHavePurchasesManagePermission() throws IOException {
         startIdentityServer("[\"SALES_CREATE\"]");
         CapturingHandler inventoryHandler = startInventoryServer("/api/v1/purchases");
         RestClientInternalServiceGateway gateway = gateway();

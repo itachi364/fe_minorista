@@ -8,6 +8,7 @@ public record PurchaseLine(
         UUID id,
         UUID purchaseId,
         UUID productId,
+        String description,
         BigDecimal quantity,
         BigDecimal unitCost,
         BigDecimal subtotal,
@@ -16,7 +17,10 @@ public record PurchaseLine(
 
     public PurchaseLine {
         require(id, "id");
-        require(productId, "productId");
+        description = normalizeDescription(description);
+        if (productId == null && description == null) {
+            throw new IllegalArgumentException("description is required");
+        }
         requirePositive(quantity, "quantity");
         requireMoney(unitCost, "unitCost");
         requireMoney(subtotal, "subtotal");
@@ -25,7 +29,14 @@ public record PurchaseLine(
     }
 
     public PurchaseLine attachTo(UUID purchaseId) {
-        return new PurchaseLine(id, purchaseId, productId, quantity, unitCost, subtotal, tax, total);
+        return new PurchaseLine(id, purchaseId, productId, description, quantity, unitCost, subtotal, tax, total);
+    }
+
+    private static String normalizeDescription(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     private static void requirePositive(BigDecimal value, String field) {

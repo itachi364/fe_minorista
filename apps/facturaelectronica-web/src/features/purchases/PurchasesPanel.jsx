@@ -4,7 +4,6 @@ import { Field, FormPanel, SelectField } from '../../components/forms.jsx';
 export function PurchasesPanel({
   form,
   setForm,
-  products = [],
   suppliers = [],
   purchases = [],
   filters,
@@ -13,10 +12,6 @@ export function PurchasesPanel({
   onConfirm,
   busy,
 }) {
-  const productOptions = products.map((product) => ({
-    value: product.id,
-    label: `${product.sku || 'Sin SKU'} - ${product.name || product.id}`,
-  }));
   const supplierOptions = suppliers.map((thirdParty) => ({
     value: thirdParty.id,
     label: thirdParty.businessName || thirdParty.fullName || thirdParty.tradeName || thirdParty.identificationNumber,
@@ -30,7 +25,7 @@ export function PurchasesPanel({
   }
 
   function addLine() {
-    setForm({ ...form, lines: [...form.lines, { productId: '', quantity: '1', unitCost: '', tax: '0' }] });
+    setForm({ ...form, lines: [...form.lines, { description: '', quantity: '1', unitCost: '', tax: '0' }] });
   }
 
   function removeLine(index) {
@@ -38,8 +33,8 @@ export function PurchasesPanel({
   }
 
   return <div className="stack">
-    <FormPanel title="Reabastecimiento de inventario" submitLabel="Crear compra" onSubmit={onCreate} busy={busy}>
-      <p className="hint">Usa este modulo solo para compras de mercancia o insumos que aumentan inventario.</p>
+    <FormPanel title="Factura de compra" submitLabel="Crear compra" onSubmit={onCreate} busy={busy}>
+      <p className="hint">Registra facturas de proveedores para control financiero y reinversion. El stock se ajusta desde Inventario.</p>
       <div className="form-grid">
         <SelectField label="Proveedor" value={form.supplierId} onChange={(value) => setForm({ ...form, supplierId: value })} options={supplierOptions} placeholder="Proveedor opcional" />
         <SelectField label="Condicion de pago" value={form.paymentCondition} onChange={(value) => setForm({ ...form, paymentCondition: value })} options={paymentConditionOptions} />
@@ -49,7 +44,7 @@ export function PurchasesPanel({
       <div className="line-list">
         {form.lines.map((line, index) => (
           <div className="line-card" key={`purchase-line-${index}`}>
-            <SelectField label="Producto / insumo" value={line.productId} onChange={(value) => updateLine(index, { productId: value })} options={productOptions} />
+            <Field label="Concepto" value={line.description} onChange={(value) => updateLine(index, { description: value })} placeholder="Ej. Factura proveedor, mercancia, insumos o reinversion" />
             <Field label="Cantidad" value={line.quantity} onChange={(value) => updateLine(index, { quantity: value })} type="number" min="0" step="0.01" />
             <Field label="Costo unitario" value={line.unitCost} onChange={(value) => updateLine(index, { unitCost: value })} type="number" min="0" step="0.01" />
             <Field label="IVA compra" value={line.tax} onChange={(value) => updateLine(index, { tax: value })} type="number" min="0" step="0.01" />
@@ -57,14 +52,14 @@ export function PurchasesPanel({
           </div>
         ))}
       </div>
-      <button className="secondary" disabled={busy} onClick={addLine} type="button">Agregar producto</button>
+      <button className="secondary" disabled={busy} onClick={addLine} type="button">Agregar concepto</button>
     </FormPanel>
 
     <section className="tool-panel">
       <header className="panel-header">
         <div>
           <h1>Compras registradas</h1>
-          <p className="hint">Entradas reales de inventario cargadas automaticamente por rango y estado.</p>
+          <p className="hint">Facturas de proveedor cargadas automaticamente por rango y estado.</p>
         </div>
       </header>
       <div className="form-grid compact">

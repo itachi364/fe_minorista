@@ -606,7 +606,7 @@ Reglas:
 
 ## inventory-service
 
-Responsabilidad: productos, stock simple, compras, movimientos y kardex.
+Responsabilidad: productos, stock simple, compras documentales, movimientos y kardex.
 
 Estado TASK-034:
 
@@ -624,7 +624,7 @@ Estado TASK-048:
 - `POST /api/v1/service-supply-references` y `GET /api/v1/products/{serviceProductId}/supply-references` permiten registrar insumos sugeridos para servicios sin generar movimientos de kardex.
 - `GET /api/v1/products/{serviceProductId}/supply-consumption-suggestions` permite cargar insumos sugeridos, stock actual y costo para que el usuario confirme consumo real despues de vender el servicio.
 - `POST /api/v1/service-supply-consumptions` registra consumos reales confirmados como movimientos `CONSUMPTION_OUT` con origen `MANUAL_SUPPLY_CONSUMPTION`.
-- Compras y movimientos solo afectan items con `stockTracked=true`.
+- Los movimientos de inventario solo afectan items con `stockTracked=true`; las compras documentales no modifican stock.
 
 ### Productos
 
@@ -805,7 +805,7 @@ Reglas:
   "evidenceUrl": "https://example.local/evidence.pdf",
   "lines": [
     {
-      "productId": "uuid",
+      "description": "Factura proveedor cafe",
       "quantity": 10,
       "unitCost": 9000,
       "subtotal": 90000,
@@ -819,9 +819,9 @@ Reglas:
 Reglas:
 
 - Una venta facturada descuenta stock.
-- Una compra confirmada aumenta stock.
+- Una compra confirmada no aumenta stock ni genera movimientos `PURCHASE_IN`; solo registra control financiero/documental y contabilidad.
 - Una compra a credito requiere `dueDate`.
-- Si `ACCOUNTING_SERVICE_URL` esta configurado, `inventory-service` intenta contabilizar la compra confirmada y crear CxP en `accounting-service` de forma best-effort; el fallo de contabilidad no revierte stock ni confirmacion.
+- Si `ACCOUNTING_SERVICE_URL` esta configurado, `inventory-service` intenta contabilizar la compra confirmada con evento `PURCHASE_CONFIRMED` y crear CxP en `accounting-service` cuando sea credito.
 - Stock negativo no esta permitido en la fase inicial.
 - Todo movimiento debe referenciar documento origen.
 - Los tipos de item objetivo son `PHYSICAL_GOOD`, `SERVICE` y `SUPPLY`.
@@ -1814,7 +1814,7 @@ Contrato local/transitorio para desarrollo y E2E. En produccion, autenticacion p
 
 Roles minimos: `OWNER`, `ADMIN`, `CASHIER`, `ACCOUNTANT`, `AUDITOR`.
 
-Permisos iniciales: `USERS_MANAGE`, `ROLES_MANAGE`, `SALES_CREATE`, `FISCAL_DOCUMENTS_ISSUE`, `INVENTORY_MANAGE`, `ACCOUNTING_MANAGE`, `REPORTS_VIEW`, `AUDIT_VIEW`, `LICENSE_MANAGE`.
+Permisos iniciales: `USERS_MANAGE`, `ROLES_MANAGE`, `SALES_CREATE`, `FISCAL_DOCUMENTS_ISSUE`, `INVENTORY_MANAGE`, `PURCHASES_MANAGE`, `ACCOUNTING_MANAGE`, `REPORTS_VIEW`, `AUDIT_VIEW`, `LICENSE_MANAGE`.
 
 #### CreateUserRequest
 
@@ -3120,7 +3120,7 @@ Reglas:
 - Una resolucion inactiva no puede ser seleccionada por `POST /api/v1/sales/close` ni `POST /api/v1/sales/{saleId}/confirm`.
 - La UI debe ofrecer `Eliminar` solo si `used=false`; de lo contrario solo `Inactivar`.
 
-### Compras, reabastecimiento y activos
+### Compras documentales
 
 ```http
 GET /api/v1/purchases?status={status}&supplierId={supplierId}&from={yyyy-MM-dd}&to={yyyy-MM-dd}
@@ -3129,8 +3129,9 @@ X-Company-Id: {companyId}
 
 Reglas:
 
-- `Consultar compras` consume este contrato y muestra la respuesta real del backend.
+- El listado de compras consume este contrato y muestra facturas de proveedor reales del backend.
 - `status`, `supplierId`, `from` y `to` son opcionales.
+- La compra documental no modifica inventario; el stock se aumenta o ajusta desde `POST /api/v1/inventory-movements`.
 
 ```http
 POST /api/v1/purchases
@@ -3144,28 +3145,21 @@ Payload objetivo:
 ```json
 {
   "supplierId": "uuid",
-  "purchaseDate": "2026-08-31",
-  "classification": "INVENTORY_REPLENISHMENT",
-  "paymentMethodCode": "CASH",
+  "paymentCondition": "CASH",
   "dueDate": null,
-  "description": "Reabastecimiento semanal",
+  "evidenceUrl": "https://example.local/factura-proveedor.pdf",
   "lines": [
     {
-      "productId": "uuid",
+      "description": "Factura proveedor cafe",
       "quantity": 10,
       "unitCost": 5000,
-      "taxCode": "IVA_19",
-      "taxRate": 19
+      "subtotal": 50000,
+      "tax": 9500,
+      "total": 59500
     }
   ]
 }
 ```
-
-Clasificaciones:
-
-- `INVENTORY_REPLENISHMENT`: incrementa stock de producto/insumo.
-- `ASSET_PURCHASE`: compra activo del negocio y no incrementa stock vendible.
-- `OPERATING_EXPENSE`: deriva a gasto operativo y no incrementa stock.
 
 ### Gastos operativos
 

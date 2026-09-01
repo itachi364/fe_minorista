@@ -110,6 +110,14 @@ public class BasicAccountingSetupService implements InitializeBasicAccountingSet
                                         "IVA descontable"),
                                 new RuleLineTemplate("2205", AccountingEntrySide.CREDIT, AccountingAmountType.TOTAL,
                                         "Proveedor"))),
+                new RuleTemplate(AccountingEventType.PURCHASE_CONFIRMED, AccountingSourceType.PURCHASE,
+                        "Factura de compra - plantilla basica", List.of(
+                                new RuleLineTemplate("5135", AccountingEntrySide.DEBIT, AccountingAmountType.SUBTOTAL,
+                                        "Compra o reinversion operacional"),
+                                new RuleLineTemplate("2408", AccountingEntrySide.DEBIT, AccountingAmountType.TAX_TOTAL,
+                                        "IVA descontable"),
+                                new RuleLineTemplate("2205", AccountingEntrySide.CREDIT, AccountingAmountType.TOTAL,
+                                        "Proveedor o cuenta por pagar"))),
                 new RuleTemplate(AccountingEventType.OPERATING_EXPENSE_CONFIRMED, AccountingSourceType.EXPENSE,
                         "Gasto operativo - plantilla basica", List.of(
                                 new RuleLineTemplate("5135", AccountingEntrySide.DEBIT, AccountingAmountType.SUBTOTAL,

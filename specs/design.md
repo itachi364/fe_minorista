@@ -386,8 +386,9 @@ Toda transicion fiscal debe registrar evento de trazabilidad con estado anterior
 
 ### Politica objetivo de compras, gastos y cuentas por pagar
 
-- Una compra con lineas de inventario incrementa stock solo cuando se confirma.
-- Una compra confirmada intenta generar contabilizacion y cuenta por pagar mediante `accounting-service` cuando la URL esta configurada; la llamada es best-effort para no convertir la contabilidad en dependencia de disponibilidad de `inventory-service`.
+- Una compra documental no incrementa stock; captura proveedor, conceptos, valores, evidencia y condicion de pago para control financiero.
+- Una compra confirmada intenta generar contabilizacion `PURCHASE_CONFIRMED` y cuenta por pagar mediante `accounting-service` cuando la URL esta configurada.
+- Las entradas de inventario se registran como movimientos explicitos desde `Inventario`.
 - Un gasto sin inventario registra proveedor, concepto, subtotal, impuestos, total, evidencia opcional y estado, pero no genera movimientos de stock.
 - Una compra o gasto puede crear cuenta por pagar cuando no se paga de contado.
 - Las cuentas por pagar deben asociarse a proveedor, documento origen, fecha de vencimiento, saldo y estado.
@@ -487,7 +488,7 @@ El modelo de datos vigente se documenta de forma detallada en `specs/database-de
 - `inventory-service`:
   - `inventory.product`: bienes fisicos, servicios/intangibles e insumos, con impuesto de venta configurado desde catalogo.
   - `inventory.stock_balance`, `inventory.inventory_movement`: stock simple, kardex y movimientos idempotentes.
-  - `inventory.purchase`, `inventory.purchase_line`: compras/entradas con proveedor, costo, medio de pago y contabilidad.
+  - `inventory.purchase`, `inventory.purchase_line`: compras/facturas documentales con proveedor, costo, medio de pago, cuentas por pagar y contabilidad, sin movimientos de stock.
   - `inventory.service_supply_reference`: relacion sugerida servicio-insumo sin descuento automatico.
 - `billing-service`:
   - `billing.issuer_profile`, `billing.numbering_resolution`, `billing.number_sequence`: emisor fiscal, resoluciones y numeracion.
@@ -1322,7 +1323,7 @@ La SPA solo decide entre `IDENTIFIED_CUSTOMER` y `FINAL_CONSUMER`; no conoce ni 
 
 - La siguiente fase se ejecuta desde el flujo de negocio completo y no desde infraestructura adicional: primero se prueba crear datos reales por API, vender, facturar con conector DIAN mock, afectar inventario, contabilizar y auditar.
 - El E2E no depende de datos demo del frontend ni de seeds empresariales. Solo se permite el usuario `ROOT` local para iniciar el flujo de pruebas.
-- Las compras y entradas de inventario se modelan como flujo operativo independiente de ventas, con proveedor, costo, stock, medio de pago y regla contable.
+- Las compras documentales y las entradas de inventario se separan: `Compras` conserva proveedor, valores y regla contable; `Inventario` conserva stock, kardex y movimientos.
 - Los servicios facturables pueden sugerir insumos, pero el descuento de insumos queda como accion confirmada por usuario. Esto respeta negocios pequenos donde el consumo real es variable.
 - Las pantallas operativas deben evolucionar de formularios sueltos a modulos con listado, busqueda, paginacion, estado, acciones y formularios de creacion/edicion.
 - BFF y microservicios seguiran validando permisos y licencia. La visibilidad de menus en SPA solo mejora experiencia, no reemplaza autorizacion.
@@ -3113,8 +3114,9 @@ Context7 evidence:
 ### TASK-241 - Separar compras de reabastecimiento, activos y gastos
 - Estado: Implementada.
 - Fase: Fase 31: Finanzas operativas para pequeno negocio.
-- Decision de diseno: El negocio necesita registrar distintos hechos economicos que hoy se confunden como compras. Se separan tres flujos: reabastecimiento de inventario/insumos, compra de activos del negocio y gastos operativos.
-- Reabastecimiento: Se gestiona desde el modulo `Compras`, incrementa stock controlado al confirmar y contabiliza mediante `INVENTORY_REPLENISHMENT_CONFIRMED`.
+- Decision de diseno: El negocio necesita registrar distintos hechos economicos que hoy se confunden como compras. Se separan tres flujos: compra/factura documental, movimientos de inventario y gastos/activos.
+- Compras: Se gestiona desde el modulo `Compras` como registro financiero/documental de facturas de proveedor, control de reinversion y cuentas por pagar. No incrementa stock.
+- Inventario: El reabastecimiento fisico, ajustes, consumos y kardex se gestionan desde `Inventario` mediante movimientos explicitos.
 - Activos: Se registran desde `Gastos` con tipo `ASSET_PURCHASE`, no aparecen en POS ni incrementan inventario vendible, y generan asiento `ASSET_PURCHASE_CONFIRMED`.
 - Gastos: Se registran desde `Gastos` con tipo `OPERATING_EXPENSE`, no modifican stock y generan asiento `OPERATING_EXPENSE_CONFIRMED`.
 
@@ -3146,7 +3148,7 @@ Context7 evidence:
 - Estado: Implementada.
 - Fase: Fase 31: Finanzas operativas para pequeno negocio.
 - Decision de diseno: Para que el sistema sea usable sin exigir conocimiento contable profundo, se entregan plantillas PUC sugeridas por evento, pero la empresa conserva control de sus cuentas y reglas.
-- Plantillas minimas implementadas: `PAYROLL_DAILY_PAYMENT_REGISTERED`, `OPERATING_EXPENSE_CONFIRMED`, `ASSET_PURCHASE_CONFIRMED`, `INVENTORY_REPLENISHMENT_CONFIRMED`, `ACCOUNT_RECEIVABLE_REGISTERED`, mas pagos de CxP/CxC.
+- Plantillas minimas implementadas: `PAYROLL_DAILY_PAYMENT_REGISTERED`, `PURCHASE_CONFIRMED`, `OPERATING_EXPENSE_CONFIRMED`, `ASSET_PURCHASE_CONFIRMED`, `INVENTORY_REPLENISHMENT_CONFIRMED`, `ACCOUNT_RECEIVABLE_REGISTERED`, mas pagos de CxP/CxC.
 - Seguridad contable: Las reglas usadas por asientos historicos no se modifican ni inactivan directamente; se versionan mediante nueva regla.
 
 ### TASK-246 - Navegacion principal con menus flotantes
@@ -3165,6 +3167,17 @@ Context7 evidence:
 - UX: Se eliminan botones manuales `Cargar`/`Consultar` cuando eran prerequisito para usar el modulo. El usuario ve datos cargados, estado vacio o error funcional sin tener que descubrir un boton previo.
 - Rendimiento: Las cargas automaticas usan claves por modulo/empresa/filtro para evitar llamadas duplicadas en renderizados repetidos.
 - Implementacion: Los modulos operativos cargan datos al entrar y al cambiar filtros relevantes; las respuestas de lista se normalizan para arreglos simples o envolturas paginadas.
+
+### TASK-248 - Correccion UX y compras documentales sin inventario
+- Estado: Implementada.
+- Fase: Fase 32: UX operativa y carga automatica.
+- Decision de diseno: El flyout no debe incluir titulo interno porque reduce el area util y provoca cierres accidentales al seleccionar submodulos. El panel debe estar pegado a la barra lateral o tener puente hover para evitar perdida de foco.
+- Dominio Compras: `Compras` se redefine como registro financiero/documental de facturas de proveedor y control de reinversion. No representa reabastecimiento fisico y no debe crear movimientos de inventario ni aumentar stock.
+- Dominio Inventario: Las entradas fisicas, ajustes, consumos y aumentos de stock pertenecen a `Inventario` o a efectos de venta/servicio aprobados. La opcion `Compra sin inventario` se elimina del selector de uso del item porque ahora los egresos sin stock viven en `Gastos` o `Compras`.
+- Contrato: Las lineas de compra pasan a capturar `description`, `quantity`, `unitCost`, `subtotal`, `tax` y `total`; `productId` queda opcional solo por compatibilidad historica.
+- Contabilidad: La confirmacion de compra usa evento `PURCHASE_CONFIRMED` y no `INVENTORY_REPLENISHMENT_CONFIRMED`. La cuenta por pagar sigue creandose cuando la compra sea a credito.
+- Autorizacion: Aunque `purchases` sigue enrutado al `inventory-service`, el BFF aplica permisos funcionales `PURCHASES_MANAGE` o `ACCOUNTING_MANAGE`; no se requiere `INVENTORY_MANAGE` para compras documentales.
+- UX formularios: Despues de crear tercero, el formulario se limpia como ya sucede con inventario/fiscal para evitar duplicar datos por accidente.
 
 #### Context7 evidence
 - Library/tool: React.

@@ -4,7 +4,7 @@ export const stepPermissionRules = {
   Licencias: ['GLOBAL_COMPANIES_MANAGE'],
   Terceros: ['COMPANY_SETTINGS_MANAGE'],
   Inventario: ['INVENTORY_VIEW', 'INVENTORY_MANAGE'],
-  Compras: ['PURCHASES_MANAGE', 'INVENTORY_MANAGE'],
+  Compras: ['PURCHASES_MANAGE', 'ACCOUNTING_MANAGE'],
   Gastos: ['ACCOUNTING_MANAGE'],
   Deudores: ['ACCOUNTING_MANAGE'],
   Fiscal: ['FISCAL_DOCUMENTS_ISSUE', 'COMPANY_SETTINGS_MANAGE'],

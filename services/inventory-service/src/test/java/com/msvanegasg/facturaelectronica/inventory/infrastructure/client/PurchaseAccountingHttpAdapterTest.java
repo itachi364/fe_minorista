@@ -46,7 +46,7 @@ class PurchaseAccountingHttpAdapterTest {
 
         adapter().applyConfirmedPurchase(confirmedPurchase(), USER_ID);
 
-        assertThat(entryHandler.requestBody).contains("\"eventType\":\"INVENTORY_REPLENISHMENT_CONFIRMED\"");
+        assertThat(entryHandler.requestBody).contains("\"eventType\":\"PURCHASE_CONFIRMED\"");
         assertThat(entryHandler.requestBody).contains("\"sourceType\":\"PURCHASE\"");
         assertThat(entryHandler.requestBody).contains("\"sourceId\":\"" + PURCHASE_ID + "\"");
         assertThat(entryHandler.requestBody).contains("\"entryDate\":\"2026-08-18\"");
@@ -79,7 +79,7 @@ class PurchaseAccountingHttpAdapterTest {
         return Purchase.pending(PURCHASE_ID, COMPANY_ID, SUPPLIER_ID, new BigDecimal("45000.00"),
                 new BigDecimal("8550.00"), new BigDecimal("53550.00"), PaymentCondition.CREDIT,
                 LocalDate.of(2026, 12, 31), null, "purchase-1", Instant.parse("2026-08-18T10:00:00Z"),
-                List.of(new PurchaseLine(UUID.randomUUID(), PURCHASE_ID, UUID.randomUUID(), BigDecimal.ONE,
+                List.of(new PurchaseLine(UUID.randomUUID(), PURCHASE_ID, null, "Factura proveedor cafe", BigDecimal.ONE,
                         BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.TEN)))
                 .confirm(CONFIRMED_AT);
     }

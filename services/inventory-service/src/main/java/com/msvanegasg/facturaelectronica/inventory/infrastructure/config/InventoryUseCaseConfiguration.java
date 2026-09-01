@@ -43,10 +43,8 @@ public class InventoryUseCaseConfiguration {
 
     @Bean
     ManagePurchaseUseCase managePurchaseUseCase(PurchaseRepositoryPort purchaseRepository,
-            ProductRepositoryPort productRepository, RegisterInventoryMovementUseCase movementUseCase,
             PurchaseAccountingPort purchaseAccountingPort, IdGeneratorPort idGenerator, ClockPort clock) {
-        return new PurchaseManagementService(purchaseRepository, productRepository, movementUseCase,
-                purchaseAccountingPort, idGenerator, clock);
+        return new PurchaseManagementService(purchaseRepository, purchaseAccountingPort, idGenerator, clock);
     }
 
     @Bean

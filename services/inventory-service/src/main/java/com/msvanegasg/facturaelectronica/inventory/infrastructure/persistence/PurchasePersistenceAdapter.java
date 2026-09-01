@@ -57,7 +57,7 @@ public class PurchasePersistenceAdapter implements PurchaseRepositoryPort {
     }
 
     private static PurchaseLine toLineDomain(UUID purchaseId, PurchaseLineJpaEntity entity) {
-        return new PurchaseLine(entity.getId(), purchaseId, entity.getProductId(), entity.getQuantity(),
+        return new PurchaseLine(entity.getId(), purchaseId, entity.getProductId(), entity.getDescription(), entity.getQuantity(),
                 entity.getUnitCost(), entity.getSubtotal(), entity.getTax(), entity.getTotal());
     }
 
@@ -84,6 +84,7 @@ public class PurchasePersistenceAdapter implements PurchaseRepositoryPort {
         PurchaseLineJpaEntity entity = new PurchaseLineJpaEntity();
         entity.setId(line.id());
         entity.setProductId(line.productId());
+        entity.setDescription(line.description());
         entity.setQuantity(line.quantity());
         entity.setUnitCost(line.unitCost());
         entity.setSubtotal(line.subtotal());

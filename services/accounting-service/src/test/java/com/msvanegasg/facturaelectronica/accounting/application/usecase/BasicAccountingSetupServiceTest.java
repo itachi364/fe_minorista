@@ -40,13 +40,14 @@ class BasicAccountingSetupServiceTest {
         assertThat(result.rules()).extracting("eventType").containsExactly(
                 AccountingEventType.SALE_CONFIRMED,
                 AccountingEventType.INVENTORY_REPLENISHMENT_CONFIRMED,
+                AccountingEventType.PURCHASE_CONFIRMED,
                 AccountingEventType.OPERATING_EXPENSE_CONFIRMED,
                 AccountingEventType.ASSET_PURCHASE_CONFIRMED,
                 AccountingEventType.ACCOUNT_RECEIVABLE_REGISTERED,
                 AccountingEventType.ACCOUNTS_PAYABLE_PAYMENT_REGISTERED,
                 AccountingEventType.ACCOUNTS_RECEIVABLE_PAYMENT_REGISTERED,
                 AccountingEventType.PAYROLL_DAILY_PAYMENT_REGISTERED);
-        assertThat(context.rules.findByCompanyId(COMPANY_ID, null, true)).hasSize(8);
+        assertThat(context.rules.findByCompanyId(COMPANY_ID, null, true)).hasSize(9);
     }
 
     @Test

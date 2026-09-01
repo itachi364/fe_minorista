@@ -425,7 +425,7 @@ export default function App() {
       Terceros: () => loadThirdPartyList(),
       Inventario: () => loadProductList(),
       Compras: async () => {
-        await loadFinancialReferenceData();
+        await loadSupplierList();
         return loadPurchaseList();
       },
       Gastos: async () => {
@@ -1330,6 +1330,7 @@ export default function App() {
       idempotencyKey: createIdempotencyKey('third-party'),
     });
     setThirdPartyList((current) => [result, ...current.filter((item) => item.id !== result.id)]);
+    setThirdPartyForm(createThirdPartyForm());
     return result;
   }
 
@@ -1725,6 +1726,14 @@ export default function App() {
     const response = await requestJson(`/api/v1/${type}${buildQuery({ active: optionalBoolean(operationalListFilters.thirdPartyActive) })}`, context);
     const items = normalizeListResponse(response);
     setThirdPartyList(items);
+    return items;
+  }
+
+  async function loadSupplierList() {
+    requireCompany();
+    const response = await requestJson('/api/v1/suppliers?active=true', context);
+    const items = normalizeListResponse(response);
+    setSupplierList(items);
     return items;
   }
 
@@ -2462,9 +2471,8 @@ export default function App() {
                   <span>{group.label}</span>
                   {groupHasChildren && <span aria-hidden="true" className="nav-caret">›</span>}
                 </button>
-                {groupHasChildren && (
+              {groupHasChildren && (
                   <div className="nav-flyout" role="menu">
-                    <div className="nav-flyout-title">{group.label}</div>
                     {group.items.map((step) => (
                       <button key={step} className={currentStep === step ? 'nav-flyout-item active' : 'nav-flyout-item'} onClick={() => setSelectedStep(step)} type="button">
                         {navigationItemLabel(group, step)}
@@ -2516,7 +2524,7 @@ export default function App() {
             <ProductForm form={productForm} setForm={setProductForm} onSubmit={() => execute(createProduct)} busy={busy || !activeCompanyId || !canUse(['INVENTORY_MANAGE'])} taxOptions={runtimeCatalogs.salesTaxOptions} itemTypeCatalog={runtimeCatalogs.itemTypeCatalog} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} products={productList} />
           )}
           {currentStep === 'Compras' && (
-            <PurchasesPanel form={purchaseForm} setForm={setPurchaseForm} products={productList} suppliers={supplierList} purchases={purchaseList} filters={operationalListFilters} setFilters={setOperationalListFilters} onCreate={() => execute(createPurchase, { successMessage: 'Compra creada correctamente.' })} onConfirm={(purchaseId) => execute(() => confirmPurchase(purchaseId), { successMessage: 'Compra confirmada correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Compras)} />
+            <PurchasesPanel form={purchaseForm} setForm={setPurchaseForm} suppliers={supplierList} purchases={purchaseList} filters={operationalListFilters} setFilters={setOperationalListFilters} onCreate={() => execute(createPurchase, { successMessage: 'Compra creada correctamente.' })} onConfirm={(purchaseId) => execute(() => confirmPurchase(purchaseId), { successMessage: 'Compra confirmada correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Compras)} />
           )}
           {currentStep === 'Gastos' && (
             <ExpensesPanel form={expenseForm} setForm={setExpenseForm} suppliers={supplierList} expenses={expenseList} filters={operationalListFilters} setFilters={setOperationalListFilters} onCreate={() => execute(createExpense, { successMessage: 'Gasto creado correctamente.' })} onConfirm={(expenseId) => execute(() => confirmExpense(expenseId), { successMessage: 'Gasto confirmado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Gastos)} />

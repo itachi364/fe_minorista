@@ -191,21 +191,21 @@ La prueba desde cero debe crear datos en las tablas activas de cada bounded cont
 - `identity.user_account`, `cognito_subject`, roles, permisos y membresias empresariales.
 - `catalog.catalog_definition`, `catalog.catalog_item`, `catalog.department`, `catalog.municipality`.
 - `thirdparty.third_party`.
-- `inventory.product`, `inventory.inventory_movement` y tablas de compra/entrada cuando existan.
+- `inventory.product`, `inventory.inventory_movement` y compras documentales cuando existan.
 - `billing.sale`, lineas de venta, documento fiscal, submission mock y configuracion de consumidor final.
 - `accounting.account`, reglas contables y asientos/comprobantes.
 - `audit.audit_event`.
 
-### Compras e inventario
+### Compras documentales e inventario
 
 Si el flujo de compra no esta completamente modelado, se debe introducir o completar un modelo transaccional con:
 
 - Cabecera de compra por empresa y proveedor.
-- Lineas de compra con producto/insumo, cantidad, costo unitario, impuesto y subtotal.
+- Lineas de compra documentales con concepto, cantidad, costo unitario, impuesto y subtotal.
 - Estado de compra (`DRAFT`, `CONFIRMED`, `CANCELLED`).
-- Movimiento de inventario idempotente al confirmar.
 - Cuenta por pagar o egreso segun medio de pago/configuracion.
 - Asiento contable balanceado segun regla PUC empresarial.
+- Regla explicita: la compra documental no crea movimientos de inventario; entradas, ajustes y consumos de stock se registran desde `inventory.inventory_movement`.
 
 ### Servicios con insumos
 
@@ -572,15 +572,14 @@ Reglas de persistencia:
 - La condicion `used` se calcula desde documentos fiscales que referencian la resolucion o, si el modelo actual aun no tiene FK directa, desde numero/prefijo/tipo de documento asociados al historico.
 - El cierre de venta solo consulta resoluciones `active=true`, con rango vigente, ambiente compatible y `document_type` compatible con la politica fiscal de la venta.
 
-### Compras, reabastecimiento, activos y gastos
+### Compras documentales, activos y gastos
 
 Modelo objetivo:
 
-- `inventory.purchase`: encabezado de compra operativa.
-  - `classification`: `INVENTORY_REPLENISHMENT`, `ASSET_PURCHASE`, `OPERATING_EXPENSE`.
+- `inventory.purchase`: encabezado de compra/factura documental.
   - `supplier_id`, `purchase_date`, `payment_method_code`, `status`, `subtotal`, `tax_total`, `total`, `correlation_id`.
 - `inventory.purchase_line`: detalle de compra.
-  - `purchase_id`, `product_id` opcional, `description`, `quantity`, `unit_cost`, `tax_code`, `tax_rate`, `line_total`.
+  - `purchase_id`, `product_id` opcional por compatibilidad historica, `description`, `quantity`, `unit_cost`, `tax_code`, `tax_rate`, `line_total`.
 - `accounting.accounting_expense`: egresos que no incrementan inventario.
   - `expense_type`: `OPERATING_EXPENSE` o `ASSET_PURCHASE`.
   - `supplier_id`, `expense_date`, `concept`, `payment_condition`, `due_date`, `evidence_url`, `subtotal`, `tax_total`, `total`, `status`.
@@ -588,10 +587,10 @@ Modelo objetivo:
 
 Reglas:
 
-- Reabastecimiento incrementa stock y genera asiento por `INVENTORY_REPLENISHMENT_CONFIRMED`.
+- Compra documental no incrementa stock y genera asiento por `PURCHASE_CONFIRMED`.
 - Compra de activo no incrementa stock vendible y genera asiento por `ASSET_PURCHASE_CONFIRMED`.
 - Gasto operativo no crea movimiento de inventario y genera asiento por `OPERATING_EXPENSE_CONFIRMED`.
-- El boton `Consultar compras` solo debe leer datos persistidos de compras actuales; nunca catalogos locales ni estado inicial de frontend.
+- La UI de compras carga datos automaticamente y solo debe leer datos persistidos de compras actuales; nunca catalogos locales ni estado inicial de frontend.
 
 ### Pagos diarios de empleados
 

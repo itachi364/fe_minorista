@@ -20,8 +20,10 @@ public class PurchaseLineJpaEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "purchase_id", nullable = false)
     private PurchaseJpaEntity purchase;
-    @Column(name = "product_id", nullable = false)
+    @Column(name = "product_id")
     private UUID productId;
+    @Column(length = 300)
+    private String description;
     @Column(nullable = false)
     private BigDecimal quantity;
     @Column(name = "unit_cost", nullable = false)
@@ -39,6 +41,8 @@ public class PurchaseLineJpaEntity {
     public void setPurchase(PurchaseJpaEntity purchase) { this.purchase = purchase; }
     public UUID getProductId() { return productId; }
     public void setProductId(UUID productId) { this.productId = productId; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
     public BigDecimal getQuantity() { return quantity; }
     public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
     public BigDecimal getUnitCost() { return unitCost; }

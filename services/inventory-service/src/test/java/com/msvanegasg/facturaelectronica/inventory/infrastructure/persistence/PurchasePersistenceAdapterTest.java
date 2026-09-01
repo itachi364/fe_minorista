@@ -29,7 +29,6 @@ class PurchasePersistenceAdapterTest {
 
     private static final UUID COMPANY_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID PURCHASE_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
-    private static final UUID PRODUCT_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
     private static final UUID LINE_ID = UUID.fromString("44444444-4444-4444-4444-444444444444");
     private static final Instant NOW = Instant.parse("2026-05-19T10:00:00Z");
 
@@ -47,7 +46,8 @@ class PurchasePersistenceAdapterTest {
         assertThat(saved.paymentCondition()).isEqualTo(PaymentCondition.CREDIT);
         assertThat(saved.dueDate()).isEqualTo(LocalDate.of(2026, 6, 20));
         assertThat(saved.lines()).hasSize(1);
-        assertThat(saved.lines().get(0).productId()).isEqualTo(PRODUCT_ID);
+        assertThat(saved.lines().get(0).productId()).isNull();
+        assertThat(saved.lines().get(0).description()).isEqualTo("Factura proveedor cafe");
     }
 
     @Test
@@ -79,7 +79,7 @@ class PurchasePersistenceAdapterTest {
         return Purchase.pending(PURCHASE_ID, COMPANY_ID, null, new BigDecimal("90000.00"),
                 new BigDecimal("17100.00"), new BigDecimal("107100.00"), PaymentCondition.CREDIT,
                 LocalDate.of(2026, 6, 20), null, "purchase-1", NOW,
-                List.of(new PurchaseLine(LINE_ID, PURCHASE_ID, PRODUCT_ID, new BigDecimal("10.00"),
+                List.of(new PurchaseLine(LINE_ID, PURCHASE_ID, null, "Factura proveedor cafe", new BigDecimal("10.00"),
                         new BigDecimal("9000.00"), new BigDecimal("90000.00"), new BigDecimal("17100.00"),
                         new BigDecimal("107100.00"))));
     }
@@ -98,7 +98,7 @@ class PurchasePersistenceAdapterTest {
         entity.setCreatedAt(NOW);
         PurchaseLineJpaEntity line = new PurchaseLineJpaEntity();
         line.setId(LINE_ID);
-        line.setProductId(PRODUCT_ID);
+        line.setDescription("Factura proveedor cafe");
         line.setQuantity(new BigDecimal("10.00"));
         line.setUnitCost(new BigDecimal("9000.00"));
         line.setSubtotal(new BigDecimal("90000.00"));

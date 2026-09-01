@@ -311,11 +311,11 @@ Restricciones:
 #### `inventory.purchase` y `inventory.purchase_line`
 
 - Una compra nace en `PENDING`.
-- Al confirmarse pasa a `CONFIRMED` y genera movimientos `PURCHASE_IN`.
-- La confirmacion es idempotente por compra y linea, usando la clave de idempotencia de la compra.
-- `purchase_line` guarda producto, cantidad, costo unitario, subtotal, impuesto y total.
+- Al confirmarse pasa a `CONFIRMED` y no genera movimientos `PURCHASE_IN`.
+- La confirmacion es idempotente por compra y dispara contabilidad/cuenta por pagar cuando aplica.
+- `purchase_line` guarda concepto, cantidad, costo unitario, subtotal, impuesto y total; `product_id` queda opcional solo por compatibilidad historica.
 - `purchase.payment_condition` acepta `CASH` o `CREDIT`; si es `CREDIT`, `purchase.due_date` es obligatorio.
-- La contabilizacion y CxP de compras se invoca best-effort contra `accounting-service` cuando `ACCOUNTING_SERVICE_URL` esta configurado; Outbox/Inbox con EventBridge/SQS y Lambdas reemplazara esa llamada en la tarea event-driven aprobada.
+- La contabilizacion y CxP de compras se invoca contra `accounting-service` con evento `PURCHASE_CONFIRMED` cuando `ACCOUNTING_SERVICE_URL` esta configurado; Outbox/Inbox con EventBridge/SQS y Lambdas reemplazara esa llamada en la tarea event-driven aprobada.
 
 #### `inventory.service_supply_reference`
 
@@ -520,7 +520,7 @@ Antes de eliminar tablas publicas legacy se debe construir una matriz de reempla
 | `producto` | `inventory-service` | `inventory.product`, `inventory.stock_balance` | runtime legacy retirado y tabla `catalog.producto` eliminada en TASK-088 |
 | `cliente` | `thirdparty-service` | `thirdparty.third_party` y `thirdparty.third_party_role` | codigo/endpoints legacy retirados en TASK-059 lote 2; tabla `thirdparty.cliente` eliminada en TASK-088 con salvaguarda `company_id` |
 | `proveedor` | `thirdparty-service` | `thirdparty.third_party` y `thirdparty.third_party_role` | codigo/endpoints legacy retirados en TASK-059 lote 2; tabla `thirdparty.proveedor` eliminada en TASK-088 con salvaguarda `company_id` |
-| `compra`, `detalle_compra` | `inventory-service` | `inventory.purchase`, `inventory.purchase_line`, `inventory.inventory_movement` | migrado funcionalmente; limpiar historicos solo con plan aprobado |
+| `compra`, `detalle_compra` | `inventory-service` | `inventory.purchase`, `inventory.purchase_line` | migrado funcionalmente como compra documental; no crea movimientos de inventario |
 | `gastos`, `detalle_gasto` | `accounting-service` inicialmente; `expenses/procurement-service` solo si se aprueba despues | `accounting.expense`, `accounting.accounts_payable` objetivo | mantener hasta implementar gastos/cuentas por pagar y migrar datos |
 | `factura`, `detalle_factura` | `billing-service` | `billing.sale`, `billing.sale_line`, `billing.electronic_document` | parcial; POS nuevo cubierto, factura electronica completa e historicos pendientes |
 | `billing_issuer_profile`, `billing_numbering_resolution` | `billing-service` | `billing.issuer_profile`, `billing.numbering_resolution` | migrado funcionalmente en TASK-041; mantener tablas legacy hasta migrar/respaldar datos |
@@ -536,7 +536,7 @@ Antes de eliminar tablas publicas legacy se debe construir una matriz de reempla
 - Una venta POS genera un documento electronico.
 - Un documento electronico puede tener multiples lineas, impuestos, artefactos, envios DIAN y eventos/validaciones tecnicas del conector.
 - Una venta facturada descuenta inventario mediante movimientos.
-- Una compra confirmada incrementa inventario mediante movimientos.
+- Una compra documental confirmada no incrementa inventario; las entradas fisicas se registran como movimientos desde `Inventario`.
 - Un documento fiscal confirmado o validado genera asiento contable.
 - Una cuenta contable por empresa puede originarse desde el PUC base.
 

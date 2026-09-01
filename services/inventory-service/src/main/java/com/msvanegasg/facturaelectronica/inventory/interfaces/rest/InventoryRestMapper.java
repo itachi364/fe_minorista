@@ -139,7 +139,7 @@ final class InventoryRestMapper {
     }
 
     private static PurchaseLineCommand toLineCommand(PurchaseLineRequest request) {
-        return new PurchaseLineCommand(request.productId(), request.quantity(), request.unitCost(), request.subtotal(),
+        return new PurchaseLineCommand(request.productId(), request.description(), request.quantity(), request.unitCost(), request.subtotal(),
                 request.tax(), request.total());
     }
 
@@ -149,7 +149,7 @@ final class InventoryRestMapper {
     }
 
     private static PurchaseLineResponse toLineResponse(PurchaseLineResult result) {
-        return new PurchaseLineResponse(result.id(), result.productId(), result.quantity(), result.unitCost(),
+        return new PurchaseLineResponse(result.id(), result.productId(), result.description(), result.quantity(), result.unitCost(),
                 result.subtotal(), result.tax(), result.total());
     }
 

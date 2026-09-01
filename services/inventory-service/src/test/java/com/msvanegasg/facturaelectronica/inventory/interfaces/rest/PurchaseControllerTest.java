@@ -37,7 +37,6 @@ class PurchaseControllerTest {
 
     private static final UUID COMPANY_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID PURCHASE_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
-    private static final UUID PRODUCT_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
     private static final Instant NOW = Instant.parse("2026-05-19T10:00:00Z");
 
     private MockMvc mockMvc;
@@ -65,7 +64,8 @@ class PurchaseControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(PURCHASE_ID.toString()))
                 .andExpect(jsonPath("$.status").value("PENDING"))
-                .andExpect(jsonPath("$.paymentCondition").value("CREDIT"));
+                .andExpect(jsonPath("$.paymentCondition").value("CREDIT"))
+                .andExpect(jsonPath("$.lines[0].description").value("Factura proveedor cafe"));
     }
 
     @Test
@@ -98,7 +98,8 @@ class PurchaseControllerTest {
         return new PurchaseResult(PURCHASE_ID, COMPANY_ID, null, status, new BigDecimal("90000.00"),
                 new BigDecimal("17100.00"), new BigDecimal("107100.00"), PaymentCondition.CREDIT,
                 LocalDate.of(2026, 6, 20), null, "purchase-1", NOW, status == PurchaseStatus.CONFIRMED ? NOW : null,
-                List.of(new PurchaseLineResult(UUID.fromString("44444444-4444-4444-4444-444444444444"), PRODUCT_ID,
+                List.of(new PurchaseLineResult(UUID.fromString("44444444-4444-4444-4444-444444444444"), null,
+                        "Factura proveedor cafe",
                         new BigDecimal("10.00"), new BigDecimal("9000.00"), new BigDecimal("90000.00"),
                         new BigDecimal("17100.00"), new BigDecimal("107100.00"))));
     }
@@ -113,7 +114,7 @@ class PurchaseControllerTest {
                   "dueDate": "2026-06-20",
                   "lines": [
                     {
-                      "productId": "33333333-3333-3333-3333-333333333333",
+                      "description": "Factura proveedor cafe",
                       "quantity": 10.00,
                       "unitCost": 9000.00,
                       "subtotal": 90000.00,

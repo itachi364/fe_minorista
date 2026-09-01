@@ -959,7 +959,7 @@
     - `specs/api-contract.md`
   - Completion criteria:
     - Se puede crear inventario desde cero.
-    - Una compra o ajuste incrementa stock.
+    - Una entrada o ajuste de inventario incrementa stock.
     - Una venta validada puede descontar stock sin permitir negativos.
     - El kardex muestra movimientos con costo y documento origen.
   - Tests requeridos:
@@ -1749,7 +1749,7 @@
     - migraciones Flyway de gastos/cuentas por pagar si se ubican inicialmente en `accounting-service`.
     - `specs/api-contract.md`
   - Completion criteria:
-    - Compra confirmada incrementa stock y genera asiento/cuenta por pagar.
+    - Compra documental confirmada genera asiento/cuenta por pagar sin incrementar stock.
     - Gasto confirmado no afecta stock y genera asiento/cuenta por pagar.
     - Pago parcial o total reduce saldo y registra asiento.
   - Tests requeridos:
@@ -3801,7 +3801,7 @@
     - Garantizar asientos balanceados e idempotentes.
   - Validacion:
     - Ventas POS generan asiento automatico desde `billing-service`.
-    - Compras confirmadas generan cuenta por pagar y entrada de inventario desde `inventory-service`.
+    - Compras documentales confirmadas generan cuenta por pagar y asiento contable sin entrada de inventario.
     - Gastos, pagos de CxP/CxC y pagos diarios de nomina tienen regla contable y prueba de generacion.
     - `AccountingEntry` rechaza asientos descuadrados.
     - `.\mvnw.cmd -q test`: OK.
@@ -6102,12 +6102,12 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
     - `npm test -- --run App.test.jsx`: 31 tests OK.
     - `npm run build`: OK.
 
-- [x] TASK-239: Corregir boton Consultar compras
+- [x] TASK-239: Corregir carga de compras
   - Estado: DONE
   - Requisitos: RF-230.
   - Acceptance criteria:
-    - AC-335: El boton `Consultar compras` consume el endpoint vigente de compras, respeta empresa activa y permisos, y muestra tabla o estado vacio sin error silencioso.
-  - Descripcion: Reparar el flujo de consulta de compras para que permita validar compras operativas antes de separar reabastecimiento, activos y gastos.
+    - AC-335: El modulo `Compras` consume automaticamente el endpoint vigente de compras, respeta empresa activa y permisos, y muestra tabla o estado vacio sin error silencioso.
+  - Descripcion: Reparar el flujo de consulta de compras para que permita validar compras operativas antes de separar facturas documentales, activos y gastos.
   - Archivos propuestos:
     - `services/inventory-service/src/main/java/com/msvanegasg/facturaelectronica/inventory/**`
     - `apps/facturaelectronica-web/src/features/inventory/ProductForm.jsx`
@@ -6154,9 +6154,9 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
   - Estado: DONE
   - Requisitos: RF-233, RF-234.
   - Acceptance criteria:
-    - AC-340: Una compra clasificada como reabastecimiento incrementa inventario y genera contabilizacion de inventario/cuentas por pagar o caja.
+    - AC-340: Una compra documental no incrementa inventario y genera contabilizacion de compra/cuentas por pagar o caja.
     - AC-341: Una compra clasificada como activo del negocio no incrementa inventario vendible y genera contabilizacion de activo.
-  - Descripcion: Diferenciar compras de mercancia/insumos, compras de activos operativos y gastos para evitar que todo se mezcle en inventario.
+  - Descripcion: Diferenciar compras documentales, movimientos de inventario, compras de activos operativos y gastos para evitar que todo se mezcle en inventario.
   - Archivos propuestos:
     - `services/inventory-service/**`
     - `services/accounting-service/**`
@@ -6165,7 +6165,7 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
     - `specs/database-design.md`
   - Resultado:
     - `Inventario` queda enfocado en productos, servicios e insumos, sin consulta de compras dentro del formulario.
-    - `Compras` queda como pantalla independiente para reabastecimiento de mercancia/insumos con confirmacion posterior.
+    - `Compras` queda como pantalla independiente para facturas de proveedor y control financiero, sin movimientos de stock.
     - `Gastos` distingue `OPERATING_EXPENSE` y `ASSET_PURCHASE`; el gasto operativo se contabiliza con `OPERATING_EXPENSE_CONFIRMED`, la compra de activo con `ASSET_PURCHASE_CONFIRMED` y ninguno incrementa inventario.
     - Flyway agrega `accounting.accounting_expense.expense_type` con valor por defecto `OPERATING_EXPENSE`.
   - Validacion:
@@ -6237,13 +6237,13 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
   - Requisitos: RF-237.
   - Acceptance criteria:
     - AC-344: Compras, gastos, deudores, pagos diarios y reportes respetan empresa, licencia, permisos y auditoria.
-  - Descripcion: Completar reglas PUC sugeridas para `DAILY_PAYROLL_PAID`, `OPERATING_EXPENSE_CONFIRMED`, `ASSET_PURCHASE_CONFIRMED`, `INVENTORY_REPLENISHMENT_CONFIRMED` y `ACCOUNT_RECEIVABLE_REGISTERED`.
+  - Descripcion: Completar reglas PUC sugeridas para `DAILY_PAYROLL_PAID`, `PURCHASE_CONFIRMED`, `OPERATING_EXPENSE_CONFIRMED`, `ASSET_PURCHASE_CONFIRMED`, `INVENTORY_REPLENISHMENT_CONFIRMED` y `ACCOUNT_RECEIVABLE_REGISTERED`.
   - Archivos propuestos:
     - `services/accounting-service/**`
     - `services/payroll-service/**`
     - `apps/facturaelectronica-web/src/features/accounting/AccountingForm.jsx`
   - Resultado:
-    - La plantilla basica PUC incluye reglas para ventas, compras de inventario, gastos operativos, compras de activos, cuentas por cobrar, pagos de cuentas por pagar, recaudos de cuentas por cobrar y pagos diarios de nomina.
+    - La plantilla basica PUC incluye reglas para ventas, compras documentales, gastos operativos, compras de activos, cuentas por cobrar, pagos de cuentas por pagar, recaudos de cuentas por cobrar y pagos diarios de nomina.
     - Se agrego cuenta PUC `1520 Maquinaria y equipo` para compras de activos.
     - Las cuentas por cobrar manuales crean asiento contable en el momento del registro.
   - Validacion:
@@ -6277,6 +6277,52 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
     - El menu se deriva de pasos autorizados para respetar licencia, rol y permisos.
   - Validacion:
     - `npm test -- App.test.jsx`: 31 tests OK.
+
+- [x] TASK-248: Corregir flyout, terceros y compras documentales sin inventario
+  - Estado: DONE
+  - Requisitos: RF-234, RF-243, RF-244.
+  - Acceptance criteria:
+    - AC-351: Dado el modulo `Compras`, cuando se cree o confirme una compra/factura de proveedor, entonces no debe crear movimientos `PURCHASE_IN` ni aumentar stock.
+    - AC-352: Dado el formulario de `Compras`, cuando el usuario registre una factura, entonces captura conceptos libres y no selecciona `Producto/Insumo`.
+    - AC-353: Dado el formulario de `Inventario`, cuando se seleccione uso de item, entonces no se ofrece la opcion `Compra sin inventario`; los egresos sin stock se registran en `Gastos` o `Compras` segun corresponda.
+    - AC-354: Dado un tercero creado correctamente, cuando el backend responda OK, entonces el formulario se limpia para capturar otro cliente/proveedor sin arrastrar datos.
+    - AC-355: Dado un menu principal con flyout, cuando el usuario mueva el mouse hacia una opcion, entonces el menu no debe cerrarse por el titulo o por un espacio entre barra y panel.
+    - AC-356: Dado el modulo `Compras`, cuando el BFF autoriza lectura o escritura, entonces acepta permisos funcionales de compras/contabilidad y no exige permiso de inventario.
+  - Descripcion: Ajustar UX detectada en pruebas y corregir la responsabilidad funcional de compras para que sea documental/financiera, no una entrada de inventario.
+  - Archivos propuestos:
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/styles.css`
+    - `apps/facturaelectronica-web/src/features/thirdparties/ThirdPartyForm.jsx`
+    - `apps/facturaelectronica-web/src/features/inventory/ProductForm.jsx`
+    - `apps/facturaelectronica-web/src/features/purchases/PurchasesPanel.jsx`
+    - `apps/facturaelectronica-web/src/utils/formStateFactory.js`
+    - `apps/facturaelectronica-web/src/utils/payloadBuilders.js`
+    - `services/bff-service/src/main/java/com/msvanegasg/facturaelectronica/bff/infrastructure/client/RestClientInternalServiceGateway.java`
+    - `services/inventory-service/**`
+    - `services/accounting-service/**`
+    - `specs/**`
+    - `README.md`
+  - Dependencias:
+    - TASK-241.
+    - TASK-246.
+    - TASK-247.
+  - Validacion propuesta:
+    - `.\mvnw.cmd -pl services/inventory-service -am test`
+    - `.\mvnw.cmd -pl services/accounting-service -am test`
+    - `.\mvnw.cmd -pl services/bff-service -am test`
+    - `npm test -- App.test.jsx`
+    - `npm run build`
+  - Resultado local:
+    - Flyout sin titulo interno y con panel pegado a la barra lateral.
+    - Terceros limpia formulario despues de creacion exitosa.
+    - Inventario elimina `Compra sin inventario`.
+    - Compras registra conceptos documentales sin selector `Producto/Insumo` y no mueve stock al confirmar.
+    - BFF autoriza Compras con `PURCHASES_MANAGE` o `ACCOUNTING_MANAGE`, no con `INVENTORY_MANAGE`.
+    - `.\mvnw.cmd -pl services/inventory-service -am test`: OK, 54 tests.
+    - `.\mvnw.cmd -pl services/accounting-service -am test`: OK, 68 tests.
+    - `.\mvnw.cmd -pl services/bff-service -am test`: OK, 33 tests.
+    - `npm test -- App.test.jsx`: OK, 31 tests.
+    - `npm run build`: OK.
 
 - [x] TASK-247: Carga automatica de datos al entrar a modulos
   - Estado: DONE

@@ -43,7 +43,7 @@ final class InventoryResultMapper {
     }
 
     private static PurchaseLineResult toPurchaseLineResult(PurchaseLine line) {
-        return new PurchaseLineResult(line.id(), line.productId(), line.quantity(), line.unitCost(), line.subtotal(),
+        return new PurchaseLineResult(line.id(), line.productId(), line.description(), line.quantity(), line.unitCost(), line.subtotal(),
                 line.tax(), line.total());
     }
 

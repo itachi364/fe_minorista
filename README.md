@@ -19,7 +19,7 @@ El proyecto migro desde una estructura legacy CRUD hacia Clean Architecture por 
 - Catalogos versionados: tipos de documento DIAN, responsabilidades fiscales, regimenes tributarios, metodos de pago, billeteras virtuales y DIVIPOLA por departamentos/municipios.
 - Terceros: clientes y proveedores.
 - Inventario: productos multiempresa, costos, stock simple, movimientos y kardex.
-- Compras, gastos y deudores: reabastecimiento de inventario, egresos operativos, compras de activos y cuentas por cobrar con efectos contables.
+- Compras, gastos y deudores: facturas de proveedor sin afectacion de stock, egresos operativos, compras de activos y cuentas por cobrar con efectos contables.
 - Billing/POS: emisor, resoluciones, emision POS electronico, consulta y envio a conector DIAN mock.
 - Contabilidad: cuentas PUC por empresa, reglas contables configurables, asientos `POSTED`, libro diario, libro mayor y plantillas base para ventas, compras, gastos, activos, deudores y nomina diaria.
 - Nomina: configuracion por empresa, trabajadores, pagos diarios verbales, documento soporte electronico mock opcional y contabilizacion base de pagos diarios.
@@ -82,7 +82,7 @@ Estructura actual:
 - `services/tenant-service`: microservicio fisico para empresas/tenants.
 - `services/catalog-service`: microservicio fisico para catalogos oficiales y configurables.
 - `services/thirdparty-service`: microservicio fisico para clientes/proveedores.
-- `services/inventory-service`: microservicio fisico para productos, costos, stock, compras y kardex.
+- `services/inventory-service`: microservicio fisico para productos, costos, stock, compras documentales y kardex.
 - `services/billing-service`: microservicio fisico para ventas POS, emisor fiscal, resoluciones, numeracion fiscal y emision electronica mock.
 - `services/dian-provider-service`: microservicio fisico para mock DIAN y conexion real DIAN parametrizable por empresa.
 - `services/accounting-service`: microservicio fisico para PUC, reglas contables, asientos, libro diario y mayor.
@@ -686,7 +686,7 @@ Las rutas legacy `/api/clientes` y `/api/proveedores` fueron retiradas en TASK-0
 - `POST /api/v1/purchases`
 - `POST /api/v1/purchases/{purchaseId}/confirm`
 
-Las operaciones de negocio requieren `X-Company-Id`; los movimientos y compras requieren `Idempotency-Key`. Cada producto vendible guarda su impuesto de venta como snapshot configurable desde catalogos (`SALES_TAX`), junto con precio, costo, SKU y codigo de barras para operacion POS con lector USB HID.
+Las operaciones de negocio requieren `X-Company-Id`; los movimientos y compras requieren `Idempotency-Key`. Cada producto vendible guarda su impuesto de venta como snapshot configurable desde catalogos (`SALES_TAX`), junto con precio, costo, SKU y codigo de barras para operacion POS con lector USB HID. Las compras registran facturas de proveedor para control financiero y no aumentan inventario; el stock se ajusta desde `Inventario`.
 
 ### Billing
 
@@ -729,7 +729,7 @@ Los comandos requieren `Idempotency-Key`. Las consultas requieren `X-Company-Id`
 - `GET /api/v1/reports/journal?from=&to=`
 - `GET /api/v1/reports/ledger?from=&to=&accountCode=`
 
-Los asientos se generan desde reglas activas por empresa y son idempotentes por `companyId`, `sourceType` y `sourceId`. La plantilla basica crea cuentas PUC iniciales y reglas para ventas, compras, gastos, cuentas por cobrar, cuentas por pagar y pago diario de nomina.
+Los asientos se generan desde reglas activas por empresa y son idempotentes por `companyId`, `sourceType` y `sourceId`. La plantilla basica crea cuentas PUC iniciales y reglas para ventas, compras documentales, gastos, cuentas por cobrar, cuentas por pagar y pago diario de nomina.
 
 ### Payroll
 
