@@ -26,7 +26,7 @@ flowchart TB
   subgraph DataPlane["Private data plane"]
     RdsProxy[RDS Proxy]
     Rds[(RDS / Aurora PostgreSQL)]
-    AssetBucket[S3 private assets / reports / POS artifacts]
+    AssetBucket[S3 private company files / reports / POS artifacts]
     Secrets[Secrets Manager]
     Kms[KMS]
   end
@@ -67,6 +67,12 @@ flowchart TB
     DianArtifacts[Private fiscal artifacts]
   end
 
+  subgraph CompanyFiles["Company file storage"]
+    FileMetadata[tenant.company_file_asset metadata]
+    FilePrefixes[company/category prefixes]
+    MockReceiptQr[Configurable mock receipt QR]
+  end
+
   Browser --> CloudFront
   CloudFront --> S3
   CloudFront --> ApiGateway
@@ -92,6 +98,8 @@ flowchart TB
   DianProvider --> CompanyCertificate
   DianTransport --> DianPlatform
   DianArtifacts --> AssetBucket
+  Billing --> MockReceiptQr
+  MockReceiptQr --> AssetBucket
 
   Bff --> Secrets
   Tenant --> Secrets
@@ -104,6 +112,9 @@ flowchart TB
   Tenant --> AssetBucket
   Billing --> AssetBucket
   Reporting --> AssetBucket
+  Tenant --> FileMetadata
+  FileMetadata --> FilePrefixes
+  FilePrefixes --> AssetBucket
   Reporting --> ReportExportQueue
   Reporting --> Ses
 

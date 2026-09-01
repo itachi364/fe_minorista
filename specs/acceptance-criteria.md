@@ -369,7 +369,7 @@
 
 - AC-340: Dada una compra documental, cuando se confirme, entonces no incrementa stock y registra asiento contable de compra/proveedor o caja/banco mediante `PURCHASE_CONFIRMED`.
 - AC-341: Dada una compra clasificada como activo, cuando se confirme, entonces no incrementa stock vendible y registra activo/caja, banco o cuenta por pagar.
-- AC-342: Dado un gasto operativo, cuando se confirme, entonces no incrementa stock y registra gasto, IVA descontable cuando aplique, caja/banco o cuenta por pagar.
+- AC-342: Dado un gasto operativo, cuando se confirme, entonces no incrementa stock y registra gasto por valor total no discriminado, caja/banco o cuenta por pagar.
 - AC-343: Dado un deudor/cuenta por cobrar, cuando se registre una obligacion y abonos, entonces el sistema mantiene saldo pendiente, estado y asientos contables correspondientes.
 - AC-344: Dadas compras, gastos, deudores y pagos diarios, cuando se consulten reportes, entonces todos los resultados deben estar aislados por empresa, permisos y licencia.
 
@@ -392,3 +392,24 @@
 
 - AC-357: Dado el README del repositorio, cuando se revise su contenido, entonces debe servir como guia practica de instalacion, ejecucion, despliegue local, pruebas, SonarQube, Swagger, seguridad y estructura tecnica, sin mezclar planeacion funcional.
 - AC-358: Dado el flujo SDD, cuando se actualice documentacion transversal, entonces requisitos, diseno, criterios, infraestructura, diccionario, arquitectura, diagramas y casos de uso deben quedar sin numeraciones duplicadas, estados contradictorios o modelos desalineados con el comportamiento vigente.
+
+## Fase 34: Inventario editable, evidencias documentales y QR fiscal
+
+- AC-359: Dado un producto activo o inactivo de la empresa, cuando el usuario autorizado haga clic en `Actualizar`, entonces el formulario de inventario debe cargarse con sus datos y el boton principal debe cambiar a `Actualizar item`.
+- AC-360: Dado un codigo de barras existente, cuando se digite o escanee en el formulario de inventario, entonces la SPA debe cargar el producto relacionado y pasar a modo actualizacion sin crear duplicados.
+- AC-361: Dado un producto usado historicamente, cuando se inactive, entonces no debe aparecer como opcion activa en ventas nuevas, pero los reportes y documentos historicos deben seguir mostrando nombre, SKU, impuestos y totales sin error.
+- AC-362: Dado un producto sin uso bloqueante, cuando se actualice, entonces el backend debe conservar trazabilidad, validar unicidad de SKU/codigo de barras por empresa y no alterar movimientos historicos de stock.
+- AC-363: Dado el modulo `Compras`, cuando se registre una factura de proveedor, entonces el formulario no debe solicitar cantidad, costo unitario, subtotal ni IVA; solo debe capturar proveedor, fecha, concepto, condicion de pago, vencimiento cuando aplique, total y evidencia opcional.
+- AC-364: Dado el modulo `Gastos`, cuando se registre un egreso, entonces el formulario no debe solicitar subtotal ni IVA; solo debe capturar concepto, tipo de gasto/activo cuando aplique, proveedor opcional, fecha, condicion de pago, vencimiento cuando aplique, total y evidencia opcional.
+- AC-365: Dado que el usuario seleccione evidencia `PDF`, cuando elija archivo, entonces la UI debe aceptar un solo PDF y el backend debe rechazar archivos no PDF, multiples archivos o archivos fuera de limite con error funcional.
+- AC-366: Dado que el usuario seleccione evidencia `URL`, cuando capture soporte, entonces la UI y el backend deben validar URL `http/https`; si el usuario no selecciona evidencia, el soporte queda nulo sin error.
+- AC-367: Dado un archivo empresarial subido correctamente, cuando se almacene, entonces debe quedar bajo prefijo/carpeta de empresa y categoria funcional de negocio, con metadata, hash, tamano, tipo MIME, usuario, fecha y referencia privada.
+- AC-368: Dado ambiente local, cuando se suba el primer archivo de una empresa, entonces el storage de desarrollo debe crear la carpeta/prefijo de la empresa y las subcarpetas funcionales necesarias sin requerir Terraform.
+- AC-369: Dado ambiente productivo AWS, cuando se almacene evidencia o asset empresarial, entonces debe usarse S3 privado cifrado con KMS o equivalente aprobado; el navegador no debe recibir bucket, key interna ni credenciales.
+- AC-370: Dado un deudor/cuenta por cobrar con datos validos, cuando se registre, entonces el backend debe responder exito y crear saldo inicial/asiento segun regla contable vigente.
+- AC-371: Dado un intento invalido de crear deudor, cuando falte tercero, monto, fuente o regla contable, entonces el backend debe responder `400/409` funcional y nunca `500 INTERNAL_ERROR`.
+- AC-372: Dado un comprobante POS mock, cuando se renderice para impresion, entonces debe mostrar un QR grafico escaneable apuntando a una URL interna parametrizada del comprobante.
+- AC-373: Dado un documento fiscal enviado en modo real DIAN, cuando DIAN retorne contenido o URL QR, entonces el comprobante debe usar ese valor sin reemplazarlo por el QR mock.
+- AC-374: Dado que `APP_PUBLIC_BASE_URL` o parametro equivalente no este configurado en ambiente desplegado, entonces el servicio debe fallar cerrado para QR/link publico y mostrar error funcional de configuracion.
+- AC-375: Dado el modulo de marca empresarial, cuando el usuario configure colores, entonces debe ver explicacion de efecto y seleccionar color principal/acento con controles de color, conservando validacion hexadecimal en backend.
+- AC-376: Dada cualquier mutacion de producto, evidencia, archivo empresarial, QR/comprobante o branding, entonces debe existir auditoria sin contenido binario, secretos, PIN, credenciales ni URLs privadas persistentes.

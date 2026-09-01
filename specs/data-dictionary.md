@@ -1032,3 +1032,55 @@ Tabla objetivo para artefactos POS/documento fiscal persistidos en `billing-serv
 | printed_at | timestamptz | No | Fecha/hora informada de impresion. |
 | error_message | varchar(500) | No | Error sanitizado si falla. |
 | correlation_id | varchar(120) | No | Correlacion tecnica. |
+
+## Extensiones TASK-250 a TASK-258
+
+### `inventory.product` mantenimiento operativo
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| active | boolean | Si | Indica si el producto esta disponible para operaciones futuras. Inactivo no se elimina. |
+| updated_at | timestamptz | Si | Fecha de ultima actualizacion de datos maestros. |
+
+Reglas:
+
+- `active=false` excluye el producto de ventas nuevas, pero no de reportes historicos.
+- `sku` y `barcode` deben ser unicos por empresa.
+- Cambios de nombre, precio, impuesto o costo no reescriben snapshots de ventas/documentos existentes.
+
+### `tenant.company_file_asset`
+
+Tabla objetivo para metadata de archivos empresariales y evidencias documentales.
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del archivo. |
+| company_id | uuid | Si | Empresa propietaria. |
+| business_category | varchar(60) | Si | Categoria funcional: `facturas`, `logos`, `fondos`, `evidencias`, `reportes` o `artefactos-fiscales`. |
+| storage_provider | varchar(30) | Si | `LOCAL`, `S3` o proveedor compatible aprobado. |
+| storage_reference | varchar(700) | Si | Referencia privada del objeto; no se expone como URL publica permanente. |
+| original_file_name | varchar(220) | Si | Nombre original informado por el cliente, sanitizado antes de mostrar. |
+| safe_file_name | varchar(220) | Si | Nombre seguro usado en storage. |
+| content_type | varchar(120) | Si | MIME validado. |
+| extension | varchar(20) | Si | Extension validada. |
+| size_bytes | bigint | Si | Tamano del archivo. |
+| content_hash | varchar(120) | Si | Hash para integridad y trazabilidad. |
+| status | varchar(30) | Si | `ACTIVE`, `REJECTED` o `DELETED_LOGICAL`. |
+| created_by | uuid | No | Usuario que cargo el archivo. |
+| created_at | timestamptz | Si | Fecha de carga. |
+| updated_at | timestamptz | Si | Fecha de ultima actualizacion. |
+
+### Evidencia en compras y gastos
+
+| Campo logico | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| evidence_type | varchar(20) | Si | `NONE`, `PDF` o `URL`. |
+| evidence_file_asset_id | uuid | No | Referencia a `tenant.company_file_asset` cuando `evidence_type=PDF`. |
+| evidence_url | varchar(700) | No | URL `http/https` cuando `evidence_type=URL`. |
+
+Reglas:
+
+- Evidencia es opcional.
+- Para PDF se permite un unico archivo validado por soporte.
+- Para URL no se descarga automaticamente el contenido; solo se guarda referencia validada.
+- Los campos total-only de compras/gastos no exponen IVA ni subtotal al usuario.

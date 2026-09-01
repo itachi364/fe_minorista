@@ -3174,7 +3174,7 @@ Context7 evidence:
 - Decision de diseno: El flyout no debe incluir titulo interno porque reduce el area util y provoca cierres accidentales al seleccionar submodulos. El panel debe estar pegado a la barra lateral o tener puente hover para evitar perdida de foco.
 - Dominio Compras: `Compras` se redefine como registro financiero/documental de facturas de proveedor y control de reinversion. No representa reabastecimiento fisico y no debe crear movimientos de inventario ni aumentar stock.
 - Dominio Inventario: Las entradas fisicas, ajustes, consumos y aumentos de stock pertenecen a `Inventario` o a efectos de venta/servicio aprobados. La opcion `Compra sin inventario` se elimina del selector de uso del item porque ahora los egresos sin stock viven en `Gastos` o `Compras`.
-- Contrato: Las lineas de compra pasan a capturar `description`, `quantity`, `unitCost`, `subtotal`, `tax` y `total`; `productId` queda opcional solo por compatibilidad historica.
+- Contrato: Las lineas de compra ya no representan reabastecimiento de inventario. TASK-252 redefine la captura objetivo como factura documental total-only: `description` y `total`, sin cantidad, costo unitario, subtotal ni IVA visibles para el usuario.
 - Contabilidad: La confirmacion de compra usa evento `PURCHASE_CONFIRMED` y no `INVENTORY_REPLENISHMENT_CONFIRMED`. La cuenta por pagar sigue creandose cuando la compra sea a credito.
 - Autorizacion: Aunque `purchases` sigue enrutado al `inventory-service`, el BFF aplica permisos funcionales `PURCHASES_MANAGE` o `ACCOUNTING_MANAGE`; no se requiere `INVENTORY_MANAGE` para compras documentales.
 - UX formularios: Despues de crear tercero, el formulario se limpia como ya sucede con inventario/fiscal para evitar duplicar datos por accidente.
@@ -3206,5 +3206,33 @@ Context7 evidence:
 - Topic consulted: comandos de desarrollo y build para proyectos Vite.
 - Relevant finding: Vite documenta `npm run dev` para servidor de desarrollo y `npm run build` para generar el build productivo.
 - Decision impact: El README usa comandos actuales de Vite y evita instrucciones desactualizadas para ejecutar la SPA.
+
+### TASK-250 a TASK-258 - Inventario editable, evidencias documentales y QR fiscal
+- Estado: Disenado; pendiente de implementacion.
+- Fase: Fase 34: Inventario editable, evidencias documentales y QR fiscal.
+- Decision de diseno: El producto es un maestro operacional mutable para datos vigentes, pero los historicos fiscales/contables no dependen de su estado actual. Ventas, documentos y reportes deben usar snapshots persistidos de nombre, SKU, impuesto, precio y totales.
+- Inventario: La tabla de productos tendra acciones `Actualizar` e `Inactivar`. `Actualizar` llena el formulario existente y cambia el label a `Actualizar item`. `Inactivar` cambia estado a inactivo y excluye el producto de busquedas operativas POS, sin borrar registros.
+- Codigo de barras: En el formulario de inventario, un barcode existente por empresa cambia a modo actualizacion. La busqueda para mantenimiento puede encontrar activos e inactivos; la busqueda POS conserva solo activos.
+- Compras: `Compras` representa factura/documento de proveedor para control financiero. No aumenta stock, no captura cantidad ni costo unitario y no discrimina IVA; el total se registra como costo total de la factura.
+- Gastos: `Gastos` registra egresos total-only. Subtotal e IVA no son captura del usuario; internamente pueden mapearse como `subtotal=total` y `taxTotal=0` para compatibilidad mientras se migra el contrato.
+- Evidencias: compras y gastos comparten un modelo de soporte opcional: `NONE`, `PDF` o `URL`. PDF permite un unico archivo con MIME/extension valida; URL acepta solo `http/https`. La metadata queda desacoplada del documento transaccional.
+- Storage: se define un puerto de almacenamiento empresarial con adaptadores local/S3-ready. Los objetos se organizan por `companyId` y categoria funcional (`facturas`, `logos`, `fondos`, `evidencias`, `reportes`, `artefactos-fiscales`). En S3 las carpetas son prefijos; en local se crean directorios cuando se guarda el primer archivo.
+- Deudores: el registro manual de cuenta por cobrar no debe filtrar `500`. Si falta tercero, monto, fuente o regla contable, debe responder `400/409` funcional y auditable.
+- QR POS: la tirilla/representacion imprimible debe renderizar QR grafico. En modo `MOCK`, el QR apunta a un comprobante interno construido con base URL parametrizable. En modo DIAN real, se usa el QR o URL retornada por DIAN y no se sustituye por mock.
+- Branding: los colores de marca se capturan con color picker y texto funcional: color principal para botones, menu activo y acciones primarias; color de acento para badges, detalles secundarios y resaltados. El backend conserva validacion hexadecimal.
+
+#### Context7 evidence
+- Library/tool: React.
+- Topic consulted: Controlled forms, file inputs, select inputs and derived state.
+- Relevant finding: React soporta formularios controlados con `value/onChange`; `input type=file` puede restringirse con `accept`; valores calculados deben derivarse del estado base.
+- Decision impact: Productos, evidencias y color pickers se modelan con estado controlado; el modo crear/actualizar se deriva de producto seleccionado/barcode existente.
+- Library/tool: Spring Boot.
+- Topic consulted: Multipart upload and validation.
+- Relevant finding: Spring Boot usa soporte multipart de Servlet y permite configurar limites con `spring.servlet.multipart.*`; Bean Validation permite bloquear requests invalidos antes del caso de uso.
+- Decision impact: Evidencias PDF se validan en backend con limites configurables y errores funcionales.
+- Library/tool: AWS S3 official docs.
+- Topic consulted: SSE-KMS encryption and object key prefixes.
+- Relevant finding: S3 identifica objetos por key, los prefijos se comportan como carpetas en consola y el cifrado SSE-KMS permite proteger objetos con KMS.
+- Decision impact: El diseno productivo usa S3 privado/KMS y prefijos por empresa/categoria, sin exponer bucket/key al navegador.
 
 <!-- END SDD TASK DESIGN TRACEABILITY -->

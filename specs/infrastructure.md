@@ -1702,4 +1702,47 @@ Estado: completada.
 - Control operativo: README debe describir ejecucion local con Docker Compose, ejecucion por servicio, pruebas, SonarQube, Swagger/OpenAPI, migraciones, seguridad y variables de configuracion sin incluir secretos ni planeacion funcional.
 - Validacion documental: la trazabilidad funcional queda en `specs/`; el README queda como ayuda de repositorio para instalacion, operacion local y validacion tecnica.
 
+## TASK-250 a TASK-258 infraestructura objetivo
+
+Estado: documentado; pendiente de implementacion.
+
+### Storage empresarial local y AWS
+
+- Desarrollo: preparar almacenamiento local mediante volumen Docker o contenedor compatible con S3 para evidencias, logos, fondos, reportes y artefactos fiscales sin requerir Terraform.
+- Produccion: usar S3 privado con cifrado SSE-KMS, bucket no publico, politicas IAM de minimo privilegio y lifecycle por categoria.
+- Acceso usuario final: el navegador no recibe bucket, key privada ni credenciales. Las lecturas se intermedian por BFF o URLs controladas de aplicacion.
+- Convencion de prefijos: `{environment}/{companyId}/{businessCategory}/{yyyy}/{mm}/{uuid}-{safeFileName}`.
+- Categorias funcionales iniciales: `facturas`, `logos`, `fondos`, `evidencias`, `reportes`, `artefactos-fiscales`.
+- Metadata: PostgreSQL conserva referencia privada, hash, MIME, tamano, categoria, empresa, usuario y fechas; no conserva binarios.
+- Uploads: Spring multipart con limites por variable de entorno, validacion MIME/extension y auditoria sin payload binario.
+
+Variables objetivo:
+
+```env
+COMPANY_FILE_STORAGE_MODE=local
+COMPANY_FILE_STORAGE_BASE_PATH=/var/lib/nexofiscal/company-files
+COMPANY_FILE_STORAGE_BUCKET=
+COMPANY_FILE_STORAGE_KMS_KEY_ID=
+COMPANY_FILE_MAX_PDF_SIZE=5MB
+APP_PUBLIC_BASE_URL=http://localhost:5173
+POS_MOCK_RECEIPT_BASE_URL=http://localhost:5173
+```
+
+### QR POS y enlaces publicos parametrizables
+
+- `APP_PUBLIC_BASE_URL` gobierna links de aplicacion visibles al usuario.
+- `POS_MOCK_RECEIPT_BASE_URL` o parametro equivalente permite construir QR mock sin hardcodear dominio.
+- En modo DIAN real, el QR se deriva de la respuesta del proveedor DIAN y no de la URL mock.
+- En ambientes desplegados, la falta de URL base requerida debe fallar cerrado con error funcional de configuracion.
+
+### Impacto por tarea
+
+- TASK-250/TASK-251: sin infraestructura nueva; cambios en API, persistencia y SPA.
+- TASK-252/TASK-253: consumen storage empresarial para evidencias opcionales PDF/URL.
+- TASK-254: agrega storage local/S3-ready y variables de entorno.
+- TASK-255: sin infraestructura nueva; corrige errores funcionales de contabilidad/deudores.
+- TASK-256: puede requerir libreria de generacion QR en `billing-service`; no debe llamar servicios externos para QR mock.
+- TASK-257: sin infraestructura nueva; mejora UI y validacion de branding.
+- TASK-258: sin infraestructura nueva; valida reportes con snapshots historicos.
+
 <!-- END SDD TASK INFRASTRUCTURE TRACEABILITY -->

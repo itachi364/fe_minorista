@@ -541,3 +541,97 @@ Flujos alternos:
 - Nota credito/debito aplica sobre factura electronica de venta segun reglas aprobadas.
 
 Acceptance criteria: AC-254, AC-255, AC-256.
+
+## UC-036: Actualizar o inactivar producto
+
+Actor: Administrador o responsable de inventario.
+
+Precondiciones:
+- Existe empresa activa.
+- El usuario tiene permiso de inventario.
+
+Flujo principal:
+1. El actor abre `Inventario`.
+2. El sistema carga automaticamente productos de la empresa.
+3. El actor hace clic en `Actualizar` sobre un producto.
+4. El sistema carga el formulario con los datos del producto y cambia la accion principal a `Actualizar item`.
+5. El actor modifica datos maestros permitidos.
+6. El sistema valida unicidad de SKU/codigo de barras, guarda cambios, audita y refresca la tabla.
+
+Flujo alterno:
+- Si el actor hace clic en `Inactivar`, el producto queda fuera de ventas nuevas, pero permanece disponible para historicos y reportes.
+- Si el actor digita o escanea un codigo de barras existente en el formulario, el sistema carga ese producto y pasa a modo actualizacion.
+
+Acceptance criteria: AC-359, AC-360, AC-361, AC-362.
+
+## UC-037: Registrar compra documental con evidencia opcional
+
+Actor: Administrador, contador o usuario con permiso de compras.
+
+Flujo principal:
+1. El actor abre `Compras`.
+2. El sistema carga compras recientes y proveedores activos.
+3. El actor captura proveedor, fecha, concepto, condicion de pago, vencimiento si aplica y total de factura.
+4. El actor opcionalmente selecciona evidencia: ninguna, PDF unico o URL.
+5. Si selecciona PDF, la aplicacion valida un solo archivo PDF y lo envia al storage empresarial.
+6. El sistema guarda la compra documental sin aumentar inventario y registra auditoria.
+
+Acceptance criteria: AC-363, AC-365, AC-366, AC-367, AC-368, AC-369.
+
+## UC-038: Registrar gasto total-only
+
+Actor: Administrador, contador o usuario con permiso de gastos.
+
+Flujo principal:
+1. El actor abre `Gastos`.
+2. El sistema carga gastos recientes y proveedores activos.
+3. El actor captura concepto, tipo de egreso, proveedor opcional, fecha, condicion de pago, vencimiento si aplica y total.
+4. El actor opcionalmente adjunta PDF o URL de soporte.
+5. El sistema guarda el gasto sin inventario, contabiliza segun regla empresarial y audita.
+
+Acceptance criteria: AC-364, AC-365, AC-366, AC-367.
+
+## UC-039: Crear deudor sin error interno
+
+Actor: Administrador, contador o usuario con permiso de deudores.
+
+Flujo principal:
+1. El actor abre `Deudores`.
+2. El sistema carga terceros y cuentas por cobrar recientes.
+3. El actor selecciona tercero deudor, captura concepto, fecha, vencimiento y monto.
+4. El backend crea cuenta por cobrar manual, saldo inicial, asiento contable y auditoria.
+
+Flujos alternos:
+- Si falta tercero, monto o regla contable, el backend responde error funcional `400/409`.
+- Ningun error esperado de validacion o parametrizacion debe responder `500`.
+
+Acceptance criteria: AC-370, AC-371.
+
+## UC-040: Imprimir comprobante POS con QR parametrizable
+
+Actor: Cajero, vendedor o usuario autorizado para consultar venta.
+
+Precondiciones:
+- Existe venta confirmada con documento fiscal mock o real.
+
+Flujo principal:
+1. El actor cierra venta o solicita reimpresion.
+2. `billing-service` resuelve contenido QR del documento.
+3. En modo mock, construye URL de comprobante desde parametro de URL base.
+4. En modo DIAN real, usa QR/URL entregado por DIAN.
+5. El comprobante renderiza QR grafico escaneable con subtotal, IVA y total.
+6. El sistema audita la generacion/impresion.
+
+Acceptance criteria: AC-372, AC-373, AC-374, AC-376.
+
+## UC-041: Configurar colores de marca empresarial
+
+Actor: ROOT o administrador empresarial autorizado.
+
+Flujo principal:
+1. El actor abre marca empresarial.
+2. El sistema muestra explicacion del color principal y color de acento.
+3. El actor selecciona colores con color picker.
+4. El sistema valida hexadecimal, guarda branding y aplica la vista previa.
+
+Acceptance criteria: AC-375, AC-376.

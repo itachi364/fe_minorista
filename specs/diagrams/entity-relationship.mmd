@@ -1,6 +1,7 @@
 erDiagram
   COMPANY ||--o{ COMPANY_LICENSE : has
   COMPANY ||--o| COMPANY_BRANDING : configures
+  COMPANY ||--o{ COMPANY_FILE_ASSET : stores
   COMPANY ||--o{ USER_COMPANY : authorizes
   USER_ACCOUNT ||--o{ USER_COMPANY : belongs_to
   USER_ACCOUNT ||--o{ GLOBAL_USER_ROLE : has
@@ -83,6 +84,8 @@ erDiagram
   REPORT_EXPORT_JOB ||--o{ REPORT_EXPORT_DOWNLOAD_ATTEMPT : records
   COMPANY ||--o{ REPORT_EXECUTION : requests
   COMPANY ||--o{ REPORT_EXPORT_JOB : owns
+  COMPANY_FILE_ASSET ||--o{ PURCHASE : evidence
+  COMPANY_FILE_ASSET ||--o{ ACCOUNTING_EXPENSE : evidence
 
   COMPANY {
     uuid id PK
@@ -96,12 +99,27 @@ erDiagram
   COMPANY_BRANDING {
     uuid company_id PK
     varchar display_name
+    varchar primary_color
+    varchar accent_color
     varchar main_logo_storage_key
     varchar header_logo_storage_key
     varchar login_logo_storage_key
     varchar favicon_storage_key
     varchar main_logo_hash
     varchar favicon_hash
+  }
+
+  COMPANY_FILE_ASSET {
+    uuid id PK
+    uuid company_id FK
+    varchar business_category
+    varchar storage_provider
+    varchar storage_reference
+    varchar safe_file_name
+    varchar content_type
+    bigint size_bytes
+    varchar content_hash
+    varchar status
   }
 
   COMPANY_LICENSE {
@@ -163,6 +181,7 @@ erDiagram
     varchar tax_code
     numeric tax_rate
     boolean stock_tracked
+    boolean active
   }
 
   PURCHASE {
@@ -170,11 +189,13 @@ erDiagram
     uuid company_id FK
     uuid supplier_id FK
     date purchase_date
+    varchar concept
     varchar payment_method_code
     varchar status
-    numeric subtotal
-    numeric tax_total
     numeric total
+    varchar evidence_type
+    uuid evidence_file_asset_id FK
+    varchar evidence_url
   }
 
   PURCHASE_LINE {
@@ -182,9 +203,6 @@ erDiagram
     uuid purchase_id FK
     uuid product_id FK "optional historical reference"
     varchar description
-    numeric quantity
-    numeric unit_cost
-    numeric tax_rate
     numeric line_total
   }
 
@@ -248,6 +266,7 @@ erDiagram
     varchar prefix
     bigint number
     varchar cufe_cude
+    varchar qr_content
     numeric total
     varchar status
   }
@@ -320,6 +339,20 @@ erDiagram
     date entry_date
     varchar source_type
     uuid source_id
+    varchar status
+  }
+
+  ACCOUNTING_EXPENSE {
+    uuid id PK
+    uuid company_id FK
+    uuid supplier_id FK
+    varchar expense_type
+    date expense_date
+    varchar concept
+    numeric total
+    varchar evidence_type
+    uuid evidence_file_asset_id FK
+    varchar evidence_url
     varchar status
   }
 

@@ -635,10 +635,21 @@ Estado TASK-048:
 - `POST /api/v1/products`
 - `GET /api/v1/products/{productId}`
 - `GET /api/v1/products/by-barcode/{barcode}`
+- `GET /api/v1/products/by-barcode/{barcode}?includeInactive=true`
+- `PUT /api/v1/products/{productId}`
+- `PUT /api/v1/products/{productId}/deactivate`
 - `GET /api/v1/products/{productId}/availability?quantity=`
 - `GET /api/v1/products/{productId}/kardex`
 - `GET /api/v1/products/{serviceProductId}/supply-references`
 - `GET /api/v1/products/{serviceProductId}/supply-consumption-suggestions`
+
+Reglas TASK-250/TASK-251:
+
+- `POST /api/v1/products` crea productos nuevos; si SKU o codigo de barras ya existen para la empresa, responde `409 DUPLICATE_RESOURCE`.
+- `PUT /api/v1/products/{productId}` actualiza datos maestros vigentes, no stock historico ni snapshots de ventas/documentos ya emitidos.
+- `PUT /api/v1/products/{productId}/deactivate` marca `active=false`; no elimina producto ni movimientos.
+- La busqueda POS usa productos activos. La busqueda de mantenimiento puede usar `includeInactive=true` para permitir actualizacion o reactivacion futura.
+- Las respuestas de reportes deben basarse en snapshots historicos o joins tolerantes a inactivos; un producto inactivo no puede romper reportes.
 
 ### Compras
 
@@ -754,6 +765,14 @@ Estado TASK-048:
   "createdAt": "2026-05-20T10:00:00Z"
 }
 ```
+
+### ProductUpdateRequest
+
+Igual a `ProductRequest`, excepto:
+
+- `initialStock` no modifica stock existente en actualizacion.
+- `sku` y `barcode` deben mantenerse unicos por `companyId`.
+- Los cambios de nombre, descripcion, precio, costo, impuesto y flags operativos aplican solo hacia operaciones futuras.
 
 ### SuggestedSupplyConsumptionResponse
 
@@ -3149,21 +3168,31 @@ Payload objetivo:
 ```json
 {
   "supplierId": "uuid",
+  "purchaseDate": "2026-09-01",
+  "concept": "Factura proveedor cafe",
   "paymentCondition": "CASH",
   "dueDate": null,
-  "evidenceUrl": "https://example.local/factura-proveedor.pdf",
+  "total": 59500,
+  "evidence": {
+    "type": "URL",
+    "url": "https://example.local/factura-proveedor.pdf",
+    "fileAssetId": null
+  },
   "lines": [
     {
       "description": "Factura proveedor cafe",
-      "quantity": 10,
-      "unitCost": 5000,
-      "subtotal": 50000,
-      "tax": 9500,
       "total": 59500
     }
   ]
 }
 ```
+
+Reglas TASK-252:
+
+- `quantity`, `unitCost`, `subtotal` y `tax` no son campos de captura para compras documentales.
+- El total de compra es no discriminado desde la perspectiva del negocio usuario.
+- Si el modelo interno conserva campos historicos, debe mapear `subtotal=total`, `taxTotal=0`, `quantity=1` y `unitCost=total` solo como compatibilidad tecnica, sin exponerlo en UI.
+- La evidencia es opcional. `type=NONE` no requiere soporte, `type=URL` requiere URL `http/https`, `type=PDF` requiere `fileAssetId` de un PDF previamente validado.
 
 ### Gastos operativos
 
@@ -3184,10 +3213,12 @@ Payload objetivo:
   "concept": "Energia local comercial",
   "paymentCondition": "CASH",
   "dueDate": null,
-  "evidenceUrl": "https://example.local/soporte.pdf",
-  "subtotal": 100000,
-  "taxTotal": 19000,
-  "total": 119000
+  "total": 119000,
+  "evidence": {
+    "type": "PDF",
+    "fileAssetId": "uuid",
+    "url": null
+  }
 }
 ```
 
@@ -3197,6 +3228,44 @@ Reglas:
 - `expenseType=OPERATING_EXPENSE` genera asiento mediante `OPERATING_EXPENSE_CONFIRMED`.
 - `expenseType=ASSET_PURCHASE` genera asiento mediante `ASSET_PURCHASE_CONFIRMED`.
 - Si `paymentCondition=CREDIT`, crea cuenta por pagar.
+- `subtotal` y `taxTotal` no son campos de captura; si existen en persistencia por compatibilidad, se calculan como `subtotal=total` y `taxTotal=0`.
+- La evidencia opcional comparte el contrato `NONE|PDF|URL` definido para compras.
+
+### Archivos empresariales y evidencias
+
+```http
+POST /api/v1/companies/{companyId}/files
+X-Company-Id: {companyId}
+Content-Type: multipart/form-data
+```
+
+Campos multipart:
+
+- `businessCategory`: `facturas`, `logos`, `fondos`, `evidencias`, `reportes` o `artefactos-fiscales`.
+- `file`: archivo unico; para evidencias de compras/gastos fase 34 solo `application/pdf`.
+
+Respuesta:
+
+```json
+{
+  "id": "uuid",
+  "companyId": "uuid",
+  "businessCategory": "evidencias",
+  "storageReference": "private-reference",
+  "fileName": "factura-proveedor.pdf",
+  "contentType": "application/pdf",
+  "sizeBytes": 120000,
+  "contentHash": "sha256:...",
+  "createdAt": "2026-09-01T10:00:00Z"
+}
+```
+
+Reglas:
+
+- El navegador no recibe bucket, key interna, credenciales ni URL publica permanente.
+- En desarrollo el adaptador puede escribir en volumen/contenedor local; en produccion usa S3 privado/KMS.
+- Los prefijos se construyen por ambiente, empresa y categoria funcional.
+- Las descargas futuras deben pasar por BFF/RBAC y auditoria.
 
 ### Deudores y cuentas por cobrar
 
@@ -3242,6 +3311,26 @@ Reglas:
 
 - La cuenta por cobrar conserva saldo, estado `PENDING`, `PARTIALLY_PAID`, `PAID` u `OVERDUE`.
 - Todo abono genera asiento contable y auditoria.
+- Un deudor manual puede usar `sourceType=MANUAL` y `sourceId` generado por backend cuando no exista documento origen.
+- Falta de tercero, monto invalido, regla contable faltante o configuracion incompleta debe responder `400/409` funcional, no `500`.
+
+### QR parametrizable en comprobante POS
+
+Reglas TASK-256:
+
+- La representacion imprimible incluye QR grafico embebido o referenciado de forma segura.
+- En modo `MOCK`, el contenido QR se construye desde `APP_PUBLIC_BASE_URL` o parametro equivalente hacia una ruta controlada de consulta de comprobante.
+- En modo DIAN real, el contenido QR viene de la respuesta DIAN/proveedor y prevalece sobre el valor mock.
+- Si el servicio no puede construir un QR valido para el modo activo, responde error funcional de configuracion antes de entregar comprobante incompleto.
+
+### Marca empresarial con color picker
+
+Reglas TASK-257:
+
+- `primaryColor` y `accentColor` siguen siendo valores hexadecimales validados por backend.
+- La SPA debe capturarlos con control `input type=color` y mostrar descripcion breve de impacto visual.
+- Color principal: botones primarios, resaltado de menu activo y acciones principales.
+- Color acento: badges, detalles secundarios y estados de apoyo.
 
 ### Reporte diario de ganancias y gastos
 

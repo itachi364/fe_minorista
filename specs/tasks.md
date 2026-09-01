@@ -4538,7 +4538,7 @@
 
 - [x] TASK-178: Ejecutar limpieza final legacy y artefactos huerfanos antes de nuevas mejoras
   - Estado: DONE
-  - Requisitos: RF-104, RF-125.
+  - Requisitos: RF-104, RF-262.
   - Acceptance criteria: AC-189, AC-191, AC-192.
   - Descripcion: Auditar y limpiar residuos legacy/huerfanos del repositorio y PostgreSQL local antes de continuar con nuevas capacidades: artefactos generados/IDE ignorados, guias historicas obsoletas, lenguaje ambiguo de proveedor DIAN visible, tablas `public.*` vacias y documentacion que aun sugiera contratos legacy activos.
   - Archivos:
@@ -5020,7 +5020,7 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
 
 - [x] TASK-197: Materializar rol OWNER empresarial al crear administrador inicial
   - Estado: DONE
-  - Requisitos: RF-106, RF-107, RF-110, RF-162.
+  - Requisitos: RF-106, RF-107, RF-110, RF-263.
   - Acceptance criteria: AC-068, AC-078, AC-228.
   - Descripcion: Al asignar el rol legacy `OWNER` por ROOT, crear/reutilizar un `company_role` visible con todos los permisos `COMPANY` y asignarlo al administrador inicial para que aparezca en el panel empresarial.
   - Archivos:
@@ -5042,7 +5042,7 @@ Nota de prioridad: esta fase queda documentada como backlog aprobado, ejecutable
 
 - [x] TASK-198: Mejorar confirmacion POS ante configuracion fiscal faltante
   - Estado: DONE
-  - Requisitos: RF-006, RF-125, RF-163.
+  - Requisitos: RF-006, RF-125, RF-264.
   - Acceptance criteria: AC-152, AC-156, AC-229.
   - Descripcion: Reemplazar mensajes tecnicos `active issuer profile is required` y `active numbering resolution is required` por errores funcionales en espanol y guiar la SPA al modulo Fiscal.
   - Archivos:
@@ -6178,7 +6178,7 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
   - Estado: DONE
   - Requisitos: RF-235.
   - Acceptance criteria:
-    - AC-342: Un gasto operativo registra concepto, proveedor opcional, metodo de pago, IVA si aplica y asiento contable sin movimiento de inventario.
+    - AC-342: Un gasto operativo registra concepto, proveedor opcional, metodo de pago, valor total no discriminado y asiento contable sin movimiento de inventario.
   - Descripcion: Crear flujo para servicios publicos, impuestos, reparaciones, imprevistos, arriendo, transporte, deudas y otros gastos del negocio.
   - Archivos propuestos:
     - `services/accounting-service/**`
@@ -6187,7 +6187,7 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
     - `specs/database-design.md`
   - Resultado:
     - Se agrego pantalla `Gastos` bajo Contabilidad con formulario, filtros, listado y accion de confirmacion.
-    - El payload envia proveedor opcional, fecha, concepto, subtotal, IVA, total, condicion de pago, vencimiento y soporte.
+    - El payload implementado inicialmente envia proveedor opcional, fecha, concepto, subtotal, IVA, total, condicion de pago, vencimiento y soporte; TASK-253 redefine la captura de usuario como total-only.
     - Al confirmar, el backend genera asiento contable `OPERATING_EXPENSE_CONFIRMED` y cuenta por pagar cuando corresponde.
   - Validacion:
     - `.\mvnw.cmd -pl services/accounting-service -am test`: 68 tests OK.
@@ -6394,3 +6394,160 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
   - Validacion:
     - `rg -n "TASK-|Backlog|backlog|Fase|fase|Pendiente|pendiente|tarea|tareas" README.md`
     - `rg -n "^## UC-" specs/use-cases.md`
+
+## Fase 34: Inventario editable, evidencias documentales y QR fiscal
+
+Nota de estado: fase documentada y pendiente de implementacion. No se ejecuta codigo, Docker, migraciones ni despliegue hasta aprobacion explicita posterior.
+
+- [ ] TASK-250: Disenar e implementar actualizacion e inactivacion de productos
+  - Estado: PENDING.
+  - Requisitos: RF-246, RF-247, RF-249, RF-261.
+  - Acceptance criteria: AC-359, AC-361, AC-362, AC-376.
+  - Descripcion: Agregar acciones `Actualizar` e `Inactivar` en la tabla de productos. La actualizacion reutiliza el formulario existente y la inactivacion retira el producto de ventas futuras sin borrar historicos.
+  - Archivos previstos:
+    - `services/inventory-service/**`
+    - `services/bff-service/**`
+    - `apps/facturaelectronica-web/src/features/inventory/ProductForm.jsx`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+    - `specs/**`
+  - Dependencias:
+    - TASK-225.
+    - TASK-226.
+    - TASK-248.
+  - Validacion propuesta:
+    - Tests de dominio/API para actualizar, inactivar y evitar duplicados por empresa.
+    - Tests frontend para modo crear/actualizar y botones por fila.
+
+- [ ] TASK-251: Disenar e implementar busqueda por codigo de barras como modo actualizacion
+  - Estado: PENDING.
+  - Requisitos: RF-248, RF-249.
+  - Acceptance criteria: AC-360, AC-361.
+  - Descripcion: Cuando el codigo de barras escrito o escaneado ya exista, la SPA debe cargar el producto y cambiar el label a `Actualizar item`, evitando duplicados accidentales.
+  - Archivos previstos:
+    - `services/inventory-service/**`
+    - `apps/facturaelectronica-web/src/features/inventory/ProductForm.jsx`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+  - Dependencias:
+    - TASK-250.
+  - Validacion propuesta:
+    - Test backend de busqueda por barcode activo/inactivo segun contrato.
+    - Test frontend de escaneo/digitacion y cambio de modo.
+
+- [ ] TASK-252: Disenar e implementar compras documentales con costo total no discriminado
+  - Estado: PENDING.
+  - Requisitos: RF-250, RF-252, RF-253, RF-256.
+  - Acceptance criteria: AC-363, AC-365, AC-366, AC-367.
+  - Descripcion: Simplificar compras para registrar facturas de proveedor como costo total, sin cantidad, costo unitario, subtotal ni IVA. La evidencia queda opcional como PDF unico o URL.
+  - Archivos previstos:
+    - `services/inventory-service/**`
+    - `services/bff-service/**`
+    - `apps/facturaelectronica-web/src/features/purchases/PurchasesPanel.jsx`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+  - Dependencias:
+    - TASK-241.
+    - TASK-248.
+  - Validacion propuesta:
+    - Tests de contrato de compra total-only.
+    - Tests UI sin campos de cantidad/costo unitario/IVA.
+
+- [ ] TASK-253: Disenar e implementar gastos total-only con evidencia opcional
+  - Estado: PENDING.
+  - Requisitos: RF-251, RF-252, RF-253, RF-256.
+  - Acceptance criteria: AC-364, AC-365, AC-366, AC-367.
+  - Descripcion: Ajustar gastos para registrar egresos por valor total no discriminado, con soporte opcional igual al flujo de compras.
+  - Archivos previstos:
+    - `services/accounting-service/**`
+    - `services/bff-service/**`
+    - `apps/facturaelectronica-web/src/features/expenses/ExpensesPanel.jsx`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+  - Dependencias:
+    - TASK-242.
+  - Validacion propuesta:
+    - Tests contables para subtotal=total y taxTotal=0 cuando el usuario captura total-only.
+    - Tests frontend de evidencia PDF/URL/opcional.
+
+- [ ] TASK-254: Disenar e implementar almacenamiento empresarial local y S3-ready
+  - Estado: PENDING.
+  - Requisitos: RF-254, RF-255, RF-256, RF-259, RF-261.
+  - Acceptance criteria: AC-367, AC-368, AC-369, AC-374, AC-376.
+  - Descripcion: Centralizar metadata y storage de archivos empresariales con adaptador local/S3. En desarrollo se preparara contenedor o volumen compatible con S3/local; en produccion S3 privado/KMS.
+  - Archivos previstos:
+    - `services/tenant-service/**`
+    - `services/bff-service/**`
+    - `docker-compose*.yml`
+    - `infra/terraform/**`
+    - `specs/infrastructure.md`
+  - Dependencias:
+    - TASK-181.
+    - TASK-190 a TASK-196.
+  - Validacion propuesta:
+    - Tests de validacion de PDF, metadata y prefijo por empresa/categoria.
+    - Validacion local de almacenamiento sin secretos reales.
+
+- [ ] TASK-255: Corregir creacion de deudores sin error interno
+  - Estado: PENDING.
+  - Requisitos: RF-257.
+  - Acceptance criteria: AC-370, AC-371.
+  - Descripcion: Investigar y corregir el `500` al crear deudor para que datos invalidos o reglas contables faltantes respondan errores funcionales y datos validos creen cuenta por cobrar.
+  - Archivos previstos:
+    - `services/accounting-service/**`
+    - `services/bff-service/**`
+    - `apps/facturaelectronica-web/src/features/receivables/ReceivablesPanel.jsx`
+  - Dependencias:
+    - TASK-243.
+    - TASK-245.
+  - Validacion propuesta:
+    - Tests unitarios/integracion para deudor valido, regla faltante y request incompleto.
+
+- [ ] TASK-256: Disenar e implementar QR grafico parametrizable para comprobante POS
+  - Estado: PENDING.
+  - Requisitos: RF-258, RF-259, RF-261.
+  - Acceptance criteria: AC-372, AC-373, AC-374, AC-376.
+  - Descripcion: Generar QR grafico escaneable en la representacion imprimible POS. En `MOCK` apunta a una URL propia parametrizada; en modo real respeta QR/URL DIAN.
+  - Archivos previstos:
+    - `services/billing-service/**`
+    - `services/dian-provider-service/**`
+    - `services/bff-service/**`
+    - `apps/facturaelectronica-web/src/features/sales/**`
+    - `specs/api-contract.md`
+  - Dependencias:
+    - TASK-188.
+    - TASK-217.
+    - TASK-153 a TASK-163.
+  - Validacion propuesta:
+    - Tests de QR mock con URL parametrizada.
+    - Tests de preferencia de QR DIAN real cuando exista.
+
+- [ ] TASK-257: Mejorar configuracion visual de marca empresarial
+  - Estado: PENDING.
+  - Requisitos: RF-260, RF-261.
+  - Acceptance criteria: AC-375, AC-376.
+  - Descripcion: Reemplazar campos de texto de color por color pickers, agregar explicacion de impacto de color principal/acento y mantener validacion backend.
+  - Archivos previstos:
+    - `apps/facturaelectronica-web/src/features/company/CompanyBrandingPanel.jsx`
+    - `apps/facturaelectronica-web/src/styles.css`
+    - `services/tenant-service/**`
+  - Dependencias:
+    - TASK-180.
+    - TASK-182.
+  - Validacion propuesta:
+    - Tests frontend de controles color y payload hexadecimal.
+
+- [ ] TASK-258: Validar reportes con productos inactivos y compras/gastos total-only
+  - Estado: PENDING.
+  - Requisitos: RF-249, RF-250, RF-251.
+  - Acceptance criteria: AC-361, AC-363, AC-364.
+  - Descripcion: Asegurar que reportes historicos usen snapshots de venta/compra/gasto y no fallen si productos o proveedores cambian estado.
+  - Archivos previstos:
+    - `services/reporting-service/**`
+    - `services/billing-service/**`
+    - `services/inventory-service/**`
+    - `services/accounting-service/**`
+  - Dependencias:
+    - TASK-234.
+    - TASK-236.
+  - Validacion propuesta:
+    - Tests de reporte de ventas por producto con producto inactivo.
+    - Tests de reporte diario con compras/gastos total-only.

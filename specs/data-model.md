@@ -904,3 +904,50 @@ Tablas futuras planificadas:
 - Activos y movimientos de activos basicos.
 - Cuentas por cobrar y por pagar.
 - Asientos derivados de nomina y pagos diarios.
+
+## Extensiones TASK-250 a TASK-258
+
+### Producto como maestro mutable con historico estable
+
+`inventory.product` conserva el estado vigente del item. Puede actualizarse o inactivarse, pero los hechos historicos no deben depender de volver a leer el maestro actual para reconstruir lo ocurrido.
+
+Reglas:
+
+- Ventas y documentos fiscales guardan snapshot de producto, impuesto, precio y totales en sus lineas.
+- Reportes historicos usan snapshots o joins tolerantes a `active=false`.
+- Productos inactivos no se ofrecen para nuevas ventas POS.
+- El barcode existente en mantenimiento identifica el producto y activa modo actualizacion.
+
+### Compra documental total-only
+
+`inventory.purchase` representa factura o documento de proveedor para control administrativo/financiero. No incrementa inventario.
+
+Modelo logico:
+
+- Encabezado: proveedor, fecha, concepto, condicion de pago, vencimiento opcional, total y evidencia opcional.
+- Lineas opcionales: descripcion y total por concepto si se requiere desglose administrativo.
+- No hay cantidad, costo unitario, subtotal ni IVA como datos capturados por el usuario.
+
+### Gasto operativo total-only
+
+`accounting.accounting_expense` representa egresos del negocio. El usuario captura total no discriminado; si el backend conserva subtotal/IVA por compatibilidad, se derivan internamente como subtotal igual al total e IVA cero.
+
+### Archivo empresarial
+
+`tenant.company_file_asset` centraliza metadata de archivos empresariales. El storage fisico puede ser local/S3, pero el dominio solo maneja referencias privadas.
+
+Relaciones logicas:
+
+- Compras y gastos pueden referenciar `company_file_asset` como evidencia PDF.
+- Branding puede reutilizar la misma estrategia de storage para logos/favicon/fondos cuando se migre desde el storage especifico vigente.
+- Reportes y artefactos fiscales pueden usar la misma convencion de prefijos por empresa/categoria.
+
+### QR de comprobante POS
+
+`billing.electronic_document.qr_content` conserva el contenido canonico del QR. La representacion imprimible convierte ese contenido en una imagen QR escaneable.
+
+Reglas:
+
+- Modo mock: contenido construido desde URL base parametrizable de NexoFiscal.
+- Modo DIAN real: contenido retornado por DIAN/proveedor.
+- El QR no debe depender de valores hardcodeados ni de URLs privadas de storage.

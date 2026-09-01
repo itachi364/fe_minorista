@@ -234,3 +234,15 @@ Reglas de migracion:
 - Fase 20 cierra el backlog DIAN real en `TASK-145` a `TASK-163`; reportes asincronos avanzados no se ejecutan antes de ese cierre.
 - La normatividad cambia y requiere mantenimiento continuo.
 - El modelo contable debe ser validado por contador.
+
+## Decision TASK-250 a TASK-258
+
+La fase 34 se documenta como objetivo pendiente para cerrar inconsistencias de UX y dominio antes de seguir ampliando funcionalidades.
+
+- `inventory-service` mantiene propiedad sobre productos, stock y kardex; productos pueden actualizarse/inactivarse sin borrar historicos.
+- `billing-service` debe tratar el QR como parte del artefacto fiscal/imprimible y renderizarlo graficamente desde contenido mock o DIAN real.
+- `inventory-service` conserva compras documentales como control financiero de proveedor, sin aumentar stock.
+- `accounting-service` conserva gastos y deudores; gastos se simplifican a total-only y deudores no deben producir `500` por reglas de negocio esperadas.
+- `tenant-service` es el candidato natural para centralizar metadata de archivos empresariales porque ya administra empresa y branding; otros servicios guardan referencias privadas.
+- El BFF sigue siendo el borde publico para autorizacion, auditoria, rutas de archivo y errores funcionales.
+- El frontend debe mantener formularios controlados y estados claros: crear/actualizar producto, evidencia opcional, color picker y errores funcionales visibles.

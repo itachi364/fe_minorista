@@ -377,9 +377,9 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-122: Cuando una empresa alcance un limite de licencia, el backend debe bloquear la operacion con mensaje funcional claro y la UI debe mostrarlo como error de regla de negocio.
 - RF-123: La administracion de empresa debe diferenciar alcance ROOT y alcance empresarial: ROOT puede crear, actualizar, activar e inactivar empresas; OWNER/ADMIN empresarial solo puede actualizar la empresa activa y no debe ver acciones de creacion de nuevas empresas.
 - RF-124: La UI debe mostrar nombres de empresa y etiquetas de permisos/modulos en espanol, sin exponer UUID como dato principal al usuario final; los codigos internos pueden permanecer en ingles en API, backend y base de datos.
-- RF-125: Antes de implementar nuevas mejoras, el proyecto debe quedar limpio de artefactos legacy/huerfanos: codigo runtime legacy sin uso, documentacion historica obsoleta, artefactos generados/IDE ignorados y tablas `public.*` vacias deben retirarse o quedar documentados con decision explicita.
-- RF-165: Cuando `ROOT` cree el administrador inicial de una empresa, el sistema debe crear de forma idempotente un rol empresarial `OWNER`, asignarlo al administrador y mostrarlo en su panel como `Administrador propietario`.
-- RF-166: La confirmacion POS debe distinguir falta de permisos de falta de configuracion fiscal. Si no existe emisor fiscal activo o resolucion activa, el backend debe retornar error funcional claro y la SPA debe guiar al usuario hacia configuracion fiscal.
+- RF-262: Antes de implementar nuevas mejoras, el proyecto debe quedar limpio de artefactos legacy/huerfanos: codigo runtime legacy sin uso, documentacion historica obsoleta, artefactos generados/IDE ignorados y tablas `public.*` vacias deben retirarse o quedar documentados con decision explicita.
+- RF-263: Cuando `ROOT` cree el administrador inicial de una empresa, el sistema debe crear de forma idempotente un rol empresarial `OWNER`, asignarlo al administrador y mostrarlo en su panel como `Administrador propietario`.
+- RF-264: La confirmacion POS debe distinguir falta de permisos de falta de configuracion fiscal. Si no existe emisor fiscal activo o resolucion activa, el backend debe retornar error funcional claro y la SPA debe guiar al usuario hacia configuracion fiscal.
 - RF-167: Todos los permisos y modulos RBAC visibles en frontend deben traducirse mediante recursos `i18next`; ningun permiso vigente debe mostrarse con fallback en ingles como `Sales Cancel`.
 - RF-168: El modulo Fiscal debe permitir registrar varios emisores fiscales por empresa, listar su estado y activar/inactivar emisores, garantizando que solo exista un emisor activo por empresa.
 - RF-169: El modulo Fiscal debe permitir registrar varias resoluciones de numeracion por empresa, listar su estado y activar/inactivar resoluciones, garantizando una sola resolucion activa por empresa, tipo de documento fiscal y ambiente.
@@ -458,6 +458,22 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-243: El aumento, disminucion, ajuste y consumo de inventario debe realizarse desde `Inventario` o desde efectos de venta/servicio aprobados; `Compras` solo conserva soporte financiero/documental.
 - RF-244: El formulario de `Compras` debe capturar conceptos libres de factura y no exigir seleccion de `Producto/Insumo`; el selector de uso de item en `Inventario` no debe incluir `Compra sin inventario`.
 - RF-245: El README debe funcionar como guia operativa del repositorio, sin planeacion ni backlog funcional; la trazabilidad de trabajo vive en los documentos SDD especializados.
+- RF-246: El modulo de inventario debe permitir actualizar productos existentes desde la tabla, reutilizando el formulario actual y cambiando la accion principal a `Actualizar item`.
+- RF-247: El modulo de inventario debe permitir inactivar productos que ya no se venden, sin eliminarlos ni romper historicos de ventas, kardex, documentos fiscales o reportes.
+- RF-248: Si el usuario digita o escanea un codigo de barras ya existente en el formulario de inventario, la SPA debe cargar el producto asociado y cambiar automaticamente a modo actualizacion.
+- RF-249: Las consultas operativas de ventas solo deben ofrecer productos activos, mientras los reportes historicos deben seguir mostrando productos inactivos usados anteriormente mediante snapshots o datos historicos.
+- RF-250: El modulo `Compras` debe registrar facturas de proveedor como costo total no discriminado; no debe capturar cantidad, costo unitario, subtotal ni IVA porque esos valores son controlados por el proveedor.
+- RF-251: El modulo `Gastos` debe registrar egresos como costo total no discriminado; no debe exigir subtotal ni IVA discriminado.
+- RF-252: Compras y gastos deben permitir soporte/evidencia opcional con tres estados: sin evidencia, PDF unico o URL externa validada.
+- RF-253: Cuando la evidencia sea PDF, el frontend debe aceptar un unico archivo PDF y el backend debe validar tipo MIME, extension, tamano, empresa, permisos y contenido permitido antes de almacenar la referencia.
+- RF-254: El almacenamiento de archivos empresariales debe ser parametrizable por ambiente: en desarrollo mediante contenedor o volumen compatible con S3/local, y en produccion mediante S3 privado cifrado con KMS o mecanismo cloud equivalente.
+- RF-255: Los archivos empresariales deben organizarse por empresa y categoria funcional de negocio, por ejemplo `facturas`, `logos`, `fondos`, `evidencias`, `reportes` y `artefactos-fiscales`; la categoria no corresponde al tipo MIME.
+- RF-256: La base de datos debe persistir metadata y referencias privadas de archivos, nunca URLs publicas permanentes, secretos ni contenido binario en tablas transaccionales.
+- RF-257: El bug de creacion de deudores no debe responder `500`; errores por datos incompletos, tercero inexistente, regla contable faltante o parametrizacion incompleta deben ser `400/409` con mensaje funcional.
+- RF-258: La representacion imprimible POS debe incluir un codigo QR grafico escaneable. En modo `MOCK`, el QR apunta a una URL parametrizable de consulta interna del comprobante; en modo real usa el contenido o URL retornado por DIAN.
+- RF-259: La URL base usada para QR mock, links de comprobantes y enlaces publicos controlados debe ser parametrizable por ambiente y no hardcodearse.
+- RF-260: La configuracion de marca empresarial debe explicar el efecto de color principal y color de acento en la UI y permitir seleccion mediante color picker, no solo por texto hexadecimal.
+- RF-261: Las acciones de actualizacion/inactivacion de productos, carga de evidencias, QR de comprobante y cambios de branding deben quedar auditadas segun empresa, usuario, resultado y correlation ID.
 
 ## Requisitos fase productizacion operativa
 

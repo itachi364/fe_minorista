@@ -574,7 +574,7 @@ Reglas de persistencia:
 
 ### Compras documentales, activos y gastos
 
-Modelo objetivo:
+Modelo implementado previo:
 
 - `inventory.purchase`: encabezado de compra/factura documental.
   - `supplier_id`, `purchase_date`, `payment_method_code`, `status`, `subtotal`, `tax_total`, `total`, `correlation_id`.
@@ -584,6 +584,8 @@ Modelo objetivo:
   - `expense_type`: `OPERATING_EXPENSE` o `ASSET_PURCHASE`.
   - `supplier_id`, `expense_date`, `concept`, `payment_condition`, `due_date`, `evidence_url`, `subtotal`, `tax_total`, `total`, `status`.
 - Activos del negocio en etapa actual: se contabilizan con `expense_type=ASSET_PURCHASE` y cuenta PUC `1520`; una tabla de maestro/depreciacion de activos queda como evolucion futura si se requiere control patrimonial avanzado.
+
+Decision posterior TASK-252/TASK-253: compras y gastos evolucionan a captura total-only; los campos `subtotal`, `tax_total`, `quantity` y `unit_cost` quedan como compatibilidad interna cuando no se migren fisicamente en la primera iteracion.
 
 Reglas:
 
@@ -639,3 +641,79 @@ Metricas minimas:
 - Pagos diarios de empleados.
 - Otros egresos.
 - Utilidad/perdida neta.
+
+## Fase 34 Inventario Editable, Evidencias Y QR Fiscal
+
+Estado: documentado; pendiente de implementacion.
+
+### Productos actualizables e inactivables
+
+Tablas reutilizadas:
+
+- `inventory.product`
+- `inventory.inventory_movement`
+- `billing.sale_line`
+- tablas de reportes/artefactos cuando aplique.
+
+Reglas:
+
+- `inventory.product.active=false` retira el producto de operaciones futuras de venta, pero no lo elimina.
+- `sku` y `barcode` deben mantenerse unicos por `company_id`; el cambio de barcode debe validar colision antes de actualizar.
+- Actualizar producto no modifica movimientos de inventario ni lineas de ventas ya confirmadas.
+- Reportes historicos deben usar snapshots de `billing.sale_line` o datos historicos tolerantes a productos inactivos.
+- Una busqueda POS por barcode solo retorna activos; una busqueda de mantenimiento puede incluir inactivos.
+
+### Compras y gastos total-only
+
+Tablas reutilizadas o ajustadas:
+
+- `inventory.purchase`
+- `inventory.purchase_line`
+- `accounting.accounting_expense`
+
+Modelo objetivo:
+
+- `purchase.total` representa el costo total no discriminado de la factura del proveedor.
+- `purchase_line.description` y `purchase_line.total` conservan conceptos libres cuando se requiera detalle; no se captura `quantity`, `unit_cost`, `subtotal` ni `tax`.
+- `accounting_expense.total` representa el egreso total no discriminado.
+- Si columnas legacy `subtotal`, `tax_total`, `quantity` o `unit_cost` permanecen por compatibilidad, deben poblarse con valores derivados seguros: `subtotal=total`, `tax_total=0`, `quantity=1`, `unit_cost=total`.
+
+### Archivos empresariales
+
+Tabla objetivo sugerida:
+
+- `tenant.company_file_asset`
+
+Campos principales:
+
+- `id`: UUID.
+- `company_id`: empresa propietaria.
+- `business_category`: `facturas`, `logos`, `fondos`, `evidencias`, `reportes`, `artefactos-fiscales`.
+- `storage_provider`: `LOCAL`, `S3` o compatible aprobado.
+- `storage_reference`: referencia privada; no URL publica permanente.
+- `original_file_name`, `safe_file_name`.
+- `content_type`, `extension`, `size_bytes`, `content_hash`.
+- `status`: `ACTIVE`, `REJECTED`, `DELETED_LOGICAL`.
+- `created_by`, `created_at`, `updated_at`.
+
+Reglas:
+
+- No se guardan binarios en PostgreSQL.
+- `storage_reference` no debe exponer bucket/key directamente al navegador.
+- La categoria funcional gobierna la carpeta/prefijo; MIME solo valida seguridad del archivo.
+- Para evidencias PDF, se permite un unico archivo por soporte en la primera iteracion.
+
+### QR POS
+
+Tablas reutilizadas:
+
+- `billing.electronic_document`
+- `billing.fiscal_document_artifact` cuando se materialice storage propio de billing.
+- `dian_provider.dian_submission_artifact` para artefactos reales DIAN.
+
+Reglas:
+
+- `qr_content` puede contener URL/control string mock o valor DIAN real.
+- La representacion imprimible debe renderizar QR grafico a partir de `qr_content`.
+- `qr_content` mock se construye desde parametro de URL base; no se hardcodea dominio.
+- En modo real, el valor DIAN prevalece y queda asociado al documento fiscal.
