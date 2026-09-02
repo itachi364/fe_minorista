@@ -70,7 +70,7 @@ public class GenerateAccountingEntryService implements GenerateAccountingEntryUs
         }
 
         AccountingRule rule = ruleRepository.findActiveByCompanyIdAndEventType(command.companyId(), command.eventType())
-                .orElseThrow(() -> new IllegalStateException("accounting rule was not found"));
+                .orElseThrow(() -> new IllegalStateException("accounting rule was not found: " + command.eventType()));
         if (rule.sourceType() != command.sourceType()) {
             throw new IllegalStateException("accounting rule source type does not match command source type");
         }

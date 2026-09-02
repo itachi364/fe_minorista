@@ -452,9 +452,9 @@ Toda transicion fiscal debe registrar evento de trazabilidad con estado anterior
 - La persistencia local usa tablas prefijadas `accounting_*` para evitar colisiones entre bounded contexts.
 - La administracion inicial de reglas contables se expone por REST y valida que las cuentas PUC existan antes de activar la regla.
 - TASK-053 permite listar cuentas PUC por empresa, listar reglas contables por empresa/evento/estado, reemplazar la regla activa de un evento y desactivar reglas activas sin eliminar historial.
-- TASK-053/TASK-100 incluye `POST /api/v1/accounting-setup/basic` para crear una plantilla minima editable por empresa con cuentas `1105`, `1110`, `1305`, `1435`, `2205`, `2408`, `4135`, `5105` y `5135`, y reglas base para venta, compra, gasto, pago de cuenta por pagar, recaudo de cuenta por cobrar y pago diario de nomina.
+- TASK-053/TASK-100/TASK-259 incluye `POST /api/v1/accounting-setup/basic` para asegurar una plantilla minima editable por empresa con cuentas `1105`, `1110`, `1305`, `1435`, `1520`, `2205`, `2408`, `4135`, `5105` y `5135`, y reglas base para venta, reabastecimiento, compra documental, gasto, activo, deudor, pago de cuenta por pagar, recaudo de cuenta por cobrar y pago diario de nomina.
 - La plantilla base es una ayuda operativa local; no carga el PUC oficial completo y debe poder ser reemplazada por parametrizacion de cada empresa.
-- El reemplazo de reglas conserva el historial dejando la regla anterior `active=false`; la generacion de asientos siempre usa la regla activa vigente al momento del comando.
+- La inicializacion basica es idempotente y opera como reparacion incremental: crea cuentas/reglas faltantes y reactiva cuentas base inactivas, pero no reemplaza reglas activas existentes. El reemplazo o inactivacion de reglas queda reservado al modulo explicito de configuracion contable y conserva historial dejando la regla anterior `active=false`; la generacion de asientos siempre usa la regla activa vigente al momento del comando.
 - En la implementacion local actual, los asientos se crean directamente en estado `POSTED`; el flujo de borradores contables queda pendiente hasta que sea aprobado.
 
 ### Politica inicial de libro diario y libro mayor

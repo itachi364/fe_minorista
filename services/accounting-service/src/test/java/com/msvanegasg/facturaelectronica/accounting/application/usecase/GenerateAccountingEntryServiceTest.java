@@ -174,7 +174,7 @@ class GenerateAccountingEntryServiceTest {
 
         assertThatThrownBy(() -> service.generate(saleCommand(COMPANY_ID, SOURCE_ID)))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("accounting rule was not found");
+                .hasMessage("accounting rule was not found: SALE_CONFIRMED");
     }
 
     @Test

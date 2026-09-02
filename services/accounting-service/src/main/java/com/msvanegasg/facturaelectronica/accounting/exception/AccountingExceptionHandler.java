@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEventType;
+
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestControllerAdvice
@@ -21,8 +23,10 @@ public class AccountingExceptionHandler {
 
     private static final String CORRELATION_HEADER = "X-Correlation-Id";
     private static final String ACCOUNTING_RULE_NOT_FOUND = "accounting rule was not found";
-    private static final String ACCOUNTING_RULE_REQUIRED_MESSAGE =
+    private static final String SALE_ACCOUNTING_RULE_REQUIRED_MESSAGE =
             "Debes inicializar la configuracion contable basica antes de cerrar ventas.";
+    private static final String GENERIC_ACCOUNTING_RULE_REQUIRED_MESSAGE =
+            "Falta una regla contable activa para procesar esta operacion.";
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<AccountingApiErrorResponse> handleValidation(MethodArgumentNotValidException exception,
@@ -57,9 +61,36 @@ public class AccountingExceptionHandler {
 
     private String toBusinessMessage(IllegalStateException exception) {
         if (ACCOUNTING_RULE_NOT_FOUND.equals(exception.getMessage())) {
-            return ACCOUNTING_RULE_REQUIRED_MESSAGE;
+            return GENERIC_ACCOUNTING_RULE_REQUIRED_MESSAGE;
+        }
+        String prefix = ACCOUNTING_RULE_NOT_FOUND + ": ";
+        if (exception.getMessage() != null && exception.getMessage().startsWith(prefix)) {
+            return toMissingRuleMessage(exception.getMessage().substring(prefix.length()));
         }
         return exception.getMessage();
+    }
+
+    private String toMissingRuleMessage(String eventType) {
+        AccountingEventType parsedEventType;
+        try {
+            parsedEventType = AccountingEventType.valueOf(eventType);
+        } catch (IllegalArgumentException exception) {
+            return GENERIC_ACCOUNTING_RULE_REQUIRED_MESSAGE;
+        }
+        return switch (parsedEventType) {
+            case SALE_CONFIRMED -> SALE_ACCOUNTING_RULE_REQUIRED_MESSAGE;
+            case ACCOUNT_RECEIVABLE_REGISTERED ->
+                "Falta una regla contable activa para registrar la cuenta por cobrar.";
+            case ACCOUNTS_RECEIVABLE_PAYMENT_REGISTERED ->
+                "Falta una regla contable activa para registrar el recaudo de la cuenta por cobrar.";
+            case ACCOUNTS_PAYABLE_PAYMENT_REGISTERED ->
+                "Falta una regla contable activa para registrar el pago de la cuenta por pagar.";
+            case PAYROLL_DAILY_PAYMENT_REGISTERED ->
+                "Falta una regla contable activa para registrar el pago diario de nomina.";
+            case PURCHASE_CONFIRMED, INVENTORY_REPLENISHMENT_CONFIRMED, OPERATING_EXPENSE_CONFIRMED,
+                    ASSET_PURCHASE_CONFIRMED, EXPENSE_CONFIRMED, CREDIT_NOTE_VALIDATED, ADJUSTMENT_CONFIRMED ->
+                GENERIC_ACCOUNTING_RULE_REQUIRED_MESSAGE;
+        };
     }
 
     private ResponseEntity<AccountingApiErrorResponse> build(HttpStatus status, AccountingApiErrorCode code,

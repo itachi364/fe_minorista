@@ -1408,9 +1408,11 @@ Respuesta:
 
 Reglas:
 
-- Crea las cuentas base `1105`, `1110`, `1305`, `1435`, `2205`, `2408`, `4135` y `5135` si no existen para la empresa.
+- Crea las cuentas base `1105`, `1110`, `1305`, `1435`, `1520`, `2205`, `2408`, `4135`, `5105` y `5135` si no existen para la empresa.
 - Si una cuenta base existe inactiva, la reactiva sin duplicar codigo.
-- Reemplaza las reglas activas de venta, compra, gasto, pago de cuenta por pagar y recaudo de cuenta por cobrar, dejando la regla previa inactiva para conservar historial.
+- Crea reglas faltantes de venta, compras documentales, reabastecimiento, gastos, activos, deudores, pago de cuenta por pagar, recaudo de cuenta por cobrar y pago diario de nomina.
+- Si una regla activa ya existe para el evento contable, la conserva sin reemplazarla aunque haya sido usada por procesos reales.
+- Los errores por regla faltante se reportan como `400 BUSINESS_RULE_VIOLATION` con mensaje funcional segun la operacion afectada.
 
 ### Cuentas
 

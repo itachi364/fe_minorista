@@ -10,7 +10,6 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingRu
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingSetupResult;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.InitializeBasicAccountingSetupUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountRepositoryPort;
-import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingEntryRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingRuleRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.Account;
@@ -27,16 +26,13 @@ public class BasicAccountingSetupService implements InitializeBasicAccountingSet
 
     private final AccountRepositoryPort accountRepository;
     private final AccountingRuleRepositoryPort ruleRepository;
-    private final AccountingEntryRepositoryPort entryRepository;
     private final IdGeneratorPort idGenerator;
 
     public BasicAccountingSetupService(AccountRepositoryPort accountRepository,
             AccountingRuleRepositoryPort ruleRepository,
-            AccountingEntryRepositoryPort entryRepository,
             IdGeneratorPort idGenerator) {
         this.accountRepository = Objects.requireNonNull(accountRepository);
         this.ruleRepository = Objects.requireNonNull(ruleRepository);
-        this.entryRepository = Objects.requireNonNull(entryRepository);
         this.idGenerator = Objects.requireNonNull(idGenerator);
     }
 
@@ -48,7 +44,7 @@ public class BasicAccountingSetupService implements InitializeBasicAccountingSet
                 .map(BasicAccountingSetupService::toResult)
                 .toList();
         List<AccountingRuleResult> rules = ruleTemplates().stream()
-                .map(template -> replaceActiveRule(companyId, template))
+                .map(template -> ensureRule(companyId, template))
                 .map(BasicAccountingSetupService::toResult)
                 .toList();
         return new AccountingSetupResult(companyId, TEMPLATE_NAME, accounts, rules);
@@ -62,14 +58,12 @@ public class BasicAccountingSetupService implements InitializeBasicAccountingSet
                         template.code(), template.name(), null)));
     }
 
-    private AccountingRule replaceActiveRule(UUID companyId, RuleTemplate template) {
-        ruleRepository.findActiveByCompanyIdAndEventType(companyId, template.eventType())
-                .ifPresent(rule -> {
-                    if (entryRepository.countByAccountingRuleId(rule.id()) > 0) {
-                        throw new IllegalStateException("used accounting rule cannot be replaced by basic setup");
-                    }
-                    ruleRepository.save(rule.deactivate());
-                });
+    private AccountingRule ensureRule(UUID companyId, RuleTemplate template) {
+        return ruleRepository.findActiveByCompanyIdAndEventType(companyId, template.eventType())
+                .orElseGet(() -> createRule(companyId, template));
+    }
+
+    private AccountingRule createRule(UUID companyId, RuleTemplate template) {
         AccountingRule rule = AccountingRule.create(idGenerator.newId(), companyId, template.eventType(),
                 template.sourceType(), template.name(), template.lines().stream()
                         .map(line -> AccountingRuleLine.create(line.accountCode(), line.side(), line.amountType(),

@@ -474,6 +474,8 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-259: La URL base usada para QR mock, links de comprobantes y enlaces publicos controlados debe ser parametrizable por ambiente y no hardcodearse.
 - RF-260: La configuracion de marca empresarial debe explicar el efecto de color principal y color de acento en la UI y permitir seleccion mediante color picker, no solo por texto hexadecimal.
 - RF-261: Las acciones de actualizacion/inactivacion de productos, carga de evidencias, QR de comprobante y cambios de branding deben quedar auditadas segun empresa, usuario, resultado y correlation ID.
+- RF-265: La inicializacion de contabilidad basica debe ser idempotente y servir como reparacion de plantilla: crear cuentas/reglas faltantes y reactivar cuentas base inactivas, sin reemplazar reglas activas ya configuradas o usadas por la empresa.
+- RF-266: Cuando falte una regla contable activa para ventas, deudores, recaudos, pagos o nomina, el backend debe responder un error funcional especifico de la operacion y no reutilizar siempre el mensaje de cierre de venta.
 
 ## Requisitos fase productizacion operativa
 

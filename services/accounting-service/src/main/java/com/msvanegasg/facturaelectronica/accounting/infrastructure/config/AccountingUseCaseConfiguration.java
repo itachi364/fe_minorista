@@ -46,9 +46,8 @@ public class AccountingUseCaseConfiguration {
     InitializeBasicAccountingSetupUseCase initializeBasicAccountingSetupUseCase(
             AccountRepositoryPort accountRepository,
             AccountingRuleRepositoryPort ruleRepository,
-            AccountingEntryRepositoryPort entryRepository,
             IdGeneratorPort idGenerator) {
-        return new BasicAccountingSetupService(accountRepository, ruleRepository, entryRepository, idGenerator);
+        return new BasicAccountingSetupService(accountRepository, ruleRepository, idGenerator);
     }
 
     @Bean

@@ -6611,6 +6611,37 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - `.\mvnw.cmd -pl services/inventory-service -am test`: 54 tests OK.
     - `.\mvnw.cmd -pl services/accounting-service -am test`: 68 tests OK.
 
+## Fase transversal: Bugs detectados 2026-09-02
+
+- [x] TASK-259: Reparar inicializacion contable idempotente para deudores
+  - Estado: COMPLETED.
+  - Requisitos: RF-257, RF-265, RF-266.
+  - Acceptance criteria: AC-370, AC-371, AC-377, AC-378.
+  - Descripcion: Corregir empresas con contabilidad basica antigua o incompleta para que `Iniciar contabilidad basica` complete reglas faltantes como `ACCOUNT_RECEIVABLE_REGISTERED` sin reemplazar reglas activas ya configuradas o usadas.
+  - Archivos previstos:
+    - `services/accounting-service/src/main/java/com/msvanegasg/facturaelectronica/accounting/application/usecase/BasicAccountingSetupService.java`
+    - `services/accounting-service/src/main/java/com/msvanegasg/facturaelectronica/accounting/application/usecase/GenerateAccountingEntryService.java`
+    - `services/accounting-service/src/main/java/com/msvanegasg/facturaelectronica/accounting/exception/AccountingExceptionHandler.java`
+    - `services/accounting-service/src/test/java/com/msvanegasg/facturaelectronica/accounting/**`
+    - `specs/requirements.md`
+    - `specs/acceptance-criteria.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+  - Dependencias:
+    - TASK-243.
+    - TASK-245.
+    - TASK-255.
+  - Validacion propuesta:
+    - Tests unitarios de inicializacion idempotente y preservacion de reglas activas.
+    - Tests de mensaje funcional cuando falte regla para cuenta por cobrar.
+    - Suite Maven del `accounting-service`.
+  - Implementacion:
+    - El setup basico conserva reglas activas existentes y crea solo reglas faltantes.
+    - La generacion de asientos reporta internamente el evento contable cuando falta regla activa.
+    - El handler REST traduce reglas faltantes a mensajes funcionales por operacion.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services/accounting-service -am test`: 69 tests OK.
+
 Context7 evidence:
 
 - Library/tool: React.
@@ -6629,3 +6660,7 @@ Context7 evidence:
   - Topic consulted: QR generation with `QRCodeWriter`.
   - Relevant finding: `QRCodeWriter.encode` produces a `BitMatrix` for QR rendering.
   - Decision impact: POS receipt renders a scan-ready inline SVG QR without calling external QR services.
+- Library/tool: Spring Boot.
+  - Topic consulted: `@ControllerAdvice` and `@ExceptionHandler` for business exception mapping.
+  - Relevant finding: Spring Boot MVC permite centralizar excepciones y devolver `ResponseEntity` con payload controlado por tipo de error.
+  - Decision impact: TASK-259 mantiene errores contables esperados como `400 BUSINESS_RULE_VIOLATION` con mensajes funcionales especificos.
