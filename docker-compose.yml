@@ -32,6 +32,11 @@ services:
       TENANT_DB_IDLE_TIMEOUT_MS: ${TENANT_DB_IDLE_TIMEOUT_MS:-${DB_IDLE_TIMEOUT_MS:-60000}}
       TENANT_DB_MAX_LIFETIME_MS: ${TENANT_DB_MAX_LIFETIME_MS:-${DB_MAX_LIFETIME_MS:-300000}}
       TENANT_BRANDING_STORAGE_PATH: ${TENANT_BRANDING_STORAGE_PATH:-/var/nexofiscal/tenant-branding}
+      TENANT_FILES_STORAGE_PATH: ${TENANT_FILES_STORAGE_PATH:-/var/nexofiscal/company-files}
+      TENANT_FILES_STORAGE_PROVIDER: ${TENANT_FILES_STORAGE_PROVIDER:-local}
+      TENANT_FILES_S3_BUCKET: ${TENANT_FILES_S3_BUCKET:-}
+      TENANT_FILES_S3_REGION: ${TENANT_FILES_S3_REGION:-${AWS_REGION:-us-east-1}}
+      TENANT_FILES_S3_KMS_KEY_ID: ${TENANT_FILES_S3_KMS_KEY_ID:-}
       JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
     ports:
       - "${TENANT_SERVICE_PORT:-8084}:${TENANT_SERVICE_PORT:-8084}"
@@ -39,6 +44,7 @@ services:
       - .:/workspace
       - maven_cache:/root/.m2
       - tenant_branding_data:/var/nexofiscal/tenant-branding
+      - company_files_data:/var/nexofiscal/company-files
     command: ["sh", "./mvnw", "-pl", "services/tenant-service", "clean", "spring-boot:run"]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${TENANT_SERVICE_PORT:-8084}/actuator/health >/dev/null 2>&1 || exit 1"]
@@ -491,4 +497,5 @@ volumes:
   maven_cache:
   frontend_node_modules:
   tenant_branding_data:
+  company_files_data:
   report_exports_data:

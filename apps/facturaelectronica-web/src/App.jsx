@@ -125,6 +125,7 @@ export default function App() {
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [thirdPartyForm, setThirdPartyForm] = useState(createThirdPartyForm);
   const [productForm, setProductForm] = useState(createProductForm);
+  const [editingProductId, setEditingProductId] = useState('');
   const [issuerForm, setIssuerForm] = useState(createIssuerForm);
   const [resolutionForm, setResolutionForm] = useState(createResolutionForm);
   const [fiscalPolicyForm, setFiscalPolicyForm] = useState(createFiscalPolicyForm);
@@ -793,7 +794,11 @@ export default function App() {
     setThirdPartyList([]);
     setSupplierList([]);
     setCustomerList([]);
+    setProductForm(createProductForm());
+    setEditingProductId('');
     setProductList([]);
+    setProductForm(createProductForm());
+    setEditingProductId('');
     setPurchaseForm(createPurchaseForm());
     setPurchaseList([]);
     setExpenseForm(createExpenseForm());
@@ -1018,6 +1023,34 @@ export default function App() {
       setBrandingEditor(result);
     }
     return result;
+  }
+
+  async function uploadCompanyFileAsset(category, file, companyId = activeCompanyId) {
+    requireTargetCompany(companyId);
+    if (!file) {
+      throw new Error('Selecciona un archivo PDF.');
+    }
+    const formData = new FormData();
+    formData.append('category', category);
+    formData.append('file', file);
+    return requestFormData(`/api/v1/companies/${companyId}/files`, {
+      method: 'POST',
+      formData,
+      ...context,
+      companyId,
+      idempotencyKey: createIdempotencyKey(`company-file-${category.toLowerCase()}`),
+    });
+  }
+
+  async function resolveEvidenceUrl(form, category) {
+    if (form.evidenceType === 'URL') {
+      return form.evidenceUrl;
+    }
+    if (form.evidenceType === 'PDF') {
+      const asset = await uploadCompanyFileAsset(category, form.evidenceFile);
+      return asset?.url || '';
+    }
+    return '';
   }
 
   function selectLicenseCompany(companyId) {
@@ -1336,23 +1369,72 @@ export default function App() {
 
   async function createProduct() {
     requireCompany();
-    const result = await requestJson('/api/v1/products', {
-      method: 'POST',
+    const path = editingProductId ? `/api/v1/products/${editingProductId}` : '/api/v1/products';
+    const result = await requestJson(path, {
+      method: editingProductId ? 'PUT' : 'POST',
       body: buildProductPayload(productForm),
       ...context,
-      idempotencyKey: createIdempotencyKey('product'),
+      idempotencyKey: createIdempotencyKey(editingProductId ? 'product-update' : 'product'),
     });
     if (result?.id) {
       setProductList((current) => [result, ...current.filter((item) => item.id !== result.id)]);
-      updateSaleItem(0, 'productId', result.id);
-      updateSaleItem(0, 'productName', result.name || '');
-      updateSaleItem(0, 'itemType', result.itemType || '');
-      updateSaleItem(0, 'unitPrice', String(result.salePrice || productForm.salePrice));
-      updateSaleItem(0, 'taxCode', result.taxCode || productForm.taxCode || '');
-      updateSaleItem(0, 'taxRate', String(result.taxRate ?? productForm.taxRate ?? ''));
+      if (!editingProductId) {
+        updateSaleItem(0, 'productId', result.id);
+        updateSaleItem(0, 'productName', result.name || '');
+        updateSaleItem(0, 'itemType', result.itemType || '');
+        updateSaleItem(0, 'unitPrice', String(result.salePrice || productForm.salePrice));
+        updateSaleItem(0, 'taxCode', result.taxCode || productForm.taxCode || '');
+        updateSaleItem(0, 'taxRate', String(result.taxRate ?? productForm.taxRate ?? ''));
+      }
       setProductForm(createProductForm());
+      setEditingProductId('');
     }
     return result;
+  }
+
+  function editProduct(product) {
+    setEditingProductId(product.id || '');
+    setProductForm(productFormFromResult(product));
+  }
+
+  function startNewProduct() {
+    setEditingProductId('');
+    setProductForm(createProductForm());
+  }
+
+  async function deactivateProduct(productId) {
+    requireCompany();
+    const result = await requestJson(`/api/v1/products/${productId}/deactivate`, {
+      method: 'PUT',
+      ...context,
+      idempotencyKey: createIdempotencyKey('product-deactivate'),
+    });
+    setProductList((current) => current.map((item) => (item.id === result.id ? result : item)));
+    if (editingProductId === result.id) {
+      startNewProduct();
+    }
+    return result;
+  }
+
+  async function lookupInventoryProductByBarcode(barcode) {
+    requireCompany();
+    const normalizedBarcode = String(barcode || '').trim();
+    if (!normalizedBarcode) {
+      return null;
+    }
+    try {
+      const product = await requestJson(`/api/v1/products/by-barcode/${encodeURIComponent(normalizedBarcode)}?includeInactive=true`, context);
+      if (product?.id) {
+        editProduct(product);
+        return product;
+      }
+      return null;
+    } catch (caught) {
+      if (caught.status === 404) {
+        return null;
+      }
+      throw caught;
+    }
   }
 
   async function scanSaleBarcode(barcode) {
@@ -1778,9 +1860,10 @@ export default function App() {
     if (productList.length === 0 || supplierList.length === 0) {
       await loadFinancialReferenceData();
     }
+    const evidenceUrl = await resolveEvidenceUrl(purchaseForm, 'PURCHASE_EVIDENCE');
     const purchase = await requestJson('/api/v1/purchases', {
       method: 'POST',
-      body: buildPurchasePayload(purchaseForm),
+      body: buildPurchasePayload({ ...purchaseForm, evidenceUrl }),
       ...context,
       idempotencyKey: createIdempotencyKey('purchase'),
     });
@@ -1814,9 +1897,10 @@ export default function App() {
 
   async function createExpense() {
     requireCompany();
+    const evidenceUrl = await resolveEvidenceUrl(expenseForm, 'EXPENSE_EVIDENCE');
     const expense = await requestJson('/api/v1/expenses', {
       method: 'POST',
-      body: buildExpensePayload(expenseForm),
+      body: buildExpensePayload({ ...expenseForm, evidenceUrl }),
       ...context,
       idempotencyKey: createIdempotencyKey('expense'),
     });
@@ -2521,7 +2605,7 @@ export default function App() {
             <ThirdPartyForm form={thirdPartyForm} setForm={setThirdPartyForm} companyMunicipalityCode={companyMunicipalityCode} onSubmit={() => execute(createThirdParty)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Terceros)} documentTypeOptionsSource={runtimeCatalogs.dianDocumentTypes} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} taxRegimeOptionsSource={runtimeCatalogs.taxRegimeOptions} thirdPartyRoleCatalog={runtimeCatalogs.thirdPartyRoleCatalog} personTypeCatalog={runtimeCatalogs.personTypeCatalog} locations={runtimeCatalogs.locations} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} thirdParties={thirdPartyList} />
           )}
           {currentStep === 'Inventario' && (
-            <ProductForm form={productForm} setForm={setProductForm} onSubmit={() => execute(createProduct)} busy={busy || !activeCompanyId || !canUse(['INVENTORY_MANAGE'])} taxOptions={runtimeCatalogs.salesTaxOptions} itemTypeCatalog={runtimeCatalogs.itemTypeCatalog} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} products={productList} />
+            <ProductForm form={productForm} setForm={setProductForm} onSubmit={() => execute(createProduct)} busy={busy || !activeCompanyId || !canUse(['INVENTORY_MANAGE'])} taxOptions={runtimeCatalogs.salesTaxOptions} itemTypeCatalog={runtimeCatalogs.itemTypeCatalog} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} products={productList} editingProductId={editingProductId} onNew={startNewProduct} onEdit={editProduct} onDeactivate={(productId) => execute(() => deactivateProduct(productId), { successMessage: 'Producto inactivado correctamente.' })} onBarcodeLookup={(barcode) => execute(() => lookupInventoryProductByBarcode(barcode), { silentRunning: true, silentSuccess: true, silentNullSuccess: true })} />
           )}
           {currentStep === 'Compras' && (
             <PurchasesPanel form={purchaseForm} setForm={setPurchaseForm} suppliers={supplierList} purchases={purchaseList} filters={operationalListFilters} setFilters={setOperationalListFilters} onCreate={() => execute(createPurchase, { successMessage: 'Compra creada correctamente.' })} onConfirm={(purchaseId) => execute(() => confirmPurchase(purchaseId), { successMessage: 'Compra confirmada correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Compras)} />
@@ -2633,6 +2717,31 @@ function toInstantQuery(value) {
     return '';
   }
   return new Date(value).toISOString();
+}
+
+function productFormFromResult(product) {
+  const taxRate = Number(product?.taxRate || 0);
+  const salePrice = Number(product?.salePrice || 0);
+  const finalSalePrice = salePrice ? Number((salePrice * (1 + taxRate / 100)).toFixed(2)) : '';
+  return {
+    ...createProductForm(),
+    sku: product?.sku || '',
+    barcode: product?.barcode || '',
+    name: product?.name || '',
+    description: product?.description || '',
+    itemType: product?.itemType || '',
+    saleEnabled: Boolean(product?.saleEnabled),
+    purchaseEnabled: Boolean(product?.purchaseEnabled),
+    stockTracked: Boolean(product?.stockTracked),
+    salePrice: product?.salePrice ?? '',
+    finalSalePrice: finalSalePrice === '' ? '' : String(finalSalePrice),
+    cost: product?.cost ?? '',
+    initialStock: '',
+    taxCategoryCode: product?.taxCategoryCode || '',
+    taxCode: product?.taxCode || '',
+    taxLabel: product?.taxLabel || '',
+    taxRate: product?.taxRate ?? '',
+  };
 }
 
 function defaultReportFilters(definition, currentFilters = {}) {

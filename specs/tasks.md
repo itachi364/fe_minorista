@@ -6397,10 +6397,10 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
 
 ## Fase 34: Inventario editable, evidencias documentales y QR fiscal
 
-Nota de estado: fase documentada y pendiente de implementacion. No se ejecuta codigo, Docker, migraciones ni despliegue hasta aprobacion explicita posterior.
+Nota de estado: fase implementada con aprobacion explicita posterior. Incluye API, persistencia, SPA, storage local/S3-ready, QR POS y validaciones automatizadas.
 
-- [ ] TASK-250: Disenar e implementar actualizacion e inactivacion de productos
-  - Estado: PENDING.
+- [x] TASK-250: Disenar e implementar actualizacion e inactivacion de productos
+  - Estado: COMPLETED.
   - Requisitos: RF-246, RF-247, RF-249, RF-261.
   - Acceptance criteria: AC-359, AC-361, AC-362, AC-376.
   - Descripcion: Agregar acciones `Actualizar` e `Inactivar` en la tabla de productos. La actualizacion reutiliza el formulario existente y la inactivacion retira el producto de ventas futuras sin borrar historicos.
@@ -6417,9 +6417,16 @@ Nota de estado: fase documentada y pendiente de implementacion. No se ejecuta co
   - Validacion propuesta:
     - Tests de dominio/API para actualizar, inactivar y evitar duplicados por empresa.
     - Tests frontend para modo crear/actualizar y botones por fila.
+  - Implementacion:
+    - `inventory-service` expone `PUT /api/v1/products/{productId}` y `PUT /api/v1/products/{productId}/deactivate`.
+    - La tabla de inventario muestra acciones `Actualizar` e `Inactivar`; `Actualizar` hidrata el formulario y cambia el boton a `Actualizar item`.
+    - La inactivacion conserva el maestro y no borra ventas, documentos, movimientos ni reportes historicos.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services/inventory-service -am test`: 54 tests OK.
+    - `npm test`: 36 tests OK.
 
-- [ ] TASK-251: Disenar e implementar busqueda por codigo de barras como modo actualizacion
-  - Estado: PENDING.
+- [x] TASK-251: Disenar e implementar busqueda por codigo de barras como modo actualizacion
+  - Estado: COMPLETED.
   - Requisitos: RF-248, RF-249.
   - Acceptance criteria: AC-360, AC-361.
   - Descripcion: Cuando el codigo de barras escrito o escaneado ya exista, la SPA debe cargar el producto y cambiar el label a `Actualizar item`, evitando duplicados accidentales.
@@ -6432,9 +6439,15 @@ Nota de estado: fase documentada y pendiente de implementacion. No se ejecuta co
   - Validacion propuesta:
     - Test backend de busqueda por barcode activo/inactivo segun contrato.
     - Test frontend de escaneo/digitacion y cambio de modo.
+  - Implementacion:
+    - `GET /api/v1/products/by-barcode/{barcode}?includeInactive=true` permite ubicar productos activos o inactivos desde mantenimiento.
+    - La SPA consulta al perder foco o presionar Enter en codigo de barras; si existe, pasa a modo actualizacion sin crear duplicado.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services/inventory-service -am test`: 54 tests OK.
+    - `npm test`: 36 tests OK.
 
-- [ ] TASK-252: Disenar e implementar compras documentales con costo total no discriminado
-  - Estado: PENDING.
+- [x] TASK-252: Disenar e implementar compras documentales con costo total no discriminado
+  - Estado: COMPLETED.
   - Requisitos: RF-250, RF-252, RF-253, RF-256.
   - Acceptance criteria: AC-363, AC-365, AC-366, AC-367.
   - Descripcion: Simplificar compras para registrar facturas de proveedor como costo total, sin cantidad, costo unitario, subtotal ni IVA. La evidencia queda opcional como PDF unico o URL.
@@ -6450,9 +6463,16 @@ Nota de estado: fase documentada y pendiente de implementacion. No se ejecuta co
   - Validacion propuesta:
     - Tests de contrato de compra total-only.
     - Tests UI sin campos de cantidad/costo unitario/IVA.
+  - Implementacion:
+    - La UI de compras ya no captura cantidad, costo unitario, subtotal ni IVA.
+    - El mapper REST conserva compatibilidad tecnica derivando `quantity=1`, `unitCost=total`, `subtotal=total` y `taxTotal=0`.
+    - El modulo se mantiene como control documental/financiero; los ajustes de stock siguen perteneciendo a Inventario.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services/inventory-service -am test`: 54 tests OK.
+    - `npm run build`: OK.
 
-- [ ] TASK-253: Disenar e implementar gastos total-only con evidencia opcional
-  - Estado: PENDING.
+- [x] TASK-253: Disenar e implementar gastos total-only con evidencia opcional
+  - Estado: COMPLETED.
   - Requisitos: RF-251, RF-252, RF-253, RF-256.
   - Acceptance criteria: AC-364, AC-365, AC-366, AC-367.
   - Descripcion: Ajustar gastos para registrar egresos por valor total no discriminado, con soporte opcional igual al flujo de compras.
@@ -6467,9 +6487,16 @@ Nota de estado: fase documentada y pendiente de implementacion. No se ejecuta co
   - Validacion propuesta:
     - Tests contables para subtotal=total y taxTotal=0 cuando el usuario captura total-only.
     - Tests frontend de evidencia PDF/URL/opcional.
+  - Implementacion:
+    - La UI de gastos captura costo total no discriminado y elimina subtotal/IVA de la experiencia.
+    - El mapper REST deriva `subtotal=total` y `taxTotal=0`.
+    - Compras y gastos soportan evidencia opcional por URL o PDF unico.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services/accounting-service -am test`: 68 tests OK.
+    - `npm test`: 36 tests OK.
 
-- [ ] TASK-254: Disenar e implementar almacenamiento empresarial local y S3-ready
-  - Estado: PENDING.
+- [x] TASK-254: Disenar e implementar almacenamiento empresarial local y S3-ready
+  - Estado: COMPLETED.
   - Requisitos: RF-254, RF-255, RF-256, RF-259, RF-261.
   - Acceptance criteria: AC-367, AC-368, AC-369, AC-374, AC-376.
   - Descripcion: Centralizar metadata y storage de archivos empresariales con adaptador local/S3. En desarrollo se preparara contenedor o volumen compatible con S3/local; en produccion S3 privado/KMS.
@@ -6485,9 +6512,17 @@ Nota de estado: fase documentada y pendiente de implementacion. No se ejecuta co
   - Validacion propuesta:
     - Tests de validacion de PDF, metadata y prefijo por empresa/categoria.
     - Validacion local de almacenamiento sin secretos reales.
+  - Implementacion:
+    - `tenant-service` agrega `tenant.company_file_asset`, endpoint multipart `POST /api/v1/companies/{companyId}/files` y descarga intermediada por endpoint controlado.
+    - Storage local por defecto con volumen Docker `company_files_data`.
+    - Adaptador S3 activable con `TENANT_FILES_STORAGE_PROVIDER=s3`, bucket, region y KMS opcional; objetos cifrados con SSE-S3 o SSE-KMS.
+    - BFF enruta archivos empresariales y valida permisos de empresa, compras y contabilidad.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services/tenant-service -am test`: 35 tests OK.
+    - `.\mvnw.cmd -pl services/bff-service -am test`: 33 tests OK.
 
-- [ ] TASK-255: Corregir creacion de deudores sin error interno
-  - Estado: PENDING.
+- [x] TASK-255: Corregir creacion de deudores sin error interno
+  - Estado: COMPLETED.
   - Requisitos: RF-257.
   - Acceptance criteria: AC-370, AC-371.
   - Descripcion: Investigar y corregir el `500` al crear deudor para que datos invalidos o reglas contables faltantes respondan errores funcionales y datos validos creen cuenta por cobrar.
@@ -6500,9 +6535,14 @@ Nota de estado: fase documentada y pendiente de implementacion. No se ejecuta co
     - TASK-245.
   - Validacion propuesta:
     - Tests unitarios/integracion para deudor valido, regla faltante y request incompleto.
+  - Implementacion:
+    - `accounts-receivable` acepta alta manual con `sourceType=ADJUSTMENT` y `sourceId` derivado del idempotency key cuando no existe documento origen.
+    - La migracion contable permite `ADJUSTMENT` como fuente valida para deudores manuales.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services/accounting-service -am test`: 68 tests OK.
 
-- [ ] TASK-256: Disenar e implementar QR grafico parametrizable para comprobante POS
-  - Estado: PENDING.
+- [x] TASK-256: Disenar e implementar QR grafico parametrizable para comprobante POS
+  - Estado: COMPLETED.
   - Requisitos: RF-258, RF-259, RF-261.
   - Acceptance criteria: AC-372, AC-373, AC-374, AC-376.
   - Descripcion: Generar QR grafico escaneable en la representacion imprimible POS. En `MOCK` apunta a una URL propia parametrizada; en modo real respeta QR/URL DIAN.
@@ -6519,9 +6559,14 @@ Nota de estado: fase documentada y pendiente de implementacion. No se ejecuta co
   - Validacion propuesta:
     - Tests de QR mock con URL parametrizada.
     - Tests de preferencia de QR DIAN real cuando exista.
+  - Implementacion:
+    - `billing-service` genera QR grafico SVG con ZXing en el comprobante POS.
+    - Si DIAN/proveedor entrega QR real, prevalece sobre mock; si el QR inicia con `mock-qr:`, se construye una URL interna del comprobante.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services/billing-service -am test`: 66 tests OK.
 
-- [ ] TASK-257: Mejorar configuracion visual de marca empresarial
-  - Estado: PENDING.
+- [x] TASK-257: Mejorar configuracion visual de marca empresarial
+  - Estado: COMPLETED.
   - Requisitos: RF-260, RF-261.
   - Acceptance criteria: AC-375, AC-376.
   - Descripcion: Reemplazar campos de texto de color por color pickers, agregar explicacion de impacto de color principal/acento y mantener validacion backend.
@@ -6534,9 +6579,15 @@ Nota de estado: fase documentada y pendiente de implementacion. No se ejecuta co
     - TASK-182.
   - Validacion propuesta:
     - Tests frontend de controles color y payload hexadecimal.
+  - Implementacion:
+    - Los colores de marca se capturan con `input type=color`.
+    - La UI explica el impacto de color principal y acento en botones, menu activo, badges y estados de apoyo.
+  - Validacion ejecutada:
+    - `npm run build`: OK.
+    - `npm test`: 36 tests OK.
 
-- [ ] TASK-258: Validar reportes con productos inactivos y compras/gastos total-only
-  - Estado: PENDING.
+- [x] TASK-258: Validar reportes con productos inactivos y compras/gastos total-only
+  - Estado: COMPLETED.
   - Requisitos: RF-249, RF-250, RF-251.
   - Acceptance criteria: AC-361, AC-363, AC-364.
   - Descripcion: Asegurar que reportes historicos usen snapshots de venta/compra/gasto y no fallen si productos o proveedores cambian estado.
@@ -6551,3 +6602,30 @@ Nota de estado: fase documentada y pendiente de implementacion. No se ejecuta co
   - Validacion propuesta:
     - Tests de reporte de ventas por producto con producto inactivo.
     - Tests de reporte diario con compras/gastos total-only.
+  - Implementacion:
+    - La inactivacion de productos no modifica snapshots historicos usados por ventas/documentos.
+    - Compras/gastos total-only mantienen campos internos compatibles para reportes financieros.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services/reporting-service -am test`: 10 tests OK.
+    - `.\mvnw.cmd -pl services/billing-service -am test`: 66 tests OK.
+    - `.\mvnw.cmd -pl services/inventory-service -am test`: 54 tests OK.
+    - `.\mvnw.cmd -pl services/accounting-service -am test`: 68 tests OK.
+
+Context7 evidence:
+
+- Library/tool: React.
+  - Topic consulted: controlled inputs, file input reset and form state updates.
+  - Relevant finding: controlled state is the source of truth for form values; file inputs are uncontrolled and can be reset by remounting with a stable `key`.
+  - Decision impact: product edit/create uses controlled state and PDF evidence inputs remount after reset.
+- Library/tool: Spring Boot.
+  - Topic consulted: multipart upload and `spring.servlet.multipart.*` limits.
+  - Relevant finding: Spring Boot exposes multipart handling through Servlet multipart support and configurable upload limits.
+  - Decision impact: company file upload validates PDF evidence and uses configurable max file/request size.
+- Library/tool: AWS SDK for Java v2 S3.
+  - Topic consulted: S3 `PutObjectRequest`, object key prefixes and server-side encryption.
+  - Relevant finding: S3 object keys support prefix organization and `PutObjectRequest` can include content metadata and SSE/SSE-KMS settings.
+  - Decision impact: production storage uses private S3 objects under company/category prefixes with SSE-S3 or SSE-KMS.
+- Library/tool: ZXing.
+  - Topic consulted: QR generation with `QRCodeWriter`.
+  - Relevant finding: `QRCodeWriter.encode` produces a `BitMatrix` for QR rendering.
+  - Decision impact: POS receipt renders a scan-ready inline SVG QR without calling external QR services.

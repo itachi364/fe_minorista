@@ -25,12 +25,18 @@ export function ExpensesPanel({
         <SelectField label="Proveedor" value={form.supplierId} onChange={(value) => setForm({ ...form, supplierId: value })} options={supplierOptions} placeholder="Proveedor opcional" />
         <Field label="Fecha del gasto" value={form.expenseDate} onChange={(value) => setForm({ ...form, expenseDate: value })} type="date" />
         <Field label="Concepto" value={form.concept} onChange={(value) => setForm({ ...form, concept: value })} />
-        <Field label="Subtotal" value={form.subtotal} onChange={(value) => setForm({ ...form, subtotal: value })} type="number" min="0" step="0.01" />
-        <Field label="IVA" value={form.taxTotal} onChange={(value) => setForm({ ...form, taxTotal: value })} type="number" min="0" step="0.01" />
-        <Field label="Total" value={form.total} onChange={(value) => setForm({ ...form, total: value })} type="number" min="0" step="0.01" />
+        <Field label="Costo total" value={form.total} onChange={(value) => setForm({ ...form, total: value })} type="number" min="0" step="0.01" />
         <SelectField label="Condicion de pago" value={form.paymentCondition} onChange={(value) => setForm({ ...form, paymentCondition: value })} options={paymentConditionOptions} />
         <Field label="Fecha de vencimiento" value={form.dueDate} onChange={(value) => setForm({ ...form, dueDate: value })} type="date" disabled={form.paymentCondition !== 'CREDIT'} />
-        <Field label="Soporte o evidencia" value={form.evidenceUrl} onChange={(value) => setForm({ ...form, evidenceUrl: value })} placeholder="URL opcional" />
+        <SelectField label="Soporte o evidencia" value={form.evidenceType} onChange={(value) => setForm({ ...form, evidenceType: value, evidenceUrl: '', evidenceFile: null })} options={evidenceOptions} placeholder="Sin evidencia" />
+        {form.evidenceType === 'URL' && <Field label="URL de evidencia" value={form.evidenceUrl} onChange={(value) => setForm({ ...form, evidenceUrl: value })} placeholder="https://..." />}
+        {form.evidenceType === 'PDF' && (
+          <label className="field">
+            Archivo PDF
+            <input accept="application/pdf,.pdf" disabled={busy} key={form.evidenceFile?.name || 'expense-evidence-empty'} onChange={(event) => setForm({ ...form, evidenceFile: event.target.files?.[0] || null })} type="file" />
+            {form.evidenceFile && <span className="field-note">{form.evidenceFile.name}</span>}
+          </label>
+        )}
       </div>
     </FormPanel>
 
@@ -50,7 +56,7 @@ export function ExpensesPanel({
         <Field label="Hasta" value={filters.expenseTo} onChange={(value) => setFilters({ ...filters, expenseTo: value })} type="date" />
       </div>
       <DataTable
-        columns={['Fecha', 'Tipo', 'Concepto', 'Estado', 'Subtotal', 'IVA', 'Total', 'Vence', 'Acciones']}
+        columns={['Fecha', 'Tipo', 'Concepto', 'Estado', 'Total', 'Vence', 'Acciones']}
         rows={expenses.map((expense) => expenseRow(expense, onConfirm, busy))}
         rowKey={(_row, index) => expenses[index]?.id || index}
         emptyMessage="Sin gastos registrados para el filtro actual."
@@ -70,14 +76,17 @@ const expenseTypeOptions = [
   { value: 'ASSET_PURCHASE', label: 'Compra de activo' },
 ];
 
+const evidenceOptions = [
+  { value: 'PDF', label: 'Archivo PDF' },
+  { value: 'URL', label: 'URL' },
+];
+
 function expenseRow(expense, onConfirm, busy) {
   return [
     shortDate(expense.expenseDate || expense.createdAt),
     expense.expenseType === 'ASSET_PURCHASE' ? 'Compra de activo' : 'Gasto operativo',
     expense.concept || '',
     expense.status === 'CONFIRMED' ? 'Confirmado' : 'Pendiente',
-    money(expense.subtotal),
-    money(expense.taxTotal),
     money(expense.total),
     shortDate(expense.dueDate),
     {

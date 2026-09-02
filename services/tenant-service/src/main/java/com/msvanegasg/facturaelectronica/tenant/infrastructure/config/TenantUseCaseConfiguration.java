@@ -8,10 +8,14 @@ import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompan
 import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyBrandingUseCase;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.BrandingAssetStoragePort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyBrandingRepositoryPort;
+import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyFileAssetUseCase;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.ClockPort;
+import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyFileAssetRepositoryPort;
+import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyFileStoragePort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyLicenseRepositoryPort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyRepositoryPort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.IdGeneratorPort;
+import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyFileAssetManagementService;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyBrandingManagementService;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyLicenseManagementService;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyManagementService;
@@ -43,5 +47,16 @@ public class TenantUseCaseConfiguration {
             BrandingAssetStoragePort storage,
             ClockPort clock) {
         return new CompanyBrandingManagementService(companyRepository, brandingRepository, storage, clock);
+    }
+
+    @Bean
+    ManageCompanyFileAssetUseCase manageCompanyFileAssetUseCase(
+            CompanyRepositoryPort companyRepository,
+            CompanyFileAssetRepositoryPort fileAssetRepository,
+            CompanyFileStoragePort storage,
+            IdGeneratorPort idGenerator,
+            ClockPort clock) {
+        return new CompanyFileAssetManagementService(companyRepository, fileAssetRepository, storage, idGenerator,
+                clock);
     }
 }

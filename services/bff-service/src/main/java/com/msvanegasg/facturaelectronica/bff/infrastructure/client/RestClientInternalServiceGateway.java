@@ -151,6 +151,10 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         if (normalized.matches("companies/[^/]+/branding(/.*)?")) {
             return new AccessRule(Set.of("COMPANY_SETTINGS_MANAGE"), Set.of("COMPANY_SETTINGS_MANAGE"));
         }
+        if (normalized.matches("companies/[^/]+/files(/.*)?")) {
+            return new AccessRule(Set.of("COMPANY_SETTINGS_MANAGE", "PURCHASES_MANAGE", "ACCOUNTING_MANAGE"),
+                    Set.of("COMPANY_SETTINGS_MANAGE", "PURCHASES_MANAGE", "ACCOUNTING_MANAGE"));
+        }
         return null;
     }
 

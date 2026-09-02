@@ -1704,26 +1704,27 @@ Estado: completada.
 
 ## TASK-250 a TASK-258 infraestructura objetivo
 
-Estado: documentado; pendiente de implementacion.
+Estado: implementado para entorno local y preparado para AWS S3 productivo.
 
 ### Storage empresarial local y AWS
 
-- Desarrollo: preparar almacenamiento local mediante volumen Docker o contenedor compatible con S3 para evidencias, logos, fondos, reportes y artefactos fiscales sin requerir Terraform.
-- Produccion: usar S3 privado con cifrado SSE-KMS, bucket no publico, politicas IAM de minimo privilegio y lifecycle por categoria.
+- Desarrollo: almacenamiento local mediante volumen Docker `company_files_data` para evidencias, logos, fondos, reportes y artefactos fiscales sin requerir Terraform.
+- Produccion: adaptador S3 activable por variable de entorno, bucket privado, cifrado SSE-S3 por defecto y SSE-KMS cuando se informe key KMS.
 - Acceso usuario final: el navegador no recibe bucket, key privada ni credenciales. Las lecturas se intermedian por BFF o URLs controladas de aplicacion.
-- Convencion de prefijos: `{environment}/{companyId}/{businessCategory}/{yyyy}/{mm}/{uuid}-{safeFileName}`.
-- Categorias funcionales iniciales: `facturas`, `logos`, `fondos`, `evidencias`, `reportes`, `artefactos-fiscales`.
+- Convencion implementada de prefijos: `{companyId}/{folderName}/{assetId}-{safeFileName}`.
+- Categorias funcionales iniciales: `facturas`, `logos`, `fondos`, `gastos` y `otros`, mapeadas desde `INVOICE`, `LOGO`, `BACKGROUND`, `PURCHASE_EVIDENCE`, `EXPENSE_EVIDENCE` y `OTHER`.
 - Metadata: PostgreSQL conserva referencia privada, hash, MIME, tamano, categoria, empresa, usuario y fechas; no conserva binarios.
 - Uploads: Spring multipart con limites por variable de entorno, validacion MIME/extension y auditoria sin payload binario.
 
 Variables objetivo:
 
 ```env
-COMPANY_FILE_STORAGE_MODE=local
-COMPANY_FILE_STORAGE_BASE_PATH=/var/lib/nexofiscal/company-files
-COMPANY_FILE_STORAGE_BUCKET=
-COMPANY_FILE_STORAGE_KMS_KEY_ID=
-COMPANY_FILE_MAX_PDF_SIZE=5MB
+TENANT_FILES_STORAGE_PROVIDER=local
+TENANT_FILES_STORAGE_PATH=/var/nexofiscal/company-files
+TENANT_FILES_S3_BUCKET=
+TENANT_FILES_S3_REGION=us-east-1
+TENANT_FILES_S3_KMS_KEY_ID=
+TENANT_MAX_FILE_SIZE=5MB
 APP_PUBLIC_BASE_URL=http://localhost:5173
 POS_MOCK_RECEIPT_BASE_URL=http://localhost:5173
 ```

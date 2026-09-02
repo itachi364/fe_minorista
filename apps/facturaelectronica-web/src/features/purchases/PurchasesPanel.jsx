@@ -25,7 +25,7 @@ export function PurchasesPanel({
   }
 
   function addLine() {
-    setForm({ ...form, lines: [...form.lines, { description: '', quantity: '1', unitCost: '', tax: '0' }] });
+    setForm({ ...form, lines: [...form.lines, { description: '', total: '' }] });
   }
 
   function removeLine(index) {
@@ -39,15 +39,21 @@ export function PurchasesPanel({
         <SelectField label="Proveedor" value={form.supplierId} onChange={(value) => setForm({ ...form, supplierId: value })} options={supplierOptions} placeholder="Proveedor opcional" />
         <SelectField label="Condicion de pago" value={form.paymentCondition} onChange={(value) => setForm({ ...form, paymentCondition: value })} options={paymentConditionOptions} />
         <Field label="Fecha de vencimiento" value={form.dueDate} onChange={(value) => setForm({ ...form, dueDate: value })} type="date" disabled={form.paymentCondition !== 'CREDIT'} />
-        <Field label="Soporte o evidencia" value={form.evidenceUrl} onChange={(value) => setForm({ ...form, evidenceUrl: value })} placeholder="URL opcional" />
+        <SelectField label="Soporte o evidencia" value={form.evidenceType} onChange={(value) => setForm({ ...form, evidenceType: value, evidenceUrl: '', evidenceFile: null })} options={evidenceOptions} placeholder="Sin evidencia" />
+        {form.evidenceType === 'URL' && <Field label="URL de evidencia" value={form.evidenceUrl} onChange={(value) => setForm({ ...form, evidenceUrl: value })} placeholder="https://..." />}
+        {form.evidenceType === 'PDF' && (
+          <label className="field">
+            Archivo PDF
+            <input accept="application/pdf,.pdf" disabled={busy} key={form.evidenceFile?.name || 'purchase-evidence-empty'} onChange={(event) => setForm({ ...form, evidenceFile: event.target.files?.[0] || null })} type="file" />
+            {form.evidenceFile && <span className="field-note">{form.evidenceFile.name}</span>}
+          </label>
+        )}
       </div>
       <div className="line-list">
         {form.lines.map((line, index) => (
           <div className="line-card" key={`purchase-line-${index}`}>
             <Field label="Concepto" value={line.description} onChange={(value) => updateLine(index, { description: value })} placeholder="Ej. Factura proveedor, mercancia, insumos o reinversion" />
-            <Field label="Cantidad" value={line.quantity} onChange={(value) => updateLine(index, { quantity: value })} type="number" min="0" step="0.01" />
-            <Field label="Costo unitario" value={line.unitCost} onChange={(value) => updateLine(index, { unitCost: value })} type="number" min="0" step="0.01" />
-            <Field label="IVA compra" value={line.tax} onChange={(value) => updateLine(index, { tax: value })} type="number" min="0" step="0.01" />
+            <Field label="Costo total" value={line.total} onChange={(value) => updateLine(index, { total: value })} type="number" min="0" step="0.01" />
             <button className="secondary danger-soft" disabled={busy || form.lines.length === 1} onClick={() => removeLine(index)} type="button">Quitar</button>
           </div>
         ))}
@@ -71,7 +77,7 @@ export function PurchasesPanel({
         <Field label="Hasta" value={filters.purchaseTo} onChange={(value) => setFilters({ ...filters, purchaseTo: value })} type="date" />
       </div>
       <DataTable
-        columns={['Fecha', 'Estado', 'Proveedor', 'Subtotal', 'IVA', 'Total', 'Vence', 'Acciones']}
+        columns={['Fecha', 'Estado', 'Proveedor', 'Total', 'Vence', 'Acciones']}
         rows={purchases.map((purchase) => purchaseRow(purchase, onConfirm, busy))}
         rowKey={(_row, index) => purchases[index]?.id || index}
         emptyMessage="Sin compras registradas para el filtro actual."
@@ -86,13 +92,16 @@ const paymentConditionOptions = [
   { value: 'CREDIT', label: 'Credito' },
 ];
 
+const evidenceOptions = [
+  { value: 'PDF', label: 'Archivo PDF' },
+  { value: 'URL', label: 'URL' },
+];
+
 function purchaseRow(purchase, onConfirm, busy) {
   return [
     shortDate(purchase.createdAt),
     purchase.status === 'CONFIRMED' ? 'Confirmada' : 'Pendiente',
     purchase.supplierId || 'Sin proveedor',
-    money(purchase.subtotal),
-    money(purchase.taxTotal),
     money(purchase.total),
     shortDate(purchase.dueDate),
     {

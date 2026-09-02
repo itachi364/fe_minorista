@@ -48,6 +48,11 @@ public class ProductManagementService implements ManageProductUseCase {
         if (productRepository.existsByCompanyIdAndSku(command.companyId(), command.sku())) {
             throw new ProductAlreadyExistsException(command.sku());
         }
+        if (command.barcode() != null && !command.barcode().isBlank()
+                && productRepository.findByCompanyIdAndBarcode(command.companyId(), command.barcode().trim())
+                        .isPresent()) {
+            throw new ProductAlreadyExistsException(command.barcode());
+        }
         var now = clock.now();
         InventoryItemType itemType = command.itemType() == null ? InventoryItemType.PHYSICAL_GOOD : command.itemType();
         boolean saleEnabled = resolve(command.saleEnabled(), itemType.defaultSaleEnabled());
@@ -71,6 +76,44 @@ public class ProductManagementService implements ManageProductUseCase {
     }
 
     @Override
+    public ProductResult update(UUID companyId, UUID productId, CreateProductCommand command) {
+        Objects.requireNonNull(companyId, "companyId is required");
+        Objects.requireNonNull(productId, "productId is required");
+        validate(command);
+        if (!companyId.equals(command.companyId())) {
+            throw new IllegalArgumentException("companyId must match command companyId");
+        }
+        Product current = productRepository.findByCompanyIdAndId(companyId, productId)
+                .orElseThrow(() -> new ProductNotFoundException(productId));
+        if (productRepository.existsByCompanyIdAndSkuAndIdNot(companyId, command.sku(), productId)) {
+            throw new ProductAlreadyExistsException(command.sku());
+        }
+        if (productRepository.existsByCompanyIdAndBarcodeAndIdNot(companyId, command.barcode(), productId)) {
+            throw new ProductAlreadyExistsException(command.barcode());
+        }
+        InventoryItemType itemType = command.itemType() == null ? InventoryItemType.PHYSICAL_GOOD : command.itemType();
+        boolean saleEnabled = resolve(command.saleEnabled(), itemType.defaultSaleEnabled());
+        boolean purchaseEnabled = resolve(command.purchaseEnabled(), itemType.defaultPurchaseEnabled());
+        boolean stockTracked = resolve(command.stockTracked(), itemType.defaultStockTracked());
+        Product updated = current.update(command.sku(), command.barcode(), command.name(), command.description(),
+                itemType, saleEnabled, purchaseEnabled, stockTracked, command.salePrice(), command.cost(),
+                command.taxCategoryCode(), command.taxCode(), command.taxLabel(), command.taxRate(), clock.now());
+        return findById(companyId, productRepository.save(updated).id());
+    }
+
+    @Override
+    public ProductResult deactivate(UUID companyId, UUID productId) {
+        Objects.requireNonNull(companyId, "companyId is required");
+        Objects.requireNonNull(productId, "productId is required");
+        Product current = productRepository.findByCompanyIdAndId(companyId, productId)
+                .orElseThrow(() -> new ProductNotFoundException(productId));
+        if (!current.active()) {
+            return findById(companyId, productId);
+        }
+        return findById(companyId, productRepository.save(current.deactivate(clock.now())).id());
+    }
+
+    @Override
     public ProductResult findById(UUID companyId, UUID productId) {
         Product product = productRepository.findByCompanyIdAndId(companyId, productId)
                 .orElseThrow(() -> new ProductNotFoundException(productId));
@@ -80,14 +123,20 @@ public class ProductManagementService implements ManageProductUseCase {
 
     @Override
     public ProductResult findByBarcode(UUID companyId, String barcode) {
+        return findByBarcode(companyId, barcode, false);
+    }
+
+    @Override
+    public ProductResult findByBarcode(UUID companyId, String barcode, boolean includeInactive) {
         Objects.requireNonNull(companyId, "companyId is required");
         Objects.requireNonNull(barcode, "barcode is required");
-        Product product = productRepository.findActiveByCompanyIdAndBarcode(companyId, barcode.trim())
+        Product product = (includeInactive
+                ? productRepository.findByCompanyIdAndBarcode(companyId, barcode.trim())
+                : productRepository.findActiveByCompanyIdAndBarcode(companyId, barcode.trim()))
                 .orElseThrow(() -> new ProductNotFoundException(UUID.nameUUIDFromBytes(barcode.trim().getBytes())));
         StockBalance balance = stockBalanceRepository.findByCompanyIdAndProductId(companyId, product.id()).orElse(null);
         return InventoryResultMapper.toProductResult(product, balance);
     }
-
 
     @Override
     public List<ProductResult> findStock(UUID companyId, Boolean active) {

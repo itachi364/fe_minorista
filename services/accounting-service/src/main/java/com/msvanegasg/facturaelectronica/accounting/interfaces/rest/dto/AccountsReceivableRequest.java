@@ -12,8 +12,8 @@ import jakarta.validation.constraints.NotNull;
 
 public record AccountsReceivableRequest(
         @NotNull UUID customerId,
-        @NotNull AccountingSourceType sourceType,
-        @NotNull UUID sourceId,
+        AccountingSourceType sourceType,
+        UUID sourceId,
         @NotNull LocalDate issueDate,
         @NotNull LocalDate dueDate,
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal totalAmount,

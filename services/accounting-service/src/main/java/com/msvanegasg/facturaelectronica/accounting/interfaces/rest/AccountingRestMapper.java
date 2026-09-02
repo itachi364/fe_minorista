@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.accounting.interfaces.rest;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -101,7 +102,8 @@ public final class AccountingRestMapper {
 
     public static CreateExpenseCommand toCommand(UUID companyId, ExpenseRequest request, String idempotencyKey) {
         return new CreateExpenseCommand(companyId, request.supplierId(), request.expenseType(),
-                request.expenseDate(), request.concept(), request.subtotal(), request.taxTotal(), request.total(), request.paymentCondition(),
+                request.expenseDate(), request.concept(), valueOr(request.subtotal(), request.total()),
+                valueOr(request.taxTotal(), BigDecimal.ZERO), request.total(), request.paymentCondition(),
                 request.dueDate(), request.evidenceUrl(), idempotencyKey);
     }
 
@@ -119,8 +121,14 @@ public final class AccountingRestMapper {
     }
 
     public static CreateAccountsReceivableCommand toCommand(UUID companyId, AccountsReceivableRequest request) {
-        return new CreateAccountsReceivableCommand(companyId, request.customerId(), request.sourceType(),
-                request.sourceId(), request.issueDate(), request.dueDate(), request.totalAmount(),
+        com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingSourceType sourceType =
+                request.sourceType() == null
+                        ? com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingSourceType.ADJUSTMENT
+                        : request.sourceType();
+        UUID sourceId = request.sourceId() == null ? UUID.nameUUIDFromBytes(request.idempotencyKey().getBytes())
+                : request.sourceId();
+        return new CreateAccountsReceivableCommand(companyId, request.customerId(), sourceType,
+                sourceId, request.issueDate(), request.dueDate(), request.totalAmount(),
                 request.idempotencyKey());
     }
     public static CreateAccountsPayableCommand toCommand(UUID companyId, AccountsPayableRequest request) {
@@ -319,5 +327,9 @@ public final class AccountingRestMapper {
 
     private static FinancialStatementGroupResponse toResponse(FinancialStatementGroupResult result) {
         return new FinancialStatementGroupResponse(result.code(), result.label(), result.total());
+    }
+
+    private static BigDecimal valueOr(BigDecimal value, BigDecimal fallback) {
+        return value == null ? fallback : value;
     }
 }

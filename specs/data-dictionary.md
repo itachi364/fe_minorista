@@ -1056,19 +1056,14 @@ Tabla objetivo para metadata de archivos empresariales y evidencias documentales
 |---|---|---:|---|
 | id | uuid | Si | Identificador del archivo. |
 | company_id | uuid | Si | Empresa propietaria. |
-| business_category | varchar(60) | Si | Categoria funcional: `facturas`, `logos`, `fondos`, `evidencias`, `reportes` o `artefactos-fiscales`. |
-| storage_provider | varchar(30) | Si | `LOCAL`, `S3` o proveedor compatible aprobado. |
-| storage_reference | varchar(700) | Si | Referencia privada del objeto; no se expone como URL publica permanente. |
-| original_file_name | varchar(220) | Si | Nombre original informado por el cliente, sanitizado antes de mostrar. |
-| safe_file_name | varchar(220) | Si | Nombre seguro usado en storage. |
+| category | varchar(60) | Si | Categoria tecnica: `INVOICE`, `LOGO`, `BACKGROUND`, `PURCHASE_EVIDENCE`, `EXPENSE_EVIDENCE` u `OTHER`. |
+| storage_key | varchar(700) | Si | Referencia privada del objeto; no se expone como URL publica permanente. |
+| original_filename | varchar(220) | Si | Nombre original informado por el cliente. |
 | content_type | varchar(120) | Si | MIME validado. |
-| extension | varchar(20) | Si | Extension validada. |
-| size_bytes | bigint | Si | Tamano del archivo. |
+| file_size | bigint | Si | Tamano del archivo. |
 | content_hash | varchar(120) | Si | Hash para integridad y trazabilidad. |
-| status | varchar(30) | Si | `ACTIVE`, `REJECTED` o `DELETED_LOGICAL`. |
-| created_by | uuid | No | Usuario que cargo el archivo. |
-| created_at | timestamptz | Si | Fecha de carga. |
-| updated_at | timestamptz | Si | Fecha de ultima actualizacion. |
+| uploaded_by | uuid | No | Usuario que cargo el archivo. |
+| uploaded_at | timestamptz | Si | Fecha de carga. |
 
 ### Evidencia en compras y gastos
 

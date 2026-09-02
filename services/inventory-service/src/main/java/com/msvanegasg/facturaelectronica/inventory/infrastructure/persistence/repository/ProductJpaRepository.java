@@ -14,9 +14,15 @@ public interface ProductJpaRepository extends JpaRepository<ProductJpaEntity, UU
 
     Optional<ProductJpaEntity> findByCompanyIdAndBarcodeAndActiveTrue(UUID companyId, String barcode);
 
+    Optional<ProductJpaEntity> findByCompanyIdAndBarcode(UUID companyId, String barcode);
+
     List<ProductJpaEntity> findByCompanyIdOrderByNameAsc(UUID companyId);
 
     List<ProductJpaEntity> findByCompanyIdAndActiveOrderByNameAsc(UUID companyId, boolean active);
 
     boolean existsByCompanyIdAndSku(UUID companyId, String sku);
+
+    boolean existsByCompanyIdAndSkuAndIdNot(UUID companyId, String sku, UUID id);
+
+    boolean existsByCompanyIdAndBarcodeAndIdNot(UUID companyId, String barcode, UUID id);
 }

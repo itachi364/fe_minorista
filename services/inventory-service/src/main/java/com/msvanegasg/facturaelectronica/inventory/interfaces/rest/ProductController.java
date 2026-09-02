@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -54,6 +55,21 @@ public class ProductController {
         return InventoryRestMapper.toResponse(productUseCase.findById(companyId, productId));
     }
 
+    @PutMapping("/{productId}")
+    public ProductResponse update(@RequestHeader("X-Company-Id") UUID companyId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @PathVariable UUID productId,
+            @Valid @RequestBody ProductRequest request) {
+        return InventoryRestMapper.toResponse(productUseCase.update(companyId, productId,
+                InventoryRestMapper.toCommand(companyId, request, userId, idempotencyKey)));
+    }
+
+    @PutMapping("/{productId}/deactivate")
+    public ProductResponse deactivate(@RequestHeader("X-Company-Id") UUID companyId, @PathVariable UUID productId) {
+        return InventoryRestMapper.toResponse(productUseCase.deactivate(companyId, productId));
+    }
+
     @GetMapping
     public List<ProductResponse> find(@RequestHeader("X-Company-Id") UUID companyId,
             @RequestParam(required = false) Boolean active) {
@@ -63,8 +79,9 @@ public class ProductController {
     }
 
     @GetMapping("/by-barcode/{barcode}")
-    public ProductResponse findByBarcode(@RequestHeader("X-Company-Id") UUID companyId, @PathVariable String barcode) {
-        return InventoryRestMapper.toResponse(productUseCase.findByBarcode(companyId, barcode));
+    public ProductResponse findByBarcode(@RequestHeader("X-Company-Id") UUID companyId, @PathVariable String barcode,
+            @RequestParam(defaultValue = "false") boolean includeInactive) {
+        return InventoryRestMapper.toResponse(productUseCase.findByBarcode(companyId, barcode, includeInactive));
     }
 
     @GetMapping("/{productId}/availability")

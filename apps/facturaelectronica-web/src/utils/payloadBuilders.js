@@ -92,43 +92,42 @@ export function buildProductPayload(form) {
 
 export function buildPurchasePayload(form) {
   const lines = (form.lines || []).map((line) => {
-    const quantity = toNumber(line.quantity) ?? 0;
-    const unitCost = toNumber(line.unitCost) ?? 0;
-    const subtotal = Number((quantity * unitCost).toFixed(2));
-    const tax = toNumber(line.tax) ?? 0;
+    const total = toNumber(line.total) ?? 0;
     return compactObject({
       description: line.description,
-      quantity,
-      unitCost,
-      subtotal,
-      tax,
-      total: Number((subtotal + tax).toFixed(2)),
+      quantity: 1,
+      unitCost: total,
+      subtotal: total,
+      tax: 0,
+      total,
     });
   });
+  const total = Number(lines.reduce((current, line) => current + Number(line.total || 0), 0).toFixed(2));
   return compactObject({
     supplierId: form.supplierId || null,
-    subtotal: Number(lines.reduce((total, line) => total + Number(line.subtotal || 0), 0).toFixed(2)),
-    taxTotal: Number(lines.reduce((total, line) => total + Number(line.tax || 0), 0).toFixed(2)),
-    total: Number(lines.reduce((total, line) => total + Number(line.total || 0), 0).toFixed(2)),
+    subtotal: total,
+    taxTotal: 0,
+    total,
     paymentCondition: form.paymentCondition,
     dueDate: form.paymentCondition === 'CREDIT' ? form.dueDate : undefined,
-    evidenceUrl: form.evidenceUrl,
+    evidenceUrl: form.evidenceType ? form.evidenceUrl : undefined,
     lines,
   });
 }
 
 export function buildExpensePayload(form) {
+  const total = toNumber(form.total);
   return compactObject({
     supplierId: form.supplierId || null,
     expenseType: form.expenseType || 'OPERATING_EXPENSE',
     expenseDate: form.expenseDate,
     concept: form.concept,
-    subtotal: toNumber(form.subtotal),
-    taxTotal: toNumber(form.taxTotal) ?? 0,
-    total: toNumber(form.total),
+    subtotal: total,
+    taxTotal: 0,
+    total,
     paymentCondition: form.paymentCondition,
     dueDate: form.paymentCondition === 'CREDIT' ? form.dueDate : undefined,
-    evidenceUrl: form.evidenceUrl,
+    evidenceUrl: form.evidenceType ? form.evidenceUrl : undefined,
   });
 }
 

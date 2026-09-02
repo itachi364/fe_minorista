@@ -76,8 +76,10 @@ final class InventoryRestMapper {
 
     static CreatePurchaseCommand toCommand(UUID companyId, PurchaseRequest request, UUID createdBy,
             String idempotencyKey) {
-        return new CreatePurchaseCommand(companyId, request.supplierId(), request.subtotal(), request.taxTotal(),
-                request.total(), request.paymentCondition(), request.dueDate(), request.evidenceUrl(),
+        BigDecimal total = request.total();
+        return new CreatePurchaseCommand(companyId, request.supplierId(), valueOr(request.subtotal(), total),
+                valueOr(request.taxTotal(), BigDecimal.ZERO), total, request.paymentCondition(), request.dueDate(),
+                request.evidenceUrl(),
                 idempotencyKey, createdBy,
                 request.lines().stream().map(InventoryRestMapper::toLineCommand).toList());
     }
@@ -139,8 +141,10 @@ final class InventoryRestMapper {
     }
 
     private static PurchaseLineCommand toLineCommand(PurchaseLineRequest request) {
-        return new PurchaseLineCommand(request.productId(), request.description(), request.quantity(), request.unitCost(), request.subtotal(),
-                request.tax(), request.total());
+        BigDecimal total = valueOr(request.total(), valueOr(request.subtotal(), BigDecimal.ZERO));
+        return new PurchaseLineCommand(request.productId(), request.description(),
+                valueOr(request.quantity(), BigDecimal.ONE), valueOr(request.unitCost(), total),
+                valueOr(request.subtotal(), total), valueOr(request.tax(), BigDecimal.ZERO), total);
     }
 
     private static ConfirmServiceSupplyConsumptionCommand.Line toLineCommand(
@@ -155,5 +159,9 @@ final class InventoryRestMapper {
 
     private static String defaultText(String value, String defaultValue) {
         return value == null || value.isBlank() ? defaultValue : value;
+    }
+
+    private static BigDecimal valueOr(BigDecimal value, BigDecimal fallback) {
+        return value == null ? fallback : value;
     }
 }

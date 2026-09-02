@@ -3,6 +3,10 @@ package com.msvanegasg.facturaelectronica.billing.application.usecase;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.WriterException;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
 import com.msvanegasg.facturaelectronica.billing.application.dto.PosReceiptResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleLineResult;
 import com.msvanegasg.facturaelectronica.billing.application.dto.SaleResult;
@@ -17,6 +21,7 @@ final class PosReceiptRenderer {
         String number = sale.electronicDocument() == null
                 ? sale.id().toString()
                 : sale.electronicDocument().prefix() + sale.electronicDocument().documentNumber();
+        String qrPayload = qrPayload(sale, number, safeWidth);
         String html = """
                 <!doctype html>
                 <html lang="es">
@@ -38,6 +43,8 @@ final class PosReceiptRenderer {
                     .right { text-align: right; }
                     .totals td { font-weight: 700; }
                     .qr { overflow-wrap: anywhere; font-size: 9px; }
+                    .qr-code { display: flex; justify-content: center; margin: 6px 0; }
+                    .qr-code svg { width: 84px; height: 84px; }
                     @media print { button { display: none; } }
                   </style>
                 </head>
@@ -64,6 +71,7 @@ final class PosReceiptRenderer {
                   <p>CUFE/CUDE:</p>
                   <p class="qr">%s</p>
                   <p>QR:</p>
+                  <div class="qr-code">%s</div>
                   <p class="qr">%s</p>
                   <div class="line"></div>
                   <p class="center">Representacion imprimible generada por NexoFiscal.</p>
@@ -74,7 +82,7 @@ final class PosReceiptRenderer {
                 sale.confirmedAt() == null ? sale.createdAt() : sale.confirmedAt(), lines(sale),
                 money(sale.subtotal()), money(sale.taxTotal()), money(sale.total()),
                 escape(sale.electronicDocument() == null ? "" : sale.electronicDocument().cufeCude()),
-                escape(sale.electronicDocument() == null ? "" : sale.electronicDocument().qrContent()));
+                qrSvg(qrPayload), escape(qrPayload));
         return new PosReceiptResult("nexofiscal-pos-" + number + ".html", "text/html; charset=UTF-8",
                 html.getBytes(StandardCharsets.UTF_8));
     }
@@ -103,5 +111,33 @@ final class PosReceiptRenderer {
         }
         return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                 .replace("\"", "&quot;").replace("'", "&#39;");
+    }
+
+    private static String qrPayload(SaleResult sale, String number, int safeWidth) {
+        String providerQr = sale.electronicDocument() == null ? null : sale.electronicDocument().qrContent();
+        if (providerQr != null && !providerQr.isBlank() && !providerQr.startsWith("mock-qr:")) {
+            return providerQr;
+        }
+        return "/api/v1/sales/%s/receipt?widthMm=%s&document=%s".formatted(sale.id(), safeWidth, number);
+    }
+
+    private static String qrSvg(String payload) {
+        try {
+            BitMatrix matrix = new QRCodeWriter().encode(payload, BarcodeFormat.QR_CODE, 0, 0);
+            StringBuilder svg = new StringBuilder("<svg viewBox=\"0 0 ")
+                    .append(matrix.getWidth()).append(' ').append(matrix.getHeight())
+                    .append("\" role=\"img\" aria-label=\"Codigo QR DIAN\"><rect width=\"100%\" height=\"100%\" fill=\"#fff\"/>");
+            for (int y = 0; y < matrix.getHeight(); y++) {
+                for (int x = 0; x < matrix.getWidth(); x++) {
+                    if (matrix.get(x, y)) {
+                        svg.append("<rect x=\"").append(x).append("\" y=\"").append(y)
+                                .append("\" width=\"1\" height=\"1\" fill=\"#000\"/>");
+                    }
+                }
+            }
+            return svg.append("</svg>").toString();
+        } catch (WriterException exception) {
+            return "";
+        }
     }
 }

@@ -39,6 +39,11 @@ export function ProductForm({
   listFilters,
   setListFilters,
   products = [],
+  editingProductId = '',
+  onNew,
+  onEdit,
+  onDeactivate,
+  onBarcodeLookup,
 }) {
   const selectedUsage = findUsageProfile(form);
   const priceBreakdown = calculateTaxIncludedAmounts(form.finalSalePrice, form.taxRate);
@@ -80,10 +85,23 @@ export function ProductForm({
   }
 
   return <div className="stack">
-    <FormPanel title="Producto / servicio / insumo" submitLabel="Crear item" onSubmit={onSubmit} busy={busy}>
+    <FormPanel title="Producto / servicio / insumo" submitLabel={editingProductId ? 'Actualizar item' : 'Crear item'} onSubmit={onSubmit} busy={busy}>
       <div className="form-grid">
         <Field label="SKU" value={form.sku} onChange={(value) => setForm({ ...form, sku: value })} />
-        <Field label="Codigo de barras" value={form.barcode} onChange={(value) => setForm({ ...form, barcode: value })} placeholder="Escanea o digita el codigo" autoComplete="off" />
+        <Field
+          label="Codigo de barras"
+          value={form.barcode}
+          onChange={(value) => setForm({ ...form, barcode: value })}
+          onBlur={() => onBarcodeLookup?.(form.barcode)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              onBarcodeLookup?.(form.barcode);
+            }
+          }}
+          placeholder="Escanea o digita el codigo"
+          autoComplete="off"
+        />
         <Field label="Nombre" value={form.name} onChange={(value) => setForm({ ...form, name: value })} />
         <Field label="Descripcion" value={form.description} onChange={(value) => setForm({ ...form, description: value })} />
         <SelectField label="Tipo de item" value={form.itemType} onChange={(value) => setForm({ ...form, itemType: value })} options={itemTypeCatalog} />
@@ -99,6 +117,7 @@ export function ProductForm({
           {selectedUsage?.description || 'Selecciona como se usara el item en ventas e inventario. Las compras financieras y gastos se registran en sus modulos.'}
         </div>
       </div>
+      {editingProductId && <button className="secondary" disabled={busy} onClick={onNew} type="button">Nuevo item</button>}
     </FormPanel>
     <section className="tool-panel">
       <header className="panel-header">
@@ -114,8 +133,8 @@ export function ProductForm({
         ]} placeholder="Todos" />
       </div>
       <DataTable
-        columns={['SKU', 'Nombre', 'Tipo', 'Stock', 'Costo', 'Precio sin IVA', 'Precio final', 'Estado']}
-        rows={products.map(productRow)}
+        columns={['SKU', 'Nombre', 'Tipo', 'Stock', 'Costo', 'Precio sin IVA', 'Precio final', 'Estado', 'Acciones']}
+        rows={products.map((product) => productRow(product, { onEdit, onDeactivate, busy }))}
         rowKey={(_row, index) => products[index]?.id || index}
         emptyMessage="Sin productos registrados para el filtro actual."
         sectionClassName="embedded-table"
@@ -130,7 +149,7 @@ function findUsageProfile(form) {
     && profile.stockTracked === form.stockTracked);
 }
 
-function productRow(product) {
+function productRow(product, actions) {
   const finalPrice = calculateTaxAddedAmounts(product.salePrice, product.taxRate);
   return [
     product.sku || '',
@@ -141,6 +160,15 @@ function productRow(product) {
     money(product.salePrice),
     money(finalPrice.total),
     product.active === false ? 'Inactivo' : 'Activo',
+    {
+      searchText: product.active === false ? 'inactivo' : 'activo',
+      content: (
+        <div className="row-actions">
+          <button className="secondary" disabled={actions.busy} onClick={() => actions.onEdit?.(product)} type="button">Actualizar</button>
+          {product.active !== false && <button className="secondary danger-soft" disabled={actions.busy} onClick={() => actions.onDeactivate?.(product.id)} type="button">Inactivar</button>}
+        </div>
+      ),
+    },
   ];
 }
 

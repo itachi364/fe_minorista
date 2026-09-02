@@ -38,6 +38,12 @@ public class ProductPersistenceAdapter implements ProductRepositoryPort {
     }
 
     @Override
+    public Optional<Product> findByCompanyIdAndBarcode(UUID companyId, String barcode) {
+        return repository.findByCompanyIdAndBarcode(companyId, barcode)
+                .map(ProductPersistenceAdapter::toDomain);
+    }
+
+    @Override
     public List<Product> findByCompanyId(UUID companyId, Boolean active) {
         if (active == null) {
             return repository.findByCompanyIdOrderByNameAsc(companyId).stream()
@@ -52,6 +58,17 @@ public class ProductPersistenceAdapter implements ProductRepositoryPort {
     @Override
     public boolean existsByCompanyIdAndSku(UUID companyId, String sku) {
         return repository.existsByCompanyIdAndSku(companyId, sku);
+    }
+
+    @Override
+    public boolean existsByCompanyIdAndSkuAndIdNot(UUID companyId, String sku, UUID id) {
+        return repository.existsByCompanyIdAndSkuAndIdNot(companyId, sku, id);
+    }
+
+    @Override
+    public boolean existsByCompanyIdAndBarcodeAndIdNot(UUID companyId, String barcode, UUID id) {
+        return barcode != null && !barcode.isBlank()
+                && repository.existsByCompanyIdAndBarcodeAndIdNot(companyId, barcode.trim(), id);
     }
 
     @Override

@@ -16,8 +16,8 @@ export function createCompanyForm() {
 export function createCompanyBrandingForm() {
   return {
     displayName: '',
-    primaryColor: '',
-    accentColor: '',
+    primaryColor: '#1f78a8',
+    accentColor: '#2a7c61',
   };
 }
 
@@ -111,8 +111,10 @@ export function createPurchaseForm() {
     supplierId: '',
     paymentCondition: 'CASH',
     dueDate: '',
+    evidenceType: '',
     evidenceUrl: '',
-    lines: [{ description: '', quantity: '1', unitCost: '', tax: '0' }],
+    evidenceFile: null,
+    lines: [{ description: '', total: '' }],
   };
 }
 
@@ -127,7 +129,9 @@ export function createExpenseForm() {
     total: '',
     paymentCondition: 'CASH',
     dueDate: '',
+    evidenceType: '',
     evidenceUrl: '',
+    evidenceFile: null,
   };
 }
 

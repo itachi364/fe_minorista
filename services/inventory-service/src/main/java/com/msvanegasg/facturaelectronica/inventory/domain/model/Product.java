@@ -62,6 +62,20 @@ public record Product(
                 stockTracked, salePrice, cost, "IVA", "IVA_19", "IVA 19%", new BigDecimal("19"), now);
     }
 
+    public Product update(String sku, String barcode, String name, String description, InventoryItemType itemType,
+            boolean saleEnabled, boolean purchaseEnabled, boolean stockTracked, BigDecimal salePrice, BigDecimal cost,
+            String taxCategoryCode, String taxCode, String taxLabel, BigDecimal taxRate, Instant updatedAt) {
+        return new Product(id, companyId, sku, barcode, name, description, itemType, saleEnabled, purchaseEnabled,
+                stockTracked, salePrice, cost, taxCategoryCode, taxCode, taxLabel, taxRate, active, createdAt,
+                updatedAt);
+    }
+
+    public Product deactivate(Instant updatedAt) {
+        return new Product(id, companyId, sku, barcode, name, description, itemType, saleEnabled, purchaseEnabled,
+                stockTracked, salePrice, cost, taxCategoryCode, taxCode, taxLabel, taxRate, false, createdAt,
+                updatedAt);
+    }
+
     private static String normalizeRequired(String value, int maxLength, String field) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(field + " is required");

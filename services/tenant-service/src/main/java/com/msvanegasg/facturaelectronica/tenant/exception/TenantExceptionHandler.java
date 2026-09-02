@@ -14,6 +14,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyAlreadyExistsException;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyBrandingAssetNotFoundException;
+import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyFileAssetNotFoundException;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyLicenseNotFoundException;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyNotFoundException;
 import com.msvanegasg.facturaelectronica.tenant.observability.CorrelationId;
@@ -47,6 +48,7 @@ public class TenantExceptionHandler {
     @ExceptionHandler({
             CompanyNotFoundException.class,
             CompanyLicenseNotFoundException.class,
+            CompanyFileAssetNotFoundException.class,
             CompanyBrandingAssetNotFoundException.class
     })
     public ResponseEntity<ApiErrorResponse> handleNotFound(RuntimeException exception,

@@ -17,14 +17,14 @@ export function CompanyBrandingPanel({ form, setForm, branding, onSave, onUpload
       <header className="panel-header">
         <div>
           <h1>Marca empresarial</h1>
-          <p>Configura nombre visual, colores, logos y favicon de la empresa activa.</p>
+          <p>El color principal aplica a botones y acentos de navegacion. El color acento resalta estados, focos y detalles visuales.</p>
         </div>
         <button className="primary" disabled={busy || disabled} onClick={onSave} type="button">Guardar marca</button>
       </header>
       <div className="form-grid">
         <Field label="Nombre visible" value={form.displayName} onChange={(value) => setForm({ ...form, displayName: value })} placeholder="Ej. Tienda Norte" disabled={disabled} />
-        <Field label="Color principal" value={form.primaryColor} onChange={(value) => setForm({ ...form, primaryColor: value })} placeholder="#1f78a8" disabled={disabled} />
-        <Field label="Color acento" value={form.accentColor} onChange={(value) => setForm({ ...form, accentColor: value })} placeholder="#2a7c61" disabled={disabled} />
+        <Field label="Color principal" value={form.primaryColor || '#1f78a8'} onChange={(value) => setForm({ ...form, primaryColor: value })} type="color" disabled={disabled} />
+        <Field label="Color acento" value={form.accentColor || '#2a7c61'} onChange={(value) => setForm({ ...form, accentColor: value })} type="color" disabled={disabled} />
       </div>
       <BrandingAssets branding={branding} hasAssets={hasAssets} onUploadAsset={onUploadAsset} busy={busy} disabled={disabled} />
     </section>
@@ -42,14 +42,14 @@ export function CompanyBrandingModal({ form, setForm, branding, company, company
         <header className="modal-section-header">
           <div>
             <h2>Marca empresarial</h2>
-            <p className="hint">Configura nombre visual, colores, logos y favicon de la empresa seleccionada.</p>
+            <p className="hint">El color principal aplica a botones y acentos de navegacion. El color acento resalta estados, focos y detalles visuales.</p>
           </div>
           <button className="primary" disabled={busy} onClick={onSave} type="button">Guardar marca</button>
         </header>
         <div className="form-grid">
           <Field label="Nombre visible" value={form.displayName} onChange={(value) => setForm({ ...form, displayName: value })} placeholder="Ej. Tienda Norte" />
-          <Field label="Color principal" value={form.primaryColor} onChange={(value) => setForm({ ...form, primaryColor: value })} placeholder="#1f78a8" />
-          <Field label="Color acento" value={form.accentColor} onChange={(value) => setForm({ ...form, accentColor: value })} placeholder="#2a7c61" />
+          <Field label="Color principal" value={form.primaryColor || '#1f78a8'} onChange={(value) => setForm({ ...form, primaryColor: value })} type="color" />
+          <Field label="Color acento" value={form.accentColor || '#2a7c61'} onChange={(value) => setForm({ ...form, accentColor: value })} type="color" />
         </div>
         <BrandingAssets branding={branding} hasAssets={hasAssets} onUploadAsset={onUploadAsset} busy={busy} disabled={false} />
       </section>

@@ -3241,8 +3241,8 @@ Content-Type: multipart/form-data
 
 Campos multipart:
 
-- `businessCategory`: `facturas`, `logos`, `fondos`, `evidencias`, `reportes` o `artefactos-fiscales`.
-- `file`: archivo unico; para evidencias de compras/gastos fase 34 solo `application/pdf`.
+- `category`: `INVOICE`, `LOGO`, `BACKGROUND`, `PURCHASE_EVIDENCE`, `EXPENSE_EVIDENCE` u `OTHER`.
+- `file`: archivo unico; para `INVOICE`, `PURCHASE_EVIDENCE` y `EXPENSE_EVIDENCE` solo `application/pdf`.
 
 Respuesta:
 
@@ -3250,13 +3250,14 @@ Respuesta:
 {
   "id": "uuid",
   "companyId": "uuid",
-  "businessCategory": "evidencias",
-  "storageReference": "private-reference",
-  "fileName": "factura-proveedor.pdf",
+  "category": "PURCHASE_EVIDENCE",
+  "originalFilename": "factura-proveedor.pdf",
   "contentType": "application/pdf",
-  "sizeBytes": 120000,
-  "contentHash": "sha256:...",
-  "createdAt": "2026-09-01T10:00:00Z"
+  "fileSize": 120000,
+  "contentHash": "hash-sha256",
+  "url": "/api/v1/companies/{companyId}/files/{assetId}?hash={contentHash}",
+  "uploadedBy": "uuid",
+  "uploadedAt": "2026-09-01T10:00:00Z"
 }
 ```
 
@@ -3264,7 +3265,7 @@ Reglas:
 
 - El navegador no recibe bucket, key interna, credenciales ni URL publica permanente.
 - En desarrollo el adaptador puede escribir en volumen/contenedor local; en produccion usa S3 privado/KMS.
-- Los prefijos se construyen por ambiente, empresa y categoria funcional.
+- Los prefijos actuales se construyen por empresa y categoria funcional: `{companyId}/{folderName}/{assetId}-{safeFileName}`.
 - Las descargas futuras deben pasar por BFF/RBAC y auditoria.
 
 ### Deudores y cuentas por cobrar
