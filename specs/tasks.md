@@ -5815,7 +5815,7 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
     - AC-284: Cada regla permite agregar multiples `movimientos contables` con cuenta, naturaleza debito/credito, tipo de monto y descripcion.
     - AC-285: El backend valida que todas las cuentas referenciadas existan o vengan en el mismo lote, y que cada regla quede balanceable segun partida doble.
     - AC-286: El guardado batch es transaccional: si una cuenta, regla o movimiento falla, no se persiste ningun registro del lote.
-    - AC-287: La opcion `Usar plantilla recomendada` muestra una vista previa editable de cuentas y reglas antes de guardar.
+    - AC-287: La opcion `Completar plantilla basica` usa `POST /api/v1/accounting-setup/basic` para completar faltantes sin duplicar parametros existentes.
     - AC-288: Cuentas o reglas ya usadas por asientos no se eliminan fisicamente; se inactivan o versionan conservando trazabilidad.
     - AC-289: Toda creacion, actualizacion, inactivacion o aplicacion de plantilla contable queda auditada con empresa, usuario, recurso, resultado y correlation ID.
   - Descripcion: Reemplazar la inicializacion contable de caja negra por un asistente profesional para que cada empresa configure su plan de cuentas y reglas contables, con carga de una o varias cuentas/reglas en una sola operacion.
@@ -5823,7 +5823,7 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
     - UI con formularios dinamicos para cuentas PUC y reglas contables.
     - Renombrar visualmente `lineas` de regla a `movimientos contables`.
     - Contratos batch para crear varias cuentas y reglas en una sola peticion.
-    - Vista previa editable para plantilla recomendada.
+    - Accion idempotente para completar plantilla basica.
     - Validaciones frontend y backend antes de persistir.
     - Auditoria de acciones mutables.
   - Fuera de alcance:
@@ -6642,6 +6642,34 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
   - Validacion ejecutada:
     - `.\mvnw.cmd -pl services/accounting-service -am test`: 69 tests OK.
 
+- [x] TASK-260: Corregir accion frontend de plantilla contable basica
+  - Estado: COMPLETED.
+  - Requisitos: RF-206, RF-265.
+  - Acceptance criteria: AC-287, AC-377.
+  - Descripcion: Evitar que la SPA use la plantilla recomendada como payload batch editable cuando la empresa ya tiene cuentas o reglas existentes. La accion visible debe ejecutar el endpoint idempotente de setup basico.
+  - Archivos previstos:
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/features/accounting/AccountingConfigurationPanel.jsx`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+    - `specs/requirements.md`
+    - `specs/acceptance-criteria.md`
+    - `specs/api-contract.md`
+    - `specs/tasks.md`
+  - Dependencias:
+    - TASK-222.
+    - TASK-223.
+    - TASK-259.
+  - Validacion propuesta:
+    - Vitest del frontend para confirmar que `Completar plantilla basica` llama la accion idempotente y no el guardado batch.
+    - Build frontend.
+  - Implementacion:
+    - `App.jsx` agrega `initializeBasicAccountingSetup` contra `/api/v1/accounting-setup/basic`.
+    - `AccountingConfigurationPanel` cambia `Usar plantilla recomendada` por `Completar plantilla basica`.
+    - La creacion batch queda solo para cuentas/reglas agregadas manualmente.
+  - Validacion ejecutada:
+    - `npm test -- --run App.test.jsx --reporter=dot`: 31 tests OK.
+    - `npm run build`: OK.
+
 Context7 evidence:
 
 - Library/tool: React.
@@ -6664,3 +6692,7 @@ Context7 evidence:
   - Topic consulted: `@ControllerAdvice` and `@ExceptionHandler` for business exception mapping.
   - Relevant finding: Spring Boot MVC permite centralizar excepciones y devolver `ResponseEntity` con payload controlado por tipo de error.
   - Decision impact: TASK-259 mantiene errores contables esperados como `400 BUSINESS_RULE_VIOLATION` con mensajes funcionales especificos.
+- Library/tool: React.
+  - Topic consulted: button event handlers and passing functions through props.
+  - Relevant finding: React recomienda pasar funciones como handlers `onClick` y levantar estado/operaciones compartidas al componente padre mediante props.
+  - Decision impact: TASK-260 mueve la aplicacion de plantilla basica a una accion idempotente del contenedor `App`, invocada desde el panel por prop.

@@ -418,7 +418,7 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-203: El modulo `Configuracion contable` debe evolucionar de inicializacion automatica a asistente guiado editable para registrar plan de cuentas y reglas contables por empresa.
 - RF-204: El asistente debe permitir crear una o varias cuentas PUC y una o varias reglas contables en una sola accion, agregando multiples lineas de formulario antes de enviar el request.
 - RF-205: Las reglas contables deben mostrar sus lineas como `movimientos contables`, permitiendo varias cuentas afectadas por regla y validando partida doble antes de guardar.
-- RF-206: Debe existir una opcion `Usar plantilla recomendada` que muestre previamente las cuentas y reglas que se van a crear, sin aplicar cambios ocultos.
+- RF-206: Debe existir una opcion `Completar plantilla basica` que ejecute la inicializacion idempotente `POST /api/v1/accounting-setup/basic`, creando solo faltantes y sin construir un lote editable que duplique parametros existentes.
 - RF-207: La creacion batch de cuentas y reglas contables debe ser transaccional y auditada: si una cuenta, regla o movimiento contable falla validacion, no debe persistirse una configuracion parcial.
 - RF-208: El sistema debe indicar si una cuenta PUC o regla contable ya fue usada por asientos contables reales.
 - RF-209: Las cuentas PUC y reglas contables sin uso pueden actualizarse o inactivarse; si ya fueron usadas, solo pueden consultarse para conservar trazabilidad.

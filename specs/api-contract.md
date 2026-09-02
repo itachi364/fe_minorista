@@ -1542,7 +1542,7 @@ Reglas:
 - Todas las cuentas referenciadas deben existir activas para la empresa o venir en el mismo flujo de configuracion aprobado.
 - Si `activate=true`, el backend debe inactivar/versionar la regla activa previa del mismo evento sin borrar historial.
 - Los errores deben incluir indice de regla e indice de movimiento para soportar validacion visual por fila.
-- La vista `Usar plantilla recomendada` debe construir este payload despues de mostrar una vista previa editable; nunca debe aplicar datos ocultos.
+- La creacion batch queda reservada para parametrizacion manual. La accion `Completar plantilla basica` debe usar `POST /api/v1/accounting-setup/basic`, no este endpoint, para evitar duplicados cuando ya existen cuentas o reglas.
 
 ### AccountingEntryRequest
 

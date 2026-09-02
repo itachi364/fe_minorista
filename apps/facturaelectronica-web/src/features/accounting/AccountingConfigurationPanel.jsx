@@ -34,44 +34,11 @@ const amountTypeOptions = [
 const eventLabels = Object.fromEntries(eventOptions.map((option) => [option.value, option.label]));
 const sourceLabels = Object.fromEntries(sourceOptions.map((option) => [option.value, option.label]));
 
-const recommendedTemplate = {
-  accounts: [
-    { code: '1105', name: 'Caja', parentAccountId: null },
-    { code: '1110', name: 'Bancos', parentAccountId: null },
-    { code: '1305', name: 'Clientes', parentAccountId: null },
-    { code: '1435', name: 'Inventarios', parentAccountId: null },
-    { code: '2205', name: 'Proveedores', parentAccountId: null },
-    { code: '2408', name: 'IVA generado', parentAccountId: null },
-    { code: '4135', name: 'Ingresos operacionales', parentAccountId: null },
-    { code: '5135', name: 'Gastos operacionales', parentAccountId: null },
-  ],
-  rules: [
-    {
-      eventType: 'SALE_CONFIRMED',
-      sourceType: 'SALE',
-      name: 'Venta facturada',
-      lines: [
-        { accountCode: '1105', side: 'DEBIT', amountType: 'TOTAL', description: 'Ingreso a caja' },
-        { accountCode: '4135', side: 'CREDIT', amountType: 'SUBTOTAL', description: 'Ingreso por venta' },
-        { accountCode: '2408', side: 'CREDIT', amountType: 'TAX_TOTAL', description: 'IVA generado' },
-      ],
-    },
-    {
-      eventType: 'EXPENSE_CONFIRMED',
-      sourceType: 'EXPENSE',
-      name: 'Egreso pagado de contado',
-      lines: [
-        { accountCode: '5135', side: 'DEBIT', amountType: 'TOTAL', description: 'Gasto operacional' },
-        { accountCode: '1105', side: 'CREDIT', amountType: 'TOTAL', description: 'Salida de caja' },
-      ],
-    },
-  ],
-};
-
 export function AccountingConfigurationPanel({
   accounts,
   rules,
   onLoad,
+  onInitializeBasicSetup = async () => null,
   onConfigure,
   onUpdateAccount = async () => null,
   onDeactivateAccount = async () => null,
@@ -165,7 +132,7 @@ export function AccountingConfigurationPanel({
         </div>
         <div className="toolbar-actions">
           <button className="secondary" disabled={busy} onClick={onLoad} type="button">Actualizar estado</button>
-          <button className="secondary" disabled={busy || Boolean(editing)} onClick={() => setDraft(cloneTemplate())} type="button">Usar plantilla recomendada</button>
+          <button className="secondary" disabled={busy || Boolean(editing)} onClick={onInitializeBasicSetup} type="button">Completar plantilla basica</button>
           {editing && <button className="secondary" disabled={busy} onClick={clearDraft} type="button">Cancelar edicion</button>}
           <button className="primary" disabled={!canSubmit} onClick={submitDraft} type="button">{submitLabel(editing)}</button>
         </div>
@@ -332,10 +299,6 @@ function rulePayload(rule) {
 
 function emptyDraft() {
   return { accounts: [], rules: [] };
-}
-
-function cloneTemplate() {
-  return JSON.parse(JSON.stringify(recommendedTemplate));
 }
 
 function addAccountRow(current) {

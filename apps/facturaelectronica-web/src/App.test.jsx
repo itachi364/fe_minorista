@@ -148,33 +148,23 @@ test('renders only login when there is no active session', () => {
   expect(container.querySelector('textarea')).toBeNull();
 });
 
-test('accounting configuration template is previewed and submitted as batch payload', async () => {
+test('accounting configuration basic template is completed with idempotent setup action', async () => {
+  const onInitializeBasicSetup = vi.fn().mockResolvedValue({ accounts: [], rules: [] });
   const onConfigure = vi.fn().mockResolvedValue({ accounts: [], rules: [] });
 
   render(<AccountingConfigurationPanel
     accounts={[]}
     rules={[]}
     onLoad={vi.fn()}
+    onInitializeBasicSetup={onInitializeBasicSetup}
     onConfigure={onConfigure}
     busy={false}
   />);
 
-  fireEvent.click(screen.getByRole('button', { name: 'Usar plantilla recomendada' }));
-  expect(screen.getAllByDisplayValue('1105').length).toBeGreaterThan(0);
-  expect(screen.getAllByText('Movimientos contables').length).toBeGreaterThan(0);
+  fireEvent.click(screen.getByRole('button', { name: 'Completar plantilla basica' }));
 
-  fireEvent.click(screen.getByRole('button', { name: 'Guardar configuracion' }));
-
-  await waitFor(() => expect(onConfigure).toHaveBeenCalledTimes(1));
-  expect(onConfigure.mock.calls[0][0]).toMatchObject({
-    accounts: expect.arrayContaining([expect.objectContaining({ code: '1105', name: 'Caja' })]),
-    rules: expect.arrayContaining([
-      expect.objectContaining({
-        eventType: 'SALE_CONFIRMED',
-        lines: expect.arrayContaining([expect.objectContaining({ accountCode: '1105', side: 'DEBIT' })]),
-      }),
-    ]),
-  });
+  await waitFor(() => expect(onInitializeBasicSetup).toHaveBeenCalledTimes(1));
+  expect(onConfigure).not.toHaveBeenCalled();
 });
 
 test('accounting configuration shows usage and protects used accounts and rules', () => {
