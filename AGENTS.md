@@ -114,7 +114,7 @@ Token budget Context7:
 
 ## 5. Carga condicional de reglas
 
-Cargar archivos de `agent-rules/` solo si aplican:
+Cargar archivos de `C:\Users\NarutoRgal\Documents\spec-driven-workspace\agent-rules\` solo si aplican:
 
 | Trigger | Archivo |
 |---|---|

@@ -4134,7 +4134,7 @@
     - `.\mvnw.cmd -pl services/dian-provider-service test -q`: BUILD SUCCESS.
 
 - [x] TASK-158: Implementar transporte real DIAN para habilitacion y produccion
-  - Estado: DONE. Implementado puerto `DianTransportPort` y adaptador `ConfigurableDianTransportAdapter` con modo `stub` para habilitacion controlada local y modo `http` por URL/configuracion de empresa. El modo real no cae a mock ante errores.
+  - Estado: DONE parcial/reference. Implementado puerto `DianTransportPort` y adaptador `ConfigurableDianTransportAdapter` con modo `stub` para habilitacion controlada local y modo `http` por URL/configuracion de empresa. Este modo `http` no equivale a conexion DIAN real porque DIAN exige WCF/SOAP; el cierre SOAP queda pendiente en TASK-273 a TASK-276. El modo real no cae a mock ante errores.
   - Requisitos: RF-161, RF-164.
   - Acceptance criteria: AC-222, AC-226.
   - Descripcion: Implementar adaptador de transporte real DIAN por empresa, separando ambiente de habilitacion y produccion, con timeouts, correlacion e idempotencia.
@@ -4266,6 +4266,99 @@
     - `.\mvnw.cmd -pl services/dian-provider-service test -q`: BUILD SUCCESS.
     - `.\mvnw.cmd test -q`: BUILD SUCCESS de la suite Maven completa.
     - E2E DIAN real con stub/habilitacion cuando existan credenciales empresariales.
+
+- [ ] TASK-273: Implementar transporte SOAP WCF DIAN de habilitacion
+  - Estado: PENDING.
+  - Requisitos: RF-161, RF-164, RF-279, RF-280.
+  - Acceptance criteria: AC-222, AC-226, AC-391, AC-392, AC-393.
+  - Descripcion: Reemplazar el transporte `http` de referencia por un adaptador SOAP WCF real contra `https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc`, usando WSDL/singleWsdl, envelope SOAP, SOAPAction y operaciones iniciales de habilitacion.
+  - Dependencias:
+    - TASK-153.
+    - TASK-154.
+    - TASK-156.
+    - TASK-157.
+    - TASK-158.
+  - Archivos previstos:
+    - `services/dian-provider-service/pom.xml`
+    - `services/dian-provider-service/src/main/java/**/infrastructure/dian/**`
+    - `services/dian-provider-service/src/test/java/**/dianprovider/**`
+    - `specs/api-contract.md`
+    - `specs/design.md`
+  - Criterios:
+    - Soportar `DIAN_REAL_TRANSPORT_MODE=soap`.
+    - Usar endpoint por empresa/ambiente y no configuracion global unica.
+    - Implementar `SendTestSetAsync(fileName, contentFile, testSetId)` para habilitacion.
+    - Implementar consultas `GetStatusZip(trackId)` y `GetStatus(trackId)` como seguimiento.
+    - Mapear errores SOAP/timeout/WSDL a errores funcionales sanitizados.
+  - Validacion propuesta:
+    - Unit tests con cliente SOAP mock/stub.
+    - Integration test con WSDL fixture sanitizado.
+    - E2E controlado contra habilitacion DIAN solo con datos reales de empresa y sin registrar secretos.
+
+- [ ] TASK-274: Normalizar respuestas SOAP DIAN y seguimiento de ZipKey/CUFE
+  - Estado: PENDING.
+  - Requisitos: RF-162, RF-163, RF-279, RF-280.
+  - Acceptance criteria: AC-223, AC-225, AC-392, AC-393.
+  - Descripcion: Parsear respuestas SOAP `UploadDocumentResponse`, `DianResponse`, `ApplicationResponse`, `GetStatusZip` y `GetStatus`, persistiendo tracking/zipKey, codigo, descripcion, mensaje, validez, CUFE/CUDE y artefactos.
+  - Dependencias:
+    - TASK-159.
+    - TASK-161.
+    - TASK-273.
+  - Archivos previstos:
+    - `services/dian-provider-service/src/main/java/**/application/**`
+    - `services/dian-provider-service/src/main/java/**/infrastructure/persistence/**`
+    - `services/dian-provider-service/src/test/java/**`
+  - Criterios:
+    - No persistir ni loguear XML completo sensible en auditoria publica.
+    - Mantener idempotencia por documento y `Idempotency-Key`.
+    - Diferenciar aceptado, rechazado, en proceso y fallo tecnico.
+  - Validacion propuesta:
+    - Tests con respuestas SOAP aceptada, rechazada, en proceso y malformada.
+
+- [ ] TASK-275: Cambiar Configuracion DIAN a carga segura de certificado p12/pfx
+  - Estado: PENDING.
+  - Requisitos: RF-063, RF-159, RF-281.
+  - Acceptance criteria: AC-170, AC-220, AC-394, AC-395.
+  - Descripcion: Reemplazar textarea de certificado por carga de archivo `.p12`/`.pfx` en UI/API, validando password, alias, fingerprint y vencimiento, y almacenando solo referencia segura.
+  - Dependencias:
+    - TASK-147.
+    - TASK-152.
+    - TASK-156.
+  - Archivos previstos:
+    - `apps/facturaelectronica-web/src/features/dian/DianConfigurationPanel.jsx`
+    - `services/bff-service/**`
+    - `services/dian-provider-service/**`
+    - `services/dian-provider-service/src/test/**`
+  - Criterios:
+    - UI acepta un solo archivo `.p12` o `.pfx`.
+    - Backend valida estructura PKCS#12 y password.
+    - Respuesta solo retorna `certificateConfigured`, alias, fingerprint y vencimiento.
+    - Campo JSON legacy `certificatePayload` queda deprecado y no visible en UI.
+  - Validacion propuesta:
+    - Tests frontend de accept `.p12,.pfx` y ausencia de textarea.
+    - Tests backend de archivo valido, password invalido, extension invalida y certificado vencido.
+
+- [ ] TASK-276: Usar caja de herramientas DIAN como fixtures tecnicos sanitizados
+  - Estado: PENDING.
+  - Requisitos: RF-157, RF-160, RF-165.
+  - Acceptance criteria: AC-217, AC-221, AC-396.
+  - Descripcion: Clasificar insumos de la caja de herramientas version 1.8 para XSD, Schematron, XSL/listas de codigos y XML de ejemplo, importando solo fixtures necesarios o referenciandolos por ruta configurable sin artefactos innecesarios.
+  - Dependencias:
+    - TASK-151.
+    - TASK-153.
+    - TASK-157.
+  - Archivos previstos:
+    - `services/dian-provider-service/src/test/resources/**`
+    - `services/dian-provider-service/src/main/resources/**`
+    - `specs/design.md`
+    - `specs/infrastructure.md`
+  - Criterios:
+    - No versionar `.DS_Store`, `__MACOSX` ni jars no usados.
+    - Fixtures de ejemplo deben estar sanitizados.
+    - Rutas de artefactos tecnicos deben ser configurables por ambiente.
+  - Validacion propuesta:
+    - Test de compuerta tecnica con rutas existentes/faltantes.
+    - Revision `rg` para detectar binarios o secretos accidentalmente versionados.
 
 ## Fase 21: Backlog autenticacion productiva y hardening
 
@@ -6909,3 +7002,7 @@ Context7 evidence:
   - Topic consulted: Actuator production-ready health endpoints and metrics.
   - Relevant finding: Spring Boot Actuator provee endpoints de monitoreo y administracion para produccion, incluyendo liveness/readiness y metricas integrables con herramientas externas.
   - Decision impact: TASK-272 queda documentada con health liveness/readiness, metricas, logs correlacionables y alertas por microservicio.
+- Library/tool: Apache CXF.
+  - Topic consulted: JAX-WS SOAP client from WSDL and WS-Security X.509 certificate configuration.
+  - Relevant finding: CXF permite crear clientes JAX-WS desde WSDL y configurar WS-Security mediante propiedades de firma, callback handler y soporte WSS4J para tokens X.509.
+  - Decision impact: TASK-273 define el transporte DIAN real como adaptador SOAP WCF y TASK-275 exige certificado `.p12/.pfx` gestionado como secreto de empresa.

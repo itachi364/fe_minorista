@@ -133,6 +133,14 @@ El `dian-provider-service` evoluciona como el mismo microservicio tecnico, no co
 - `DianResponseMapperPort`: normaliza `ApplicationResponse`, rechazos, tracking y errores.
 - `FiscalArtifactStoragePort`: almacena XML firmado, ZIP/AttachedDocument, QR, representacion grafica y respuesta DIAN.
 
+Estado actualizado 2026-09-03:
+
+- El transporte `stub/http` existente no cumple por si solo la conexion real DIAN porque DIAN exige servicio WCF/SOAP.
+- La URL de habilitacion entregada para factura electronica es `https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc?wsdl`.
+- El endpoint base objetivo para habilitacion es `https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc`.
+- El `DianTransportPort` debe evolucionar con un adaptador SOAP WCF separado del adaptador `stub/http`, manteniendo el modo mock para E2E local.
+- El modulo UI debe reemplazar textarea de certificado por carga de archivo `.p12`/`.pfx` y password de solo entrada.
+
 Flujo objetivo:
 
 1. `billing-service` confirma venta/documento y envia un snapshot fiscal canonico con `companyId`, `documentId`, tipo documental e `Idempotency-Key`.
@@ -146,6 +154,16 @@ Flujo objetivo:
 9. Se almacenan artefactos fiscales privados con hash y metadata.
 10. `billing-service` actualiza el estado del documento sin duplicar efectos de inventario ni contabilidad.
 
+Flujo SOAP WCF de habilitacion objetivo:
+
+1. El administrador configura modo `REAL`, ambiente `TEST/HABILITATION`, `softwareId`, `softwarePin`, `technicalKey`, `testSetId`, URL WSDL/base DIAN y certificado `.p12`/`.pfx` propio de la empresa.
+2. El backend valida el archivo PKCS#12, password, alias, fingerprint y vencimiento; guarda solo referencia segura y metadata.
+3. Al emitir documento de prueba, se genera XML UBL 2.1 firmado y se empaqueta en ZIP/base64 cuando la operacion DIAN lo requiera.
+4. El adaptador SOAP construye envelope WCF con la accion de operacion, por ejemplo `SendTestSetAsync`.
+5. El cliente SOAP transmite a `vpfe-hab.dian.gov.co` usando la configuracion de la empresa y seguridad WS-Security/X.509 segun WSDL/anexo.
+6. La respuesta `UploadDocumentResponse`, `DianResponse` o `ApplicationResponse` se normaliza a estado interno y se persisten tracking/zipKey, codigo, mensaje y artefactos.
+7. `GetStatusZip` y `GetStatus` quedan como consultas de seguimiento para validar aceptacion/rechazo del set de pruebas o documento.
+
 Reglas de seguridad:
 
 - El modo real nunca hace fallback a mock.
@@ -153,11 +171,32 @@ Reglas de seguridad:
 - Los artefactos fiscales se consultan por BFF/RBAC; el navegador no recibe rutas internas de storage.
 - La vigencia normativa debe verificarse nuevamente antes de activar produccion real para una empresa.
 
+Decisiones tecnicas:
+
+- Apache CXF queda como candidato principal para cliente SOAP por su soporte JAX-WS y WS-Security/WSS4J. La implementacion debe generar o construir cliente desde WSDL sin versionar secretos ni certificados.
+- El servicio debe soportar `DIAN_REAL_TRANSPORT_MODE=soap` como modo real objetivo; `stub` queda para pruebas controladas y `http` queda como adaptador legacy/reference no valido para DIAN real.
+- La caja de herramientas local se usa como fuente tecnica para XSD UBL 2.1, Schematron, XSL/listas de codigos y XML de ejemplo sanitizados. No deben versionarse artefactos innecesarios como `.DS_Store`, `__MACOSX` o jars no usados.
+- La pantalla DIAN debe manejar certificados como archivos, no texto. El frontend solo envia multipart; el backend extrae metadata segura y retorna banderas de configuracion.
+
+Fuentes actualizadas consultadas el 2026-09-03:
+
+- DIAN WCF habilitacion: `https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc?wsdl`.
+- DIAN `singleWsdl`: `https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc?singleWsdl`.
+- Compilacion juridica DIAN Resolucion 83 de 2019: secciones de servicios web `SendBillAsync`, `SendTestSetAsync`, `SendBillSync`, `GetStatus`, `GetStatusZip`, `SendEventUpdateStatus`, `GetNumberingRange`.
+- Caja de herramientas local version 1.8: anexo tecnico, XSD, Schematron, XSL/listas de codigos y XML de ejemplo.
+
 Fuentes oficiales consultadas el 2026-08-24:
 
 - DIAN Documentacion Tecnica: anexos tecnicos, OASIS UBL 2.1 y caja de herramientas.
 - DIAN Resolucion 000165 de 2023: sistema de facturacion, anexo tecnico de factura electronica de venta y documento equivalente electronico.
 - DIAN Resolucion 000202 de 2025: modificaciones sobre factura electronica/documento equivalente, transmision/validacion y consumidor final.
+
+### Context7 evidence - SOAP DIAN
+
+- Library/tool: Apache CXF.
+- Topic consulted: JAX-WS SOAP client from WSDL and WS-Security X.509 certificate signature configuration.
+- Relevant finding: Apache CXF permite crear clientes JAX-WS desde WSDL y configurar propiedades WS-Security como callback handler, propiedades de firma y cifrado; CXF soporta WS-Security mediante WSS4J, incluyendo token X.509.
+- Decision impact: El transporte DIAN real debe implementarse como adaptador SOAP WCF con CXF/WSS4J o equivalente aprobado, no como POST HTTP XML simple.
 
 ### inventory-service
 

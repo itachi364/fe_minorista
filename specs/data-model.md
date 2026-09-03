@@ -495,7 +495,15 @@ Estado TASK-036:
 - `dian-provider-service` fisico crea `dian_provider.provider_submission`.
 - La tabla registra empresa, documento, tipo de documento, clave de idempotencia, tracking ID, estado mock, CUFE/CUDE, QR, error seguro, fecha, request y response seguros.
 - `unique(company_id, document_id, document_type, idempotency_key)` evita duplicar envios por reintento.
-- La configuracion DIAN real, referencias de certificados/credenciales, respuestas oficiales, validaciones tecnicas y artefactos quedan implementadas/documentadas como configuracion parametrizable por empresa en Fase 20 TASK-145 a TASK-163. Cada empresa es responsable de su habilitacion/certificacion DIAN; la plataforma no presta servicio de proveedor tecnologico.
+- La configuracion DIAN real, referencias de certificados/credenciales, respuestas oficiales, validaciones tecnicas y artefactos quedan implementadas/documentadas como configuracion parametrizable por empresa en Fase 20 TASK-145 a TASK-163. Estado actualizado 2026-09-03: el transporte SOAP WCF DIAN y la carga de certificado `.p12/.pfx` quedan pendientes en TASK-273 a TASK-276. Cada empresa es responsable de su habilitacion/certificacion DIAN; la plataforma no presta servicio de proveedor tecnologico.
+
+Extensiones SOAP objetivo:
+
+- `dian_company_configuration.wsdl_url`: URL WSDL o singleWsdl por ambiente, no sensible.
+- `dian_company_configuration.certificate_file_type`: `P12` o `PFX`, derivado del archivo validado.
+- `provider_submission.soap_operation`: operacion DIAN ejecutada.
+- `provider_submission.zip_key`: tracking/ZipKey retornado por DIAN.
+- `provider_submission.application_response_reference`: referencia privada a ApplicationResponse almacenada como artefacto.
 
 ### Contabilidad
 

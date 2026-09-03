@@ -57,7 +57,8 @@ flowchart TB
 
   subgraph ExternalDian["External DIAN responsibility"]
     CompanyCertificate[Company DIAN certificate / credentials]
-    DianPlatform[DIAN services configured by company]
+    DianPlatform[DIAN WCF SOAP services configured by company]
+    DianHabWsdl[vpfe-hab WcfDianCustomerServices WSDL]
   end
 
   subgraph DianRealFlow["DIAN real flow inside dian-provider-service"]
@@ -65,7 +66,8 @@ flowchart TB
     DianIdentifiers[CUFE / CUDE / QR calculator]
     XmlSigner[Company certificate XML signer]
     DianValidator[XSD / Schematron / code-list validator]
-    DianTransport[DIAN habilitation / production transport]
+    DianTransport[DIAN SOAP WCF habilitation / production transport]
+    SoapClient[SOAP client SendTestSetAsync / GetStatusZip / SendBillSync]
     DianArtifacts[Private fiscal artifacts]
   end
 
@@ -114,11 +116,12 @@ flowchart TB
   Observability --> HealthMetrics
 
   Billing --> DianProvider
-  DianProvider --> UblBuilder --> DianIdentifiers --> XmlSigner --> DianValidator --> DianTransport
+  DianProvider --> UblBuilder --> DianIdentifiers --> XmlSigner --> DianValidator --> DianTransport --> SoapClient
   DianProvider --> DianArtifacts
   DianProvider --> Secrets
   DianProvider --> CompanyCertificate
-  DianTransport --> DianPlatform
+  SoapClient --> DianHabWsdl
+  SoapClient --> DianPlatform
   DianArtifacts --> AssetBucket
   Billing --> MockReceiptQr
   MockReceiptQr --> AssetBucket

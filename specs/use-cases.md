@@ -678,6 +678,48 @@ Flujo alterno:
 
 Acceptance criteria: AC-382.
 
+## UC-049: Configurar certificado DIAN como archivo p12/pfx
+
+Actor: Administrador empresarial o ROOT autorizado.
+
+Flujo principal:
+1. El actor abre Configuracion DIAN de la empresa.
+2. Selecciona modo real y ambiente de habilitacion.
+3. Captura software ID, software PIN, clave tecnica, testSetId y URL WSDL/base DIAN.
+4. Selecciona un unico archivo `.p12` o `.pfx` y digita el password del certificado.
+5. El backend valida archivo, password, alias, fingerprint y vencimiento.
+6. El sistema guarda solo referencia segura y metadata no sensible.
+
+Flujos alternos:
+- Si el archivo no es `.p12/.pfx`, esta vencido o el password no corresponde, se rechaza con error funcional.
+- La UI no permite pegar certificado en textarea.
+
+Acceptance criteria: AC-394, AC-395.
+
+## UC-050: Enviar set de pruebas DIAN por SOAP WCF
+
+Actor: Empresa en proceso de habilitacion DIAN.
+
+Precondiciones:
+- Existe configuracion DIAN real completa.
+- Existe certificado empresarial valido.
+- Existe `testSetId` asignado por DIAN.
+- Existe XML UBL firmado y validado localmente.
+
+Flujo principal:
+1. El usuario emite una factura electronica de prueba.
+2. `dian-provider-service` empaqueta el XML firmado segun operacion DIAN.
+3. El adaptador SOAP usa `SendTestSetAsync(fileName, contentFile, testSetId)` contra `https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc`.
+4. El sistema recibe y normaliza `UploadDocumentResponse`.
+5. El sistema consulta seguimiento mediante `GetStatusZip` o `GetStatus` cuando aplique.
+6. El sistema persiste tracking/ZipKey, estado, codigos/mensajes DIAN y artefactos privados.
+
+Flujos alternos:
+- Si falla SOAP, WSDL, timeout o parseo de respuesta, el sistema retorna error funcional DIAN y no cae a mock.
+- Si DIAN rechaza el documento, se conserva respuesta sanitizada y trazabilidad para correccion.
+
+Acceptance criteria: AC-391, AC-392, AC-393, AC-396.
+
 ## UC-045: Completar configuracion contable guiada
 
 Actor: Administrador empresarial o contador.

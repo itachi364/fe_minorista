@@ -247,6 +247,19 @@ La fase 34 queda documentada como implementada para cerrar inconsistencias de UX
 - El BFF sigue siendo el borde publico para autorizacion, auditoria, rutas de archivo y errores funcionales.
 - El frontend debe mantener formularios controlados y estados claros: crear/actualizar producto, evidencia opcional, color picker y errores funcionales visibles.
 
+## Decision DIAN SOAP WCF habilitacion
+
+La conexion SOAP real DIAN se mantiene dentro de `dian-provider-service`; no se crea un microservicio nuevo. El servicio agrega un adaptador especializado de transporte SOAP WCF detras de `DianTransportPort`, separado de los modos `mock`, `stub` y `http` de referencia.
+
+Decisiones:
+
+- El endpoint de habilitacion objetivo es `https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc`.
+- El WSDL objetivo es `https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc?wsdl` o `?singleWsdl`.
+- Operaciones iniciales: `SendTestSetAsync`, `GetStatusZip`, `GetStatus`, `SendBillSync`, `SendBillAsync` y posteriormente `GetNumberingRange` si se aprueba sincronizar resoluciones.
+- El certificado empresarial se configura como archivo `.p12` o `.pfx`, nunca como textarea ni valor persistido en DB.
+- Apache CXF/WSS4J queda como candidato tecnico para cliente SOAP, JAX-WS y WS-Security X.509.
+- La caja de herramientas DIAN local se usa como fuente de validacion tecnica y fixtures sanitizados; no debe convertirse en dependencia runtime con artefactos innecesarios.
+
 ## Decision TASK-261 a TASK-272
 
 La fase 35 se documenta como preparacion priorizada para salida comercial. No cambia la arquitectura vigente hasta aprobacion de implementacion.

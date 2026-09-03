@@ -1188,7 +1188,7 @@ Estado TASK-036:
 
 ### Contrato objetivo DIAN real
 
-Implementado en Fase 20 sobre los endpoints internos existentes. El comportamiento mock/real se resuelve por configuracion DIAN de la empresa y variables del servicio; las rutas especializadas siguientes quedan como contrato productivo futuro si se decide separar validacion, consulta y artefactos en endpoints dedicados.
+Estado actualizado 2026-09-03: la Fase 20 tiene implementado un pipeline configurable `stub/http` de referencia, pero el transporte DIAN WCF SOAP real no esta implementado. La conexion real de habilitacion debe consumir `https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc?wsdl` o `?singleWsdl`, construir envelope SOAP y ejecutar operaciones oficiales DIAN antes de considerar cerrada la emision real.
 
 - `POST /api/v1/provider/real-submissions`
 - `POST /api/v1/provider/real-submissions/{submissionId}/validate`
@@ -1271,6 +1271,8 @@ Endpoints publicos via BFF, visibles para ROOT y administradores empresariales c
 
 `DianConfigurationRequest`:
 
+Estado legacy actual: el contrato JSON acepta `certificatePayload` como texto/base64 de solo entrada. Este campo queda deprecado para la implementacion comercial y debe reemplazarse por carga multipart `.p12/.pfx`.
+
 ```json
 {
   "mode": "REAL",
@@ -1286,6 +1288,35 @@ Endpoints publicos via BFF, visibles para ROOT y administradores empresariales c
   "serviceBaseUrl": "https://catalogo-vpfe-hab.dian.gov.co/...",
   "testSetId": "set-pruebas",
   "acceptedResponsibility": true
+}
+```
+
+Contrato objetivo para certificado:
+
+```http
+PUT /api/v1/dian-configuration/companies/{companyId}/certificate
+Content-Type: multipart/form-data
+X-Company-Id: {companyId}
+X-User-Id: {userId}
+X-Correlation-Id: {correlationId}
+```
+
+Partes multipart:
+
+- `certificateFile`: archivo unico `.p12` o `.pfx`.
+- `certificatePassword`: password de solo entrada.
+- `certificateAlias`: alias funcional opcional.
+
+Respuesta:
+
+```json
+{
+  "companyId": "uuid",
+  "certificateConfigured": true,
+  "certificateAlias": "certificado empresa",
+  "certificateFingerprint": "sha256:...",
+  "certificateExpiresAt": "2027-08-19T00:00:00Z",
+  "status": "READY_FOR_TEST"
 }
 ```
 
@@ -1362,7 +1393,7 @@ Reglas:
 
 - No guardar secretos en payloads ni logs.
 - Todo error externo debe mapearse a `EXTERNAL_PROVIDER_ERROR` con detalle seguro.
-- La integracion real de envio queda implementada como pipeline configurable `stub/http` en Fase 20 TASK-153 a TASK-163, con XML UBL base, firma/validacion de referencia, CUFE/CUDE, QR, transporte, respuestas, artefactos e idempotencia.
+- La integracion real de envio queda implementada parcialmente como pipeline configurable `stub/http` en Fase 20 TASK-153 a TASK-163, con XML UBL base, firma/validacion de referencia, CUFE/CUDE, QR, transporte, respuestas, artefactos e idempotencia. Esta base no equivale a conexion DIAN real aceptada porque falta SOAP WCF, WS-Security/firma certificada y mapeo completo de respuestas DIAN.
 - En desarrollo local se usa el microservicio mock sin llamadas externas y solo sirve para probar el flujo interno.
 - Variables locales del mock:
   - `DIAN_PROVIDER_MODE=mock`.
@@ -1374,6 +1405,33 @@ Reglas:
 - El request de configuracion DIAN no puede incluir secretos en claro; solo referencias seguras o datos no sensibles. Si una UI necesita cargar un certificado, debe enviarlo a un endpoint seguro que lo almacene en Secrets Manager/almacen equivalente y retorne referencia no sensible.
 - Las respuestas API nunca retornan certificado, PIN, claves, tokens ni credenciales; solo banderas `*Configured`, alias, huella, vencimiento y estado.
 - Activar modo real exige `responsibilityAccepted=true` para confirmar que la empresa entiende que opera su propia habilitacion/certificacion DIAN.
+
+### Transporte SOAP WCF DIAN objetivo
+
+Endpoint habilitacion:
+
+```text
+https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc
+WSDL: https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc?wsdl
+Single WSDL: https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc?singleWsdl
+```
+
+Operaciones iniciales:
+
+- `SendTestSetAsync(fileName, contentFile, testSetId)`: envio de set de pruebas de habilitacion.
+- `GetStatusZip(trackId)`: consulta de estado del ZIP/ZipKey retornado.
+- `GetStatus(trackId)`: consulta de estado por CUFE/CUDE cuando aplique.
+- `SendBillSync(fileName, contentFile)`: envio sincronico productivo o pruebas controladas si la configuracion DIAN lo exige.
+- `SendBillAsync(fileName, contentFile)`: envio asincrono cuando el flujo aprobado lo permita.
+- `GetNumberingRange(accountCode, accountCodeT, softwareCode)`: consulta de rangos cuando se apruebe sincronizacion de resoluciones.
+
+Reglas SOAP:
+
+- Cada operacion define `SOAPAction` segun WSDL DIAN.
+- `contentFile` debe corresponder al ZIP/base64 del XML UBL firmado cuando aplique.
+- El envelope debe incluir headers requeridos por DIAN/WCF y seguridad WS-Security/X.509 segun operacion/anexo.
+- El cliente SOAP debe resolver endpoint por empresa/ambiente y no desde configuracion global unica.
+- Respuestas SOAP se normalizan a `ProviderSubmissionStatus`, codigo DIAN, mensaje, tracking/zipKey, `ApplicationResponse`, CUFE/CUDE, QR y artefactos privados.
 
 ## accounting-service
 

@@ -180,6 +180,17 @@ Reglas:
 - Una configuracion activa en modo real exige certificado vigente, referencias seguras completas, resolucion vigente compatible y prueba exitosa o estado de habilitacion aprobado.
 - Cada mutacion de configuracion DIAN registra auditoria y nunca incluye secretos en `audit.detail`.
 - El modo `MOCK` conserva pruebas locales/E2E, pero no habilita operacion productiva ni valida cumplimiento tecnico DIAN.
+- El transporte SOAP WCF DIAN se documenta como pendiente de implementacion real: `service_base_url` debe apuntar al endpoint base, por ejemplo `https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc`, y el WSDL/singleWsdl se usa para generar/configurar cliente.
+- El certificado empresarial se debe recibir como archivo `.p12` o `.pfx`; no se almacena como texto. `certificate_secret_ref` apunta al archivo/secreto cifrado y `certificate_fingerprint`/`certificate_expires_at` son metadata derivada.
+
+Campos objetivo adicionales para trazabilidad SOAP:
+
+- `dian_company_configuration.wsdl_url`: URL WSDL no sensible por ambiente.
+- `dian_company_configuration.soap_service_action_base`: namespace/action base cuando se materialice configuracion avanzada.
+- `provider_submission.zip_key`: ZipKey/trackId retornado por `SendTestSetAsync` o envios asincronos.
+- `provider_submission.soap_operation`: operacion ejecutada (`SendTestSetAsync`, `SendBillSync`, `GetStatusZip`, etc.).
+- `provider_submission.soap_status_code`: codigo normalizado de respuesta DIAN.
+- `provider_submission.soap_status_message`: mensaje DIAN sanitizado.
 
 ## Productizacion operativa
 

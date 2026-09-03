@@ -379,6 +379,8 @@ Impacto de infraestructura:
 - `dian-provider-service` puede operar en `MOCK` y en pipeline real configurable por empresa sin compartir certificado global.
 - Las pruebas de conexion DIAN real deben ejecutarse sin registrar certificados, PIN, tokens ni payload sensible.
 - En produccion, la salida hacia DIAN debe controlarse por subnets privadas con NAT Gateway o VPC endpoints/egress aprobado segun el destino tecnico disponible.
+- La conexion real de habilitacion debe usar WCF/SOAP contra `https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc`; el modo `http` actual es solo referencia y no cumple por si solo el contrato DIAN.
+- La configuracion productiva debe soportar `DIAN_REAL_TRANSPORT_MODE=soap`, WSDL por ambiente, timeouts, truststore/certificados raiz cuando aplique y politicas de retry sin duplicar documentos.
 
 Estado:
 
@@ -392,7 +394,16 @@ Estado 2026-08-24:
 - Los secretos se modelan como referencias bajo `/facturaelectronica/{env}/companies/{companyId}/...`.
 - `infra/aws/modules/secrets` crea KMS dedicado para Secrets Manager.
 - `infra/aws/modules/ecs` permite a runtime crear/actualizar secretos bajo el patron empresarial autorizado.
-- Pendiente productivo: adaptador AWS SDK real para Secrets Manager, almacenamiento S3/KMS de artefactos, firma XMLDSig/XAdES certificada y E2E de habilitacion DIAN con credenciales reales empresariales.
+- Pendiente productivo: adaptador AWS SDK real para Secrets Manager, almacenamiento S3/KMS de artefactos, cliente SOAP WCF DIAN, firma XMLDSig/XAdES certificada y E2E de habilitacion DIAN con credenciales reales empresariales.
+
+Estado 2026-09-03:
+
+- URL WSDL habilitacion configurada como objetivo: `https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc?wsdl`.
+- URL single WSDL objetivo: `https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc?singleWsdl`.
+- Endpoint SOAP base objetivo: `https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc`.
+- Operaciones iniciales objetivo: `SendTestSetAsync`, `GetStatusZip`, `GetStatus`, `SendBillSync`, `SendBillAsync` y, si se aprueba sincronizacion de resoluciones, `GetNumberingRange`.
+- Certificado empresarial: se debe cargar como archivo `.p12` o `.pfx`; la UI no debe pedir pegar certificado como texto.
+- Storage de certificado: Secrets Manager/KMS en produccion o almacen seguro local equivalente; base de datos solo conserva referencia, alias, fingerprint y vencimiento.
 
 Requerimientos cloud para cierre real:
 
@@ -1382,7 +1393,7 @@ Esta seccion documenta de forma uniforme el impacto de infraestructura de cada t
 - Control operativo: fallar cerrado si faltan artefactos o version esperada.
 
 ### TASK-158 - Implementar transporte real DIAN para habilitacion y produccion
-- Estado: Completada con transporte configurable `stub/http` por empresa y separacion de modo mock/real.
+- Estado: Completada con transporte configurable `stub/http` por empresa y separacion de modo mock/real; pendiente SOAP WCF DIAN real en TASK-273.
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: Requiere egress controlado desde servicios privados hacia endpoints DIAN y configuracion de timeouts/reintentos.
 - Control operativo: separar habilitacion/produccion y nunca hacer fallback a mock en modo real.
@@ -1416,6 +1427,30 @@ Esta seccion documenta de forma uniforme el impacto de infraestructura de cada t
 - Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
 - Impacto de infraestructura: No crea recursos permanentes; puede usar stubs locales y entornos de habilitacion DIAN.
 - Control operativo: bloquear despliegue real si no existe evidencia de pruebas con fixtures sanitizados.
+
+### TASK-273 - Implementar transporte SOAP WCF DIAN de habilitacion
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: requiere dependencia cliente SOAP/JAX-WS, configuracion `DIAN_REAL_TRANSPORT_MODE=soap`, WSDL por ambiente, egress HTTPS a `vpfe-hab.dian.gov.co`, timeouts y truststore si el runtime lo exige.
+- Control operativo: usar endpoint por empresa/ambiente, no exponer certificados ni payloads sensibles, y no hacer fallback a mock.
+
+### TASK-274 - Normalizar respuestas SOAP DIAN y seguimiento de ZipKey/CUFE
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: puede requerir almacenamiento adicional de ApplicationResponse/artefactos y retencion de respuestas sanitizadas.
+- Control operativo: persistir tracking/zipKey, estados y errores sin XML sensible en logs publicos.
+
+### TASK-275 - Cambiar Configuracion DIAN a carga segura de certificado p12/pfx
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: requiere endpoint multipart, limites de upload, validacion PKCS#12, storage seguro local/Secrets Manager y posible ajuste de BFF para proxy de archivos.
+- Control operativo: el certificado y password son solo entrada; DB conserva referencia segura, alias, fingerprint y vencimiento.
+
+### TASK-276 - Usar caja de herramientas DIAN como fixtures tecnicos sanitizados
+- Estado: Pendiente.
+- Fase: Fase 20: Backlog DIAN real parametrizable por empresa.
+- Impacto de infraestructura: rutas de artefactos tecnicos configurables y fixtures de prueba sanitizados; no versionar archivos de sistema ni jars innecesarios.
+- Control operativo: fallar cerrado si XSD/Schematron/XSL/listas requeridas no existen o no corresponden a la version documentada.
 
 ### TASK-164 - Disenar autenticacion productiva con Cognito Hosted UI y PKCE
 - Estado: Completada. Modulo Cognito Terraform, variables BFF, PKCE S256, callback/token exchange, puente Cognito -> identidad interna por `sub` persistente y sesion cifrada server-side implementados.

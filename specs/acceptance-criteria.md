@@ -234,6 +234,12 @@
 - AC-225: Dado un documento validado o rechazado, cuando se almacenen artefactos fiscales, entonces deben quedar en storage privado con hash, metadata y acceso controlado por BFF/RBAC.
 - AC-226: Dado `DIAN_PROVIDER_MODE=REAL`, cuando falle una validacion o transporte real, entonces el sistema no debe cambiar automaticamente a mock.
 - AC-227: Dado el cierre de DIAN real, cuando se solicite habilitar produccion, entonces debe existir evidencia de pruebas unitarias, integracion y E2E con fixtures sanitizados del anexo tecnico vigente.
+- AC-391: Dada una empresa en ambiente de habilitacion DIAN, cuando envie una factura electronica de prueba, entonces `dian-provider-service` debe consumir SOAP WCF contra `https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc` usando `SendTestSetAsync` y el `testSetId` configurado.
+- AC-392: Dado un documento enviado por SOAP a DIAN, cuando DIAN responda `UploadDocumentResponse`, `DianResponse` o `ApplicationResponse`, entonces el sistema debe persistir tracking/zipKey, codigo, descripcion, mensaje, validez, CUFE/CUDE y artefactos sin exponer XML completo sensible en logs publicos.
+- AC-393: Dado un error SOAP, timeout, WSDL no disponible o respuesta no parseable, cuando ocurra en modo real, entonces el backend debe responder error funcional DIAN sanitizado y no debe degradar a mock.
+- AC-394: Dado el modulo de Configuracion DIAN, cuando una empresa configure certificado real, entonces la UI debe permitir seleccionar un unico archivo `.p12` o `.pfx`, capturar password como campo secreto y no ofrecer textarea para pegar el certificado.
+- AC-395: Dado un archivo de certificado subido, cuando el backend lo reciba, entonces debe validar extension, tamano, tipo/estructura PKCS#12, password, alias, fingerprint y vencimiento; la base de datos solo persiste referencia segura y metadata no sensible.
+- AC-396: Dada la caja de herramientas DIAN local, cuando se implemente o valide el flujo, entonces deben usarse XSD, Schematron, XSL/listas de codigos y XML de ejemplo como fixtures sanitizados, sin versionar artefactos innecesarios como `.DS_Store`, `__MACOSX` o jars no usados.
 
 ## Autenticacion productiva, sesion segura y proteccion del navegador
 

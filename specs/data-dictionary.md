@@ -529,7 +529,9 @@ Campos equivalentes a `billing.sale_line`, asociados a `electronic_document_id` 
 | certificate_alias | varchar(180) | No | Alias funcional visible del certificado. |
 | certificate_fingerprint | varchar(180) | No | Huella criptografica para identificar certificado sin exponerlo. |
 | certificate_expires_at | timestamptz | No | Fecha de vencimiento del certificado. |
+| certificate_file_type | varchar(10) | No | Tipo de archivo validado: `P12` o `PFX`; no contiene binario. |
 | service_base_url | varchar(500) | No | URL DIAN no sensible para pruebas o produccion. |
+| wsdl_url | varchar(700) | No | URL WSDL o singleWsdl DIAN no sensible por ambiente. |
 | test_set_id | varchar(120) | No | Identificador del set de pruebas/habilitacion. |
 | accepted_responsibility | boolean | Si | Confirma que la empresa asume habilitacion/certificacion DIAN. |
 | status | varchar(30) | Si | DRAFT, READY_FOR_TEST, TESTED, ACTIVE, INACTIVE. |
@@ -546,6 +548,7 @@ Reglas:
 - Secretos, certificados, PIN y claves viven en gestor de secretos. Esta tabla solo guarda referencias y metadata no sensible.
 - `company_id` no puede ser nulo ni compartirse entre empresas.
 - Toda mutacion debe auditarse sin registrar valores secretos.
+- El certificado se recibe como archivo `.p12` o `.pfx`; no se pega como texto ni se conserva como payload en base de datos.
 
 ## dian_provider.provider_submission
 
@@ -556,6 +559,10 @@ Reglas:
 | electronic_document_id | ref | Si | Documento electronico. |
 | provider_configuration_id | ref | Si | Configuracion DIAN usada. |
 | tracking_id | varchar(200) | No | Identificador tecnico de la conexion DIAN o mock. |
+| zip_key | varchar(200) | No | ZipKey/trackId retornado por operaciones SOAP asincronas o de habilitacion. |
+| soap_operation | varchar(80) | No | Operacion SOAP ejecutada, por ejemplo `SendTestSetAsync`, `GetStatusZip` o `SendBillSync`. |
+| soap_status_code | varchar(80) | No | Codigo normalizado de respuesta DIAN. |
+| soap_status_message | varchar(500) | No | Mensaje DIAN sanitizado. |
 | request_payload | jsonb | No | Payload normalizado, sin secretos. |
 | response_payload | jsonb | No | Respuesta normalizada. |
 | status | varchar(40) | Si | SENT, ACCEPTED, REJECTED, FAILED, TIMEOUT. |
