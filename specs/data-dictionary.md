@@ -1079,3 +1079,76 @@ Reglas:
 - Para PDF se permite un unico archivo validado por soporte.
 - Para URL no se descarga automaticamente el contenido; solo se guarda referencia validada.
 - Los campos total-only de compras/gastos no exponen IVA ni subtotal al usuario.
+
+## Extensiones TASK-261 a TASK-272
+
+Estado: diccionario objetivo documentado; pendiente de implementacion.
+
+### `tenant.company_readiness_snapshot`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del diagnostico de preparacion. |
+| company_id | uuid | Si | Empresa evaluada. |
+| overall_status | varchar(20) | Si | Estado consolidado: `READY`, `WARNING` o `BLOCKED`. |
+| evaluated_at | timestamptz | Si | Fecha/hora de evaluacion. |
+| evaluated_by | uuid | No | Usuario que solicito el diagnostico, si aplica. |
+| correlation_id | varchar(120) | No | Correlacion tecnica de la evaluacion. |
+
+### `tenant.company_readiness_check`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del check. |
+| snapshot_id | uuid | Si | Diagnostico al que pertenece. |
+| check_code | varchar(80) | Si | Codigo funcional del prerequisito. |
+| module_code | varchar(80) | Si | Modulo responsable de la accion correctiva. |
+| status | varchar(20) | Si | `READY`, `WARNING` o `BLOCKED`. |
+| blocking | boolean | Si | Indica si impide operar. |
+| action_code | varchar(80) | No | Accion sugerida para la SPA. |
+| message | varchar(500) | Si | Mensaje funcional sanitizado. |
+
+### `reporting.report_dataset_cache`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del cache. |
+| company_id | uuid | Si | Empresa propietaria. |
+| report_code | varchar(80) | Si | Codigo de reporte normalizado. |
+| cache_key | varchar(200) | Si | Hash/clave de filtros y parametros. |
+| normalized_dataset | json/jsonb | Si | Dataset normalizado para UI/exportacion. |
+| created_at | timestamptz | Si | Fecha de creacion. |
+| expires_at | timestamptz | No | Fecha de expiracion del cache. |
+
+### `platform.business_health_snapshot`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del snapshot funcional. |
+| company_id | uuid | No | Empresa evaluada; nulo para estado global. |
+| sales_status | varchar(20) | Si | Estado funcional de ventas. |
+| dian_status | varchar(20) | Si | Estado funcional de DIAN/mock. |
+| storage_status | varchar(20) | Si | Estado funcional de almacenamiento. |
+| reporting_status | varchar(20) | Si | Estado funcional de reportes. |
+| evaluated_at | timestamptz | Si | Fecha/hora de evaluacion. |
+
+### `platform.service_health_event`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del evento de salud. |
+| company_id | uuid | No | Empresa asociada cuando el evento es funcional por empresa. |
+| service_name | varchar(80) | Si | Servicio o integracion afectada. |
+| event_type | varchar(80) | Si | Tipo de evento: latencia, error, degradacion, recuperacion. |
+| status | varchar(20) | Si | Estado reportado. |
+| correlation_id | varchar(120) | No | Correlacion tecnica. |
+| occurred_at | timestamptz | Si | Fecha/hora del evento. |
+
+### Extension `tenant.company_file_asset`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| scan_status | varchar(20) | No | Estado de validacion/antimalware: `PENDING`, `CLEAN`, `REJECTED` o `SKIPPED`. |
+| retention_until | timestamptz | No | Fecha hasta la cual debe conservarse el archivo. |
+| download_policy | varchar(40) | No | Politica de descarga: intermediada, prefirmada corta o interna. |
+| last_downloaded_at | timestamptz | No | Ultima descarga registrada. |

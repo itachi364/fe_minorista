@@ -3208,7 +3208,7 @@ Context7 evidence:
 - Decision impact: El README usa comandos actuales de Vite y evita instrucciones desactualizadas para ejecutar la SPA.
 
 ### TASK-250 a TASK-258 - Inventario editable, evidencias documentales y QR fiscal
-- Estado: Disenado; pendiente de implementacion.
+- Estado: Implementada.
 - Fase: Fase 34: Inventario editable, evidencias documentales y QR fiscal.
 - Decision de diseno: El producto es un maestro operacional mutable para datos vigentes, pero los historicos fiscales/contables no dependen de su estado actual. Ventas, documentos y reportes deben usar snapshots persistidos de nombre, SKU, impuesto, precio y totales.
 - Inventario: La tabla de productos tendra acciones `Actualizar` e `Inactivar`. `Actualizar` llena el formulario existente y cambia el label a `Actualizar item`. `Inactivar` cambia estado a inactivo y excluye el producto de busquedas operativas POS, sin borrar registros.
@@ -3234,5 +3234,39 @@ Context7 evidence:
 - Topic consulted: SSE-KMS encryption and object key prefixes.
 - Relevant finding: S3 identifica objetos por key, los prefijos se comportan como carpetas en consola y el cifrado SSE-KMS permite proteger objetos con KMS.
 - Decision impact: El diseno productivo usa S3 privado/KMS y prefijos por empresa/categoria, sin exponer bucket/key al navegador.
+
+### Fase 35 - Mejoras priorizadas para salida comercial
+- Estado: Documentada; pendiente de implementacion.
+- Objetivo: ordenar las mejoras necesarias para convertir el desarrollo actual en una plataforma comercializable, priorizando estabilidad operativa, seguridad, DIAN real, reportes de negocio, soporte productivo y experiencia de usuario.
+
+#### Prioridad P0 - Bloqueantes de salida comercial
+- Onboarding y readiness empresarial: agregar un asistente por empresa que consolide licencia, roles, usuarios, DIAN, emisor fiscal, resoluciones, contabilidad, PIN, inventario y branding. El asistente no debe ejecutar configuraciones ocultas; debe mostrar estado, responsables, acciones guiadas y bloqueos.
+- Hardening productivo de seguridad: separar de forma estricta los modos local/demo/productivo. Produccion no puede arrancar con autenticacion dummy, secretos incompletos, cookies inseguras, CSRF deshabilitado ni endpoints administrativos sin rate limiting y auditoria.
+- DIAN real end-to-end: cerrar el flujo real por empresa con generacion UBL, firma, CUFE/CUDE, QR, transporte, respuestas DIAN, artefactos, reintentos e idempotencia. El modo mock queda solo para local/E2E y nunca debe ocultar una falla real.
+
+#### Prioridad P1 - Valor operativo y control
+- Onboarding contable guiado: evolucionar la plantilla basica a diagnostico por faltantes, mostrando que reglas y cuentas requiere cada modulo antes de permitir operaciones que generen asientos.
+- Reportes gerenciales y financieros: normalizar datasets para utilidad/perdida diaria, ventas por producto/vendedor, gastos, compras, cartera, cuentas por pagar, flujo de caja e inventario valorizado, con graficas utiles y exportaciones limpias.
+- Auditoria operativa visible: exponer busquedas auditables para ROOT y administradores empresariales, con filtros funcionales y sin revelar payloads sensibles, certificados, PIN, contrasenas, tokens ni rutas privadas.
+- CI/CD y quality gate: estandarizar ejecucion reproducible de pruebas, cobertura, SonarQube, Docker Compose, migraciones Flyway y validacion basica de secretos/dependencias.
+
+#### Prioridad P2 - Escalabilidad y experiencia avanzada
+- Impresion termica POS fase 2: validar hardware real 58/80 mm y definir si el canal sera impresion web, WebUSB/WebSerial o agente local. El backend no debe depender de acceso directo a impresoras del cliente.
+- Gestion financiera diaria: consolidar saldos, vencimientos, pagos, recaudos, obligaciones, alertas de liquidez y reinversion para pequenos negocios.
+- Storage empresarial robusto: mantener adaptador local/S3-ready, agregar opcion MinIO local si se requiere paridad S3, cifrado KMS productivo, links intermediados/prefirmados de corta vida, metadata auditable y validacion antimalware cuando aplique.
+- Observabilidad productiva: cada servicio debe exponer health liveness/readiness, metricas, logs correlacionables, trazas y alertas sobre DIAN, storage, jobs, errores funcionales y latencia.
+
+#### Decisiones de diseno
+- La fase no introduce cambios de codigo hasta aprobacion explicita; queda como backlog SDD priorizado.
+- El readiness empresarial sera la capa de experiencia que reduzca errores como "falta resolucion", "falta regla contable" o "licencia incompleta", guiando al usuario antes del fallo.
+- Los reportes deben consumir datasets normalizados y no objetos transaccionales crudos, para evitar columnas tecnicas en UI y exportaciones.
+- La observabilidad debe combinar senales tecnicas y de negocio: estado de servicios, jobs, integracion DIAN, almacenamiento, licencias, documentos emitidos y errores funcionales frecuentes.
+- Las mejoras de infraestructura productiva deben ser parametrizables por ambiente y no imponer AWS en local, aunque AWS siga siendo el objetivo cloud documentado.
+
+#### Context7 evidence
+- Library/tool: Spring Boot.
+- Topic consulted: Actuator production-ready health endpoints and metrics.
+- Relevant finding: Spring Boot Actuator ofrece endpoints de monitoreo y administracion para aplicaciones en produccion; puede exponer liveness/readiness y metricas para integracion con sistemas como Prometheus.
+- Decision impact: La fase 35 documenta observabilidad productiva con health liveness/readiness, metricas y alertas por microservicio antes de endurecer despliegues comerciales.
 
 <!-- END SDD TASK DESIGN TRACEABILITY -->

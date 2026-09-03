@@ -237,7 +237,7 @@ Reglas de migracion:
 
 ## Decision TASK-250 a TASK-258
 
-La fase 34 se documenta como objetivo pendiente para cerrar inconsistencias de UX y dominio antes de seguir ampliando funcionalidades.
+La fase 34 queda documentada como implementada para cerrar inconsistencias de UX y dominio antes de seguir ampliando funcionalidades.
 
 - `inventory-service` mantiene propiedad sobre productos, stock y kardex; productos pueden actualizarse/inactivarse sin borrar historicos.
 - `billing-service` debe tratar el QR como parte del artefacto fiscal/imprimible y renderizarlo graficamente desde contenido mock o DIAN real.
@@ -246,3 +246,31 @@ La fase 34 se documenta como objetivo pendiente para cerrar inconsistencias de U
 - `tenant-service` es el candidato natural para centralizar metadata de archivos empresariales porque ya administra empresa y branding; otros servicios guardan referencias privadas.
 - El BFF sigue siendo el borde publico para autorizacion, auditoria, rutas de archivo y errores funcionales.
 - El frontend debe mantener formularios controlados y estados claros: crear/actualizar producto, evidencia opcional, color picker y errores funcionales visibles.
+
+## Decision TASK-261 a TASK-272
+
+La fase 35 se documenta como preparacion priorizada para salida comercial. No cambia la arquitectura vigente hasta aprobacion de implementacion.
+
+Responsabilidades objetivo:
+
+- `bff-service`: compone readiness empresarial, aplica seguridad de borde, normaliza errores funcionales, evita exponer servicios internos y sirve como entrada publica para auditoria, reportes, descargas e impresion.
+- `tenant-service`: mantiene empresa, licencia, branding, metadata de archivos, estado de storage y configuraciones empresariales transversales.
+- `dian-provider-service`: conserva el flujo mock y real DIAN por empresa, con generacion/firma/transporte/consulta de documentos fiscales y sin convertir a NexoFiscal en proveedor tecnologico.
+- `billing-service`: coordina cierre de venta, documento fiscal, comprobante imprimible, QR fiscal, historico de ventas y datos base para reportes.
+- `accounting-service`: mantiene reglas, cuentas, asientos, gastos, compras financieras, deudores, cuentas por pagar/cobrar y readiness contable.
+- `reporting-service`: produce datasets normalizados, exportaciones y jobs pesados sin devolver JSON tecnico a la UI.
+- `audit-service`: persiste eventos auditables sanitizados y expone busquedas filtradas segun rol/empresa.
+- SPA NexoFiscal: presenta flujos guiados, dashboards, formularios controlados, graficas y acciones claras; no decide seguridad ni autorizacion final.
+
+Prioridad arquitectonica:
+
+1. P0: readiness empresarial, hardening de seguridad y DIAN real.
+2. P1: onboarding contable, reportes gerenciales, auditoria visible y CI/CD.
+3. P2: impresion termica con hardware real, gestion financiera diaria, storage robusto y observabilidad avanzada.
+
+Riesgos:
+
+- La impresion termica depende de navegador, drivers o agente local y debe validarse con hardware real.
+- DIAN real depende de certificados y proceso de habilitacion por empresa.
+- El readiness no debe duplicar reglas de negocio; debe consultar capacidades de dominio o endpoints internos estables.
+- Las metricas y logs deben evitar datos sensibles, especialmente certificados, tokens, PIN y payloads fiscales completos.

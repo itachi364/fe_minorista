@@ -1746,4 +1746,42 @@ POS_MOCK_RECEIPT_BASE_URL=http://localhost:5173
 - TASK-257: sin infraestructura nueva; mejora UI y validacion de branding.
 - TASK-258: sin infraestructura nueva; valida reportes con snapshots historicos.
 
+## TASK-261 a TASK-272 infraestructura objetivo
+
+Estado: documentado; pendiente de implementacion.
+
+### Fase 35 - Mejoras priorizadas para salida comercial
+
+- Readiness empresarial: BFF como punto de composicion para consultar estado de licencia, DIAN, emisor fiscal, resoluciones, contabilidad, usuarios, roles, PIN, inventario, branding y reportes. No requiere infraestructura nueva inicialmente.
+- Seguridad productiva: variables obligatorias por ambiente, bloqueo de autenticacion dummy en produccion, secretos fuera del repositorio, cookies seguras, CSRF, rate limiting, headers de seguridad y MFA donde aplique. En AWS objetivo se apoya en Cognito, Secrets Manager y KMS.
+- DIAN real: certificados, claves tecnicas y credenciales se referencian desde gestor de secretos por empresa. Los artefactos fiscales reales se almacenan cifrados y privados; los reintentos usan idempotencia y cola/DLQ cuando pasen a flujo asincrono.
+- CI/CD y quality gate: pipeline objetivo con Maven, Vitest, cobertura, SonarQube, Docker Compose, Flyway y revision basica de secretos/dependencias. El resultado debe ser reproducible localmente antes de promover a CI.
+- Storage empresarial: localmente puede operar con filesystem o MinIO compatible S3; produccion usa S3 privado cifrado con SSE-KMS, prefijos por empresa/categoria, metadata en PostgreSQL y links intermediados/prefirmados de corta vida.
+- Validacion de archivos: las cargas de PDF/logos/fondos/evidencias deben validar extension, MIME, tamano, categoria funcional, permisos y contenido permitido. En productivo se debe considerar antimalware asincrono antes de publicar descargas.
+- Reportes asincronos: reutilizan la arquitectura de Fase 24 con jobs, storage privado, notificacion y links intermediados. Los reportes pesados no deben bloquear el request HTTP.
+- Impresion termica POS: el backend no accede directamente a impresoras del cliente. La estrategia objetivo debe decidir entre impresion web, WebUSB/WebSerial o agente local, con auditoria de impresiones/reimpresiones.
+- Observabilidad: cada microservicio debe exponer health liveness/readiness, metricas, logs con correlation ID y trazas. Las alertas deben cubrir DIAN, storage, reportes, errores funcionales frecuentes y degradacion de latencia.
+
+Variables objetivo adicionales:
+
+```env
+APP_ENV=local
+AUTH_DUMMY_ENABLED=true
+SECURITY_REQUIRE_SECURE_COOKIES=false
+SECURITY_RATE_LIMIT_ENABLED=false
+COMPANY_READINESS_ENABLED=true
+STORAGE_LOCAL_PROVIDER=filesystem
+STORAGE_S3_COMPATIBLE_ENDPOINT=
+STORAGE_ANTIMALWARE_ENABLED=false
+OBSERVABILITY_ACTUATOR_ENABLED=true
+OBSERVABILITY_METRICS_ENABLED=true
+POS_PRINTER_MODE=browser
+```
+
+Notas:
+
+- En produccion, `AUTH_DUMMY_ENABLED=false`, cookies seguras, CSRF, rate limiting y secretos obligatorios deben ser condiciones de arranque.
+- `STORAGE_S3_COMPATIBLE_ENDPOINT` se reserva para MinIO u otro proveedor compatible en local/staging; en AWS productivo debe usarse S3 nativo salvo decision posterior.
+- La configuracion DIAN real debe seguir siendo por empresa y no convertir a NexoFiscal en proveedor tecnologico de facturacion electronica.
+
 <!-- END SDD TASK INFRASTRUCTURE TRACEABILITY -->

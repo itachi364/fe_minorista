@@ -3380,3 +3380,158 @@ Respuesta normalizada:
   ]
 }
 ```
+
+## Contratos objetivo fase 35 - mejoras priorizadas
+
+Estado: documentado; pendiente de implementacion.
+
+### Readiness empresarial
+
+```http
+GET /api/v1/company-readiness
+X-Company-Id: {companyId}
+Accept: application/json
+```
+
+Respuesta objetivo:
+
+```json
+{
+  "companyId": "uuid",
+  "overallStatus": "BLOCKED",
+  "checks": [
+    {
+      "code": "ACTIVE_LICENSE",
+      "label": "Licencia activa",
+      "status": "READY",
+      "module": "Configuracion",
+      "blocking": true,
+      "actionCode": null,
+      "message": "La licencia esta vigente."
+    },
+    {
+      "code": "ACTIVE_NUMBERING_RESOLUTION",
+      "label": "Resolucion fiscal activa",
+      "status": "BLOCKED",
+      "module": "Fiscal",
+      "blocking": true,
+      "actionCode": "OPEN_FISCAL_RESOLUTION",
+      "message": "Configura una resolucion activa para el tipo de documento predeterminado."
+    }
+  ]
+}
+```
+
+Reglas:
+
+- El BFF compone readiness desde servicios internos; no debe confiar en la SPA para decidir bloqueo real.
+- Los estados permitidos son `READY`, `WARNING` y `BLOCKED`.
+- Cada bloqueo debe indicar accion sugerida y modulo responsable.
+
+### Readiness contable
+
+```http
+GET /api/v1/accounting-readiness
+X-Company-Id: {companyId}
+Accept: application/json
+```
+
+Respuesta objetivo:
+
+```json
+{
+  "companyId": "uuid",
+  "missingRules": [
+    {
+      "eventType": "ACCOUNT_RECEIVABLE_REGISTERED",
+      "label": "Registro de cuenta por cobrar",
+      "requiredBy": ["Deudores"],
+      "severity": "BLOCKING"
+    }
+  ],
+  "missingAccounts": [
+    {
+      "suggestedCode": "1305",
+      "label": "Clientes nacionales",
+      "requiredBy": ["Deudores"],
+      "severity": "BLOCKING"
+    }
+  ]
+}
+```
+
+Reglas:
+
+- El diagnostico no debe crear cuentas ni reglas por si solo.
+- Las acciones de reparacion deben ser explicitas y auditadas.
+
+### Auditoria operativa
+
+```http
+GET /api/v1/audit/operations?companyId={companyId}&module={module}&result={result}&from={date}&to={date}&correlationId={id}
+Accept: application/json
+```
+
+Reglas:
+
+- ROOT puede filtrar por cualquier empresa.
+- Administradores empresariales solo consultan eventos de su empresa.
+- Payloads sensibles, certificados, PIN, passwords, tokens, URLs privadas y contenido binario nunca se exponen.
+
+### Salud de negocio y observabilidad
+
+```http
+GET /api/v1/observability/business-health
+X-Company-Id: {companyId}
+Accept: application/json
+```
+
+Respuesta objetivo:
+
+```json
+{
+  "companyId": "uuid",
+  "salesStatus": "READY",
+  "dianStatus": "WARNING",
+  "storageStatus": "READY",
+  "reportingStatus": "READY",
+  "lastCriticalErrors": []
+}
+```
+
+Reglas:
+
+- Este contrato complementa Actuator tecnico; no reemplaza `/actuator/health`.
+- Debe servir para soporte y administracion funcional, no para revelar detalles internos.
+
+### Impresion termica POS
+
+```http
+POST /api/v1/pos-print-jobs
+X-Company-Id: {companyId}
+Idempotency-Key: {key}
+Content-Type: application/json
+```
+
+Payload objetivo:
+
+```json
+{
+  "saleId": "uuid",
+  "documentId": "uuid",
+  "printerMode": "BROWSER",
+  "paperWidthMm": 80,
+  "copyReason": "ORIGINAL"
+}
+```
+
+Reglas:
+
+- El endpoint registra la intencion/auditoria de impresion; el acceso fisico a impresora queda del lado navegador, WebUSB/WebSerial o agente local aprobado.
+- Reimpresiones deben indicar motivo y usuario.
+
+### Reportes pesados
+
+- Los reportes pesados de fase 35 deben reutilizar los contratos de jobs definidos para Fase 24.
+- La descarga mantiene link intermediado y URL prefirmada de corta vida generada al momento del clic.
+- La UI debe consumir datasets normalizados, no JSON crudo de microservicios.

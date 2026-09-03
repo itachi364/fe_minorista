@@ -477,6 +477,21 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-265: La inicializacion de contabilidad basica debe ser idempotente y servir como reparacion de plantilla: crear cuentas/reglas faltantes y reactivar cuentas base inactivas, sin reemplazar reglas activas ya configuradas o usadas por la empresa.
 - RF-266: Cuando falte una regla contable activa para ventas, deudores, recaudos, pagos o nomina, el backend debe responder un error funcional especifico de la operacion y no reutilizar siempre el mensaje de cierre de venta.
 
+## Requisitos fase mejoras priorizadas para salida comercial
+
+- RF-267: La plataforma debe ofrecer un asistente de puesta en marcha por empresa que muestre estado, prerequisitos, acciones sugeridas y bloqueos operativos para licencia, usuarios, roles, DIAN, emisor fiscal, resoluciones, contabilidad, PIN operacional, inventario y branding.
+- RF-268: Cada empresa debe tener un indicador de preparacion funcional (`READY`, `WARNING`, `BLOCKED`) que explique si puede vender, facturar, imprimir, reportar y operar contabilidad sin errores previsibles.
+- RF-269: La salida comercial debe incluir hardening productivo de seguridad: autenticacion real, MFA configurable, sesiones BFF con cookies seguras, CSRF, headers de seguridad, rate limiting, proteccion contra fuerza bruta, gestion de secretos y bloqueo explicito de autenticacion dummy en produccion.
+- RF-270: El flujo DIAN real por empresa debe validarse extremo a extremo en habilitacion y produccion, incluyendo XML UBL, firma, CUFE/CUDE, QR, transporte, ApplicationResponse, reintentos, artefactos, auditoria y fallos funcionales.
+- RF-271: La configuracion contable debe evolucionar a un onboarding guiado por faltantes, mostrando reglas y cuentas necesarias por modulo antes de permitir operaciones que generen asientos.
+- RF-272: El modulo de reportes debe priorizar reportes gerenciales para pequenos negocios: utilidad/perdida diaria, ventas por producto, ventas por vendedor, gastos, compras, cartera, cuentas por pagar, flujo de caja, inventario valorizado y exportacion controlada.
+- RF-273: La auditoria debe tener vistas operativas visibles para ROOT y administradores empresariales, con filtros por empresa, usuario, modulo, resultado, correlation ID, fecha y tipo de evento, sin exponer datos sensibles.
+- RF-274: El repositorio debe contar con CI/CD y quality gate reproducible para Maven, Vitest, cobertura, SonarQube, Docker Compose, migraciones Flyway y escaneo basico de secretos/dependencias.
+- RF-275: La impresion termica POS debe tener una fase de hardware real que defina compatibilidad 58/80 mm, ESC/POS, WebUSB/WebSerial o agente local, reimpresion controlada y auditoria de comprobantes.
+- RF-276: La operacion financiera diaria debe consolidar vencimientos, recordatorios, pagos, recaudos, deudas, obligaciones, reinversion y alertas de liquidez para pequenos negocios.
+- RF-277: El almacenamiento empresarial debe endurecerse para ambiente productivo y local: MinIO o equivalente en desarrollo, S3 privado cifrado con KMS en produccion, links intermediados o prefirmados de corta vida, validacion antimalware cuando aplique y metadata auditable.
+- RF-278: La plataforma debe exponer observabilidad productiva por servicio: health liveness/readiness, metricas, logs correlacionados, trazas distribuidas, dashboards y alertas sobre errores funcionales, latencia, jobs, integracion DIAN y almacenamiento.
+
 ## Requisitos fase productizacion operativa
 
 - RF-089: El sistema debe contar con una prueba E2E desde cero que cree empresa, licencia, administrador, catalogos requeridos, tercero, inventario, venta POS, factura electronica mock, efecto de inventario, asiento contable y auditoria.

@@ -6670,6 +6670,215 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - `npm test -- --run App.test.jsx --reporter=dot`: 31 tests OK.
     - `npm run build`: OK.
 
+## Fase 35: Mejoras priorizadas para salida comercial
+
+- [ ] TASK-261: Asistente de puesta en marcha empresarial
+  - Estado: PENDING.
+  - Requisitos: RF-267, RF-268.
+  - Acceptance criteria: AC-379, AC-380.
+  - Descripcion: Crear un asistente por empresa que muestre configuraciones faltantes, estado operativo, responsables, acciones sugeridas y bloqueos antes de permitir procesos criticos.
+  - Archivos previstos para futura implementacion:
+    - `services/bff-service/**`
+    - `services/tenant-service/**`
+    - `services/accounting-service/**`
+    - `services/billing-service/**`
+    - `apps/facturaelectronica-web/src/features/company/**`
+    - `apps/facturaelectronica-web/src/features/readiness/**`
+  - Dependencias:
+    - TASK-153 a TASK-163.
+    - TASK-245.
+    - TASK-259.
+  - Validacion propuesta:
+    - Tests backend de readiness por empresa completa, incompleta y bloqueada.
+    - Tests frontend de estados `READY`, `WARNING` y `BLOCKED`.
+  - Nota: Solo documentada; no implementada.
+
+- [ ] TASK-262: Readiness funcional y bloqueos guiados por empresa
+  - Estado: PENDING.
+  - Requisitos: RF-267, RF-268.
+  - Acceptance criteria: AC-379, AC-380.
+  - Descripcion: Centralizar las validaciones previas para vender, facturar, imprimir, reportar y contabilizar, devolviendo errores funcionales con accion correctiva.
+  - Archivos previstos para futura implementacion:
+    - `services/bff-service/**`
+    - `services/billing-service/**`
+    - `services/accounting-service/**`
+    - `apps/facturaelectronica-web/src/App.jsx`
+  - Dependencias:
+    - TASK-261.
+  - Validacion propuesta:
+    - Pruebas de bloqueo por licencia, resolucion, emisor, DIAN, contabilidad e inventario.
+  - Nota: Solo documentada; no implementada.
+
+- [ ] TASK-263: Hardening productivo de seguridad
+  - Estado: PENDING.
+  - Requisitos: RF-269.
+  - Acceptance criteria: AC-381.
+  - Descripcion: Endurecer autenticacion, sesiones, CSRF, cookies, headers, rate limiting, secretos, MFA y prohibicion de autenticacion dummy en produccion.
+  - Archivos previstos para futura implementacion:
+    - `services/bff-service/**`
+    - `infra/**`
+    - `docker-compose*.yml`
+    - `.github/workflows/**`
+  - Dependencias:
+    - TASK-106.
+    - TASK-107.
+  - Validacion propuesta:
+    - Tests de arranque fallido con configuracion productiva insegura.
+    - Pruebas de headers, CSRF, cookies seguras y rate limiting.
+  - Nota: Solo documentada; no implementada.
+
+- [ ] TASK-264: Validacion DIAN real end-to-end por empresa
+  - Estado: PENDING.
+  - Requisitos: RF-156, RF-157, RF-158, RF-159, RF-160, RF-161, RF-162, RF-163, RF-164, RF-165, RF-166, RF-270.
+  - Acceptance criteria: AC-382.
+  - Descripcion: Completar y validar el envio DIAN real por empresa con XML UBL, firma, CUFE/CUDE, QR, transporte, ApplicationResponse, artefactos, reintentos e idempotencia.
+  - Archivos previstos para futura implementacion:
+    - `services/dian-provider-service/**`
+    - `services/billing-service/**`
+    - `services/tenant-service/**`
+    - `specs/diagrams/**`
+  - Dependencias:
+    - TASK-153 a TASK-163.
+  - Validacion propuesta:
+    - Unit tests con fixtures sanitizados.
+    - Integracion mock DIAN habilitacion/produccion.
+    - E2E de emision real controlada por empresa.
+  - Nota: Solo documentada; no implementada.
+
+- [ ] TASK-265: Onboarding contable guiado por faltantes
+  - Estado: PENDING.
+  - Requisitos: RF-271.
+  - Acceptance criteria: AC-383.
+  - Descripcion: Mostrar reglas y cuentas faltantes por modulo antes de permitir operaciones contables, manteniendo plantillas como ayuda y no como accion opaca.
+  - Archivos previstos para futura implementacion:
+    - `services/accounting-service/**`
+    - `services/bff-service/**`
+    - `apps/facturaelectronica-web/src/features/accounting/**`
+  - Dependencias:
+    - TASK-223.
+    - TASK-259.
+    - TASK-260.
+  - Validacion propuesta:
+    - Tests de diagnostico por evento contable y accion guiada.
+  - Nota: Solo documentada; no implementada.
+
+- [ ] TASK-266: Reportes gerenciales y financieros normalizados
+  - Estado: PENDING.
+  - Requisitos: RF-272.
+  - Acceptance criteria: AC-384.
+  - Descripcion: Priorizar reportes utiles para decision diaria: utilidad/perdida, ventas por producto/vendedor, gastos, compras, cartera, cuentas por pagar, flujo de caja e inventario valorizado.
+  - Archivos previstos para futura implementacion:
+    - `services/reporting-service/**`
+    - `services/bff-service/**`
+    - `apps/facturaelectronica-web/src/features/reports/**`
+  - Dependencias:
+    - TASK-190 a TASK-196.
+    - TASK-244.
+    - TASK-258.
+  - Validacion propuesta:
+    - Tests de datasets normalizados, columnas en espanol, graficas y exportaciones.
+  - Nota: Solo documentada; no implementada.
+
+- [ ] TASK-267: Auditoria operativa visible
+  - Estado: PENDING.
+  - Requisitos: RF-273.
+  - Acceptance criteria: AC-385.
+  - Descripcion: Crear vistas filtrables de auditoria para ROOT y administradores empresariales sin exponer informacion sensible.
+  - Archivos previstos para futura implementacion:
+    - `services/audit-service/**`
+    - `services/bff-service/**`
+    - `apps/facturaelectronica-web/src/features/audit/**`
+  - Dependencias:
+    - TASK-095.
+    - TASK-249.
+  - Validacion propuesta:
+    - Tests de filtros, aislamiento multiempresa y sanitizacion.
+  - Nota: Solo documentada; no implementada.
+
+- [ ] TASK-268: CI/CD, quality gate y cobertura
+  - Estado: PENDING.
+  - Requisitos: RF-274.
+  - Acceptance criteria: AC-386.
+  - Descripcion: Definir pipeline reproducible para pruebas Maven/Vitest, cobertura, SonarQube, Docker Compose, Flyway y escaneo basico de secretos/dependencias.
+  - Archivos previstos para futura implementacion:
+    - `.github/workflows/**`
+    - `sonar-project.properties`
+    - `pom.xml`
+    - `apps/facturaelectronica-web/package.json`
+    - `README.md`
+  - Dependencias:
+    - Configuracion Sonar local existente.
+  - Validacion propuesta:
+    - Ejecucion local documentada y workflow CI verde.
+  - Nota: Solo documentada; no implementada.
+
+- [ ] TASK-269: Impresion termica POS fase 2 con hardware real
+  - Estado: PENDING.
+  - Requisitos: RF-275.
+  - Acceptance criteria: AC-387.
+  - Descripcion: Validar impresion real 58/80 mm con QR fiscal y definir estrategia web, WebUSB/WebSerial o agente local para impresoras termicas.
+  - Archivos previstos para futura implementacion:
+    - `apps/facturaelectronica-web/src/features/sales/**`
+    - `services/billing-service/**`
+    - `tools/pos-printer-agent/**`
+  - Dependencias:
+    - TASK-144.
+    - TASK-256.
+  - Validacion propuesta:
+    - Pruebas con impresora real o emulador ESC/POS y snapshot de comprobante.
+  - Nota: Solo documentada; no implementada.
+
+- [ ] TASK-270: Gestion financiera diaria
+  - Estado: PENDING.
+  - Requisitos: RF-276.
+  - Acceptance criteria: AC-388.
+  - Descripcion: Consolidar vencimientos, saldos, pagos, recaudos, obligaciones, reinversion, alertas de liquidez y utilidad/perdida esperada.
+  - Archivos previstos para futura implementacion:
+    - `services/accounting-service/**`
+    - `services/reporting-service/**`
+    - `apps/facturaelectronica-web/src/features/finance/**`
+  - Dependencias:
+    - TASK-241.
+    - TASK-242.
+    - TASK-243.
+    - TASK-244.
+  - Validacion propuesta:
+    - Tests de saldos, vencimientos, alertas y aislamiento por empresa.
+  - Nota: Solo documentada; no implementada.
+
+- [ ] TASK-271: Storage empresarial robusto local/S3
+  - Estado: PENDING.
+  - Requisitos: RF-277.
+  - Acceptance criteria: AC-389.
+  - Descripcion: Endurecer almacenamiento empresarial con paridad local/S3, opcion MinIO, cifrado KMS, links controlados, metadata auditable y validacion antimalware cuando aplique.
+  - Archivos previstos para futura implementacion:
+    - `services/tenant-service/**`
+    - `services/reporting-service/**`
+    - `infra/**`
+    - `docker-compose*.yml`
+  - Dependencias:
+    - TASK-254.
+    - TASK-190 a TASK-196.
+  - Validacion propuesta:
+    - Tests de storage local, S3 mock, metadata, autorizacion y no exposicion de bucket/key.
+  - Nota: Solo documentada; no implementada.
+
+- [ ] TASK-272: Observabilidad productiva
+  - Estado: PENDING.
+  - Requisitos: RF-278.
+  - Acceptance criteria: AC-390.
+  - Descripcion: Exponer health liveness/readiness, metricas, logs correlacionables, trazas, dashboards y alertas para microservicios, DIAN, storage, jobs y errores funcionales.
+  - Archivos previstos para futura implementacion:
+    - `services/**/pom.xml`
+    - `services/**/src/main/resources/application*.yml`
+    - `infra/**`
+    - `docker-compose*.yml`
+  - Dependencias:
+    - TASK-268.
+  - Validacion propuesta:
+    - Verificacion de endpoints Actuator, metricas y correlacion de logs en local.
+  - Nota: Solo documentada; no implementada.
+
 Context7 evidence:
 
 - Library/tool: React.
@@ -6696,3 +6905,7 @@ Context7 evidence:
   - Topic consulted: button event handlers and passing functions through props.
   - Relevant finding: React recomienda pasar funciones como handlers `onClick` y levantar estado/operaciones compartidas al componente padre mediante props.
   - Decision impact: TASK-260 mueve la aplicacion de plantilla basica a una accion idempotente del contenedor `App`, invocada desde el panel por prop.
+- Library/tool: Spring Boot.
+  - Topic consulted: Actuator production-ready health endpoints and metrics.
+  - Relevant finding: Spring Boot Actuator provee endpoints de monitoreo y administracion para produccion, incluyendo liveness/readiness y metricas integrables con herramientas externas.
+  - Decision impact: TASK-272 queda documentada con health liveness/readiness, metricas, logs correlacionables y alertas por microservicio.

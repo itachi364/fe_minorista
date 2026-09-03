@@ -415,3 +415,18 @@
 - AC-376: Dada cualquier mutacion de producto, evidencia, archivo empresarial, QR/comprobante o branding, entonces debe existir auditoria sin contenido binario, secretos, PIN, credenciales ni URLs privadas persistentes.
 - AC-377: Dada una empresa con contabilidad basica inicializada antes de una nueva plantilla, cuando se ejecute nuevamente `Completar plantilla basica`, entonces se crean solo las cuentas/reglas faltantes y se conservan reglas activas existentes.
 - AC-378: Dado un deudor manual con datos validos pero sin regla `ACCOUNT_RECEIVABLE_REGISTERED`, cuando se intente registrar, entonces el backend responde `400 BUSINESS_RULE_VIOLATION` con mensaje de regla faltante para cuenta por cobrar, no con mensaje de cerrar venta ni `500`.
+
+## Fase 35: Mejoras priorizadas para salida comercial
+
+- AC-379: Dada una empresa nueva o incompleta, cuando ROOT o un administrador abra el asistente de puesta en marcha, entonces debe ver cada prerequisito operativo con estado, descripcion, responsable, accion sugerida y bloqueo asociado.
+- AC-380: Dada una empresa sin configuracion minima para vender o facturar, cuando intente ejecutar una operacion dependiente, entonces el sistema debe mostrar bloqueo funcional guiado y no un error generico.
+- AC-381: Dado ambiente productivo, cuando arranquen BFF y microservicios, entonces debe quedar deshabilitada cualquier autenticacion dummy, usar cookies/CSRF/headers seguros y rechazar configuraciones sin secretos obligatorios.
+- AC-382: Dada una empresa con DIAN en modo real, cuando emita un documento fiscal, entonces debe generar XML firmado, CUFE/CUDE, QR, registrar ApplicationResponse, persistir artefactos y auditar resultado sin repetir efectos de negocio.
+- AC-383: Dada una empresa con contabilidad incompleta, cuando abra configuracion contable, entonces debe ver faltantes por modulo y poder completarlos antes de operar ventas, compras, gastos, nomina, deudores o pagos.
+- AC-384: Dado el modulo de reportes, cuando el usuario seleccione un reporte gerencial, entonces las columnas, graficas y exportaciones deben salir normalizadas en espanol y orientadas a decision de negocio, no como JSON tecnico.
+- AC-385: Dada una accion mutable, error funcional o intento denegado, cuando se consulte auditoria operativa, entonces debe poder filtrarse por empresa, usuario, modulo, resultado, correlation ID y rango de fechas sin exponer secretos.
+- AC-386: Dado el pipeline de calidad, cuando se ejecute en local o CI, entonces debe correr pruebas relevantes, cobertura, SonarQube, validacion Docker, migraciones Flyway y revision basica de secretos/dependencias con resultado reproducible.
+- AC-387: Dado un punto de venta con impresora termica soportada, cuando se cierre o reimprima una venta, entonces el comprobante debe imprimirse en formato 58/80 mm con QR fiscal y auditoria de impresion/reimpresion.
+- AC-388: Dadas cuentas por cobrar, pagar, gastos, compras, pagos diarios y ventas, cuando el administrador consulte gestion financiera diaria, entonces debe ver vencimientos, saldos, alertas y utilidad/perdida esperada.
+- AC-389: Dado un archivo empresarial subido en local o produccion, cuando se almacene o descargue, entonces debe usar prefijos por empresa/categoria, cifrado productivo, metadata auditable y links controlados sin exponer credenciales ni rutas privadas.
+- AC-390: Dado cualquier microservicio desplegado, cuando se consulte monitoreo, entonces debe exponer health liveness/readiness, metricas y logs correlacionables; las alertas deben identificar degradacion de DIAN, storage, jobs y errores funcionales recurrentes.

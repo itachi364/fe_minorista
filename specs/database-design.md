@@ -644,7 +644,7 @@ Metricas minimas:
 
 ## Fase 34 Inventario Editable, Evidencias Y QR Fiscal
 
-Estado: documentado; pendiente de implementacion.
+Estado: implementado.
 
 ### Productos actualizables e inactivables
 
@@ -717,3 +717,85 @@ Reglas:
 - La representacion imprimible debe renderizar QR grafico a partir de `qr_content`.
 - `qr_content` mock se construye desde parametro de URL base; no se hardcodea dominio.
 - En modo real, el valor DIAN prevalece y queda asociado al documento fiscal.
+
+## Fase 35 Mejoras Priorizadas Para Salida Comercial
+
+Estado: documentado; pendiente de implementacion.
+
+### Readiness empresarial
+
+Tablas objetivo sugeridas:
+
+- `tenant.company_readiness_snapshot`
+- `tenant.company_readiness_check`
+
+Campos principales:
+
+- `company_id`.
+- `overall_status`: `READY`, `WARNING`, `BLOCKED`.
+- `check_code`, `module_code`, `status`, `blocking`, `message`, `action_code`.
+- `evaluated_at`, `evaluated_by`, `correlation_id`.
+
+Reglas:
+
+- El snapshot es derivado y puede recalcularse; no reemplaza validaciones transaccionales.
+- Los checks no deben almacenar secretos ni payloads internos.
+
+### Auditoria operativa visible
+
+Tablas reutilizadas:
+
+- tablas existentes de auditoria/eventos.
+
+Campos/indexes objetivo:
+
+- Indices por `company_id`, `user_id`, `module`, `result`, `correlation_id`, `created_at`.
+- Campos publicos sanitizados para busqueda administrativa.
+
+Reglas:
+
+- La auditoria conserva trazabilidad, no datos sensibles.
+- Eventos de seguridad y errores funcionales deben distinguirse por tipo.
+
+### Reportes gerenciales
+
+Tablas objetivo o vistas materializadas sugeridas:
+
+- `reporting.report_dataset_cache` para respuestas normalizadas cacheables.
+- `reporting.report_export_job` ya definido para trabajos pesados.
+- Vistas agregadas por ventas, productos, vendedores, gastos, compras, cartera y caja cuando el volumen lo requiera.
+
+Reglas:
+
+- Los reportes no deben leer objetos crudos para pintar columnas tecnicas en UI.
+- Los historicos dependen de snapshots o datos transaccionales estables.
+
+### Storage y archivos
+
+Tablas reutilizadas o extendidas:
+
+- `tenant.company_file_asset`.
+
+Campos objetivo adicionales:
+
+- `scan_status`: `PENDING`, `CLEAN`, `REJECTED`, `SKIPPED`.
+- `retention_until`.
+- `download_policy`.
+- `last_downloaded_at`.
+
+Reglas:
+
+- En productivo, referencias de storage deben ser privadas y cifradas.
+- Las URLs prefirmadas no se persisten como dato historico.
+
+### Observabilidad funcional
+
+Tablas objetivo opcionales:
+
+- `platform.business_health_snapshot`.
+- `platform.service_health_event`.
+
+Reglas:
+
+- Los health checks tecnicos viven en Actuator o herramienta de monitoreo.
+- Los snapshots funcionales solo consolidan estado de negocio para soporte y administracion.

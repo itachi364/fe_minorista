@@ -635,3 +635,91 @@ Flujo principal:
 4. El sistema valida hexadecimal, guarda branding y aplica la vista previa.
 
 Acceptance criteria: AC-375, AC-376.
+
+## UC-042: Revisar puesta en marcha empresarial
+
+Actor: ROOT o administrador empresarial.
+
+Flujo principal:
+1. El actor abre el asistente de puesta en marcha.
+2. El sistema consulta el estado de licencia, usuarios, roles, DIAN, emisor fiscal, resoluciones, contabilidad, PIN, inventario, branding, reportes y storage.
+3. El sistema muestra estado general y checks por modulo con accion sugerida.
+4. El actor abre el modulo sugerido para corregir la configuracion faltante.
+
+Flujo alterno:
+- Si la empresa esta bloqueada para vender, facturar o reportar, el sistema muestra el motivo funcional antes de intentar la operacion.
+
+Acceptance criteria: AC-379, AC-380.
+
+## UC-043: Validar seguridad productiva antes de salida comercial
+
+Actor: ROOT tecnico o administrador de plataforma.
+
+Flujo principal:
+1. El actor despliega ambiente productivo.
+2. El sistema valida autenticacion real, secretos, cookies seguras, CSRF, headers, rate limiting y MFA cuando aplique.
+3. Si alguna configuracion critica falta, el servicio falla cerrado durante arranque o bloquea operacion administrativa.
+
+Acceptance criteria: AC-381.
+
+## UC-044: Emitir documento DIAN real por empresa
+
+Actor: Empresa habilitada ante DIAN.
+
+Flujo principal:
+1. La empresa configura sus parametros DIAN, certificado y resoluciones.
+2. Un usuario autorizado cierra una venta o emite documento fiscal.
+3. El sistema genera XML UBL, firma, CUFE/CUDE y QR.
+4. El sistema transmite a DIAN, procesa ApplicationResponse y registra artefactos.
+5. El sistema conserva auditoria, estado fiscal y comprobante consultable.
+
+Flujo alterno:
+- Si DIAN rechaza o falla una validacion tecnica, el sistema conserva estado/error funcional y no repite inventario ni contabilidad.
+
+Acceptance criteria: AC-382.
+
+## UC-045: Completar configuracion contable guiada
+
+Actor: Administrador empresarial o contador.
+
+Flujo principal:
+1. El actor abre configuracion contable.
+2. El sistema muestra reglas y cuentas faltantes por modulo.
+3. El actor crea o completa cuentas/reglas requeridas.
+4. El sistema actualiza readiness contable y habilita operaciones dependientes.
+
+Acceptance criteria: AC-383.
+
+## UC-046: Consultar reportes gerenciales normalizados
+
+Actor: Administrador empresarial, contador o usuario con permiso de reportes.
+
+Flujo principal:
+1. El actor abre Reportes.
+2. Selecciona reporte, filtros, rango de fechas, visualizacion y formato.
+3. El sistema genera dataset normalizado en espanol.
+4. El actor visualiza tabla/grafica o descarga exportacion.
+
+Acceptance criteria: AC-384.
+
+## UC-047: Consultar auditoria operativa
+
+Actor: ROOT o administrador empresarial.
+
+Flujo principal:
+1. El actor abre Logs/Auditoria.
+2. Filtra por empresa, usuario, modulo, resultado, correlation ID y fechas.
+3. El sistema muestra eventos auditables sanitizados.
+
+Acceptance criteria: AC-385.
+
+## UC-048: Gestionar finanzas diarias
+
+Actor: Administrador empresarial o contador.
+
+Flujo principal:
+1. El actor abre gestion financiera diaria.
+2. El sistema consolida ventas, gastos, compras, deudores, cuentas por pagar, pagos diarios, vencimientos y alertas.
+3. El actor revisa utilidad/perdida, liquidez esperada y obligaciones.
+
+Acceptance criteria: AC-388.

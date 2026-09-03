@@ -10,6 +10,7 @@ flowchart TB
 
   subgraph PrivateCompute["Private ECS Fargate services"]
     Bff[bff-service]
+    Readiness[company-readiness composition]
     Tenant[tenant-service]
     Identity[identity-service]
     Catalog[catalog-service]
@@ -21,6 +22,7 @@ flowchart TB
     Audit[audit-service]
     Payroll[payroll-service]
     Reporting[reporting-service]
+    Observability[business-health facade]
   end
 
   subgraph DataPlane["Private data plane"]
@@ -71,6 +73,16 @@ flowchart TB
     FileMetadata[tenant.company_file_asset metadata]
     FilePrefixes[company/category prefixes]
     MockReceiptQr[Configurable mock receipt QR]
+    MinioLocal[Local S3-compatible storage / MinIO optional]
+  end
+
+  subgraph OpsReadiness["Fase 35 readiness comercial"]
+    SetupWizard[Company setup wizard]
+    SecurityHardening[Production security hardening]
+    AccountingReadiness[Accounting readiness]
+    BusinessReports[Normalized business reports]
+    PosPrinter[POS thermal bridge target]
+    HealthMetrics[Actuator health / metrics / traces]
   end
 
   Browser --> CloudFront
@@ -80,6 +92,7 @@ flowchart TB
   Cognito --> ApiGateway
   ApiGateway --> Bff
 
+  Bff --> Readiness
   Bff --> Tenant
   Bff --> Identity
   Bff --> Catalog
@@ -90,6 +103,15 @@ flowchart TB
   Bff --> Audit
   Bff --> Payroll
   Bff --> Reporting
+  Bff --> Observability
+
+  Readiness --> Tenant
+  Readiness --> Billing
+  Readiness --> Accounting
+  Readiness --> DianProvider
+  Readiness --> Identity
+  Readiness --> Inventory
+  Observability --> HealthMetrics
 
   Billing --> DianProvider
   DianProvider --> UblBuilder --> DianIdentifiers --> XmlSigner --> DianValidator --> DianTransport
@@ -115,8 +137,17 @@ flowchart TB
   Tenant --> FileMetadata
   FileMetadata --> FilePrefixes
   FilePrefixes --> AssetBucket
+  FilePrefixes --> MinioLocal
   Reporting --> ReportExportQueue
   Reporting --> Ses
+
+  SetupWizard --> Readiness
+  SecurityHardening --> Cognito
+  SecurityHardening --> Secrets
+  AccountingReadiness --> Accounting
+  BusinessReports --> Reporting
+  PosPrinter --> Billing
+  HealthMetrics --> Bff
 
   Tenant --> RdsProxy
   Identity --> RdsProxy

@@ -951,3 +951,70 @@ Reglas:
 - Modo mock: contenido construido desde URL base parametrizable de NexoFiscal.
 - Modo DIAN real: contenido retornado por DIAN/proveedor.
 - El QR no debe depender de valores hardcodeados ni de URLs privadas de storage.
+
+## Extensiones TASK-261 a TASK-272
+
+Estado: modelo objetivo documentado; pendiente de implementacion.
+
+### Readiness empresarial
+
+Modelo logico:
+
+- `company_readiness_snapshot`: resultado consolidado de preparacion funcional por empresa.
+- `company_readiness_check`: detalle por prerequisito, modulo y accion sugerida.
+
+Reglas:
+
+- El readiness es un diagnostico derivado; no reemplaza validaciones de dominio.
+- Los checks deben poder recalcularse y auditarse.
+- No se almacenan secretos, certificados, PIN, tokens ni passwords.
+
+### Readiness contable
+
+Modelo logico:
+
+- Lista derivada de reglas contables faltantes por evento.
+- Lista derivada de cuentas PUC sugeridas o requeridas por modulo.
+- Severidad funcional: informativa, advertencia o bloqueo.
+
+Reglas:
+
+- El diagnostico no crea cuentas/reglas automaticamente.
+- Las acciones correctivas son explicitas y trazables.
+
+### Reportes gerenciales normalizados
+
+Modelo logico:
+
+- `report_dataset_cache`: cache opcional de datasets normalizados por empresa/reporte/filtros.
+- `report_export_job`: mantiene jobs pesados y descargas seguras.
+- Vistas agregadas futuras para ventas, vendedores, productos, gastos, compras, cartera, cuentas por pagar y flujo de caja.
+
+Reglas:
+
+- La UI y exportaciones consumen datasets normalizados, no JSON transaccional crudo.
+- Los reportes historicos deben tolerar productos, terceros o usuarios inactivos mediante snapshots o datos historicos estables.
+
+### Auditoria operativa
+
+Modelo logico:
+
+- Eventos auditables existentes enriquecidos con indices y filtros por empresa, usuario, modulo, resultado, correlation ID y rango de fechas.
+
+Reglas:
+
+- La auditoria visible debe sanitizar payloads.
+- Eventos denegados, fallidos y exitosos deben distinguirse claramente.
+
+### Storage y observabilidad
+
+Modelo logico:
+
+- `company_file_asset` puede extenderse con estado de escaneo, retencion y politica de descarga.
+- `business_health_snapshot`: estado funcional consolidado para soporte.
+- `service_health_event`: eventos de salud/degradacion asociados a servicios o integraciones.
+
+Reglas:
+
+- Los health checks tecnicos se exponen por mecanismo de observabilidad; las tablas funcionales son apoyo para soporte.
+- Las URLs prefirmadas no se persisten como historico.

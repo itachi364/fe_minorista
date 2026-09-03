@@ -2,6 +2,8 @@ erDiagram
   COMPANY ||--o{ COMPANY_LICENSE : has
   COMPANY ||--o| COMPANY_BRANDING : configures
   COMPANY ||--o{ COMPANY_FILE_ASSET : stores
+  COMPANY ||--o{ COMPANY_READINESS_SNAPSHOT : evaluates
+  COMPANY_READINESS_SNAPSHOT ||--o{ COMPANY_READINESS_CHECK : contains
   COMPANY ||--o{ USER_COMPANY : authorizes
   USER_ACCOUNT ||--o{ USER_COMPANY : belongs_to
   USER_ACCOUNT ||--o{ GLOBAL_USER_ROLE : has
@@ -44,6 +46,7 @@ erDiagram
   ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_TAX : taxes
   ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_ARTIFACT : produces
   ELECTRONIC_DOCUMENT ||--o{ POS_PRINT_JOB : printed_by
+  COMPANY ||--o{ POS_PRINT_JOB : audits
   ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_TRACE_EVENT : traces
 
   COMPANY ||--o{ PROVIDER_CONFIGURATION : owns
@@ -81,9 +84,12 @@ erDiagram
   COMPANY ||--o{ REPORTING_EVENT_PROJECTION : projects
   REPORT_DEFINITION ||--o{ REPORT_EXECUTION : executed_as
   REPORT_DEFINITION ||--o{ REPORT_EXPORT_JOB : exports
+  REPORT_DEFINITION ||--o{ REPORT_DATASET_CACHE : caches
   REPORT_EXPORT_JOB ||--o{ REPORT_EXPORT_DOWNLOAD_ATTEMPT : records
   COMPANY ||--o{ REPORT_EXECUTION : requests
   COMPANY ||--o{ REPORT_EXPORT_JOB : owns
+  COMPANY ||--o{ BUSINESS_HEALTH_SNAPSHOT : monitors
+  COMPANY ||--o{ SERVICE_HEALTH_EVENT : receives
   COMPANY_FILE_ASSET ||--o{ PURCHASE : evidence
   COMPANY_FILE_ASSET ||--o{ ACCOUNTING_EXPENSE : evidence
 
@@ -120,6 +126,25 @@ erDiagram
     bigint size_bytes
     varchar content_hash
     varchar status
+  }
+
+  COMPANY_READINESS_SNAPSHOT {
+    uuid id PK
+    uuid company_id FK
+    varchar overall_status
+    timestamp evaluated_at
+    uuid evaluated_by FK
+    varchar correlation_id
+  }
+
+  COMPANY_READINESS_CHECK {
+    uuid id PK
+    uuid snapshot_id FK
+    varchar check_code
+    varchar module_code
+    varchar status
+    boolean blocking
+    varchar action_code
   }
 
   COMPANY_LICENSE {
@@ -417,6 +442,16 @@ erDiagram
     varchar status
   }
 
+  REPORT_DATASET_CACHE {
+    uuid id PK
+    uuid company_id FK
+    varchar report_code FK
+    varchar cache_key
+    json normalized_dataset
+    timestamp created_at
+    timestamp expires_at
+  }
+
   REPORT_EXPORT_JOB {
     uuid id PK
     uuid company_id FK
@@ -450,4 +485,24 @@ erDiagram
     timestamp attempted_at
     varchar result
     varchar detail
+  }
+
+  BUSINESS_HEALTH_SNAPSHOT {
+    uuid id PK
+    uuid company_id FK
+    varchar sales_status
+    varchar dian_status
+    varchar storage_status
+    varchar reporting_status
+    timestamp evaluated_at
+  }
+
+  SERVICE_HEALTH_EVENT {
+    uuid id PK
+    uuid company_id FK
+    varchar service_name
+    varchar event_type
+    varchar status
+    varchar correlation_id
+    timestamp occurred_at
   }
