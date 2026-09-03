@@ -44,6 +44,7 @@ final class ReportDatasetNormalizer {
             case "SALES_BY_PRODUCT" -> salesByProduct(payload);
             case "SALES_BY_SELLER" -> salesBySeller(payload);
             case "PROFITABILITY", "DAILY_PROFIT_AND_LOSS" -> profitAndLoss(payload);
+            case "CASH_FLOW", "FINANCIAL_DAILY_SUMMARY" -> profitAndLoss(payload);
             default -> genericDataset(payload);
         };
     }

@@ -947,6 +947,49 @@ textarea:hover {
   text-align: right;
 }
 
+.finance-dashboard {
+  display: grid;
+  gap: 16px;
+}
+
+.finance-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.finance-kpi {
+  display: grid;
+  gap: 8px;
+  min-height: 86px;
+  border: 1px solid #d8e2ea;
+  border-radius: 8px;
+  padding: 14px;
+  background: #f7fafc;
+}
+
+.finance-kpi b {
+  color: #607080;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.finance-kpi strong {
+  color: #152536;
+  font-size: 20px;
+}
+
+.finance-kpi.positive {
+  border-color: #94d0a9;
+  background: #f2fbf5;
+}
+
+.finance-kpi.negative,
+.finance-kpi.warning {
+  border-color: #e6c27f;
+  background: #fff8e8;
+}
+
 .report-card {
   display: grid;
   gap: 10px;
@@ -1586,6 +1629,7 @@ pre {
   .app-header-panel,
   .form-grid,
   .form-grid.compact,
+  .finance-kpis,
   .accounting-row,
   .movement-row,
   .line-row {
@@ -1609,6 +1653,7 @@ pre {
   .result-grid,
   .form-grid,
   .form-grid.compact,
+  .finance-kpis,
   .accounting-row,
   .movement-row,
   .line-row {

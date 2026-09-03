@@ -74,7 +74,7 @@ public class CompanyFileAssetManagementService implements ManageCompanyFileAsset
         if (command.content().length > MAX_EVIDENCE_SIZE_BYTES) {
             throw new IllegalArgumentException("file is too large");
         }
-        if (isPdfOnly(command.category()) && !isPdf(command.originalFilename(), command.contentType())) {
+        if (isPdfOnly(command.category()) && !isPdf(command.originalFilename(), command.contentType(), command.content())) {
             throw new IllegalArgumentException("Solo se permite PDF como evidencia documental.");
         }
     }
@@ -84,9 +84,14 @@ public class CompanyFileAssetManagementService implements ManageCompanyFileAsset
                 || category == CompanyFileCategory.INVOICE;
     }
 
-    private static boolean isPdf(String filename, String contentType) {
+    private static boolean isPdf(String filename, String contentType, byte[] content) {
         return filename.toLowerCase(Locale.ROOT).endsWith(".pdf")
-                && "application/pdf".equalsIgnoreCase(contentType);
+                && "application/pdf".equalsIgnoreCase(contentType)
+                && content.length >= 4
+                && content[0] == '%'
+                && content[1] == 'P'
+                && content[2] == 'D'
+                && content[3] == 'F';
     }
 
     private static String storageKey(UUID companyId, CompanyFileCategory category, UUID assetId, String filename) {

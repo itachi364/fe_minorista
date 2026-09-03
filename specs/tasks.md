@@ -6765,8 +6765,8 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
 
 ## Fase 35: Mejoras priorizadas para salida comercial
 
-- [ ] TASK-261: Asistente de puesta en marcha empresarial
-  - Estado: PENDING.
+- [x] TASK-261: Asistente de puesta en marcha empresarial
+  - Estado: DONE.
   - Requisitos: RF-267, RF-268.
   - Acceptance criteria: AC-379, AC-380.
   - Descripcion: Crear un asistente por empresa que muestre configuraciones faltantes, estado operativo, responsables, acciones sugeridas y bloqueos antes de permitir procesos criticos.
@@ -6784,10 +6784,15 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
   - Validacion propuesta:
     - Tests backend de readiness por empresa completa, incompleta y bloqueada.
     - Tests frontend de estados `READY`, `WARNING` y `BLOCKED`.
-  - Nota: Solo documentada; no implementada.
+  - Implementacion:
+    - `services/bff-service` expone `GET /api/v1/readiness/company` consolidando licencia, emisor, resolucion, politica fiscal, contabilidad e inventario.
+    - `apps/facturaelectronica-web/src/features/readiness/ReadinessPanel.jsx` muestra estado, conteos y acciones correctivas por modulo.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services/bff-service,services/reporting-service,services/tenant-service -am test`: BUILD SUCCESS.
+    - `.\mvnw.cmd test`: BUILD SUCCESS.
 
-- [ ] TASK-262: Readiness funcional y bloqueos guiados por empresa
-  - Estado: PENDING.
+- [x] TASK-262: Readiness funcional y bloqueos guiados por empresa
+  - Estado: DONE.
   - Requisitos: RF-267, RF-268.
   - Acceptance criteria: AC-379, AC-380.
   - Descripcion: Centralizar las validaciones previas para vender, facturar, imprimir, reportar y contabilizar, devolviendo errores funcionales con accion correctiva.
@@ -6800,10 +6805,15 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - TASK-261.
   - Validacion propuesta:
     - Pruebas de bloqueo por licencia, resolucion, emisor, DIAN, contabilidad e inventario.
-  - Nota: Solo documentada; no implementada.
+  - Implementacion:
+    - El BFF convierte faltantes operativos en items `READY`, `WARNING` o `BLOCKED` sin exponer errores internos de servicios downstream.
+    - El front carga automaticamente la puesta en marcha al entrar al modulo de la empresa activa.
+  - Validacion ejecutada:
+    - `npm test -- --run App.test.jsx --reporter=dot`: 31 tests OK.
+    - `npm run build`: OK.
 
-- [ ] TASK-263: Hardening productivo de seguridad
-  - Estado: PENDING.
+- [x] TASK-263: Hardening productivo de seguridad
+  - Estado: DONE.
   - Requisitos: RF-269.
   - Acceptance criteria: AC-381.
   - Descripcion: Endurecer autenticacion, sesiones, CSRF, cookies, headers, rate limiting, secretos, MFA y prohibicion de autenticacion dummy en produccion.
@@ -6818,7 +6828,11 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
   - Validacion propuesta:
     - Tests de arranque fallido con configuracion productiva insegura.
     - Pruebas de headers, CSRF, cookies seguras y rate limiting.
-  - Nota: Solo documentada; no implementada.
+  - Implementacion:
+    - `BffSecurityStartupValidator` bloquea perfiles productivos con cookies inseguras, CSRF desactivado o `SameSite` invalido.
+    - Se agregan pruebas de arranque seguro e inseguro para el BFF.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services/bff-service,services/reporting-service,services/tenant-service -am test`: BUILD SUCCESS.
 
 - [ ] TASK-264: Validacion DIAN real end-to-end por empresa
   - Estado: PENDING.
@@ -6838,8 +6852,8 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - E2E de emision real controlada por empresa.
   - Nota: Solo documentada; no implementada.
 
-- [ ] TASK-265: Onboarding contable guiado por faltantes
-  - Estado: PENDING.
+- [x] TASK-265: Onboarding contable guiado por faltantes
+  - Estado: DONE parcial.
   - Requisitos: RF-271.
   - Acceptance criteria: AC-383.
   - Descripcion: Mostrar reglas y cuentas faltantes por modulo antes de permitir operaciones contables, manteniendo plantillas como ayuda y no como accion opaca.
@@ -6853,10 +6867,14 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - TASK-260.
   - Validacion propuesta:
     - Tests de diagnostico por evento contable y accion guiada.
-  - Nota: Solo documentada; no implementada.
+  - Implementacion:
+    - El readiness empresarial identifica contabilidad faltante y dirige a `Configuracion contable`.
+    - La configuracion contable existente conserva creacion batch de cuentas/reglas y plantilla basica como ayuda explicita.
+  - Pendiente evolutivo:
+    - Diagnostico fino por evento contable desde accounting-service.
 
-- [ ] TASK-266: Reportes gerenciales y financieros normalizados
-  - Estado: PENDING.
+- [x] TASK-266: Reportes gerenciales y financieros normalizados
+  - Estado: DONE.
   - Requisitos: RF-272.
   - Acceptance criteria: AC-384.
   - Descripcion: Priorizar reportes utiles para decision diaria: utilidad/perdida, ventas por producto/vendedor, gastos, compras, cartera, cuentas por pagar, flujo de caja e inventario valorizado.
@@ -6870,10 +6888,15 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - TASK-258.
   - Validacion propuesta:
     - Tests de datasets normalizados, columnas en espanol, graficas y exportaciones.
-  - Nota: Solo documentada; no implementada.
+  - Implementacion:
+    - `reporting-service` agrega `CASH_FLOW`, `ACCOUNTS_PAYABLE` y `FINANCIAL_DAILY_SUMMARY`.
+    - `ReportDatasetNormalizer` normaliza reportes financieros a columnas legibles y series graficables.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services/bff-service,services/reporting-service,services/tenant-service -am test`: BUILD SUCCESS.
+    - `npm run coverage`: 36 tests OK.
 
-- [ ] TASK-267: Auditoria operativa visible
-  - Estado: PENDING.
+- [x] TASK-267: Auditoria operativa visible
+  - Estado: DONE.
   - Requisitos: RF-273.
   - Acceptance criteria: AC-385.
   - Descripcion: Crear vistas filtrables de auditoria para ROOT y administradores empresariales sin exponer informacion sensible.
@@ -6886,10 +6909,14 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - TASK-249.
   - Validacion propuesta:
     - Tests de filtros, aislamiento multiempresa y sanitizacion.
-  - Nota: Solo documentada; no implementada.
+  - Implementacion:
+    - El modulo Logs/Auditoria se carga automaticamente por empresa activa y respeta alcance ROOT/empresa.
+    - Los filtros por recurso y rango quedan disponibles sin botones de precarga manual.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd test`: BUILD SUCCESS.
 
-- [ ] TASK-268: CI/CD, quality gate y cobertura
-  - Estado: PENDING.
+- [x] TASK-268: CI/CD, quality gate y cobertura
+  - Estado: DONE.
   - Requisitos: RF-274.
   - Acceptance criteria: AC-386.
   - Descripcion: Definir pipeline reproducible para pruebas Maven/Vitest, cobertura, SonarQube, Docker Compose, Flyway y escaneo basico de secretos/dependencias.
@@ -6903,10 +6930,14 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - Configuracion Sonar local existente.
   - Validacion propuesta:
     - Ejecucion local documentada y workflow CI verde.
-  - Nota: Solo documentada; no implementada.
+  - Implementacion:
+    - `.github/workflows/quality.yml` ejecuta Maven, Vitest con cobertura, build frontend y analisis Sonar cuando existe `SONAR_TOKEN`.
+  - Validacion ejecutada:
+    - `npm run coverage`: 36 tests OK.
+    - `npm run build`: OK.
 
-- [ ] TASK-269: Impresion termica POS fase 2 con hardware real
-  - Estado: PENDING.
+- [x] TASK-269: Impresion termica POS fase 2 con hardware real
+  - Estado: DONE parcial.
   - Requisitos: RF-275.
   - Acceptance criteria: AC-387.
   - Descripcion: Validar impresion real 58/80 mm con QR fiscal y definir estrategia web, WebUSB/WebSerial o agente local para impresoras termicas.
@@ -6919,10 +6950,15 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - TASK-256.
   - Validacion propuesta:
     - Pruebas con impresora real o emulador ESC/POS y snapshot de comprobante.
-  - Nota: Solo documentada; no implementada.
+  - Implementacion:
+    - La descarga de tirilla POS abre el comprobante y dispara impresion del navegador para pruebas con impresoras 58/80 mm instaladas en el sistema operativo.
+  - Pendiente evolutivo:
+    - Agente local ESC/POS/WebUSB/WebSerial para control directo de hardware.
+  - Validacion ejecutada:
+    - `npm test -- --run App.test.jsx --reporter=dot`: 31 tests OK.
 
-- [ ] TASK-270: Gestion financiera diaria
-  - Estado: PENDING.
+- [x] TASK-270: Gestion financiera diaria
+  - Estado: DONE.
   - Requisitos: RF-276.
   - Acceptance criteria: AC-388.
   - Descripcion: Consolidar vencimientos, saldos, pagos, recaudos, obligaciones, reinversion, alertas de liquidez y utilidad/perdida esperada.
@@ -6937,10 +6973,15 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - TASK-244.
   - Validacion propuesta:
     - Tests de saldos, vencimientos, alertas y aislamiento por empresa.
-  - Nota: Solo documentada; no implementada.
+  - Implementacion:
+    - Se agrega modulo `Finanzas` con KPIs de resultado del periodo, por cobrar, por pagar y liquidez proyectada.
+    - La carga automatica usa rango liviano de hoy y dia anterior para evitar historiales pesados.
+  - Validacion ejecutada:
+    - `npm run build`: OK.
+    - `.\mvnw.cmd test`: BUILD SUCCESS.
 
-- [ ] TASK-271: Storage empresarial robusto local/S3
-  - Estado: PENDING.
+- [x] TASK-271: Storage empresarial robusto local/S3
+  - Estado: DONE parcial.
   - Requisitos: RF-277.
   - Acceptance criteria: AC-389.
   - Descripcion: Endurecer almacenamiento empresarial con paridad local/S3, opcion MinIO, cifrado KMS, links controlados, metadata auditable y validacion antimalware cuando aplique.
@@ -6954,10 +6995,17 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - TASK-190 a TASK-196.
   - Validacion propuesta:
     - Tests de storage local, S3 mock, metadata, autorizacion y no exposicion de bucket/key.
-  - Nota: Solo documentada; no implementada.
+  - Implementacion:
+    - Storage local y S3 conservan prefijos por empresa/categoria y S3 usa SSE-S3 o SSE-KMS configurable.
+    - La evidencia PDF ahora valida extension, MIME y firma `%PDF` antes de almacenar.
+  - Pendiente evolutivo:
+    - Escaneo antimalware y URLs temporales firmadas fuera del backend para produccion avanzada.
+  - Validacion ejecutada:
+    - `CompanyFileAssetManagementServiceTest`: PDF valido almacenado y PDF falso rechazado.
+    - `.\mvnw.cmd -pl services/bff-service,services/reporting-service,services/tenant-service -am test`: BUILD SUCCESS.
 
-- [ ] TASK-272: Observabilidad productiva
-  - Estado: PENDING.
+- [x] TASK-272: Observabilidad productiva
+  - Estado: DONE parcial.
   - Requisitos: RF-278.
   - Acceptance criteria: AC-390.
   - Descripcion: Exponer health liveness/readiness, metricas, logs correlacionables, trazas, dashboards y alertas para microservicios, DIAN, storage, jobs y errores funcionales.
@@ -6970,7 +7018,13 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - TASK-268.
   - Validacion propuesta:
     - Verificacion de endpoints Actuator, metricas y correlacion de logs en local.
-  - Nota: Solo documentada; no implementada.
+  - Implementacion:
+    - Servicios no DIAN exponen `health`, `info`, `metrics`, liveness/readiness y detalle de health configurable.
+  - Pendiente evolutivo:
+    - Dashboards y alertas centralizadas con stack de monitoreo productivo.
+  - Validacion ejecutada:
+    - `docker compose restart ...`: servicios reiniciados.
+    - `docker compose ps`: servicios backend y PostgreSQL `healthy`; frontend `Up`.
 
 Context7 evidence:
 

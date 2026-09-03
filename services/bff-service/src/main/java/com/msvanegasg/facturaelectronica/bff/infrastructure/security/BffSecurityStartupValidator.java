@@ -29,9 +29,22 @@ public class BffSecurityStartupValidator implements ApplicationRunner {
         if (properties.isProductionEnvironment() && isBlank(properties.sessionEncryptionKey())) {
             throw new IllegalStateException("BFF_SESSION_ENCRYPTION_KEY is required in production.");
         }
+        if (properties.isProductionEnvironment() && !properties.cookieSecure()) {
+            throw new IllegalStateException("BFF_COOKIE_SECURE=true is required in production.");
+        }
+        if (properties.isProductionEnvironment() && !properties.csrfEnabled()) {
+            throw new IllegalStateException("BFF_CSRF_ENABLED=true is required in production.");
+        }
+        if (!isAllowedSameSite(properties.resolvedSameSite())) {
+            throw new IllegalStateException("BFF_COOKIE_SAME_SITE must be Strict, Lax or None.");
+        }
     }
 
     private static boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private static boolean isAllowedSameSite(String value) {
+        return "Strict".equalsIgnoreCase(value) || "Lax".equalsIgnoreCase(value) || "None".equalsIgnoreCase(value);
     }
 }

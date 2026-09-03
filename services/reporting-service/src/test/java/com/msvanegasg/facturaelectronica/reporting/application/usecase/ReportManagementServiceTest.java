@@ -29,7 +29,8 @@ class ReportManagementServiceTest {
     @Test
     void listsReportDefinitionsAndOptions() {
         assertThat(service.definitions()).extracting("code")
-                .contains("SALES_BY_SELLER", "INVENTORY_STOCK", "DAILY_PROFIT_AND_LOSS");
+                .contains("SALES_BY_SELLER", "INVENTORY_STOCK", "DAILY_PROFIT_AND_LOSS", "CASH_FLOW",
+                        "ACCOUNTS_PAYABLE", "FINANCIAL_DAILY_SUMMARY");
 
         var options = service.options(COMPANY_ID, "SALES_BY_SELLER", "Bearer token");
 
@@ -88,6 +89,18 @@ class ReportManagementServiceTest {
     }
 
     @Test
+    void normalizesManagerialCashFlowReport() {
+        ReportQueryResult result = service.query(new ReportQueryCommand(COMPANY_ID, "CASH_FLOW",
+                LocalDate.parse("2026-08-28"), LocalDate.parse("2026-08-28"), Map.of(), ChartType.LINE,
+                "Bearer token"));
+
+        assertThat(result.reportCode()).isEqualTo("CASH_FLOW");
+        assertThat(result.columns()).extracting("label").containsExactly("Concepto", "Valor");
+        assertThat(result.rows()).extracting(row -> row.get("metric"))
+                .contains("Ingresos operacionales", "Gastos operacionales", "Utilidad o perdida neta");
+    }
+
+    @Test
     void rejectsUnknownReportInvalidDatesAndUnsupportedChart() {
         assertThatThrownBy(() -> service.query(new ReportQueryCommand(COMPANY_ID, "UNKNOWN", null, null, Map.of(),
                 ChartType.TABLE, null)))
@@ -130,7 +143,8 @@ class ReportManagementServiceTest {
                 Map<String, String> filters, String authorizationHeader) {
             this.reportCode = reportCode;
             var mapper = new ObjectMapper();
-            if ("DAILY_PROFIT_AND_LOSS".equals(reportCode)) {
+            if ("DAILY_PROFIT_AND_LOSS".equals(reportCode) || "CASH_FLOW".equals(reportCode)
+                    || "FINANCIAL_DAILY_SUMMARY".equals(reportCode)) {
                 var payload = mapper.createObjectNode();
                 payload.put("statementType", "INCOME_STATEMENT");
                 payload.put("total", "15000.00");

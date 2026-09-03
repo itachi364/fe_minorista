@@ -46,6 +46,7 @@ import { DianConfigurationPanel } from './features/dian/DianConfigurationPanel.j
 import { ExpensesPanel } from './features/expenses/ExpensesPanel.jsx';
 import { FiscalNotesPanel } from './features/fiscal/FiscalNotesPanel.jsx';
 import { FiscalPolicyForm } from './features/fiscal/FiscalPolicyForm.jsx';
+import { FinanceDashboard } from './features/finance/FinanceDashboard.jsx';
 import { ResolutionForm } from './features/fiscal/ResolutionForm.jsx';
 import { RolesPanel, UsersPanel } from './features/identity/IdentityAdminPanel.jsx';
 import { OperationalPinPanel } from './features/identity/OperationalPinPanel.jsx';
@@ -55,6 +56,7 @@ import { PurchasesPanel } from './features/purchases/PurchasesPanel.jsx';
 import { ReceivablesPanel } from './features/receivables/ReceivablesPanel.jsx';
 import { LicenseAdminPanel } from './features/licenses/LicenseAdminPanel.jsx';
 import { ReportsForm } from './features/reports/ReportsForm.jsx';
+import { ReadinessPanel } from './features/readiness/ReadinessPanel.jsx';
 import { SaleForm } from './features/sales/SaleForm.jsx';
 import { SalesRegistryPanel } from './features/sales/SalesRegistryPanel.jsx';
 import { ThirdPartyForm } from './features/thirdparties/ThirdPartyForm.jsx';
@@ -166,6 +168,7 @@ export default function App() {
   const [reportOptions, setReportOptions] = useState({});
   const [reportsData, setReportsData] = useState(null);
   const [reportJobs, setReportJobs] = useState([]);
+  const [financeSummary, setFinanceSummary] = useState(null);
   const [accountingAccounts, setAccountingAccounts] = useState([]);
   const [accountingRules, setAccountingRules] = useState([]);
   const [payrollSettingsForm, setPayrollSettingsForm] = useState(createPayrollSettingsForm);
@@ -177,17 +180,20 @@ export default function App() {
   const [auditFilters, setAuditFilters] = useState(todayAuditFilters);
   const [auditResourceTypes, setAuditResourceTypes] = useState([]);
   const [auditEvents, setAuditEvents] = useState([]);
+  const [companyReadiness, setCompanyReadiness] = useState(null);
   const [saleId, setSaleId] = useState('');
   const [busy, setBusy] = useState(false);
   const [actionStatus, setActionStatus] = useState({ status: 'idle' });
   const autoAuditLoadKeyRef = useRef('');
   const autoIdentityLoadKeyRef = useRef('');
   const autoReportsLoadKeyRef = useRef('');
+  const autoFinanceLoadKeyRef = useRef('');
   const autoAccountingLoadKeyRef = useRef('');
   const autoOperationalPinLoadKeyRef = useRef('');
   const autoOperationalDataLoadKeyRef = useRef('');
   const autoCatalogLoadKeyRef = useRef('');
   const autoDianLoadKeyRef = useRef('');
+  const autoReadinessLoadKeyRef = useRef('');
 
   const token = session?.accessToken || '';
   const context = useMemo(() => ({ token, companyId: activeCompanyId, userId: session?.userId }), [token, activeCompanyId, session?.userId]);
@@ -471,6 +477,19 @@ export default function App() {
   ]);
 
   useEffect(() => {
+    if (currentStep !== 'Finanzas' || !activeCompanyId || !canUse(stepPermissionRules.Finanzas)) {
+      return;
+    }
+    const range = defaultShortHistoryDateRange();
+    const key = `finance|${activeCompanyId}|${range.from}|${range.to}`;
+    if (autoFinanceLoadKeyRef.current === key) {
+      return;
+    }
+    autoFinanceLoadKeyRef.current = key;
+    loadFinanceSummary().catch(() => undefined);
+  }, [currentStep, activeCompanyId]);
+
+  useEffect(() => {
     if (currentStep !== 'Reportes' || !activeCompanyId || !canUse(stepPermissionRules.Reportes)) {
       return;
     }
@@ -516,6 +535,18 @@ export default function App() {
     }
     autoDianLoadKeyRef.current = key;
     loadDianConfiguration().catch(() => undefined);
+  }, [currentStep, activeCompanyId]);
+
+  useEffect(() => {
+    if (currentStep !== 'Puesta en marcha' || !activeCompanyId || !canUse(stepPermissionRules['Puesta en marcha'])) {
+      return;
+    }
+    const key = `readiness|${activeCompanyId}`;
+    if (autoReadinessLoadKeyRef.current === key) {
+      return;
+    }
+    autoReadinessLoadKeyRef.current = key;
+    loadCompanyReadiness().catch(() => undefined);
   }, [currentStep, activeCompanyId]);
 
   useEffect(() => {
@@ -626,6 +657,12 @@ export default function App() {
     const companies = await requestJson('/api/v1/companies', { token: tokenValue });
     setRootCompanies(companies || []);
     return companies || [];
+  }
+
+  async function loadCompanyReadiness() {
+    const result = await requestJson('/api/v1/readiness/company', context);
+    setCompanyReadiness(result);
+    return result;
   }
 
   function storeKnownCompany(company) {
@@ -1798,7 +1835,7 @@ export default function App() {
       ...context,
       idempotencyKey: createIdempotencyKey('print-receipt'),
     });
-    openBlob(result.blob);
+    openBlob(result.blob, { print: true });
     return { filename: result.filename };
   }
 
@@ -1930,6 +1967,23 @@ export default function App() {
     const items = normalizeListResponse(response);
     setAccountsReceivableList(items);
     return items;
+  }
+
+  async function loadFinanceSummary() {
+    requireCompany();
+    const range = defaultShortHistoryDateRange();
+    const [incomeStatement, payables, receivables] = await Promise.all([
+      requestJson(`/api/v1/reports/income-statement${buildQuery({ from: range.from, to: range.to })}`, context),
+      requestJson(`/api/v1/accounts-payable${buildQuery({ from: range.from, to: range.to })}`, context),
+      requestJson(`/api/v1/accounts-receivable${buildQuery({ from: range.from, to: range.to })}`, context),
+    ]);
+    const summary = {
+      incomeStatement,
+      payables: normalizeListResponse(payables).filter((item) => item.status !== 'PAID' && item.status !== 'CANCELLED'),
+      receivables: normalizeListResponse(receivables).filter((item) => item.status !== 'PAID' && item.status !== 'CANCELLED'),
+    };
+    setFinanceSummary(summary);
+    return summary;
   }
 
   async function createAccountsReceivable() {
@@ -2610,11 +2664,22 @@ export default function App() {
               {!isRoot && <CompanyBrandingPanel form={companyBrandingForm} setForm={setCompanyBrandingForm} branding={companyBranding} onSave={() => execute(saveCompanyBranding)} onUploadAsset={(purpose, file) => execute(() => uploadCompanyBrandingAsset(purpose, file))} busy={busy} disabled={!activeCompanyId || !canUse(['COMPANY_SETTINGS_MANAGE'])} />}
             </>
           )}
+          {currentStep === 'Puesta en marcha' && (
+            <ReadinessPanel
+              readiness={companyReadiness}
+              onRefresh={() => execute(loadCompanyReadiness, { successMessage: 'Estado de puesta en marcha actualizado.' })}
+              onOpenStep={setSelectedStep}
+              busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Puesta en marcha'])}
+            />
+          )}
           {currentStep === 'Licencias' && (
             <LicenseAdminPanel form={licenseForm} setForm={setLicenseForm} companies={rootCompanies} license={managedLicense} usage={licenseUsage} onCompanyChange={selectLicenseCompany} onLoad={() => execute(loadManagedLicense)} onSave={() => execute(saveManagedLicense)} onActivate={() => execute(activateManagedLicense)} onSuspend={() => execute(suspendManagedLicense)} busy={busy || !isRoot} />
           )}
           {currentStep === 'Terceros' && (
             <ThirdPartyForm form={thirdPartyForm} setForm={setThirdPartyForm} companyMunicipalityCode={companyMunicipalityCode} onSubmit={() => execute(createThirdParty)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Terceros)} documentTypeOptionsSource={runtimeCatalogs.dianDocumentTypes} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} taxRegimeOptionsSource={runtimeCatalogs.taxRegimeOptions} thirdPartyRoleCatalog={runtimeCatalogs.thirdPartyRoleCatalog} personTypeCatalog={runtimeCatalogs.personTypeCatalog} locations={runtimeCatalogs.locations} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} thirdParties={thirdPartyList} />
+          )}
+          {currentStep === 'Finanzas' && (
+            <FinanceDashboard summary={financeSummary} onRefresh={() => execute(loadFinanceSummary, { successMessage: 'Resumen financiero actualizado.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Finanzas)} />
           )}
           {currentStep === 'Inventario' && (
             <ProductForm form={productForm} setForm={setProductForm} onSubmit={() => execute(createProduct)} busy={busy || !activeCompanyId || !canUse(['INVENTORY_MANAGE'])} taxOptions={runtimeCatalogs.salesTaxOptions} itemTypeCatalog={runtimeCatalogs.itemTypeCatalog} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} products={productList} editingProductId={editingProductId} onNew={startNewProduct} onEdit={editProduct} onDeactivate={(productId) => execute(() => deactivateProduct(productId), { successMessage: 'Producto inactivado correctamente.' })} onBarcodeLookup={(barcode) => execute(() => lookupInventoryProductByBarcode(barcode), { silentRunning: true, silentSuccess: true, silentNullSuccess: true })} />
@@ -2783,9 +2848,15 @@ function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
-function openBlob(blob) {
+function openBlob(blob, options = {}) {
   const url = URL.createObjectURL(blob);
-  window.open(url, '_blank', 'noopener,noreferrer');
+  const receiptWindow = window.open(url, '_blank', 'noopener,noreferrer');
+  if (options.print && receiptWindow) {
+    receiptWindow.addEventListener?.('load', () => {
+      receiptWindow.focus?.();
+      receiptWindow.print?.();
+    }, { once: true });
+  }
   window.setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 

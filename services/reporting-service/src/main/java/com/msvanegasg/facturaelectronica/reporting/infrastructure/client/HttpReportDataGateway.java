@@ -45,9 +45,11 @@ public class HttpReportDataGateway implements ReportDataGateway {
                     filters);
             case "INVENTORY_STOCK" -> get(inventoryClient, "/api/v1/reports/inventory-stock", companyId,
                     authorizationHeader, filters);
-            case "PROFITABILITY", "DAILY_PROFIT_AND_LOSS" -> get(accountingClient,
+            case "PROFITABILITY", "DAILY_PROFIT_AND_LOSS", "CASH_FLOW", "FINANCIAL_DAILY_SUMMARY" -> get(accountingClient,
                     "/api/v1/reports/income-statement", companyId, authorizationHeader, filters);
             case "ACCOUNTS_RECEIVABLE" -> get(accountingClient, "/api/v1/reports/accounts-receivable", companyId,
+                    authorizationHeader, filters);
+            case "ACCOUNTS_PAYABLE" -> get(accountingClient, "/api/v1/accounts-payable", companyId,
                     authorizationHeader, filters);
             case "PAYROLL_DAILY_PAYMENTS" -> get(payrollClient, "/api/v1/payroll/daily-payments", companyId,
                     authorizationHeader, filters);
