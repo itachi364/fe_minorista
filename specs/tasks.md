@@ -6493,7 +6493,7 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
 Nota de estado: fase implementada con aprobacion explicita posterior. Incluye API, persistencia, SPA, storage local/S3-ready, QR POS y validaciones automatizadas.
 
 - [x] TASK-250: Disenar e implementar actualizacion e inactivacion de productos
-  - Estado: COMPLETED.
+  - Estado: DONE.
   - Requisitos: RF-246, RF-247, RF-249, RF-261.
   - Acceptance criteria: AC-359, AC-361, AC-362, AC-376.
   - Descripcion: Agregar acciones `Actualizar` e `Inactivar` en la tabla de productos. La actualizacion reutiliza el formulario existente y la inactivacion retira el producto de ventas futuras sin borrar historicos.
@@ -6519,7 +6519,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - `npm test`: 36 tests OK.
 
 - [x] TASK-251: Disenar e implementar busqueda por codigo de barras como modo actualizacion
-  - Estado: COMPLETED.
+  - Estado: DONE.
   - Requisitos: RF-248, RF-249.
   - Acceptance criteria: AC-360, AC-361.
   - Descripcion: Cuando el codigo de barras escrito o escaneado ya exista, la SPA debe cargar el producto y cambiar el label a `Actualizar item`, evitando duplicados accidentales.
@@ -6540,7 +6540,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - `npm test`: 36 tests OK.
 
 - [x] TASK-252: Disenar e implementar compras documentales con costo total no discriminado
-  - Estado: COMPLETED.
+  - Estado: DONE.
   - Requisitos: RF-250, RF-252, RF-253, RF-256.
   - Acceptance criteria: AC-363, AC-365, AC-366, AC-367.
   - Descripcion: Simplificar compras para registrar facturas de proveedor como costo total, sin cantidad, costo unitario, subtotal ni IVA. La evidencia queda opcional como PDF unico o URL.
@@ -6565,7 +6565,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - `npm run build`: OK.
 
 - [x] TASK-253: Disenar e implementar gastos total-only con evidencia opcional
-  - Estado: COMPLETED.
+  - Estado: DONE.
   - Requisitos: RF-251, RF-252, RF-253, RF-256.
   - Acceptance criteria: AC-364, AC-365, AC-366, AC-367.
   - Descripcion: Ajustar gastos para registrar egresos por valor total no discriminado, con soporte opcional igual al flujo de compras.
@@ -6589,7 +6589,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - `npm test`: 36 tests OK.
 
 - [x] TASK-254: Disenar e implementar almacenamiento empresarial local y S3-ready
-  - Estado: COMPLETED.
+  - Estado: DONE.
   - Requisitos: RF-254, RF-255, RF-256, RF-259, RF-261.
   - Acceptance criteria: AC-367, AC-368, AC-369, AC-374, AC-376.
   - Descripcion: Centralizar metadata y storage de archivos empresariales con adaptador local/S3. En desarrollo se preparara contenedor o volumen compatible con S3/local; en produccion S3 privado/KMS.
@@ -6615,7 +6615,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - `.\mvnw.cmd -pl services/bff-service -am test`: 33 tests OK.
 
 - [x] TASK-255: Corregir creacion de deudores sin error interno
-  - Estado: COMPLETED.
+  - Estado: DONE.
   - Requisitos: RF-257.
   - Acceptance criteria: AC-370, AC-371.
   - Descripcion: Investigar y corregir el `500` al crear deudor para que datos invalidos o reglas contables faltantes respondan errores funcionales y datos validos creen cuenta por cobrar.
@@ -6635,7 +6635,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - `.\mvnw.cmd -pl services/accounting-service -am test`: 68 tests OK.
 
 - [x] TASK-256: Disenar e implementar QR grafico parametrizable para comprobante POS
-  - Estado: COMPLETED.
+  - Estado: DONE.
   - Requisitos: RF-258, RF-259, RF-261.
   - Acceptance criteria: AC-372, AC-373, AC-374, AC-376.
   - Descripcion: Generar QR grafico escaneable en la representacion imprimible POS. En `MOCK` apunta a una URL propia parametrizada; en modo real respeta QR/URL DIAN.
@@ -6659,7 +6659,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - `.\mvnw.cmd -pl services/billing-service -am test`: 66 tests OK.
 
 - [x] TASK-257: Mejorar configuracion visual de marca empresarial
-  - Estado: COMPLETED.
+  - Estado: DONE.
   - Requisitos: RF-260, RF-261.
   - Acceptance criteria: AC-375, AC-376.
   - Descripcion: Reemplazar campos de texto de color por color pickers, agregar explicacion de impacto de color principal/acento y mantener validacion backend.
@@ -6680,7 +6680,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - `npm test`: 36 tests OK.
 
 - [x] TASK-258: Validar reportes con productos inactivos y compras/gastos total-only
-  - Estado: COMPLETED.
+  - Estado: DONE.
   - Requisitos: RF-249, RF-250, RF-251.
   - Acceptance criteria: AC-361, AC-363, AC-364.
   - Descripcion: Asegurar que reportes historicos usen snapshots de venta/compra/gasto y no fallen si productos o proveedores cambian estado.
@@ -6707,7 +6707,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
 ## Fase transversal: Bugs detectados 2026-09-02
 
 - [x] TASK-259: Reparar inicializacion contable idempotente para deudores
-  - Estado: COMPLETED.
+  - Estado: DONE.
   - Requisitos: RF-257, RF-265, RF-266.
   - Acceptance criteria: AC-370, AC-371, AC-377, AC-378.
   - Descripcion: Corregir empresas con contabilidad basica antigua o incompleta para que `Iniciar contabilidad basica` complete reglas faltantes como `ACCOUNT_RECEIVABLE_REGISTERED` sin reemplazar reglas activas ya configuradas o usadas.
@@ -6736,7 +6736,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - `.\mvnw.cmd -pl services/accounting-service -am test`: 69 tests OK.
 
 - [x] TASK-260: Corregir accion frontend de plantilla contable basica
-  - Estado: COMPLETED.
+  - Estado: DONE.
   - Requisitos: RF-206, RF-265.
   - Acceptance criteria: AC-287, AC-377.
   - Descripcion: Evitar que la SPA use la plantilla recomendada como payload batch editable cuando la empresa ya tiene cuentas o reglas existentes. La accion visible debe ejecutar el endpoint idempotente de setup basico.
