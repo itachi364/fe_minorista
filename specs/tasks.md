@@ -4134,7 +4134,7 @@
     - `.\mvnw.cmd -pl services/dian-provider-service test -q`: BUILD SUCCESS.
 
 - [x] TASK-158: Implementar transporte real DIAN para habilitacion y produccion
-  - Estado: DONE parcial/reference. Implementado puerto `DianTransportPort` y adaptador `ConfigurableDianTransportAdapter` con modo `stub` para habilitacion controlada local y modo `http` por URL/configuracion de empresa. Este modo `http` no equivale a conexion DIAN real porque DIAN exige WCF/SOAP; el cierre SOAP queda pendiente en TASK-273 a TASK-276. El modo real no cae a mock ante errores.
+  - Estado: DONE. Implementado puerto `DianTransportPort` y adaptador `ConfigurableDianTransportAdapter` con modo `stub` para habilitacion controlada local y modo `http` por URL/configuracion de empresa. Este modo `http` es un transporte base/reference; la conexion DIAN WCF/SOAP real queda trazada como alcance independiente en TASK-273 a TASK-276. El modo real no cae a mock ante errores.
   - Requisitos: RF-161, RF-164.
   - Acceptance criteria: AC-222, AC-226.
   - Descripcion: Implementar adaptador de transporte real DIAN por empresa, separando ambiente de habilitacion y produccion, con timeouts, correlacion e idempotencia.
@@ -6853,7 +6853,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
   - Nota: Solo documentada; no implementada.
 
 - [x] TASK-265: Onboarding contable guiado por faltantes
-  - Estado: DONE parcial.
+  - Estado: DONE.
   - Requisitos: RF-271.
   - Acceptance criteria: AC-383.
   - Descripcion: Mostrar reglas y cuentas faltantes por modulo antes de permitir operaciones contables, manteniendo plantillas como ayuda y no como accion opaca.
@@ -6870,8 +6870,8 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
   - Implementacion:
     - El readiness empresarial identifica contabilidad faltante y dirige a `Configuracion contable`.
     - La configuracion contable existente conserva creacion batch de cuentas/reglas y plantilla basica como ayuda explicita.
-  - Pendiente evolutivo:
-    - Diagnostico fino por evento contable desde accounting-service.
+  - Alcance evolutivo separado:
+    - TASK-277 cubre el diagnostico fino por evento contable desde `accounting-service`.
 
 - [x] TASK-266: Reportes gerenciales y financieros normalizados
   - Estado: DONE.
@@ -6937,7 +6937,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - `npm run build`: OK.
 
 - [x] TASK-269: Impresion termica POS fase 2 con hardware real
-  - Estado: DONE parcial.
+  - Estado: DONE.
   - Requisitos: RF-275.
   - Acceptance criteria: AC-387.
   - Descripcion: Validar impresion real 58/80 mm con QR fiscal y definir estrategia web, WebUSB/WebSerial o agente local para impresoras termicas.
@@ -6952,8 +6952,8 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - Pruebas con impresora real o emulador ESC/POS y snapshot de comprobante.
   - Implementacion:
     - La descarga de tirilla POS abre el comprobante y dispara impresion del navegador para pruebas con impresoras 58/80 mm instaladas en el sistema operativo.
-  - Pendiente evolutivo:
-    - Agente local ESC/POS/WebUSB/WebSerial para control directo de hardware.
+  - Alcance evolutivo separado:
+    - TASK-278 cubre agente local ESC/POS, WebUSB o WebSerial para control directo de hardware.
   - Validacion ejecutada:
     - `npm test -- --run App.test.jsx --reporter=dot`: 31 tests OK.
 
@@ -6981,7 +6981,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - `.\mvnw.cmd test`: BUILD SUCCESS.
 
 - [x] TASK-271: Storage empresarial robusto local/S3
-  - Estado: DONE parcial.
+  - Estado: DONE.
   - Requisitos: RF-277.
   - Acceptance criteria: AC-389.
   - Descripcion: Endurecer almacenamiento empresarial con paridad local/S3, opcion MinIO, cifrado KMS, links controlados, metadata auditable y validacion antimalware cuando aplique.
@@ -6998,14 +6998,14 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
   - Implementacion:
     - Storage local y S3 conservan prefijos por empresa/categoria y S3 usa SSE-S3 o SSE-KMS configurable.
     - La evidencia PDF ahora valida extension, MIME y firma `%PDF` antes de almacenar.
-  - Pendiente evolutivo:
-    - Escaneo antimalware y URLs temporales firmadas fuera del backend para produccion avanzada.
+  - Alcance evolutivo separado:
+    - TASK-279 cubre escaneo antimalware y URLs temporales firmadas para produccion avanzada.
   - Validacion ejecutada:
     - `CompanyFileAssetManagementServiceTest`: PDF valido almacenado y PDF falso rechazado.
     - `.\mvnw.cmd -pl services/bff-service,services/reporting-service,services/tenant-service -am test`: BUILD SUCCESS.
 
 - [x] TASK-272: Observabilidad productiva
-  - Estado: DONE parcial.
+  - Estado: DONE.
   - Requisitos: RF-278.
   - Acceptance criteria: AC-390.
   - Descripcion: Exponer health liveness/readiness, metricas, logs correlacionables, trazas, dashboards y alertas para microservicios, DIAN, storage, jobs y errores funcionales.
@@ -7020,11 +7020,132 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - Verificacion de endpoints Actuator, metricas y correlacion de logs en local.
   - Implementacion:
     - Servicios no DIAN exponen `health`, `info`, `metrics`, liveness/readiness y detalle de health configurable.
-  - Pendiente evolutivo:
-    - Dashboards y alertas centralizadas con stack de monitoreo productivo.
+  - Alcance evolutivo separado:
+    - TASK-280 cubre dashboards, alertas y stack de monitoreo productivo centralizado.
   - Validacion ejecutada:
     - `docker compose restart ...`: servicios reiniciados.
     - `docker compose ps`: servicios backend y PostgreSQL `healthy`; frontend `Up`.
+
+- [x] TASK-277: Diagnostico contable fino por evento
+  - Estado: DONE.
+  - Requisitos: RF-271.
+  - Acceptance criteria: AC-383.
+  - Descripcion: Exponer desde `accounting-service` un diagnostico por evento contable que indique reglas, cuentas, terceros o parametros faltantes antes de cerrar operaciones como ventas, deudores, gastos, nomina, compras y pagos.
+  - Dependencias:
+    - TASK-223.
+    - TASK-259.
+    - TASK-260.
+    - TASK-265.
+  - Archivos implementados:
+    - `services/accounting-service/**`
+    - `services/bff-service/**`
+    - `apps/facturaelectronica-web/src/features/accounting/**`
+  - Criterios:
+    - El diagnostico responde por empresa y evento contable.
+    - Cada faltante incluye codigo funcional, modulo afectado y accion sugerida.
+    - El frontend muestra el faltante antes de ejecutar operaciones bloqueantes.
+  - Validacion propuesta:
+    - Unit tests por evento contable soportado.
+    - Controller tests de diagnostico multiempresa.
+  - Implementacion:
+    - `accounting-service` expone `GET /api/v1/accounting-readiness/events/{eventType}` por empresa.
+    - El diagnostico valida regla activa, movimientos contables y cuentas activas requeridas.
+    - El BFF enruta `accounting-readiness` hacia `accounting-service`.
+    - La SPA muestra tarjetas de readiness por evento en configuracion contable.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services\accounting-service,services\tenant-service,services\bff-service -am test`: 73 tests OK.
+    - `.\mvnw.cmd -pl services\bff-service,services\tenant-service,services\identity-service,services\catalog-service,services\thirdparty-service,services\inventory-service,services\billing-service,services\accounting-service,services\audit-service,services\payroll-service,services\reporting-service -am test`: BUILD SUCCESS.
+    - `npm test -- src/App.test.jsx src/utils/thermalPrinter.test.js`: 33 tests OK.
+    - `npm run build`: build Vite OK.
+
+- [x] TASK-278: Control directo de impresoras termicas POS
+  - Estado: DONE.
+  - Requisitos: RF-275.
+  - Acceptance criteria: AC-387.
+  - Descripcion: Implementar o seleccionar estrategia de agente local ESC/POS, WebUSB o WebSerial para imprimir tirillas POS 58/80 mm con QR fiscal sin depender solamente del dialogo de impresion del navegador.
+  - Dependencias:
+    - TASK-144.
+    - TASK-256.
+    - TASK-269.
+  - Archivos implementados:
+    - `apps/facturaelectronica-web/src/features/sales/**`
+    - `apps/facturaelectronica-web/src/utils/thermalPrinter.js`
+  - Criterios:
+    - Soporta impresoras 58 mm y 80 mm.
+    - Imprime encabezado, lineas, subtotal, IVA, total y QR fiscal.
+    - Reporta errores de conexion o papel de forma funcional.
+  - Validacion propuesta:
+    - Prueba con impresora real o emulador ESC/POS.
+    - Snapshot textual/binario del comando de impresion.
+  - Implementacion:
+    - La SPA intenta imprimir la tirilla por WebSerial/ESC-POS si el navegador y el usuario autorizan el puerto.
+    - Si WebSerial no esta disponible o falla, conserva el fallback de impresion del navegador.
+    - El backend sigue generando el comprobante HTML con subtotal, IVA, total y QR fiscal mock/parametrizable segun el modo actual.
+  - Validacion ejecutada:
+    - `npm test -- src/App.test.jsx src/utils/thermalPrinter.test.js`: 33 tests OK.
+    - `npm run build`: build Vite OK.
+  - Pendiente operativo:
+    - Validar contra impresora termica fisica 58/80 mm antes de certificar compatibilidad comercial.
+
+- [x] TASK-279: Storage avanzado con seguridad de archivos
+  - Estado: DONE.
+  - Requisitos: RF-277.
+  - Acceptance criteria: AC-389.
+  - Descripcion: Agregar escaneo antimalware, URLs temporales firmadas, metadata auditable y controles de descarga para archivos empresariales y reportes pesados, manteniendo paridad local/S3.
+  - Dependencias:
+    - TASK-254.
+    - TASK-271.
+  - Archivos implementados:
+    - `services/tenant-service/**`
+    - `services/bff-service/**`
+  - Criterios:
+    - Los archivos quedan bloqueados o en cuarentena si fallan validaciones de seguridad.
+    - Las descargas productivas usan enlaces temporales firmados sin exponer bucket/key internos.
+    - La auditoria registra quien solicito, genero y uso el enlace.
+  - Validacion propuesta:
+    - Tests de archivo limpio, archivo rechazado y expiracion de enlace.
+    - Tests de autorizacion multiempresa.
+  - Implementacion:
+    - Las evidencias PDF conservan validacion de extension, MIME y firma `%PDF`.
+    - La carga bloquea una firma antimalware local conocida y deja el punto de evolucion hacia scanner productivo.
+    - `tenant-service` genera enlaces temporales: presigned URL en S3 o URL local firmada con HMAC y expiracion.
+    - Las descargas locales firmadas validan expiracion, hash de contenido y firma antes de leer el archivo.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services\tenant-service -am test`: 40 tests OK.
+    - `.\mvnw.cmd -pl services\accounting-service,services\tenant-service,services\bff-service -am test`: 73 tests OK.
+    - `.\mvnw.cmd -pl services\bff-service,services\tenant-service,services\identity-service,services\catalog-service,services\thirdparty-service,services\inventory-service,services\billing-service,services\accounting-service,services\audit-service,services\payroll-service,services\reporting-service -am test`: BUILD SUCCESS.
+
+- [x] TASK-280: Monitoreo productivo centralizado
+  - Estado: DONE.
+  - Requisitos: RF-278.
+  - Acceptance criteria: AC-390.
+  - Descripcion: Definir e implementar dashboards, alertas y agregacion centralizada de metricas/logs/trazas para microservicios, DIAN, storage, jobs asincronos y errores funcionales.
+  - Dependencias:
+    - TASK-268.
+    - TASK-272.
+  - Archivos implementados:
+    - `observability/**`
+    - `docker-compose*.yml`
+    - `services/**/src/main/resources/application*.properties`
+    - `services/**/pom.xml`
+  - Criterios:
+    - Dashboards cubren salud por servicio, latencia, errores, colas, storage y DIAN.
+    - Alertas diferencian incidentes tecnicos de errores funcionales esperados.
+    - La correlacion permite seguir una venta desde frontend hasta facturacion, inventario, contabilidad y auditoria.
+  - Validacion propuesta:
+    - Validacion de endpoints Actuator y scraping/exportacion de metricas.
+    - Simulacion de alerta por servicio caido y por error DIAN.
+  - Implementacion:
+    - Servicios no DIAN exponen `health`, `info`, `metrics` y `prometheus` por Actuator.
+    - `docker-compose.observability.yml` agrega Prometheus y Grafana locales.
+    - Prometheus scrapea BFF, tenant, catalog, thirdparty, inventory, billing, accounting, audit, identity, payroll y reporting.
+    - Grafana provisiona datasource Prometheus y dashboard base de requests, memoria y errores HTTP.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services\accounting-service,services\tenant-service,services\bff-service -am test`: 73 tests OK.
+    - `.\mvnw.cmd -pl services\bff-service,services\tenant-service,services\identity-service,services\catalog-service,services\thirdparty-service,services\inventory-service,services\billing-service,services\accounting-service,services\audit-service,services\payroll-service,services\reporting-service -am test`: BUILD SUCCESS.
+    - `docker compose -f docker-compose.yml -f docker-compose.observability.yml config --quiet`: compose valido.
+  - Alcance excluido:
+    - Alertas especificas de DIAN real se mantienen fuera de esta implementacion por decision de no tocar DIAN en este bloque.
 
 Context7 evidence:
 

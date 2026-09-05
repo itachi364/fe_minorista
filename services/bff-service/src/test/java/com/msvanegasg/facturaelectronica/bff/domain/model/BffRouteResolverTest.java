@@ -20,6 +20,8 @@ class BffRouteResolverTest {
         assertThat(resolver.resolve("/api/v1/fiscal-policy")).isEqualTo(TargetService.BILLING);
         assertThat(resolver.resolve("/api/v1/sales/123/confirm")).isEqualTo(TargetService.BILLING);
         assertThat(resolver.resolve("/api/v1/accounting-rules")).isEqualTo(TargetService.ACCOUNTING);
+        assertThat(resolver.resolve("/api/v1/accounting-readiness/events/SALE_CONFIRMED"))
+                .isEqualTo(TargetService.ACCOUNTING);
         assertThat(resolver.resolve("/api/v1/accounting-configuration/batch")).isEqualTo(TargetService.ACCOUNTING);
         assertThat(resolver.resolve("/api/v1/payroll/workers")).isEqualTo(TargetService.PAYROLL);
         assertThat(resolver.resolve("/api/v1/dian-configuration/companies/11111111-1111-1111-1111-111111111111"))
@@ -35,6 +37,8 @@ class BffRouteResolverTest {
         assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/branding"))
                 .isEqualTo(TargetService.TENANT);
         assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/branding/assets/HEADER_LOGO"))
+                .isEqualTo(TargetService.TENANT);
+        assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/files/22222222-2222-2222-2222-222222222222/download-link"))
                 .isEqualTo(TargetService.TENANT);
         assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/memberships"))
                 .isEqualTo(TargetService.IDENTITY);

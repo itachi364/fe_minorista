@@ -23,6 +23,7 @@ import com.msvanegasg.facturaelectronica.tenant.application.dto.CompanyFileConte
 import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyFileAssetUseCase;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyFileCategory;
 import com.msvanegasg.facturaelectronica.tenant.interfaces.rest.dto.CompanyFileAssetResponse;
+import com.msvanegasg.facturaelectronica.tenant.interfaces.rest.dto.CompanyFileDownloadLinkResponse;
 
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/files")
@@ -48,6 +49,23 @@ public class CompanyFileAssetController {
     @GetMapping("/{assetId}")
     public ResponseEntity<byte[]> read(@PathVariable UUID companyId, @PathVariable UUID assetId) {
         CompanyFileContentResult file = useCase.read(companyId, assetId);
+        return fileResponse(file);
+    }
+
+    @GetMapping("/{assetId}/download-link")
+    public ResponseEntity<CompanyFileDownloadLinkResponse> downloadLink(@PathVariable UUID companyId,
+            @PathVariable UUID assetId) {
+        return ResponseEntity.ok(CompanyFileAssetRestMapper.toResponse(useCase.createDownloadLink(companyId, assetId)));
+    }
+
+    @GetMapping("/{assetId}/download")
+    public ResponseEntity<byte[]> signedDownload(@PathVariable UUID companyId, @PathVariable UUID assetId,
+            @RequestParam long expiresAt, @RequestParam String signature) {
+        CompanyFileContentResult file = useCase.readSigned(companyId, assetId, expiresAt, signature);
+        return fileResponse(file);
+    }
+
+    private static ResponseEntity<byte[]> fileResponse(CompanyFileContentResult file) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
                 .header(HttpHeaders.ETAG, "\"" + file.contentHash() + "\"")

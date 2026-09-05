@@ -3321,12 +3321,40 @@ Respuesta:
 }
 ```
 
+Solicitud de enlace temporal:
+
+```http
+GET /api/v1/companies/{companyId}/files/{assetId}/download-link
+X-Company-Id: {companyId}
+Accept: application/json
+```
+
+Respuesta:
+
+```json
+{
+  "assetId": "uuid",
+  "companyId": "uuid",
+  "url": "/api/v1/companies/{companyId}/files/{assetId}/download?expiresAt=1780000000&signature=hash",
+  "expiresAt": "2026-09-04T22:00:00Z",
+  "ttlSeconds": 300
+}
+```
+
+Descarga firmada local:
+
+```http
+GET /api/v1/companies/{companyId}/files/{assetId}/download?expiresAt={epochSecond}&signature={hmac}
+X-Company-Id: {companyId}
+```
+
 Reglas:
 
 - El navegador no recibe bucket, key interna, credenciales ni URL publica permanente.
 - En desarrollo el adaptador puede escribir en volumen/contenedor local; en produccion usa S3 privado/KMS.
 - Los prefijos actuales se construyen por empresa y categoria funcional: `{companyId}/{folderName}/{assetId}-{safeFileName}`.
-- Las descargas futuras deben pasar por BFF/RBAC y auditoria.
+- Las descargas pasan por BFF/RBAC; en S3 se usa URL prefirmada y en local se usa HMAC con expiracion, hash de contenido y empresa.
+- Las evidencias PDF validan extension, MIME y firma `%PDF`; el scanner local bloquea firmas inseguras conocidas y queda preparado para evolucionar a antimalware productivo.
 
 ### Deudores y cuentas por cobrar
 
@@ -3489,30 +3517,25 @@ Reglas:
 ### Readiness contable
 
 ```http
-GET /api/v1/accounting-readiness
+GET /api/v1/accounting-readiness/events/{eventType}
 X-Company-Id: {companyId}
 Accept: application/json
 ```
 
-Respuesta objetivo:
+Respuesta:
 
 ```json
 {
   "companyId": "uuid",
-  "missingRules": [
+  "eventType": "ACCOUNT_RECEIVABLE_REGISTERED",
+  "ready": false,
+  "missingItems": [
     {
-      "eventType": "ACCOUNT_RECEIVABLE_REGISTERED",
-      "label": "Registro de cuenta por cobrar",
-      "requiredBy": ["Deudores"],
-      "severity": "BLOCKING"
-    }
-  ],
-  "missingAccounts": [
-    {
-      "suggestedCode": "1305",
-      "label": "Clientes nacionales",
-      "requiredBy": ["Deudores"],
-      "severity": "BLOCKING"
+      "code": "MISSING_ACCOUNTING_RULE",
+      "label": "Regla contable activa",
+      "module": "Configuracion contable",
+      "actionCode": "OPEN_ACCOUNTING_RULES",
+      "message": "Crea o activa una regla contable para Registro de cuenta por cobrar."
     }
   ]
 }
@@ -3522,6 +3545,7 @@ Reglas:
 
 - El diagnostico no debe crear cuentas ni reglas por si solo.
 - Las acciones de reparacion deben ser explicitas y auditadas.
+- Eventos soportados inicialmente: `SALE_CONFIRMED`, `PURCHASE_CONFIRMED`, `EXPENSE_CONFIRMED`, `ACCOUNT_RECEIVABLE_REGISTERED`, `ACCOUNTS_PAYABLE_PAYMENT_REGISTERED`, `ACCOUNTS_RECEIVABLE_PAYMENT_REGISTERED` y `PAYROLL_DAILY_PAYMENT_REGISTERED`.
 
 ### Auditoria operativa
 

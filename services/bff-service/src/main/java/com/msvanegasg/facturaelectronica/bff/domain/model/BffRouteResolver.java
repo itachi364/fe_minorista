@@ -32,7 +32,7 @@ public final class BffRouteResolver {
             return TargetService.BILLING;
         }
         if (matchesAny(normalized, "accounts", "accounting-rules", "accounting-setup", "accounting-configuration",
-                "accounting-entries", "accounts-payable", "accounts-receivable", "expenses")) {
+                "accounting-readiness", "accounting-entries", "accounts-payable", "accounts-receivable", "expenses")) {
             return TargetService.ACCOUNTING;
         }
         if (matchesAny(normalized, "payroll")) {

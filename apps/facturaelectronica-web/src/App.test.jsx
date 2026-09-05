@@ -199,6 +199,32 @@ test('accounting configuration shows usage and protects used accounts and rules'
   expect(onDeactivateAccount).toHaveBeenCalledWith('account-1');
 });
 
+test('accounting configuration shows readiness diagnostics by accounting event', () => {
+  render(<AccountingConfigurationPanel
+    accounts={[]}
+    rules={[]}
+    readiness={[{
+      eventType: 'SALE_CONFIRMED',
+      ready: false,
+      missingItems: [{
+        code: 'ACCOUNTING_RULE_NOT_ACTIVE',
+        suggestedAction: 'Crea una regla contable activa para ventas confirmadas.',
+      }],
+    }, {
+      eventType: 'EXPENSE_CONFIRMED',
+      ready: true,
+      missingItems: [],
+    }]}
+    onLoad={vi.fn()}
+    onConfigure={vi.fn()}
+    busy={false}
+  />);
+
+  expect(screen.getByText('Crea una regla contable activa para ventas confirmadas.')).toBeInTheDocument();
+  expect(screen.getByText('Egreso confirmado')).toBeInTheDocument();
+  expect(screen.getByText('Listo para operar')).toBeInTheDocument();
+});
+
 test('login with active license hides login and shows operational shell', async () => {
   const fetchMock = mockLoginFlow(ACTIVE_LICENSE);
 

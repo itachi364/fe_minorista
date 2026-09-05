@@ -3275,7 +3275,7 @@ Context7 evidence:
 - Decision impact: El diseno productivo usa S3 privado/KMS y prefijos por empresa/categoria, sin exponer bucket/key al navegador.
 
 ### Fase 35 - Mejoras priorizadas para salida comercial
-- Estado: Documentada; pendiente de implementacion.
+- Estado: Implementacion parcial no DIAN completada para TASK-277 a TASK-280; pendientes DIAN y endurecimientos productivos posteriores.
 - Objetivo: ordenar las mejoras necesarias para convertir el desarrollo actual en una plataforma comercializable, priorizando estabilidad operativa, seguridad, DIAN real, reportes de negocio, soporte productivo y experiencia de usuario.
 
 #### Prioridad P0 - Bloqueantes de salida comercial
@@ -3296,16 +3296,30 @@ Context7 evidence:
 - Observabilidad productiva: cada servicio debe exponer health liveness/readiness, metricas, logs correlacionables, trazas y alertas sobre DIAN, storage, jobs, errores funcionales y latencia.
 
 #### Decisiones de diseno
-- La fase no introduce cambios de codigo hasta aprobacion explicita; queda como backlog SDD priorizado.
+- Las tareas no DIAN aprobadas se implementan sin tocar el flujo DIAN real.
 - El readiness empresarial sera la capa de experiencia que reduzca errores como "falta resolucion", "falta regla contable" o "licencia incompleta", guiando al usuario antes del fallo.
 - Los reportes deben consumir datasets normalizados y no objetos transaccionales crudos, para evitar columnas tecnicas en UI y exportaciones.
 - La observabilidad debe combinar senales tecnicas y de negocio: estado de servicios, jobs, integracion DIAN, almacenamiento, licencias, documentos emitidos y errores funcionales frecuentes.
 - Las mejoras de infraestructura productiva deben ser parametrizables por ambiente y no imponer AWS en local, aunque AWS siga siendo el objetivo cloud documentado.
+
+#### Implementacion TASK-277 a TASK-280
+- Diagnostico contable: `accounting-service` calcula readiness por evento con regla activa, movimientos y cuentas activas; el frontend lo presenta como tarjetas accionables en configuracion contable.
+- Impresion termica: la SPA usa WebSerial/ESC-POS cuando el navegador lo soporta y conserva impresion web como fallback. La compatibilidad comercial requiere prueba con hardware real 58/80 mm.
+- Storage seguro: `tenant-service` genera enlaces temporales prefirmados en S3 o firmados localmente con HMAC, valida PDF real en evidencias y bloquea firmas inseguras conocidas como baseline antimalware local.
+- Observabilidad local: todos los servicios no DIAN agregan Actuator Prometheus; `docker-compose.observability.yml` levanta Prometheus/Grafana con dashboard y alertas iniciales.
 
 #### Context7 evidence
 - Library/tool: Spring Boot.
 - Topic consulted: Actuator production-ready health endpoints and metrics.
 - Relevant finding: Spring Boot Actuator ofrece endpoints de monitoreo y administracion para aplicaciones en produccion; puede exponer liveness/readiness y metricas para integracion con sistemas como Prometheus.
 - Decision impact: La fase 35 documenta observabilidad productiva con health liveness/readiness, metricas y alertas por microservicio antes de endurecer despliegues comerciales.
+- Library/tool: React.
+- Topic consulted: controlled state and effect-driven UI updates.
+- Relevant finding: el estado controlado permite derivar vistas de diagnostico sin mutar el DOM manualmente.
+- Decision impact: la SPA carga readiness contable por evento y renderiza tarjetas segun `ready/missingItems`.
+- Library/tool: AWS SDK for Java v2.
+- Topic consulted: S3 presigned URLs.
+- Relevant finding: `S3Presigner` genera URLs temporales para objetos privados sin exponer credenciales al cliente.
+- Decision impact: el adaptador S3 de archivos empresariales devuelve URLs de corta vida; local mantiene paridad con HMAC.
 
 <!-- END SDD TASK DESIGN TRACEABILITY -->

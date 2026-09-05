@@ -126,6 +126,23 @@ Servicios locales principales:
 | Identity | `http://localhost:8092` |
 | Reporting | `http://localhost:8094` |
 
+## Observabilidad Local
+
+Levantar Prometheus y Grafana sobre el entorno Docker local:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d prometheus grafana
+```
+
+Servicios:
+
+| Componente | URL local |
+|---|---|
+| Prometheus | `http://localhost:9090` |
+| Grafana | `http://localhost:3001` |
+
+Los microservicios no DIAN exponen metricas en `/actuator/prometheus`. Grafana incluye un dashboard base para revisar trafico HTTP, memoria y errores por aplicacion.
+
 ## Ejecucion Local Por Servicio
 
 Compilar todos los modulos backend:
@@ -237,6 +254,7 @@ Flyway crea y evoluciona las tablas al iniciar el servicio. Los catalogos funcio
 - Las credenciales viajan por TLS en despliegues reales; cifrado adicional en payload solo aplica con un modelo formal de llaves.
 - La sesion web se protege desde el BFF con cookies, CSRF, validaciones de permisos y correlacion de errores.
 - La configuracion DIAN real, certificados y secretos por empresa deben guardarse en un gestor de secretos.
+- Los archivos empresariales se guardan por empresa/categoria; las descargas usan enlaces temporales y en produccion deben usar storage privado cifrado.
 - Los errores publicos deben ser claros para el usuario y no exponer trazas internas.
 
 ## Documentacion Tecnica

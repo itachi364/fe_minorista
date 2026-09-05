@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.InitializeBasicAccountingSetupUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ConfigureAccountingUseCase;
+import com.msvanegasg.facturaelectronica.accounting.application.port.in.DiagnoseAccountingReadinessUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsPayableUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsReceivableUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.GenerateAccountingEntryUseCase;
@@ -27,6 +28,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.usecase.Accounts
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.AccountsReceivableManagementService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.BasicAccountingSetupService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.AccountingConfigurationService;
+import com.msvanegasg.facturaelectronica.accounting.application.usecase.AccountingReadinessDiagnosticService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.AccountingRuleManagementService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.ChartOfAccountsService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.ExpenseManagementService;
@@ -74,6 +76,13 @@ public class AccountingUseCaseConfiguration {
             AccountingEntryRepositoryPort entryRepository,
             IdGeneratorPort idGenerator) {
         return new AccountingRuleManagementService(ruleRepository, accountRepository, entryRepository, idGenerator);
+    }
+
+    @Bean
+    DiagnoseAccountingReadinessUseCase diagnoseAccountingReadinessUseCase(
+            AccountingRuleRepositoryPort ruleRepository,
+            AccountRepositoryPort accountRepository) {
+        return new AccountingReadinessDiagnosticService(ruleRepository, accountRepository);
     }
 
     @Bean

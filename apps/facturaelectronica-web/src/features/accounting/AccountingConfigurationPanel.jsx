@@ -37,6 +37,7 @@ const sourceLabels = Object.fromEntries(sourceOptions.map((option) => [option.va
 export function AccountingConfigurationPanel({
   accounts,
   rules,
+  readiness = [],
   onLoad,
   onInitializeBasicSetup = async () => null,
   onConfigure,
@@ -49,6 +50,7 @@ export function AccountingConfigurationPanel({
   const [draft, setDraft] = useState(() => emptyDraft());
   const [editing, setEditing] = useState(null);
   const errors = useMemo(() => validateDraft(draft), [draft]);
+  const readinessByEvent = useMemo(() => Object.fromEntries(readiness.map((item) => [item.eventType, item])), [readiness]);
   const isEditingAccount = editing?.type === 'account';
   const isEditingRule = editing?.type === 'rule';
   const canSubmit = !busy
@@ -141,6 +143,11 @@ export function AccountingConfigurationPanel({
         <StatusBadge label="Cuentas" value={accounts.length} tone={accounts.length > 0 ? 'ok' : 'warn'} />
         <StatusBadge label="Reglas activas" value={rules.filter((rule) => rule.active).length} tone={rules.some((rule) => rule.active) ? 'ok' : 'warn'} />
         <StatusBadge label="Ventas" value={hasActiveSaleRule(rules) ? 'Lista' : 'Pendiente'} tone={hasActiveSaleRule(rules) ? 'ok' : 'warn'} />
+      </div>
+      <div className="readiness-grid">
+        {eventOptions.map((option) => (
+          <AccountingReadinessCard key={option.value} label={option.label} result={readinessByEvent[option.value]} />
+        ))}
       </div>
       {errors.length > 0 && <div className="inline-alert warn">
         {errors.slice(0, 3).map((error) => <p key={error}>{error}</p>)}
@@ -254,6 +261,32 @@ export function AccountingConfigurationPanel({
       pageSize={8}
     />
   </section>;
+}
+
+function AccountingReadinessCard({ label, result }) {
+  if (!result) {
+    return (
+      <article className="readiness-card">
+        <div>
+          <b>{label}</b>
+          <span>Sin diagnostico cargado</span>
+        </div>
+      </article>
+    );
+  }
+  const ready = Boolean(result?.ready);
+  const missing = result?.missingItems || [];
+  return (
+    <article className={ready ? 'readiness-card ready' : 'readiness-card warn'}>
+      <div>
+        <b>{label}</b>
+        <span>{ready ? 'Listo para operar' : 'Requiere configuracion'}</span>
+      </div>
+      {!ready && missing.slice(0, 2).map((item) => (
+        <small key={`${item.code}-${item.message}`}>{item.suggestedAction || item.message}</small>
+      ))}
+    </article>
+  );
 }
 
 function hasActiveSaleRule(rules) {

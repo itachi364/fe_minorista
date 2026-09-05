@@ -2,14 +2,21 @@ package com.msvanegasg.facturaelectronica.tenant.application.usecase;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+
 import com.msvanegasg.facturaelectronica.tenant.application.dto.CompanyFileAssetCommand;
 import com.msvanegasg.facturaelectronica.tenant.application.dto.CompanyFileAssetResult;
 import com.msvanegasg.facturaelectronica.tenant.application.dto.CompanyFileContentResult;
+import com.msvanegasg.facturaelectronica.tenant.application.dto.CompanyFileDownloadLinkResult;
 import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyFileAssetUseCase;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyFileAssetRepositoryPort;
@@ -22,21 +29,33 @@ import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyFileCategory
 public class CompanyFileAssetManagementService implements ManageCompanyFileAssetUseCase {
 
     private static final long MAX_EVIDENCE_SIZE_BYTES = 5L * 1024L * 1024L;
+    private static final Duration DEFAULT_DOWNLOAD_TTL = Duration.ofMinutes(5);
 
     private final CompanyRepositoryPort companyRepository;
     private final CompanyFileAssetRepositoryPort repository;
     private final CompanyFileStoragePort storage;
     private final IdGeneratorPort idGenerator;
     private final ClockPort clock;
+    private final Duration downloadTtl;
+    private final String downloadTokenSecret;
 
     public CompanyFileAssetManagementService(CompanyRepositoryPort companyRepository,
             CompanyFileAssetRepositoryPort repository, CompanyFileStoragePort storage, IdGeneratorPort idGenerator,
             ClockPort clock) {
+        this(companyRepository, repository, storage, idGenerator, clock, DEFAULT_DOWNLOAD_TTL,
+                "local-development-download-token-secret-change-me");
+    }
+
+    public CompanyFileAssetManagementService(CompanyRepositoryPort companyRepository,
+            CompanyFileAssetRepositoryPort repository, CompanyFileStoragePort storage, IdGeneratorPort idGenerator,
+            ClockPort clock, Duration downloadTtl, String downloadTokenSecret) {
         this.companyRepository = Objects.requireNonNull(companyRepository);
         this.repository = Objects.requireNonNull(repository);
         this.storage = Objects.requireNonNull(storage);
         this.idGenerator = Objects.requireNonNull(idGenerator);
         this.clock = Objects.requireNonNull(clock);
+        this.downloadTtl = validateTtl(downloadTtl);
+        this.downloadTokenSecret = validateSecret(downloadTokenSecret);
     }
 
     @Override
@@ -62,6 +81,34 @@ public class CompanyFileAssetManagementService implements ManageCompanyFileAsset
                 storage.read(asset.storageKey()));
     }
 
+    @Override
+    public CompanyFileContentResult readSigned(UUID companyId, UUID assetId, long expiresAtEpochSecond,
+            String signature) {
+        CompanyFileAsset asset = repository.findByCompanyIdAndId(companyId, assetId)
+                .orElseThrow(() -> new CompanyFileAssetNotFoundException(assetId));
+        if (expiresAtEpochSecond < clock.now().getEpochSecond()) {
+            throw new IllegalArgumentException("download link expired");
+        }
+        String expected = signature(companyId, assetId, asset.contentHash(), expiresAtEpochSecond);
+        if (!MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8),
+                String.valueOf(signature).getBytes(StandardCharsets.UTF_8))) {
+            throw new IllegalArgumentException("download link signature is invalid");
+        }
+        return new CompanyFileContentResult(asset.originalFilename(), asset.contentType(), asset.contentHash(),
+                storage.read(asset.storageKey()));
+    }
+
+    @Override
+    public CompanyFileDownloadLinkResult createDownloadLink(UUID companyId, UUID assetId) {
+        CompanyFileAsset asset = repository.findByCompanyIdAndId(companyId, assetId)
+                .orElseThrow(() -> new CompanyFileAssetNotFoundException(assetId));
+        Instant expiresAt = clock.now().plus(downloadTtl);
+        String externalUrl = storage.temporaryReadUrl(asset.storageKey(), downloadTtl).orElse(null);
+        String url = externalUrl == null ? signedLocalUrl(asset, expiresAt) : externalUrl;
+        return new CompanyFileDownloadLinkResult(asset.id(), asset.companyId(), url, expiresAt,
+                downloadTtl.toSeconds());
+    }
+
     private static void validate(CompanyFileAssetCommand command) {
         Objects.requireNonNull(command, "command is required");
         Objects.requireNonNull(command.category(), "category is required");
@@ -76,6 +123,14 @@ public class CompanyFileAssetManagementService implements ManageCompanyFileAsset
         }
         if (isPdfOnly(command.category()) && !isPdf(command.originalFilename(), command.contentType(), command.content())) {
             throw new IllegalArgumentException("Solo se permite PDF como evidencia documental.");
+        }
+        rejectKnownUnsafeContent(command.content());
+    }
+
+    private static void rejectKnownUnsafeContent(byte[] content) {
+        String sample = new String(content, StandardCharsets.ISO_8859_1);
+        if (sample.contains("EICAR-STANDARD-ANTIVIRUS-TEST-FILE")) {
+            throw new IllegalArgumentException("El archivo no supero la validacion de seguridad.");
         }
     }
 
@@ -98,6 +153,13 @@ public class CompanyFileAssetManagementService implements ManageCompanyFileAsset
         return companyId + "/" + category.folderName() + "/" + assetId + "-" + sanitize(filename);
     }
 
+    private String signedLocalUrl(CompanyFileAsset asset, Instant expiresAt) {
+        long expiresAtEpochSecond = expiresAt.getEpochSecond();
+        return "/api/v1/companies/%s/files/%s/download?expiresAt=%s&signature=%s".formatted(
+                asset.companyId(), asset.id(), expiresAtEpochSecond,
+                signature(asset.companyId(), asset.id(), asset.contentHash(), expiresAtEpochSecond));
+    }
+
     private static String sanitize(String filename) {
         return filename.trim().replaceAll("[^a-zA-Z0-9._-]", "_");
     }
@@ -108,6 +170,31 @@ public class CompanyFileAssetManagementService implements ManageCompanyFileAsset
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 is not available", exception);
         }
+    }
+
+    private String signature(UUID companyId, UUID assetId, String contentHash, long expiresAtEpochSecond) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(downloadTokenSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            String payload = companyId + ":" + assetId + ":" + contentHash + ":" + expiresAtEpochSecond;
+            return HexFormat.of().formatHex(mac.doFinal(payload.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception exception) {
+            throw new IllegalStateException("download signature cannot be generated", exception);
+        }
+    }
+
+    private static Duration validateTtl(Duration value) {
+        if (value == null || value.isZero() || value.isNegative()) {
+            return DEFAULT_DOWNLOAD_TTL;
+        }
+        return value;
+    }
+
+    private static String validateSecret(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("tenant.files.download-token-secret is required");
+        }
+        return value;
     }
 
     private static CompanyFileAssetResult toResult(CompanyFileAsset asset) {

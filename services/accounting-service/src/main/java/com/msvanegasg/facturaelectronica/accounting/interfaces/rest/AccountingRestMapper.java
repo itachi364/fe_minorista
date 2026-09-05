@@ -14,6 +14,8 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingEn
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingEntryResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingRuleLineResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingRuleResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingReadinessMissingItemResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingReadinessResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingSetupResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountsPayableCommand;
@@ -48,6 +50,8 @@ import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.Accounti
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingRuleLineResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingRuleRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingRuleResponse;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingReadinessMissingItemResponse;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingReadinessResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingSetupResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.ExpenseRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.ExpenseResponse;
@@ -172,6 +176,17 @@ public final class AccountingRestMapper {
                 result.accounts().stream().map(AccountingRestMapper::toResponse).toList(),
                 result.rules().stream().map(AccountingRestMapper::toResponse).toList());
     }
+
+    public static AccountingReadinessResponse toResponse(AccountingReadinessResult result) {
+        return new AccountingReadinessResponse(
+                result.companyId(),
+                result.eventType(),
+                result.ready(),
+                result.accountingRuleId(),
+                result.checkedAccountCodes(),
+                result.missingItems().stream().map(AccountingRestMapper::toResponse).toList());
+    }
+
     public static AccountingEntryResponse toResponse(AccountingEntryResult result) {
         return new AccountingEntryResponse(
                 result.id(),
@@ -276,6 +291,14 @@ public final class AccountingRestMapper {
                 result.side(),
                 result.amountType(),
                 result.description());
+    }
+
+    private static AccountingReadinessMissingItemResponse toResponse(AccountingReadinessMissingItemResult result) {
+        return new AccountingReadinessMissingItemResponse(
+                result.code(),
+                result.module(),
+                result.message(),
+                result.suggestedAction());
     }
 
     private static AccountingEntryLineResponse toResponse(AccountingEntryLineResult result) {

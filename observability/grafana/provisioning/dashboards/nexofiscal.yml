@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: NexoFiscal
+    orgId: 1
+    folder: NexoFiscal
+    type: file
+    disableDeletion: true
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

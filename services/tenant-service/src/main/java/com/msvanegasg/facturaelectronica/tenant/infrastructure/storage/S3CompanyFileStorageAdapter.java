@@ -1,5 +1,8 @@
 package com.msvanegasg.facturaelectronica.tenant.infrastructure.storage;
 
+import java.time.Duration;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -15,12 +18,15 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.ServerSideEncryption;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 @Component
 @ConditionalOnProperty(name = "tenant.files.storage-provider", havingValue = "s3")
 public class S3CompanyFileStorageAdapter implements CompanyFileStoragePort {
 
     private final S3Client s3Client;
+    private final S3Presigner presigner;
     private final String bucket;
     private final String kmsKeyId;
 
@@ -33,6 +39,10 @@ public class S3CompanyFileStorageAdapter implements CompanyFileStoragePort {
         this.bucket = bucket;
         this.kmsKeyId = kmsKeyId;
         this.s3Client = S3Client.builder()
+                .region(Region.of(region))
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .build();
+        this.presigner = S3Presigner.builder()
                 .region(Region.of(region))
                 .credentialsProvider(DefaultCredentialsProvider.create())
                 .build();
@@ -60,5 +70,17 @@ public class S3CompanyFileStorageAdapter implements CompanyFileStoragePort {
                 .key(storageKey)
                 .build());
         return response.asByteArray();
+    }
+
+    @Override
+    public Optional<String> temporaryReadUrl(String storageKey, Duration ttl) {
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(bucket)
+                .key(storageKey)
+                .build();
+        return Optional.of(presigner.presignGetObject(GetObjectPresignRequest.builder()
+                .signatureDuration(ttl)
+                .getObjectRequest(getObjectRequest)
+                .build()).url().toString());
     }
 }

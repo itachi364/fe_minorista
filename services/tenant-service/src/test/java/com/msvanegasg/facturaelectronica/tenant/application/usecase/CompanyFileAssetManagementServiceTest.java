@@ -3,6 +3,8 @@ package com.msvanegasg.facturaelectronica.tenant.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
@@ -36,7 +38,9 @@ class CompanyFileAssetManagementServiceTest {
             assets,
             storage,
             () -> ASSET_ID,
-            () -> NOW);
+            () -> NOW,
+            Duration.ofSeconds(60),
+            "unit-test-download-secret");
 
     @Test
     void storesPdfEvidenceUnderCompanyCategoryPrefix() {
@@ -46,11 +50,50 @@ class CompanyFileAssetManagementServiceTest {
                 CompanyFileCategory.PURCHASE_EVIDENCE,
                 "factura proveedor.pdf",
                 "application/pdf",
-                "%PDF-1.7 content".getBytes(),
+                "%PDF-1.7 content".getBytes(StandardCharsets.UTF_8),
                 USER_ID));
 
         assertThat(result.url()).contains("/api/v1/companies/" + COMPANY_ID + "/files/" + ASSET_ID);
         assertThat(storage.objects).containsKey(COMPANY_ID + "/facturas/" + ASSET_ID + "-factura_proveedor.pdf");
+    }
+
+    @Test
+    void createsSignedTemporaryDownloadLinkForLocalStorage() {
+        companies.save(company());
+        service.upload(COMPANY_ID, new CompanyFileAssetCommand(
+                CompanyFileCategory.PURCHASE_EVIDENCE,
+                "factura.pdf",
+                "application/pdf",
+                "%PDF-1.7 content".getBytes(StandardCharsets.UTF_8),
+                USER_ID));
+
+        var link = service.createDownloadLink(COMPANY_ID, ASSET_ID);
+
+        assertThat(link.ttlSeconds()).isEqualTo(60);
+        assertThat(link.expiresAt()).isEqualTo(NOW.plusSeconds(60));
+        assertThat(link.url()).contains("/api/v1/companies/" + COMPANY_ID + "/files/" + ASSET_ID + "/download");
+        assertThat(link.url()).contains("signature=");
+    }
+
+    @Test
+    void readsSignedDownloadBeforeExpirationAndRejectsExpiredLink() {
+        companies.save(company());
+        byte[] content = "%PDF-1.7 content".getBytes(StandardCharsets.UTF_8);
+        service.upload(COMPANY_ID, new CompanyFileAssetCommand(
+                CompanyFileCategory.EXPENSE_EVIDENCE,
+                "gasto.pdf",
+                "application/pdf",
+                content,
+                USER_ID));
+        var link = service.createDownloadLink(COMPANY_ID, ASSET_ID);
+        long expiresAt = Long.parseLong(queryValue(link.url(), "expiresAt"));
+        String signature = queryValue(link.url(), "signature");
+
+        assertThat(service.readSigned(COMPANY_ID, ASSET_ID, expiresAt, signature).content()).isEqualTo(content);
+        assertThatThrownBy(() -> service.readSigned(COMPANY_ID, ASSET_ID, NOW.minusSeconds(1).getEpochSecond(),
+                signature))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("download link expired");
     }
 
     @Test
@@ -61,10 +104,36 @@ class CompanyFileAssetManagementServiceTest {
                 CompanyFileCategory.EXPENSE_EVIDENCE,
                 "gasto.pdf",
                 "application/pdf",
-                "not a pdf".getBytes(),
+                "not a pdf".getBytes(StandardCharsets.UTF_8),
                 USER_ID)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Solo se permite PDF");
+    }
+
+    @Test
+    void rejectsKnownUnsafeFileSignature() {
+        companies.save(company());
+
+        assertThatThrownBy(() -> service.upload(COMPANY_ID, new CompanyFileAssetCommand(
+                CompanyFileCategory.LOGO,
+                "logo.txt",
+                "text/plain",
+                "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+                        .getBytes(StandardCharsets.ISO_8859_1),
+                USER_ID)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("El archivo no supero la validacion de seguridad.");
+    }
+
+    private static String queryValue(String url, String name) {
+        String query = url.substring(url.indexOf('?') + 1);
+        for (String pair : query.split("&")) {
+            String[] parts = pair.split("=", 2);
+            if (parts[0].equals(name)) {
+                return parts[1];
+            }
+        }
+        throw new IllegalArgumentException("query parameter not found: " + name);
     }
 
     private static Company company() {

@@ -1811,7 +1811,38 @@ STORAGE_ANTIMALWARE_ENABLED=false
 OBSERVABILITY_ACTUATOR_ENABLED=true
 OBSERVABILITY_METRICS_ENABLED=true
 POS_PRINTER_MODE=browser
+TENANT_FILES_DOWNLOAD_TTL_SECONDS=300
+TENANT_FILES_DOWNLOAD_TOKEN_SECRET=change-me-in-each-environment
 ```
+
+### Observabilidad local implementada
+
+- `docker-compose.observability.yml` levanta Prometheus y Grafana como capa opcional sobre el compose principal.
+- Prometheus scrapea `/actuator/prometheus` de BFF, tenant, catalog, thirdparty, inventory, billing, accounting, audit, identity, payroll y reporting.
+- `dian-provider-service` queda fuera de esta implementacion por decision explicita de no tocar DIAN en este bloque.
+- Grafana provisiona datasource Prometheus y dashboard base `NexoFiscal - Plataforma`.
+- Alertas iniciales:
+  - `NexoFiscalServiceDown`: servicio sin respuesta en Prometheus.
+  - `NexoFiscalHighServerErrors`: aumento de respuestas 5xx por aplicacion.
+
+Comando local:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d prometheus grafana
+```
+
+URLs:
+
+- Prometheus: `http://localhost:9090`.
+- Grafana: `http://localhost:3001`.
+
+### Storage avanzado implementado
+
+- Local: archivos bajo volumen/filesystem con prefijo `{companyId}/{categoria}/{assetId}-{safeFileName}` y descarga firmada por HMAC.
+- S3: objetos privados con URL prefirmada de lectura y TTL configurable.
+- Validaciones locales: tamano maximo, categoria funcional, PDF real para evidencias/facturas y bloqueo de firmas inseguras conocidas.
+- `TENANT_FILES_DOWNLOAD_TOKEN_SECRET` debe ser distinto por ambiente y secreto en produccion.
+- `TENANT_FILES_DOWNLOAD_TTL_SECONDS` controla la vigencia de enlaces generados por tenant.
 
 Notas:
 

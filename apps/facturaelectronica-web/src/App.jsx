@@ -81,8 +81,18 @@ import { buildQuery } from './utils/query.js';
 import { emptyRuntimeCatalogs, loadRuntimeCatalogs } from './utils/runtimeCatalogs.js';
 import { clearStoredSession, loadStoredSession, saveStoredSession, SESSION_TIMEOUT_MS } from './utils/sessionStorage.js';
 import { stepLicenseModules } from './data/licenseModules.js';
+import { printReceiptWithThermalPrinter } from './utils/thermalPrinter.js';
 
 const PRODUCT_NAME = 'NexoFiscal';
+const ACCOUNTING_READINESS_EVENTS = [
+  'SALE_CONFIRMED',
+  'PURCHASE_CONFIRMED',
+  'EXPENSE_CONFIRMED',
+  'ACCOUNT_RECEIVABLE_REGISTERED',
+  'ACCOUNTS_PAYABLE_PAYMENT_REGISTERED',
+  'ACCOUNTS_RECEIVABLE_PAYMENT_REGISTERED',
+  'PAYROLL_DAILY_PAYMENT_REGISTERED',
+];
 
 export default function App() {
   const [storedSnapshot] = useState(() => loadStoredSession());
@@ -171,6 +181,7 @@ export default function App() {
   const [financeSummary, setFinanceSummary] = useState(null);
   const [accountingAccounts, setAccountingAccounts] = useState([]);
   const [accountingRules, setAccountingRules] = useState([]);
+  const [accountingReadiness, setAccountingReadiness] = useState([]);
   const [payrollSettingsForm, setPayrollSettingsForm] = useState(createPayrollSettingsForm);
   const [payrollWorkerForm, setPayrollWorkerForm] = useState(createPayrollWorkerForm);
   const [dailyLaborPaymentForm, setDailyLaborPaymentForm] = useState(createDailyLaborPaymentForm);
@@ -1835,6 +1846,10 @@ export default function App() {
       ...context,
       idempotencyKey: createIdempotencyKey('print-receipt'),
     });
+    const thermalPrinted = await printReceiptWithThermalPrinter(result.blob, { widthMm: 80 }).catch(() => false);
+    if (thermalPrinted) {
+      return { filename: result.filename, thermalPrinted: true };
+    }
     openBlob(result.blob, { print: true });
     return { filename: result.filename };
   }
@@ -2277,13 +2292,23 @@ export default function App() {
 
   async function loadAccountingConfiguration() {
     requireCompany();
-    const [accounts, rules] = await Promise.all([
+    const [accounts, rules, readiness] = await Promise.all([
       requestJson('/api/v1/accounts', context),
       requestJson('/api/v1/accounting-rules', context),
+      loadAccountingReadiness(),
     ]);
     setAccountingAccounts(accounts || []);
     setAccountingRules(rules || []);
-    return { accounts, rules };
+    return { accounts, rules, readiness };
+  }
+
+  async function loadAccountingReadiness(events = ACCOUNTING_READINESS_EVENTS) {
+    requireCompany();
+    const readiness = await Promise.all(events.map((eventType) =>
+      requestJson(`/api/v1/accounting-readiness/events/${eventType}`, context)
+    ));
+    setAccountingReadiness(readiness);
+    return readiness;
   }
 
   async function updateAccountingAccount(accountId, payload) {
@@ -2732,7 +2757,7 @@ export default function App() {
             <FiscalNotesPanel forms={fiscalNoteForms} setForms={setFiscalNoteForms} results={fiscalNoteResults} onSubmit={(noteType) => execute(() => createFiscalNote(noteType), { successMessage: 'Documento fiscal creado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Documentos fiscales'])} />
           )}
           {currentStep === 'Configuracion contable' && (
-            <AccountingConfigurationPanel accounts={accountingAccounts} rules={accountingRules} onLoad={() => execute(loadAccountingConfiguration, { successMessage: 'Estado contable actualizado.' })} onInitializeBasicSetup={() => execute(initializeBasicAccountingSetup, { successMessage: 'Plantilla basica completada correctamente.' })} onConfigure={(payload) => execute(() => saveAccountingConfiguration(payload), { successMessage: 'Configuracion contable guardada correctamente.' })} onUpdateAccount={(accountId, payload) => execute(() => updateAccountingAccount(accountId, payload), { successMessage: 'Cuenta contable actualizada correctamente.' })} onDeactivateAccount={(accountId) => execute(() => deactivateAccountingAccount(accountId), { successMessage: 'Cuenta contable inactivada correctamente.' })} onUpdateRule={(ruleId, payload) => execute(() => updateAccountingRule(ruleId, payload), { successMessage: 'Regla contable actualizada correctamente.' })} onDeactivateRule={(ruleId) => execute(() => deactivateAccountingRule(ruleId), { successMessage: 'Regla contable inactivada correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Configuracion contable'])} />
+            <AccountingConfigurationPanel accounts={accountingAccounts} rules={accountingRules} readiness={accountingReadiness} onLoad={() => execute(loadAccountingConfiguration, { successMessage: 'Estado contable actualizado.' })} onInitializeBasicSetup={() => execute(initializeBasicAccountingSetup, { successMessage: 'Plantilla basica completada correctamente.' })} onConfigure={(payload) => execute(() => saveAccountingConfiguration(payload), { successMessage: 'Configuracion contable guardada correctamente.' })} onUpdateAccount={(accountId, payload) => execute(() => updateAccountingAccount(accountId, payload), { successMessage: 'Cuenta contable actualizada correctamente.' })} onDeactivateAccount={(accountId) => execute(() => deactivateAccountingAccount(accountId), { successMessage: 'Cuenta contable inactivada correctamente.' })} onUpdateRule={(ruleId, payload) => execute(() => updateAccountingRule(ruleId, payload), { successMessage: 'Regla contable actualizada correctamente.' })} onDeactivateRule={(ruleId) => execute(() => deactivateAccountingRule(ruleId), { successMessage: 'Regla contable inactivada correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Configuracion contable'])} />
           )}
           {currentStep === 'Ventas' && (
             <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode), { silentRunning: true, silentSuccess: true })} onClose={() => execute(closeSale, { successMessage: 'Venta cerrada correctamente.' })} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} fiscalPolicy={fiscalPolicy} documentOverride={saleDocumentOverride} overrideForm={saleDocumentOverrideForm} setOverrideForm={setSaleDocumentOverrideForm} fiscalDocumentTypeOptions={runtimeCatalogs.fiscalDocumentTypeOptions} authorizerOptions={managedUsers} onLoadAuthorizers={() => loadCompanyUsers('')} onRequestDocumentOverride={(payload) => execute(() => requestSaleDocumentTypeOverride(payload), { successMessage: 'Cambio de documento fiscal autorizado para esta venta.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />

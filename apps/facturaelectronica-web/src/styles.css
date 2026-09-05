@@ -783,6 +783,48 @@ textarea:hover {
   gap: 16px;
 }
 
+.readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.readiness-card {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #d7e0e8;
+  border-radius: 8px;
+  background: #fbfdfe;
+  padding: 12px;
+}
+
+.readiness-card div {
+  display: grid;
+  gap: 2px;
+}
+
+.readiness-card b {
+  color: #102335;
+  font-size: 13px;
+}
+
+.readiness-card span,
+.readiness-card small {
+  color: #52677a;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.readiness-card.ready {
+  border-color: #9fd2ae;
+  background: #f5fff8;
+}
+
+.readiness-card.warn {
+  border-color: #e7c56f;
+  background: #fffaf0;
+}
+
 .accounting-row {
   display: grid;
   grid-template-columns: minmax(120px, 0.7fr) minmax(190px, 1.2fr) minmax(190px, 1fr) auto;

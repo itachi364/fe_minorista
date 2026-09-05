@@ -1,5 +1,8 @@
 package com.msvanegasg.facturaelectronica.tenant.infrastructure.config;
 
+import java.time.Duration;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -55,8 +58,10 @@ public class TenantUseCaseConfiguration {
             CompanyFileAssetRepositoryPort fileAssetRepository,
             CompanyFileStoragePort storage,
             IdGeneratorPort idGenerator,
-            ClockPort clock) {
+            ClockPort clock,
+            @Value("${tenant.files.download-ttl-seconds:300}") long downloadTtlSeconds,
+            @Value("${tenant.files.download-token-secret:local-development-download-token-secret-change-me}") String downloadTokenSecret) {
         return new CompanyFileAssetManagementService(companyRepository, fileAssetRepository, storage, idGenerator,
-                clock);
+                clock, Duration.ofSeconds(downloadTtlSeconds), downloadTokenSecret);
     }
 }

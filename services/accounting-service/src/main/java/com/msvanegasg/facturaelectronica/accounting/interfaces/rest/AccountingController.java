@@ -22,6 +22,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.JournalBookQ
 import com.msvanegasg.facturaelectronica.accounting.application.dto.LedgerBookQuery;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.InitializeBasicAccountingSetupUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ConfigureAccountingUseCase;
+import com.msvanegasg.facturaelectronica.accounting.application.port.in.DiagnoseAccountingReadinessUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsPayableUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsReceivableUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.GenerateAccountingEntryUseCase;
@@ -47,6 +48,7 @@ import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.Accounti
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingRulesBatchRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingRuleRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingRuleResponse;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingReadinessResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountingSetupResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountsBatchRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.ExpenseRequest;
@@ -69,6 +71,7 @@ public class AccountingController {
     private final ConfigureAccountingUseCase configureAccountingUseCase;
     private final ManageChartOfAccountsUseCase manageChartOfAccountsUseCase;
     private final ManageAccountingRulesUseCase manageAccountingRulesUseCase;
+    private final DiagnoseAccountingReadinessUseCase diagnoseAccountingReadinessUseCase;
     private final GenerateAccountingEntryUseCase generateAccountingEntryUseCase;
     private final QueryAccountingBooksUseCase queryAccountingBooksUseCase;
     private final ManageExpenseUseCase manageExpenseUseCase;
@@ -80,6 +83,7 @@ public class AccountingController {
             ConfigureAccountingUseCase configureAccountingUseCase,
             ManageChartOfAccountsUseCase manageChartOfAccountsUseCase,
             ManageAccountingRulesUseCase manageAccountingRulesUseCase,
+            DiagnoseAccountingReadinessUseCase diagnoseAccountingReadinessUseCase,
             GenerateAccountingEntryUseCase generateAccountingEntryUseCase,
             QueryAccountingBooksUseCase queryAccountingBooksUseCase,
             ManageExpenseUseCase manageExpenseUseCase,
@@ -89,6 +93,7 @@ public class AccountingController {
         this.configureAccountingUseCase = configureAccountingUseCase;
         this.manageChartOfAccountsUseCase = manageChartOfAccountsUseCase;
         this.manageAccountingRulesUseCase = manageAccountingRulesUseCase;
+        this.diagnoseAccountingReadinessUseCase = diagnoseAccountingReadinessUseCase;
         this.generateAccountingEntryUseCase = generateAccountingEntryUseCase;
         this.queryAccountingBooksUseCase = queryAccountingBooksUseCase;
         this.manageExpenseUseCase = manageExpenseUseCase;
@@ -233,6 +238,14 @@ public class AccountingController {
         return ResponseEntity.ok(manageAccountingRulesUseCase.find(companyId, eventType, active).stream()
                 .map(AccountingRestMapper::toResponse)
                 .toList());
+    }
+
+    @GetMapping("/accounting-readiness/events/{eventType}")
+    public ResponseEntity<AccountingReadinessResponse> accountingReadiness(
+            @RequestHeader(COMPANY_HEADER) UUID companyId,
+            @PathVariable AccountingEventType eventType) {
+        return ResponseEntity.ok(AccountingRestMapper.toResponse(
+                diagnoseAccountingReadinessUseCase.diagnose(companyId, eventType)));
     }
 
     @PostMapping("/accounting-entries")

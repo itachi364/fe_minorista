@@ -24,6 +24,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingReadinessMissingItemResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingReadinessResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingSetupResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingRuleLineResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingRuleResult;
@@ -40,6 +42,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.LedgerBookRe
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.GenerateAccountingEntryUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.InitializeBasicAccountingSetupUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ConfigureAccountingUseCase;
+import com.msvanegasg.facturaelectronica.accounting.application.port.in.DiagnoseAccountingReadinessUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountingRulesUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsPayableUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsReceivableUseCase;
@@ -79,6 +82,8 @@ class AccountingControllerOperationsTest {
     @Mock
     private ManageAccountingRulesUseCase accountingRulesUseCase;
     @Mock
+    private DiagnoseAccountingReadinessUseCase accountingReadinessUseCase;
+    @Mock
     private GenerateAccountingEntryUseCase accountingEntryUseCase;
     @Mock
     private QueryAccountingBooksUseCase accountingBooksUseCase;
@@ -92,7 +97,7 @@ class AccountingControllerOperationsTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(new AccountingController(setupUseCase, configureAccountingUseCase,
-                chartOfAccountsUseCase, accountingRulesUseCase, accountingEntryUseCase, accountingBooksUseCase, expenseUseCase,
+                chartOfAccountsUseCase, accountingRulesUseCase, accountingReadinessUseCase, accountingEntryUseCase, accountingBooksUseCase, expenseUseCase,
                 accountsPayableUseCase, accountsReceivableUseCase)).build();
     }
 
@@ -222,6 +227,25 @@ class AccountingControllerOperationsTest {
                 .param("active", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].eventType").value("SALE_CONFIRMED"));
+    }
+
+    @Test
+    void diagnosesAccountingReadinessByEvent() throws Exception {
+        UUID ruleId = UUID.fromString("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
+        when(accountingReadinessUseCase.diagnose(COMPANY_ID, AccountingEventType.SALE_CONFIRMED))
+                .thenReturn(new AccountingReadinessResult(COMPANY_ID, AccountingEventType.SALE_CONFIRMED, false,
+                        ruleId, List.of("1105", "4135"),
+                        List.of(new AccountingReadinessMissingItemResult("ACCOUNT_NOT_ACTIVE",
+                                "Configuracion contable", "La cuenta PUC 4135 no existe o esta inactiva.",
+                                "Crea o activa la cuenta PUC 4135 antes de ejecutar ventas confirmadas."))));
+
+        mockMvc.perform(get("/api/v1/accounting-readiness/events/SALE_CONFIRMED")
+                .header("X-Company-Id", COMPANY_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ready").value(false))
+                .andExpect(jsonPath("$.accountingRuleId").value(ruleId.toString()))
+                .andExpect(jsonPath("$.checkedAccountCodes[1]").value("4135"))
+                .andExpect(jsonPath("$.missingItems[0].code").value("ACCOUNT_NOT_ACTIVE"));
     }
 
     @Test
