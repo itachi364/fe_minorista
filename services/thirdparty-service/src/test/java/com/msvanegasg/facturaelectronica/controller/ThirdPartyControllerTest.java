@@ -58,6 +58,7 @@ class ThirdPartyControllerTest {
                 .andExpect(jsonPath("$.companyId").value(COMPANY_ID.toString()))
                 .andExpect(jsonPath("$.identificationTypeCode").value(31))
                 .andExpect(jsonPath("$.verificationDigit").value(8))
+                .andExpect(jsonPath("$.ciiuCode").value("6201"))
                 .andExpect(jsonPath("$.taxResponsibilities[0]").value("O-13"))
                 .andExpect(jsonPath("$.taxRegime").value("RESPONSABLE_IVA"))
                 .andExpect(jsonPath("$.roles[0]").value("CUSTOMER"));
@@ -90,7 +91,7 @@ class ThirdPartyControllerTest {
 
     private static ThirdPartyResult result(Set<ThirdPartyRole> roles) {
         return new ThirdPartyResult(THIRD_PARTY_ID, COMPANY_ID, PersonType.JURIDICA, 31, "900123456", 8,
-                null, "Cliente SAS", "Cliente", "cliente@example.com", "3000000000", "Calle 1", "11001",
+                null, "Cliente SAS", "Cliente", "cliente@example.com", "3000000000", "Calle 1", "11001", "6201",
                 Set.of("O-13"), TaxRegime.RESPONSABLE_IVA, roles, true);
     }
 
@@ -104,7 +105,7 @@ class ThirdPartyControllerTest {
         String roleJson = roles.stream().map(role -> "\"" + role + "\"").reduce((left, right) -> left + "," + right)
                 .orElse("\"CUSTOMER\"");
         return """
-                {"personType":"JURIDICA","identificationTypeCode":31,"identificationNumber":"900123456","businessName":"Cliente SAS","tradeName":"Cliente","email":"cliente@example.com","phone":"3000000000","address":"Calle 1","municipalityCode":"11001","taxResponsibilities":["O-13"],"taxRegime":"RESPONSABLE_IVA","roles":[%s]}
+                {"personType":"JURIDICA","identificationTypeCode":31,"identificationNumber":"900123456","businessName":"Cliente SAS","tradeName":"Cliente","email":"cliente@example.com","phone":"3000000000","address":"Calle 1","municipalityCode":"11001","ciiuCode":"6201","taxResponsibilities":["O-13"],"taxRegime":"RESPONSABLE_IVA","roles":[%s]}
                 """.formatted(roleJson);
     }
 }

@@ -67,8 +67,9 @@ public class ThirdPartyPersistenceAdapter implements ThirdPartyRepositoryPort {
         return ThirdParty.restore(entity.getId(), entity.getCompanyId(), entity.getPersonType(),
                 entity.getIdentificationTypeCode(), entity.getIdentificationNumber(), entity.getVerificationDigit(),
                 entity.getFullName(), entity.getBusinessName(), entity.getTradeName(), entity.getEmail(),
-                entity.getPhone(), entity.getAddress(), entity.getMunicipalityCode(), entity.getTaxResponsibilities(),
-                entity.getTaxRegime(), entity.getRoles(), Boolean.TRUE.equals(entity.getActive()));
+                entity.getPhone(), entity.getAddress(), entity.getMunicipalityCode(), entity.getCiiuCode(),
+                entity.getTaxResponsibilities(), entity.getTaxRegime(), entity.getRoles(),
+                Boolean.TRUE.equals(entity.getActive()));
     }
 
     private static ThirdPartyJpaEntity toEntity(ThirdParty thirdParty) {
@@ -87,6 +88,7 @@ public class ThirdPartyPersistenceAdapter implements ThirdPartyRepositoryPort {
                 .phone(thirdParty.phone())
                 .address(thirdParty.address())
                 .municipalityCode(thirdParty.municipalityCode())
+                .ciiuCode(thirdParty.ciiuCode())
                 .taxResponsibilities(new LinkedHashSet<>(thirdParty.taxResponsibilities()))
                 .taxRegime(thirdParty.taxRegime())
                 .roles(new LinkedHashSet<>(thirdParty.roles()))

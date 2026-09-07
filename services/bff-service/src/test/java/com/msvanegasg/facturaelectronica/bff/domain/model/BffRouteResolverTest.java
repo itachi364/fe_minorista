@@ -22,6 +22,8 @@ class BffRouteResolverTest {
         assertThat(resolver.resolve("/api/v1/accounting-rules")).isEqualTo(TargetService.ACCOUNTING);
         assertThat(resolver.resolve("/api/v1/accounting-readiness/events/SALE_CONFIRMED"))
                 .isEqualTo(TargetService.ACCOUNTING);
+        assertThat(resolver.resolve("/api/v1/fiscal-calculations/withholdings"))
+                .isEqualTo(TargetService.ACCOUNTING);
         assertThat(resolver.resolve("/api/v1/accounting-configuration/batch")).isEqualTo(TargetService.ACCOUNTING);
         assertThat(resolver.resolve("/api/v1/payroll/workers")).isEqualTo(TargetService.PAYROLL);
         assertThat(resolver.resolve("/api/v1/dian-configuration/companies/11111111-1111-1111-1111-111111111111"))

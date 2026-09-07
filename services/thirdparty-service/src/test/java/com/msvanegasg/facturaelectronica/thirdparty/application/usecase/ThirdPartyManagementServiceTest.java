@@ -34,6 +34,7 @@ class ThirdPartyManagementServiceTest {
 
         assertThat(result.id()).isNotNull();
         assertThat(result.verificationDigit()).isEqualTo(8);
+        assertThat(result.ciiuCode()).isEqualTo("6201");
         assertThat(result.taxResponsibilities()).containsExactly("O-13");
         assertThat(result.taxRegime()).isEqualTo(TaxRegime.RESPONSABLE_IVA);
         assertThat(result.roles()).containsExactly(ThirdPartyRole.CUSTOMER);
@@ -81,7 +82,7 @@ class ThirdPartyManagementServiceTest {
         ThirdPartyManagementService service = new ThirdPartyManagementService(repository);
         service.create(command(COMPANY_ID, Set.of(ThirdPartyRole.CUSTOMER)));
         service.create(new ThirdPartyCommand(COMPANY_ID, PersonType.JURIDICA, 31, "901987654", null, null,
-                "Otro Cliente SAS", "Otro", "otro@example.com", null, null, "11001", Set.of("O-13"),
+                "Otro Cliente SAS", "Otro", "otro@example.com", null, null, "11001", "6201", Set.of("O-13"),
                 TaxRegime.RESPONSABLE_IVA, Set.of(ThirdPartyRole.CUSTOMER)));
 
         List<ThirdPartyResult> customers = service.findByRoleAndIdentificationNumberPrefix(COMPANY_ID,
@@ -98,7 +99,7 @@ class ThirdPartyManagementServiceTest {
 
         ThirdPartyResult result = service.create(new ThirdPartyCommand(COMPANY_ID, PersonType.NATURAL, 13,
                 "1234567890", null, "Cliente Natural", null, null, "cliente@example.com", null, null, "11001",
-                null, null, Set.of(ThirdPartyRole.CUSTOMER)));
+                null, null, null, Set.of(ThirdPartyRole.CUSTOMER)));
 
         assertThat(result.verificationDigit()).isNull();
         assertThat(result.businessName()).isNull();
@@ -115,7 +116,7 @@ class ThirdPartyManagementServiceTest {
 
         ThirdPartyCommand command = new ThirdPartyCommand(COMPANY_ID, PersonType.JURIDICA, 31, "900123456", 1, null,
                 "Cliente SAS", "Cliente", "cliente@example.com", "3000000000", "Calle 1", "11001",
-                Set.of("O-13"), TaxRegime.RESPONSABLE_IVA, Set.of(ThirdPartyRole.CUSTOMER));
+                "6201", Set.of("O-13"), TaxRegime.RESPONSABLE_IVA, Set.of(ThirdPartyRole.CUSTOMER));
 
         assertThatThrownBy(() -> service.create(command))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -125,7 +126,7 @@ class ThirdPartyManagementServiceTest {
     private static ThirdPartyCommand command(UUID companyId, Set<ThirdPartyRole> roles) {
         return new ThirdPartyCommand(companyId, PersonType.JURIDICA, 31, "900123456", null, null,
                 "Cliente SAS", "Cliente", "cliente@example.com", "3000000000", "Calle 1", "11001",
-                Set.of("O-13"), TaxRegime.RESPONSABLE_IVA, roles);
+                "6201", Set.of("O-13"), TaxRegime.RESPONSABLE_IVA, roles);
     }
 
     private static final class InMemoryThirdPartyRepository implements ThirdPartyRepositoryPort {
@@ -139,8 +140,8 @@ class ThirdPartyManagementServiceTest {
                     thirdParty.identificationTypeCode(), thirdParty.identificationNumber(),
                     thirdParty.verificationDigit(), thirdParty.fullName(), thirdParty.businessName(),
                     thirdParty.tradeName(), thirdParty.email(), thirdParty.phone(), thirdParty.address(),
-                    thirdParty.municipalityCode(), thirdParty.taxResponsibilities(), thirdParty.taxRegime(),
-                    thirdParty.roles(), thirdParty.active());
+                    thirdParty.municipalityCode(), thirdParty.ciiuCode(), thirdParty.taxResponsibilities(),
+                    thirdParty.taxRegime(), thirdParty.roles(), thirdParty.active());
             thirdParties.put(id, toSave);
             return toSave;
         }

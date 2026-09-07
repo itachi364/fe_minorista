@@ -20,5 +20,11 @@ public record AccountingEntryRequest(
         UUID thirdpartyId,
         @NotNull @PositiveOrZero BigDecimal subtotal,
         @NotNull @PositiveOrZero BigDecimal taxTotal,
-        @NotNull @PositiveOrZero BigDecimal total) {
+        @NotNull @PositiveOrZero BigDecimal total,
+        @PositiveOrZero BigDecimal retefuente,
+        @PositiveOrZero BigDecimal reteiva,
+        @PositiveOrZero BigDecimal reteica,
+        @PositiveOrZero BigDecimal selfWithholding,
+        @PositiveOrZero BigDecimal withholdingTotal,
+        @PositiveOrZero BigDecimal netPayable) {
 }

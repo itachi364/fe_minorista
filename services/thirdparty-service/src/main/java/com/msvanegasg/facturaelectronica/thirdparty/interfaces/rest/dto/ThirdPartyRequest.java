@@ -26,6 +26,7 @@ public record ThirdPartyRequest(
         @Size(max = 50) String phone,
         @Size(max = 250) String address,
         @Size(max = 20) String municipalityCode,
+        @Size(max = 10) String ciiuCode,
         Set<@Size(max = 20) String> taxResponsibilities,
         TaxRegime taxRegime,
         @NotEmpty Set<ThirdPartyRole> roles) {

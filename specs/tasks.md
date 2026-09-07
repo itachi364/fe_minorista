@@ -7251,17 +7251,24 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - TASK-234.
     - TASK-266.
 
-- [ ] TASK-292: Extender terceros con CIIU
-  - Estado: TODO.
+- [x] TASK-292: Extender terceros con CIIU
+  - Estado: DONE.
   - Requisitos: RF-292, RF-293.
   - Acceptance criteria: AC-412.
   - Descripcion: Agregar `ciiuCode` al contrato, UI, persistencia, validaciones y respuestas de terceros sin duplicar configuracion fiscal de proveedores.
   - Dependencias:
     - TASK-047.
     - TASK-088.
+  - Implementacion:
+    - `thirdparty-service` agrega `ciiuCode` al dominio, comandos, resultados, DTO REST, mapper y persistencia JPA.
+    - La migracion `V006__add_third_party_ciiu_code.sql` agrega `thirdparty.third_party.ciiu_code`.
+    - La SPA captura y envia `Codigo CIIU` desde el formulario de terceros y lo muestra en la tabla operativa.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services\thirdparty-service,services\accounting-service,services\bff-service -am test`: BUILD SUCCESS.
+    - `npm test -- --run`: 40 tests OK.
 
-- [ ] TASK-293: Implementar motor versionado de retenciones
-  - Estado: TODO.
+- [x] TASK-293: Implementar motor versionado de retenciones
+  - Estado: DONE parcial primera vertical.
   - Requisitos: RF-294, RF-295, RF-296, RF-297.
   - Acceptance criteria: AC-413, AC-414, AC-415, AC-416.
   - Descripcion: Crear reglas fiscales versionadas para retenciones sobre compras, gastos y pagos, usando perfil de empresa y tercero, municipio, CIIU, regimen, responsabilidades, concepto, base y fecha.
@@ -7270,6 +7277,16 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - TASK-252.
     - TASK-253.
     - TASK-292.
+  - Implementacion:
+    - `accounting-service` agrega motor de calculo `CalculateWithholdingsUseCase` con reglas versionadas por empresa/globales, perfil fiscal de empresa, perfil fiscal de tercero, concepto, fecha, municipio y CIIU.
+    - Se soportan tipos `RETEFUENTE`, `RETEIVA`, `RETEICA` y `AUTORETENCION`, con decisiones `APPLIED`, `NOT_APPLIED`, `EXEMPT` y `BLOCKED`.
+    - La migracion `V008__create_withholding_rules.sql` crea tablas de reglas/snapshots y deja semillas iniciales para ReteIVA SIMPLE como baseline verificable.
+    - Los asientos contables aceptan nuevos `AccountingAmountType` para retenciones, total retenido y neto a pagar.
+    - El BFF enruta `/api/v1/fiscal-calculations/**` hacia `accounting-service`.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services\thirdparty-service,services\accounting-service,services\bff-service -am test`: BUILD SUCCESS.
+  - Pendiente normativo-operativo:
+    - Cargar el catalogo completo de tarifas/bases por concepto, municipio ICA, exenciones y reglas especiales aprobadas por contador o fuente oficial vigente antes de usarlo como motor definitivo en produccion.
 
 - [ ] TASK-294: Implementar contrasenas temporales para administradores y contadores
   - Estado: TODO.

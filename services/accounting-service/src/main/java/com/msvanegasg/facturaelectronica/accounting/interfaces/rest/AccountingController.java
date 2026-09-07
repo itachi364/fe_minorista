@@ -21,6 +21,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.ExpenseQuery
 import com.msvanegasg.facturaelectronica.accounting.application.dto.JournalBookQuery;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.LedgerBookQuery;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.InitializeBasicAccountingSetupUseCase;
+import com.msvanegasg.facturaelectronica.accounting.application.port.in.CalculateWithholdingsUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ConfigureAccountingUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.DiagnoseAccountingReadinessUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsPayableUseCase;
@@ -58,6 +59,8 @@ import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.JournalB
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.LedgerBookResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.PayablePaymentRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.ReceivablePaymentRequest;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.WithholdingCalculationRequest;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.WithholdingCalculationResponse;
 
 import jakarta.validation.Valid;
 
@@ -73,6 +76,7 @@ public class AccountingController {
     private final ManageAccountingRulesUseCase manageAccountingRulesUseCase;
     private final DiagnoseAccountingReadinessUseCase diagnoseAccountingReadinessUseCase;
     private final GenerateAccountingEntryUseCase generateAccountingEntryUseCase;
+    private final CalculateWithholdingsUseCase calculateWithholdingsUseCase;
     private final QueryAccountingBooksUseCase queryAccountingBooksUseCase;
     private final ManageExpenseUseCase manageExpenseUseCase;
     private final ManageAccountsPayableUseCase manageAccountsPayableUseCase;
@@ -85,6 +89,7 @@ public class AccountingController {
             ManageAccountingRulesUseCase manageAccountingRulesUseCase,
             DiagnoseAccountingReadinessUseCase diagnoseAccountingReadinessUseCase,
             GenerateAccountingEntryUseCase generateAccountingEntryUseCase,
+            CalculateWithholdingsUseCase calculateWithholdingsUseCase,
             QueryAccountingBooksUseCase queryAccountingBooksUseCase,
             ManageExpenseUseCase manageExpenseUseCase,
             ManageAccountsPayableUseCase manageAccountsPayableUseCase,
@@ -95,6 +100,7 @@ public class AccountingController {
         this.manageAccountingRulesUseCase = manageAccountingRulesUseCase;
         this.diagnoseAccountingReadinessUseCase = diagnoseAccountingReadinessUseCase;
         this.generateAccountingEntryUseCase = generateAccountingEntryUseCase;
+        this.calculateWithholdingsUseCase = calculateWithholdingsUseCase;
         this.queryAccountingBooksUseCase = queryAccountingBooksUseCase;
         this.manageExpenseUseCase = manageExpenseUseCase;
         this.manageAccountsPayableUseCase = manageAccountsPayableUseCase;
@@ -255,6 +261,14 @@ public class AccountingController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(AccountingRestMapper.toResponse(
                         generateAccountingEntryUseCase.generate(AccountingRestMapper.toCommand(companyId, request))));
+    }
+
+    @PostMapping("/fiscal-calculations/withholdings")
+    public ResponseEntity<WithholdingCalculationResponse> calculateWithholdings(
+            @RequestHeader(COMPANY_HEADER) UUID companyId,
+            @Valid @RequestBody WithholdingCalculationRequest request) {
+        return ResponseEntity.ok(AccountingRestMapper.toResponse(
+                calculateWithholdingsUseCase.calculate(AccountingRestMapper.toCommand(companyId, request))));
     }
 
     @PostMapping("/expenses")

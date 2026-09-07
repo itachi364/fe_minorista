@@ -15,10 +15,11 @@ class ThirdPartyTest {
     @Test
     void createsNitThirdPartyWithAutomaticVerificationDigit() {
         ThirdParty thirdParty = ThirdParty.create(COMPANY_ID, PersonType.JURIDICA, 31, "900123456", null,
-                "Cliente SAS", "Cliente", "cliente@example.com", "3000000000", "Calle 1", "11001",
+                "Cliente SAS", "Cliente", "cliente@example.com", "3000000000", "Calle 1", "11001", "6201",
                 Set.of("O-13"), TaxRegime.RESPONSABLE_IVA, Set.of(ThirdPartyRole.CUSTOMER, ThirdPartyRole.SUPPLIER));
 
         assertThat(thirdParty.verificationDigit()).isEqualTo(8);
+        assertThat(thirdParty.ciiuCode()).isEqualTo("6201");
         assertThat(thirdParty.taxResponsibilities()).containsExactly("O-13");
         assertThat(thirdParty.taxRegime()).isEqualTo(TaxRegime.RESPONSABLE_IVA);
         assertThat(thirdParty.hasRole(ThirdPartyRole.CUSTOMER)).isTrue();
@@ -84,6 +85,15 @@ class ThirdPartyTest {
                 Set.of(ThirdPartyRole.SUPPLIER)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("businessName");
+    }
+
+    @Test
+    void rejectsCiiuCodeLongerThanTenCharacters() {
+        assertThatThrownBy(() -> ThirdParty.create(COMPANY_ID, PersonType.JURIDICA, 31, "900123456", null,
+                "Cliente SAS", "Cliente", null, null, null, "11001", "12345678901", Set.of("O-13"),
+                TaxRegime.ORDINARIO, Set.of(ThirdPartyRole.SUPPLIER)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("ciiuCode");
     }
 
     @Test

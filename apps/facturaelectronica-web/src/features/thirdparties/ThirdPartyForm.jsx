@@ -78,6 +78,7 @@ export function ThirdPartyForm({
         <Field label="Telefono" value={normalizedForm.phone} onChange={(value) => update({ ...normalizedForm, phone: value })} />
         <Field label="Direccion" value={normalizedForm.address} onChange={updateAddress} />
         <MunicipalityFields municipalityCode={normalizedForm.municipalityCode} onChange={(value) => update({ ...normalizedForm, municipalityCode: value })} disabled={simpleNaturalCustomer && !naturalCustomerHasAddress} locations={locations} />
+        <Field label="Codigo CIIU" value={normalizedForm.ciiuCode} onChange={(value) => update({ ...normalizedForm, ciiuCode: value })} />
         {simpleNaturalCustomer
           ? <Field label="Responsabilidades fiscales" value={fiscalResponsibilityLabel} onChange={() => {}} readOnly />
           : <DualListField label="Responsabilidades fiscales" value={normalizedForm.taxResponsibilities} onChange={updateTaxResponsibilities} options={taxResponsibilityOptionsSource} exclusiveValues={['R-99-PN']} />}
@@ -101,7 +102,7 @@ export function ThirdPartyForm({
         ]} placeholder="Todos" />
       </div>
       <DataTable
-        columns={['Documento', 'Nombre', 'Tipo persona', 'Correo', 'Telefono', 'Estado']}
+        columns={['Documento', 'Nombre', 'Tipo persona', 'CIIU', 'Correo', 'Telefono', 'Estado']}
         rows={thirdParties.map(thirdPartyRow)}
         rowKey={(_row, index) => thirdParties[index]?.id || index}
         emptyMessage="Sin terceros registrados para el filtro actual."
@@ -120,6 +121,7 @@ function thirdPartyRow(thirdParty) {
     `${thirdParty.identificationNumber || ''}${thirdParty.verificationDigit !== null && thirdParty.verificationDigit !== undefined ? `-${thirdParty.verificationDigit}` : ''}`,
     thirdParty.businessName || thirdParty.fullName || thirdParty.tradeName || '',
     thirdParty.personType === 'JURIDICA' ? 'Juridica' : 'Natural',
+    thirdParty.ciiuCode || '',
     thirdParty.email || '',
     thirdParty.phone || '',
     thirdParty.active === false ? 'Inactivo' : 'Activo',

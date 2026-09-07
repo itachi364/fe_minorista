@@ -125,6 +125,12 @@ public class GenerateAccountingEntryService implements GenerateAccountingEntryUs
             case SUBTOTAL -> command.subtotal();
             case TAX_TOTAL -> command.taxTotal();
             case TOTAL -> command.total();
+            case RETEFUENTE -> command.retefuente();
+            case RETEIVA -> command.reteiva();
+            case RETEICA -> command.reteica();
+            case AUTORETENCION -> command.selfWithholding();
+            case WITHHOLDING_TOTAL -> command.withholdingTotal();
+            case NET_PAYABLE -> command.netPayable();
         };
         if (amount.signum() < 0) {
             throw new IllegalArgumentException("accounting amount cannot be negative");

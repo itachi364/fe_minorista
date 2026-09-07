@@ -21,6 +21,7 @@ public record ThirdPartyResponse(
         String phone,
         String address,
         String municipalityCode,
+        String ciiuCode,
         Set<String> taxResponsibilities,
         TaxRegime taxRegime,
         Set<ThirdPartyRole> roles,

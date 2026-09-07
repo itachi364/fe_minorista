@@ -3331,7 +3331,7 @@ Context7 evidence:
   - Decision impact: `LicenseAdminPanel` actualiza `planCode` y `enabledModules` juntos al cambiar el select, y solo permite toggles manuales para `CUSTOM`.
 
 ### TASK-289 - Diseno modulo de contadores, reglas fiscales y notificaciones
-- Estado: Documentada; pendiente de implementacion.
+- Estado: Documentada; CIIU y primera vertical de motor fiscal implementadas.
 - Fase: Fase 36: Modulo de contadores, reglas fiscales y notificaciones.
 - Decision de diseno: El contador externo es un actor global limitado, similar a ROOT solo en que puede ver varias empresas, pero sin alcance administrativo global. Su visibilidad nace exclusivamente de asociaciones activas contador-empresa administradas por ROOT.
 - Cardinalidad: Un contador puede tener muchas empresas activas. Una empresa solo puede tener un contador activo; el reemplazo debe ser explicito, transaccional y auditado.
@@ -3346,6 +3346,12 @@ Context7 evidence:
 - Reportes asincronos: `REPORT_EXPORT_READY` reutiliza links intermediados de descarga; el correo no debe incluir URL directa de S3/storage, bucket/key interna ni tokens no protegidos.
 - Inventario bajo: La alerta se dispara al cruzar umbral configurable por producto y debe deduplicarse por ventana para evitar ruido operativo.
 - Auditoria: Asociaciones, reemplazos, accesos de contador, calculos fiscales, confirmaciones con retencion, credenciales temporales y notificaciones deben registrar correlation ID y errores sanitizados.
+
+#### Implementacion inicial TASK-292/TASK-293
+- `thirdparty-service` persiste `ciiuCode` en terceros y lo expone en comandos, respuestas REST y UI.
+- `accounting-service` calcula retenciones con reglas versionadas consultadas por fecha, empresa, operacion, concepto, regimen/responsabilidades, municipio y CIIU.
+- El motor genera snapshots de calculo cuando hay documento origen, para que compras/gastos/pagos conserven la trazabilidad de regla, tarifa, base, decision y razon funcional.
+- Las semillas iniciales cubren ReteIVA para proveedores SIMPLE como base de prueba; el catalogo completo de conceptos, tarifas, UVT/bases, ReteICA territorial, exenciones y autorretencion debe cargarse de forma controlada antes de produccion.
 
 #### Evidencia normativa
 - Fuente: DIAN Normatividad, Estatuto Tributario y DUR 1625 de 2016.

@@ -3479,7 +3479,7 @@ Respuesta normalizada:
 
 ## Contratos objetivo fase 35 - mejoras priorizadas
 
-Estado: documentado; pendiente de implementacion.
+Estado: documentado; implementacion parcial iniciada para CIIU y calculo de retenciones.
 
 ### Readiness empresarial
 
@@ -3751,9 +3751,27 @@ Payload objetivo:
   "thirdPartyId": "uuid",
   "conceptCode": "PURCHASE_GENERAL",
   "operationDate": "2026-09-07",
-  "grossAmount": 1000000,
+  "taxableBaseAmount": 1000000,
   "taxAmount": 190000,
-  "municipalityCode": "11001"
+  "municipalityCode": "11001",
+  "companyProfile": {
+    "taxRegime": "ORDINARIO",
+    "rutResponsibilities": ["O-13", "O-23"],
+    "vatResponsible": true,
+    "withholdingAgent": true,
+    "largeTaxpayer": false,
+    "selfWithholding": false,
+    "simpleRegime": false,
+    "icaMunicipalityCode": "11001",
+    "ciiuCodes": ["6201"]
+  },
+  "thirdPartyProfile": {
+    "taxRegime": "SIMPLE",
+    "taxResponsibilities": ["O-47"],
+    "municipalityCode": "11001",
+    "ciiuCode": "6201",
+    "active": true
+  }
 }
 ```
 

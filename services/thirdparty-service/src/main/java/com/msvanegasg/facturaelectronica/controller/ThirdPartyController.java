@@ -117,6 +117,7 @@ public class ThirdPartyController {
         return new ThirdPartyRequest(request.personType(), request.identificationTypeCode(),
                 request.identificationNumber(), request.verificationDigit(), request.fullName(),
                 request.businessName(), request.tradeName(), request.email(), request.phone(), request.address(),
-                request.municipalityCode(), request.taxResponsibilities(), request.taxRegime(), roles);
+                request.municipalityCode(), request.ciiuCode(), request.taxResponsibilities(), request.taxRegime(),
+                roles);
     }
 }

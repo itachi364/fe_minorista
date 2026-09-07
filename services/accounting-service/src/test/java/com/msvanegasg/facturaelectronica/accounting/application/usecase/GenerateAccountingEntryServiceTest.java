@@ -98,6 +98,47 @@ class GenerateAccountingEntryServiceTest {
     }
 
     @Test
+    void generatePostsPurchaseEntryWithWithholdingAmountsAndNetPayable() {
+        TestContext context = TestContext.withDefaultAccounts();
+        context.rules.save(AccountingRule.create(
+                UUID.randomUUID(),
+                COMPANY_ID,
+                AccountingEventType.PURCHASE_CONFIRMED,
+                AccountingSourceType.PURCHASE,
+                "Compra con ReteIVA",
+                List.of(
+                        ruleLine("1435", AccountingEntrySide.DEBIT, AccountingAmountType.SUBTOTAL),
+                        ruleLine("2408", AccountingEntrySide.DEBIT, AccountingAmountType.TAX_TOTAL),
+                        ruleLine("2367", AccountingEntrySide.CREDIT, AccountingAmountType.RETEIVA),
+                        ruleLine("2205", AccountingEntrySide.CREDIT, AccountingAmountType.NET_PAYABLE))));
+        GenerateAccountingEntryService service = context.service();
+
+        AccountingEntryResult result = service.generate(new GenerateAccountingEntryCommand(
+                COMPANY_ID,
+                AccountingEventType.PURCHASE_CONFIRMED,
+                AccountingSourceType.PURCHASE,
+                SOURCE_ID,
+                ENTRY_DATE,
+                "Compra con retenciones",
+                THIRDPARTY_ID,
+                money("1000000.00"),
+                money("190000.00"),
+                money("1190000.00"),
+                BigDecimal.ZERO,
+                money("28500.00"),
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                money("28500.00"),
+                money("1161500.00")));
+
+        assertThat(result.debitTotal()).isEqualByComparingTo("1190000.00");
+        assertThat(result.creditTotal()).isEqualByComparingTo("1190000.00");
+        assertThat(result.lines()).extracting("accountCode").containsExactly("1435", "2408", "2367", "2205");
+        assertThat(result.lines().get(2).creditAmount()).isEqualByComparingTo("28500.00");
+        assertThat(result.lines().get(3).creditAmount()).isEqualByComparingTo("1161500.00");
+    }
+
+    @Test
     void generatePostsExpenseEntryAndSkipsZeroTaxLine() {
         TestContext context = TestContext.withDefaultAccounts();
         context.rules.save(expenseRule(COMPANY_ID));
@@ -429,6 +470,7 @@ class GenerateAccountingEntryServiceTest {
             save(Account.create(UUID.randomUUID(), companyId, "1105", "Caja", null));
             save(Account.create(UUID.randomUUID(), companyId, "1435", "Inventarios", null));
             save(Account.create(UUID.randomUUID(), companyId, "2205", "Proveedores nacionales", null));
+            save(Account.create(UUID.randomUUID(), companyId, "2367", "Impuesto a las ventas retenido", null));
             save(Account.create(UUID.randomUUID(), companyId, "2408", "Impuesto sobre las ventas por pagar", null));
             save(Account.create(UUID.randomUUID(), companyId, "4135", "Comercio al por mayor y al por menor", null));
             save(Account.create(UUID.randomUUID(), companyId, "5105", "Gastos de personal", null));

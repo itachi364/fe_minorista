@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +34,10 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsPaya
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsPayableResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsReceivablePaymentResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountsReceivableResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.ThirdPartyFiscalProfileCommand;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCalculationItemResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCalculationResult;
+import com.msvanegasg.facturaelectronica.accounting.application.port.in.CalculateWithholdingsUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.ExpenseQuery;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.ExpenseResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FinancialStatementGroupResult;
@@ -60,6 +65,8 @@ import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountsPayable
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountsReceivableStatus;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.ExpenseStatus;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.PaymentCondition;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingDecision;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingType;
 
 @ExtendWith(MockitoExtension.class)
 class AccountingControllerOperationsTest {
@@ -86,6 +93,8 @@ class AccountingControllerOperationsTest {
     @Mock
     private GenerateAccountingEntryUseCase accountingEntryUseCase;
     @Mock
+    private CalculateWithholdingsUseCase calculateWithholdingsUseCase;
+    @Mock
     private QueryAccountingBooksUseCase accountingBooksUseCase;
     @Mock
     private ManageExpenseUseCase expenseUseCase;
@@ -97,8 +106,9 @@ class AccountingControllerOperationsTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(new AccountingController(setupUseCase, configureAccountingUseCase,
-                chartOfAccountsUseCase, accountingRulesUseCase, accountingReadinessUseCase, accountingEntryUseCase, accountingBooksUseCase, expenseUseCase,
-                accountsPayableUseCase, accountsReceivableUseCase)).build();
+                chartOfAccountsUseCase, accountingRulesUseCase, accountingReadinessUseCase, accountingEntryUseCase,
+                calculateWithholdingsUseCase, accountingBooksUseCase, expenseUseCase, accountsPayableUseCase,
+                accountsReceivableUseCase)).build();
     }
 
     @Test
@@ -246,6 +256,54 @@ class AccountingControllerOperationsTest {
                 .andExpect(jsonPath("$.accountingRuleId").value(ruleId.toString()))
                 .andExpect(jsonPath("$.checkedAccountCodes[1]").value("4135"))
                 .andExpect(jsonPath("$.missingItems[0].code").value("ACCOUNT_NOT_ACTIVE"));
+    }
+
+    @Test
+    void calculatesWithholdings() throws Exception {
+        when(calculateWithholdingsUseCase.calculate(any())).thenReturn(new WithholdingCalculationResult(COMPANY_ID,
+                PAYABLE_ID,
+                new ThirdPartyFiscalProfileCommand(PAYABLE_ID, "SIMPLE", Set.of("O-47"), "11001", "6201", true),
+                List.of(new WithholdingCalculationItemResult(WithholdingType.RETEIVA, "PURCHASE_GENERAL",
+                        money("190000.00"), new BigDecimal("0.150000"), money("28500.00"),
+                        "CO-DIAN-2026-RETEIVA-SIMPLE", WithholdingDecision.APPLIED, "Regla fiscal aplicada.")),
+                money("1190000.00"), money("190000.00"), money("28500.00"), money("1161500.00")));
+
+        mockMvc.perform(post("/api/v1/fiscal-calculations/withholdings")
+                .header("X-Company-Id", COMPANY_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "operationType": "PURCHASE",
+                          "thirdPartyId": "%s",
+                          "conceptCode": "PURCHASE_GENERAL",
+                          "operationDate": "2026-09-07",
+                          "taxableBaseAmount": 1000000.00,
+                          "taxAmount": 190000.00,
+                          "companyProfile": {
+                            "taxRegime": "ORDINARIO",
+                            "rutResponsibilities": ["O-13", "O-23"],
+                            "vatResponsible": true,
+                            "withholdingAgent": true,
+                            "largeTaxpayer": false,
+                            "selfWithholding": false,
+                            "simpleRegime": false,
+                            "icaMunicipalityCode": "11001",
+                            "ciiuCodes": ["6201"]
+                          },
+                          "thirdPartyProfile": {
+                            "taxRegime": "SIMPLE",
+                            "taxResponsibilities": ["O-47"],
+                            "municipalityCode": "11001",
+                            "ciiuCode": "6201",
+                            "active": true
+                          }
+                        }
+                        """.formatted(PAYABLE_ID)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].withholdingType").value("RETEIVA"))
+                .andExpect(jsonPath("$.items[0].amount").value(28500.00))
+                .andExpect(jsonPath("$.withholdingTotal").value(28500.00))
+                .andExpect(jsonPath("$.netPayable").value(1161500.00));
     }
 
     @Test

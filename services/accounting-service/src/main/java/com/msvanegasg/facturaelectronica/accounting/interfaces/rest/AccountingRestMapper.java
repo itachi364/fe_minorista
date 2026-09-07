@@ -17,6 +17,8 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingRu
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingReadinessMissingItemResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingReadinessResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountingSetupResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.CalculateWithholdingsCommand;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.CompanyTaxProfileCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountsPayableCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateAccountsReceivableCommand;
@@ -34,6 +36,9 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.LedgerAccoun
 import com.msvanegasg.facturaelectronica.accounting.application.dto.LedgerBookResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.RegisterPayablePaymentCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.RegisterReceivablePaymentCommand;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.ThirdPartyFiscalProfileCommand;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCalculationItemResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCalculationResult;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountsPayablePaymentResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountsReceivablePaymentResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.AccountsReceivableRequest;
@@ -64,6 +69,10 @@ import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.LedgerAc
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.LedgerBookResponse;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.PayablePaymentRequest;
 import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.ReceivablePaymentRequest;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.ThirdPartyFiscalProfileResponse;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.WithholdingCalculationItemResponse;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.WithholdingCalculationRequest;
+import com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto.WithholdingCalculationResponse;
 
 public final class AccountingRestMapper {
 
@@ -101,7 +110,30 @@ public final class AccountingRestMapper {
                 request.thirdpartyId(),
                 request.subtotal(),
                 request.taxTotal(),
-                request.total());
+                request.total(),
+                valueOr(request.retefuente(), BigDecimal.ZERO),
+                valueOr(request.reteiva(), BigDecimal.ZERO),
+                valueOr(request.reteica(), BigDecimal.ZERO),
+                valueOr(request.selfWithholding(), BigDecimal.ZERO),
+                valueOr(request.withholdingTotal(), BigDecimal.ZERO),
+                valueOr(request.netPayable(), request.total()));
+    }
+
+    public static CalculateWithholdingsCommand toCommand(UUID companyId, WithholdingCalculationRequest request) {
+        return new CalculateWithholdingsCommand(companyId, request.operationType(), request.thirdPartyId(),
+                request.conceptCode(), request.operationDate(), request.taxableBaseAmount(), request.taxAmount(),
+                request.municipalityCode(), request.sourceType(), request.sourceId(),
+                new CompanyTaxProfileCommand(request.companyProfile().taxRegime(),
+                        request.companyProfile().rutResponsibilities(), request.companyProfile().vatResponsible(),
+                        request.companyProfile().withholdingAgent(), request.companyProfile().largeTaxpayer(),
+                        request.companyProfile().selfWithholding(), request.companyProfile().simpleRegime(),
+                        request.companyProfile().icaMunicipalityCode(), request.companyProfile().ciiuCodes()),
+                request.thirdPartyProfile() == null ? null
+                        : new ThirdPartyFiscalProfileCommand(request.thirdPartyProfile().thirdPartyId(),
+                                request.thirdPartyProfile().taxRegime(),
+                                request.thirdPartyProfile().taxResponsibilities(),
+                                request.thirdPartyProfile().municipalityCode(),
+                                request.thirdPartyProfile().ciiuCode(), request.thirdPartyProfile().active()));
     }
 
     public static CreateExpenseCommand toCommand(UUID companyId, ExpenseRequest request, String idempotencyKey) {
@@ -200,6 +232,13 @@ public final class AccountingRestMapper {
                 result.debitTotal(),
                 result.creditTotal(),
                 result.lines().stream().map(AccountingRestMapper::toResponse).toList());
+    }
+
+    public static WithholdingCalculationResponse toResponse(WithholdingCalculationResult result) {
+        return new WithholdingCalculationResponse(result.companyId(), result.thirdPartyId(),
+                toResponse(result.thirdPartyFiscalSnapshot()),
+                result.items().stream().map(AccountingRestMapper::toResponse).toList(),
+                result.grossAmount(), result.taxAmount(), result.withholdingTotal(), result.netPayable());
     }
 
     public static ExpenseResponse toResponse(ExpenseResult result) {
@@ -350,6 +389,17 @@ public final class AccountingRestMapper {
 
     private static FinancialStatementGroupResponse toResponse(FinancialStatementGroupResult result) {
         return new FinancialStatementGroupResponse(result.code(), result.label(), result.total());
+    }
+
+    private static WithholdingCalculationItemResponse toResponse(WithholdingCalculationItemResult result) {
+        return new WithholdingCalculationItemResponse(result.withholdingType(), result.conceptCode(),
+                result.baseAmount(), result.rate(), result.amount(), result.ruleVersion(), result.decision(),
+                result.reason());
+    }
+
+    private static ThirdPartyFiscalProfileResponse toResponse(ThirdPartyFiscalProfileCommand result) {
+        return new ThirdPartyFiscalProfileResponse(result.thirdPartyId(), result.taxRegime(),
+                result.taxResponsibilities(), result.municipalityCode(), result.ciiuCode(), result.active());
     }
 
     private static BigDecimal valueOr(BigDecimal value, BigDecimal fallback) {

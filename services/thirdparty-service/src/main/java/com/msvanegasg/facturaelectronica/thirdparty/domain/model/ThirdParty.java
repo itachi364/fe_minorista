@@ -15,6 +15,7 @@ public final class ThirdParty {
     private static final int MAX_PHONE_LENGTH = 50;
     private static final int MAX_ADDRESS_LENGTH = 250;
     private static final int MAX_MUNICIPALITY_CODE_LENGTH = 20;
+    private static final int MAX_CIIU_CODE_LENGTH = 10;
     private static final String SIMPLE_NATURAL_CUSTOMER_RESPONSIBILITY = "R-99-PN";
 
     private final UUID id;
@@ -30,6 +31,7 @@ public final class ThirdParty {
     private final String phone;
     private final String address;
     private final String municipalityCode;
+    private final String ciiuCode;
     private final Set<String> taxResponsibilities;
     private final TaxRegime taxRegime;
     private final Set<ThirdPartyRole> roles;
@@ -38,7 +40,8 @@ public final class ThirdParty {
     private ThirdParty(UUID id, UUID companyId, PersonType personType, Integer identificationTypeCode,
             String identificationNumber, Integer verificationDigit, String fullName, String businessName,
             String tradeName, String email, String phone, String address, String municipalityCode,
-            Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles, boolean active) {
+            String ciiuCode, Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles,
+            boolean active) {
         this.id = id;
         this.companyId = companyId;
         this.personType = personType;
@@ -52,6 +55,7 @@ public final class ThirdParty {
         this.phone = phone;
         this.address = address;
         this.municipalityCode = municipalityCode;
+        this.ciiuCode = ciiuCode;
         this.taxResponsibilities = taxResponsibilities;
         this.taxRegime = taxRegime;
         this.roles = roles;
@@ -67,9 +71,27 @@ public final class ThirdParty {
                 roles, true);
     }
 
+    public static ThirdParty create(UUID companyId, PersonType personType, Integer identificationTypeCode,
+            String identificationNumber, String fullName, String businessName, String tradeName, String email,
+            String phone, String address, String municipalityCode, String ciiuCode,
+            Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles) {
+        return restore(null, companyId, personType, identificationTypeCode, identificationNumber, null, fullName,
+                businessName, tradeName, email, phone, address, municipalityCode, ciiuCode, taxResponsibilities,
+                taxRegime, roles, true);
+    }
+
     public static ThirdParty restore(UUID id, UUID companyId, PersonType personType, Integer identificationTypeCode,
             String identificationNumber, Integer verificationDigit, String fullName, String businessName,
             String tradeName, String email, String phone, String address, String municipalityCode,
+            Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles, boolean active) {
+        return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
+                fullName, businessName, tradeName, email, phone, address, municipalityCode, null, taxResponsibilities,
+                taxRegime, roles, active);
+    }
+
+    public static ThirdParty restore(UUID id, UUID companyId, PersonType personType, Integer identificationTypeCode,
+            String identificationNumber, Integer verificationDigit, String fullName, String businessName,
+            String tradeName, String email, String phone, String address, String municipalityCode, String ciiuCode,
             Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles, boolean active) {
         UUID requiredCompanyId = Objects.requireNonNull(companyId, "companyId is required");
         PersonType requiredPersonType = Objects.requireNonNull(personType, "personType is required");
@@ -98,7 +120,8 @@ public final class ThirdParty {
                         "phone"),
                 normalizeOptional(address, MAX_ADDRESS_LENGTH, "address"), normalizeOptional(municipalityCode,
                         MAX_MUNICIPALITY_CODE_LENGTH, "municipalityCode"),
-                normalizedTaxResponsibilities, normalizedTaxRegime, requiredRoles, active);
+                normalizeOptional(ciiuCode, MAX_CIIU_CODE_LENGTH, "ciiuCode"), normalizedTaxResponsibilities,
+                normalizedTaxRegime, requiredRoles, active);
     }
 
     public ThirdParty update(PersonType personType, String fullName, String businessName, String tradeName,
@@ -109,16 +132,24 @@ public final class ThirdParty {
                 taxRegime, roles, active);
     }
 
+    public ThirdParty update(PersonType personType, String fullName, String businessName, String tradeName,
+            String email, String phone, String address, String municipalityCode, String ciiuCode,
+            Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles) {
+        return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
+                fullName, businessName, tradeName, email, phone, address, municipalityCode, ciiuCode,
+                taxResponsibilities, taxRegime, roles, active);
+    }
+
     public ThirdParty activate() {
         return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
-                fullName, businessName, tradeName, email, phone, address, municipalityCode, taxResponsibilities,
-                taxRegime, roles, true);
+                fullName, businessName, tradeName, email, phone, address, municipalityCode, ciiuCode,
+                taxResponsibilities, taxRegime, roles, true);
     }
 
     public ThirdParty deactivate() {
         return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
-                fullName, businessName, tradeName, email, phone, address, municipalityCode, taxResponsibilities,
-                taxRegime, roles, false);
+                fullName, businessName, tradeName, email, phone, address, municipalityCode, ciiuCode,
+                taxResponsibilities, taxRegime, roles, false);
     }
 
     public UUID id() {
@@ -171,6 +202,10 @@ public final class ThirdParty {
 
     public String municipalityCode() {
         return municipalityCode;
+    }
+
+    public String ciiuCode() {
+        return ciiuCode;
     }
 
     public Set<String> taxResponsibilities() {

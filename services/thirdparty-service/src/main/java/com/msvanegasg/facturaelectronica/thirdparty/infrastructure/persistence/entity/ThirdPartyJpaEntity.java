@@ -76,6 +76,9 @@ public class ThirdPartyJpaEntity {
     @Column(name = "municipality_code", length = 20)
     private String municipalityCode;
 
+    @Column(name = "ciiu_code", length = 10)
+    private String ciiuCode;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "third_party_tax_responsibility", joinColumns = @JoinColumn(name = "third_party_id"))
     @Column(name = "tax_responsibility_code", nullable = false, length = 20)
