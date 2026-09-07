@@ -45,6 +45,7 @@ public final class NumberingResolution {
         requireNonNull(id, "id");
         requireNonNull(companyId, "companyId");
         requireNonNull(documentType, "documentType");
+        validateNumberingDocumentType(documentType);
         requireNonBlank(resolutionNumber, "resolutionNumber");
         requireNonNull(validFrom, "validFrom");
         requireNonNull(validTo, "validTo");
@@ -61,6 +62,7 @@ public final class NumberingResolution {
         requireNonNull(id, "id");
         requireNonNull(companyId, "companyId");
         requireNonNull(documentType, "documentType");
+        validateNumberingDocumentType(documentType);
         requireNonBlank(resolutionNumber, "resolutionNumber");
         requireNonNull(validFrom, "validFrom");
         requireNonNull(validTo, "validTo");
@@ -143,6 +145,12 @@ public final class NumberingResolution {
     private static void validateDates(LocalDate validFrom, LocalDate validTo) {
         if (validTo.isBefore(validFrom)) {
             throw new IllegalArgumentException("validTo must be greater than or equal to validFrom");
+        }
+    }
+
+    private static void validateNumberingDocumentType(ElectronicDocumentType documentType) {
+        if (!documentType.requiresDianConfiguration()) {
+            throw new IllegalArgumentException("documentType must be an electronic fiscal document type");
         }
     }
 

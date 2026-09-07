@@ -87,7 +87,8 @@ class DianProviderSubmissionServiceTest {
     @Test
     void rejectsRealModeWithoutActiveConfiguration() {
         DianCompanyConfiguration inactive = new DianCompanyConfiguration(UUID.randomUUID(), COMPANY_ID,
-                DianConnectionMode.REAL, DianEnvironment.TEST, "software-id", "pin-ref", "key-ref", "cert-ref",
+                DianConnectionMode.REAL, DianEnvironment.TEST, "software-id", "pin-ref", "key-ref",
+                companySecretRef(COMPANY_ID, "dian/certificate"),
                 "cert", "fingerprint", NOW.plusSeconds(86_400), "https://dian.example.test", "test-set", true,
                 DianConfigurationStatus.READY_FOR_TEST, DianTestStatus.SUCCESS, NOW, "ok", UUID.randomUUID(), NOW,
                 NOW);
@@ -98,6 +99,23 @@ class DianProviderSubmissionServiceTest {
         assertThatThrownBy(() -> service.submit(command("real-2")))
                 .isInstanceOf(DianConfigurationIncompleteException.class)
                 .hasMessageContaining("no esta activa");
+    }
+
+    @Test
+    void rejectsRealSubmissionWhenCertificateRefDoesNotBelongToDocumentCompany() {
+        UUID otherCompanyId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        DianCompanyConfiguration configuration = new DianCompanyConfiguration(UUID.randomUUID(), COMPANY_ID,
+                DianConnectionMode.REAL, DianEnvironment.TEST, "software-id", "pin-ref", "key-ref",
+                companySecretRef(otherCompanyId, "dian/certificate"), "cert", "fingerprint", NOW.plusSeconds(86_400),
+                "https://dian.example.test", "test-set", true, DianConfigurationStatus.ACTIVE,
+                DianTestStatus.SUCCESS, NOW, "ok", UUID.randomUUID(), NOW, NOW);
+        DianProviderSubmissionService service = service(new InMemorySubmissionRepository(),
+                new InMemoryConfigurationRepository(configuration), new InMemoryTraceRepository(),
+                properties("real", ProviderSubmissionStatus.ACCEPTED));
+
+        assertThatThrownBy(() -> service.submit(command("real-wrong-cert")))
+                .isInstanceOf(DianConfigurationIncompleteException.class)
+                .hasMessageContaining("no pertenece a la empresa");
     }
 
     private static DianProviderSubmissionService service(InMemorySubmissionRepository submissions,
@@ -111,7 +129,8 @@ class DianProviderSubmissionServiceTest {
                         "sha256:test", content == null ? 0L : (long) content.length(), createdAt, null);
         DianTechnicalArtifactPort artifacts = () -> {
         };
-        return new DianProviderSubmissionService(submissions, configurations, artifacts,
+        return new DianProviderSubmissionService(submissions, configurations,
+                (companyId, name, value) -> companySecretRef(companyId, name), artifacts,
                 new DefaultFiscalDocumentXmlBuilderAdapter(), new Sha256DianIdentifierCalculationAdapter(),
                 new ReferenceDianSignatureAdapter(), new BasicDianTechnicalValidationAdapter(idGenerator, clock),
                 new ConfigurableDianTransportAdapter(properties, org.springframework.web.client.RestClient.builder()),
@@ -125,9 +144,13 @@ class DianProviderSubmissionServiceTest {
 
     private static DianCompanyConfiguration activeRealConfiguration() {
         return new DianCompanyConfiguration(UUID.randomUUID(), COMPANY_ID, DianConnectionMode.REAL, DianEnvironment.TEST,
-                "software-id", "pin-ref", "key-ref", "cert-ref", "cert", "fingerprint", NOW.plusSeconds(86_400),
-                "https://dian.example.test", "test-set", true, DianConfigurationStatus.ACTIVE, DianTestStatus.SUCCESS,
-                NOW, "ok", UUID.randomUUID(), NOW, NOW);
+                "software-id", "pin-ref", "key-ref", companySecretRef(COMPANY_ID, "dian/certificate"), "cert",
+                "fingerprint", NOW.plusSeconds(86_400), "https://dian.example.test", "test-set", true,
+                DianConfigurationStatus.ACTIVE, DianTestStatus.SUCCESS, NOW, "ok", UUID.randomUUID(), NOW, NOW);
+    }
+
+    private static String companySecretRef(UUID companyId, String secretName) {
+        return "/facturaelectronica/test/companies/" + companyId + "/" + secretName;
     }
 
     private static DianProviderProperties properties(String mode, ProviderSubmissionStatus realStatus) {

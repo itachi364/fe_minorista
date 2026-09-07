@@ -24,6 +24,7 @@ import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.Fisca
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.FiscalDocumentXmlBuilderPort;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.ProviderSubmissionRepositoryPort;
+import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.SecretVaultPort;
 import com.msvanegasg.facturaelectronica.dianprovider.domain.model.DianArtifactType;
 import com.msvanegasg.facturaelectronica.dianprovider.domain.model.DianCompanyConfiguration;
 import com.msvanegasg.facturaelectronica.dianprovider.domain.model.DianConfigurationStatus;
@@ -39,6 +40,7 @@ public class DianProviderSubmissionService implements SubmitProviderDocumentUseC
 
     private final ProviderSubmissionRepositoryPort repository;
     private final DianConfigurationRepositoryPort configurationRepository;
+    private final SecretVaultPort secretVault;
     private final DianTechnicalArtifactPort technicalArtifacts;
     private final FiscalDocumentXmlBuilderPort xmlBuilder;
     private final DianIdentifierCalculationPort identifierCalculator;
@@ -52,13 +54,15 @@ public class DianProviderSubmissionService implements SubmitProviderDocumentUseC
     private final DianProviderProperties properties;
 
     public DianProviderSubmissionService(ProviderSubmissionRepositoryPort repository,
-            DianConfigurationRepositoryPort configurationRepository, DianTechnicalArtifactPort technicalArtifacts,
-            FiscalDocumentXmlBuilderPort xmlBuilder, DianIdentifierCalculationPort identifierCalculator,
-            DianSignaturePort signature, DianTechnicalValidationPort technicalValidation, DianTransportPort transport,
+            DianConfigurationRepositoryPort configurationRepository, SecretVaultPort secretVault,
+            DianTechnicalArtifactPort technicalArtifacts, FiscalDocumentXmlBuilderPort xmlBuilder,
+            DianIdentifierCalculationPort identifierCalculator, DianSignaturePort signature,
+            DianTechnicalValidationPort technicalValidation, DianTransportPort transport,
             FiscalArtifactStoragePort artifactStorage, DianSubmissionTraceRepositoryPort traceRepository,
             IdGeneratorPort idGenerator, ClockPort clock, DianProviderProperties properties) {
         this.repository = repository;
         this.configurationRepository = configurationRepository;
+        this.secretVault = secretVault;
         this.technicalArtifacts = technicalArtifacts;
         this.xmlBuilder = xmlBuilder;
         this.identifierCalculator = identifierCalculator;
@@ -216,6 +220,11 @@ public class DianProviderSubmissionService implements SubmitProviderDocumentUseC
         }
         if (!configuration.isRealModeComplete(clock.now())) {
             throw new DianConfigurationIncompleteException("La configuracion DIAN real esta incompleta.");
+        }
+        if (!secretVault.isCompanySecretRef(configuration.companyId(), "dian/certificate",
+                configuration.certificateSecretRef())) {
+            throw new DianConfigurationIncompleteException(
+                    "El certificado DIAN configurado no pertenece a la empresa del documento.");
         }
     }
 

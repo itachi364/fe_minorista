@@ -10,8 +10,8 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
   const lastSubmittedScanRef = useRef({ value: '', at: 0 });
   const serviceLines = form.items.filter((item) => item.productId && item.itemType === 'SERVICE');
   const totals = calculateSaleTotals(form.items);
-  const saleDocumentOptions = fiscalDocumentTypeOptions.filter((option) => ['ELECTRONIC_INVOICE', 'ELECTRONIC_POS'].includes(option.value));
-  const defaultDocumentType = fiscalPolicy?.defaultSaleDocumentType || 'ELECTRONIC_INVOICE';
+  const saleDocumentOptions = fiscalDocumentTypeOptions.filter((option) => ['ELECTRONIC_INVOICE', 'ELECTRONIC_POS', 'NON_FISCAL_SALE'].includes(option.value));
+  const defaultDocumentType = fiscalPolicy?.defaultSaleDocumentType || 'NON_FISCAL_SALE';
   const effectiveDocumentType = documentOverride?.documentType || defaultDocumentType;
   const canRequestOverride = Boolean(onRequestDocumentOverride) && fiscalPolicy?.allowDocumentTypeOverride !== false && saleDocumentOptions.length > 1;
 
@@ -134,7 +134,7 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
           }
         }} />
         <div className={saleId || documentOverride ? 'sale-state ready' : 'sale-state'}>
-          <span>Documento fiscal: {labelFiscalDocument(effectiveDocumentType, saleDocumentOptions)}</span>
+          <span>Cierre: {labelFiscalDocument(effectiveDocumentType, saleDocumentOptions)}</span>
           <small>{documentOverride ? 'Cambio autorizado solo para esta venta.' : 'Agrega productos y cierra la venta en un solo paso.'}</small>
           {saleId && <code>{saleId}</code>}
         </div>
@@ -161,7 +161,7 @@ export function SaleForm({ form, setForm, saleId, customerSearch, setCustomerSea
             Promise.resolve(onLoadAuthorizers?.()).catch(() => undefined);
             setOverrideModalOpen(true);
           }} type="button">
-            Solicitar cambio de documento fiscal
+            Solicitar cambio de cierre
           </button>
         )}
         <button className="primary" disabled={busy} type="submit">Cerrar venta</button>
@@ -288,11 +288,11 @@ function SaleDocumentOverrideModal({ form, setForm, documentOptions, authorizerO
     });
   }
 
-  return <ActionModal title="Solicitar cambio de documento fiscal" onClose={onClose} size="medium">
+  return <ActionModal title="Solicitar cambio de cierre" onClose={onClose} size="medium">
     <form className="modal-section" onSubmit={submit}>
       <p className="hint">El cambio aplica solo a esta venta y requiere autorizacion operacional con PIN de administrador.</p>
       <div className="modal-form-grid">
-        <SelectField label="Documento fiscal destino" value={selectedDocumentType} onChange={(value) => setForm({ ...form, documentType: value })} options={availableDocumentOptions} />
+        <SelectField label="Modo de cierre destino" value={selectedDocumentType} onChange={(value) => setForm({ ...form, documentType: value })} options={availableDocumentOptions} />
         <Field label="Usuario autorizador" value={form.authorizedBySearch || ''} onChange={updateAuthorizer} list="sale-authorizer-options" placeholder="Opcional si autoriza el usuario actual" autoComplete="off" />
         <datalist id="sale-authorizer-options">
           {authorizers.map((authorizer) => (
@@ -349,6 +349,7 @@ function labelFiscalDocument(value, options) {
   const labels = {
     ELECTRONIC_INVOICE: 'Factura electronica de venta',
     ELECTRONIC_POS: 'POS electronico',
+    NON_FISCAL_SALE: 'Venta interna no fiscal',
   };
   return labels[value] || value || 'Sin definir';
 }

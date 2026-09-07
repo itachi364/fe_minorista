@@ -4315,28 +4315,64 @@
   - Validacion propuesta:
     - Tests con respuestas SOAP aceptada, rechazada, en proceso y malformada.
 
-- [ ] TASK-275: Cambiar Configuracion DIAN a carga segura de certificado p12/pfx
-  - Estado: PENDING.
+- [x] TASK-275: Cambiar Configuracion DIAN a carga segura de certificado p12/pfx
+  - Estado: DONE.
   - Requisitos: RF-063, RF-159, RF-281.
-  - Acceptance criteria: AC-170, AC-220, AC-394, AC-395.
+  - Acceptance criteria: AC-170, AC-220, AC-394, AC-395, AC-397.
   - Descripcion: Reemplazar textarea de certificado por carga de archivo `.p12`/`.pfx` en UI/API, validando password, alias, fingerprint y vencimiento, y almacenando solo referencia segura.
   - Dependencias:
     - TASK-147.
     - TASK-152.
     - TASK-156.
-  - Archivos previstos:
+  - Archivos implementados:
     - `apps/facturaelectronica-web/src/features/dian/DianConfigurationPanel.jsx`
-    - `services/bff-service/**`
+    - `apps/facturaelectronica-web/src/App.jsx`
+    - `apps/facturaelectronica-web/src/utils/formStateFactory.js`
     - `services/dian-provider-service/**`
     - `services/dian-provider-service/src/test/**`
   - Criterios:
     - UI acepta un solo archivo `.p12` o `.pfx`.
     - Backend valida estructura PKCS#12 y password.
     - Respuesta solo retorna `certificateConfigured`, alias, fingerprint y vencimiento.
-    - Campo JSON legacy `certificatePayload` queda deprecado y no visible en UI.
+    - Campo JSON legacy `certificatePayload` queda retirado del DTO de entrada y no visible en UI.
+    - La configuracion y emision DIAN real validan que la referencia del certificado pertenezca al `company_id` del documento; no existe fallback a certificado ROOT/global ni de otra empresa.
+  - Implementacion:
+    - La SPA usa input de archivo unico `.p12/.pfx` y envia `multipart/form-data`.
+    - `dian-provider-service` deriva alias, huella SHA-256 y vencimiento desde el PKCS#12.
+    - El secreto del certificado se guarda con referencia empresarial y se bloquea cualquier referencia ajena al `companyId`.
   - Validacion propuesta:
     - Tests frontend de accept `.p12,.pfx` y ausencia de textarea.
-    - Tests backend de archivo valido, password invalido, extension invalida y certificado vencido.
+    - Tests backend de archivo valido, password invalido, extension invalida, certificado vencido y aislamiento por empresa.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services\dian-provider-service -am test`: BUILD SUCCESS, 20 tests OK.
+    - `npm test -- App.test.jsx`: 33 tests OK.
+    - `npm run build`: build Vite OK.
+
+- [x] TASK-282: Bloquear resoluciones/emision electronica sin DIAN lista y permitir venta interna
+  - Estado: DONE.
+  - Requisitos: RF-282, RN-084.
+  - Acceptance criteria: AC-398, AC-399.
+  - Descripcion: Diferenciar venta comercial interna de emision electronica DIAN. Sin configuracion DIAN real propia activa/probada/con certificado, la empresa no puede crear/activar resoluciones ni emitir documentos electronicos; puede cerrar ventas internas con impuestos calculados por producto y efectos de inventario/contabilidad.
+  - Archivos implementados:
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/application/usecase/SaleManagementService.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/application/usecase/CreateNumberingResolutionService.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/application/port/out/DianConfigurationReadinessPort.java`
+    - `services/billing-service/src/main/java/com/msvanegasg/facturaelectronica/billing/infrastructure/client/DianConfigurationReadinessHttpAdapter.java`
+    - `services/billing-service/src/main/resources/db/migration/V013__add_sale_commercial_effect_tracking.sql`
+    - `services/catalog-service/src/main/resources/db/migration/V009__seed_non_fiscal_sale_catalog.sql`
+    - `apps/facturaelectronica-web/src/features/fiscal/FiscalPolicyForm.jsx`
+    - `apps/facturaelectronica-web/src/features/sales/SaleForm.jsx`
+  - Criterios:
+    - `NON_FISCAL_SALE` confirma venta sin DIAN, sin CUFE/CUDE ni QR DIAN.
+    - Resoluciones electronicas fallan cerradas si DIAN no esta en modo `REAL`, `ACTIVE`, prueba `SUCCESS` y certificado configurado para la empresa.
+    - `ELECTRONIC_INVOICE` y `ELECTRONIC_POS` no se envian a DIAN si la readiness empresarial no esta completa.
+  - Context7 evidence:
+    - Spring Boot 3.5.9: `RestClient`/`RestClient.Builder` para cliente HTTP interno con base URL por adaptador.
+    - React: selects controlados y renderizado derivado de props/estado para opciones de formulario.
+  - Validacion propuesta:
+    - Tests unitarios de use case para venta interna y bloqueo DIAN.
+    - Tests de adaptador HTTP readiness DIAN.
+    - Tests frontend de politica/venta con `NON_FISCAL_SALE`.
 
 - [ ] TASK-276: Usar caja de herramientas DIAN como fixtures tecnicos sanitizados
   - Estado: PENDING.
@@ -7146,6 +7182,114 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - `docker compose -f docker-compose.yml -f docker-compose.observability.yml config --quiet`: compose valido.
   - Alcance excluido:
     - Alertas especificas de DIAN real se mantienen fuera de esta implementacion por decision de no tocar DIAN en este bloque.
+
+- [x] TASK-281: Ajustar presets comerciales de licencia ROOT
+  - Estado: DONE.
+  - Requisitos: RF-283.
+  - Acceptance criteria: AC-400, AC-401, AC-402, AC-403.
+  - Descripcion: Actualizar el modulo ROOT de licencias para retirar `Basico`, seleccionar modulos automaticamente con `Completo` y `POS y facturacion`, y permitir seleccion manual solo con `Personalizado`.
+  - Archivos implementados:
+    - `apps/facturaelectronica-web/src/data/licenseModules.js`
+    - `apps/facturaelectronica-web/src/features/licenses/LicenseAdminPanel.jsx`
+    - `apps/facturaelectronica-web/src/App.test.jsx`
+  - Criterios:
+    - `Completo` selecciona todos los modulos licenciables.
+    - `POS y facturacion` selecciona solo empresa/configuracion, inventario, ventas/facturacion electronica, reportes, clientes/proveedores, contabilidad y usuarios/roles.
+    - `Personalizado` permite marcar y desmarcar modulos.
+    - `Basico` no aparece en el selector.
+  - Validacion propuesta:
+    - `npm test -- App.test.jsx`
+    - `npm run build`
+  - Implementacion:
+    - Se centralizaron opciones y presets en `licenseModules.js`.
+    - `LicenseAdminPanel` deriva `enabledModules` al cambiar `planCode`.
+    - Los checks quedan deshabilitados para presets `FULL` y `POS`, y habilitados para `CUSTOM`.
+  - Validacion ejecutada:
+    - `npm test -- App.test.jsx`: 34 tests OK.
+    - `npm run build`: build Vite OK.
+
+- [x] TASK-289: Documentar modulo de contadores, reglas fiscales y notificaciones
+  - Estado: DONE.
+  - Requisitos: RF-284, RF-285, RF-286, RF-287, RF-288, RF-289, RF-290, RF-291, RF-292, RF-293, RF-294, RF-295, RF-296, RF-297, RF-298, RF-299, RF-300.
+  - Acceptance criteria: AC-404, AC-405, AC-406, AC-407, AC-408, AC-409, AC-410, AC-411, AC-412, AC-413, AC-414, AC-415, AC-416, AC-417, AC-418, AC-419.
+  - Descripcion: Analizar y documentar el modulo de contadores, reutilizando el perfil fiscal existente de terceros, agregando CIIU, definiendo motor de retenciones versionado, contrasenas temporales para administradores/contadores y notificaciones por correo.
+  - Archivos documentados:
+    - `specs/requirements.md`
+    - `specs/acceptance-criteria.md`
+    - `specs/design.md`
+    - `specs/api-contract.md`
+    - `specs/database-design.md`
+    - `specs/data-model.md`
+    - `specs/data-dictionary.md`
+    - `specs/tasks.md`
+  - Criterios:
+    - El contador queda definido como actor multiempresa limitado por asociacion activa.
+    - Una empresa solo puede tener un contador activo.
+    - Terceros conserva responsabilidades fiscales, regimen y municipio como fuente fiscal del proveedor, y se extiende con CIIU.
+    - Retenciones quedan modeladas como reglas versionadas, no como condicionales de UI.
+    - Correos quedan desacoplados mediante puerto de notificaciones.
+  - Validacion ejecutada:
+    - Documentacion SDD actualizada sin generar codigo.
+
+- [ ] TASK-290: Implementar perfiles de contador y asociaciones contador-empresa
+  - Estado: TODO.
+  - Requisitos: RF-284, RF-285, RF-286, RF-287.
+  - Acceptance criteria: AC-404, AC-405, AC-406, AC-408.
+  - Descripcion: Crear perfil de contador, endpoints ROOT de asociacion/reemplazo, restricciones de unicidad activa por empresa y validaciones BFF/backend para alcance de lectura.
+  - Dependencias:
+    - TASK-289.
+    - TASK-073.
+    - TASK-122.
+
+- [ ] TASK-291: Implementar portal contador y reportes por empresa asociada
+  - Estado: TODO.
+  - Requisitos: RF-287, RF-288.
+  - Acceptance criteria: AC-404, AC-407, AC-408.
+  - Descripcion: Crear vista SPA de contador y endpoints de consulta que reutilicen reportes normalizados por empresa vinculada.
+  - Dependencias:
+    - TASK-290.
+    - TASK-234.
+    - TASK-266.
+
+- [ ] TASK-292: Extender terceros con CIIU
+  - Estado: TODO.
+  - Requisitos: RF-292, RF-293.
+  - Acceptance criteria: AC-412.
+  - Descripcion: Agregar `ciiuCode` al contrato, UI, persistencia, validaciones y respuestas de terceros sin duplicar configuracion fiscal de proveedores.
+  - Dependencias:
+    - TASK-047.
+    - TASK-088.
+
+- [ ] TASK-293: Implementar motor versionado de retenciones
+  - Estado: TODO.
+  - Requisitos: RF-294, RF-295, RF-296, RF-297.
+  - Acceptance criteria: AC-413, AC-414, AC-415, AC-416.
+  - Descripcion: Crear reglas fiscales versionadas para retenciones sobre compras, gastos y pagos, usando perfil de empresa y tercero, municipio, CIIU, regimen, responsabilidades, concepto, base y fecha.
+  - Dependencias:
+    - TASK-245.
+    - TASK-252.
+    - TASK-253.
+    - TASK-292.
+
+- [ ] TASK-294: Implementar contrasenas temporales para administradores y contadores
+  - Estado: TODO.
+  - Requisitos: RF-289, RF-290, RF-291.
+  - Acceptance criteria: AC-409, AC-410, AC-411.
+  - Descripcion: Forzar cambio de clave en primer login para usuarios creados por ROOT y emitir evento de credenciales temporales.
+  - Dependencias:
+    - TASK-106.
+    - TASK-263.
+    - TASK-290.
+
+- [ ] TASK-295: Implementar notificaciones por correo
+  - Estado: TODO.
+  - Requisitos: RF-291, RF-298, RF-299, RF-300.
+  - Acceptance criteria: AC-411, AC-417, AC-418, AC-419.
+  - Descripcion: Crear puerto/adaptadores de correo para credenciales temporales, inventario bajo y reportes asincronos listos, con auditoria, reintentos y sanitizacion.
+  - Dependencias:
+    - TASK-146 a TASK-155.
+    - TASK-279.
+    - TASK-294.
 
 Context7 evidence:
 

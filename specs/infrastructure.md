@@ -1850,4 +1850,38 @@ Notas:
 - `STORAGE_S3_COMPATIBLE_ENDPOINT` se reserva para MinIO u otro proveedor compatible en local/staging; en AWS productivo debe usarse S3 nativo salvo decision posterior.
 - La configuracion DIAN real debe seguir siendo por empresa y no convertir a NexoFiscal en proveedor tecnologico de facturacion electronica.
 
+## TASK-289 a TASK-295 infraestructura objetivo
+
+Estado: documentado; pendiente de implementacion.
+
+### Correo y notificaciones
+
+- Local: adaptador de correo `log` o SMTP de pruebas para validar plantillas sin enviar a destinatarios reales.
+- Produccion: SMTP transaccional, AWS SES o proveedor equivalente aprobado, con secretos fuera del repositorio.
+- Los correos de reportes usan `APP_PUBLIC_BASE_URL` y tokens intermediados de descarga.
+- Los correos de credenciales temporales deben incluir vencimiento y obligacion de cambio de clave, no contrasenas permanentes.
+- Los correos de inventario bajo deben usar ventana de deduplicacion por producto/empresa.
+
+Variables objetivo:
+
+```env
+NOTIFICATIONS_EMAIL_ENABLED=false
+NOTIFICATIONS_EMAIL_PROVIDER=log
+NOTIFICATIONS_FROM_ADDRESS=no-reply@nexofiscal.local
+NOTIFICATIONS_RETRY_MAX_ATTEMPTS=3
+NOTIFICATIONS_LOW_STOCK_DEDUP_WINDOW_MINUTES=1440
+SPRING_MAIL_HOST=
+SPRING_MAIL_PORT=587
+SPRING_MAIL_USERNAME=
+SPRING_MAIL_PASSWORD=
+SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
+SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
+```
+
+### Reglas fiscales
+
+- Los catalogos de reglas fiscales deben ser migrables por Flyway y versionados por vigencia.
+- Los parametros municipales o normativos no deben depender de despliegue de frontend.
+- La actualizacion de reglas requiere proceso controlado, pruebas y evidencia de fuente normativa.
+
 <!-- END SDD TASK INFRASTRUCTURE TRACEABILITY -->

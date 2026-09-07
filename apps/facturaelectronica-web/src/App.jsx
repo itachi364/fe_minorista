@@ -80,7 +80,7 @@ import {
 import { buildQuery } from './utils/query.js';
 import { emptyRuntimeCatalogs, loadRuntimeCatalogs } from './utils/runtimeCatalogs.js';
 import { clearStoredSession, loadStoredSession, saveStoredSession, SESSION_TIMEOUT_MS } from './utils/sessionStorage.js';
-import { stepLicenseModules } from './data/licenseModules.js';
+import { modulesForLicensePlan, normalizeLicensePlanCode, stepLicenseModules } from './data/licenseModules.js';
 import { printReceiptWithThermalPrinter } from './utils/thermalPrinter.js';
 
 const PRODUCT_NAME = 'NexoFiscal';
@@ -1111,14 +1111,15 @@ export default function App() {
     if (!licenseResult) {
       return;
     }
+    const planCode = normalizeLicensePlanCode(licenseResult.planCode);
     setLicenseForm({
       companyId: licenseResult.companyId || licenseForm.companyId,
-      planCode: licenseResult.planCode || 'CUSTOM',
+      planCode,
       validFrom: licenseResult.validFrom || '',
       validTo: licenseResult.validTo || '',
       maxUsers: licenseResult.maxUsers ?? '',
       maxMonthlyDocuments: licenseResult.maxMonthlyDocuments ?? '',
-      enabledModules: licenseResult.enabledModules || [],
+      enabledModules: modulesForLicensePlan(planCode, licenseResult.enabledModules || []),
     });
   }
 
@@ -1552,7 +1553,7 @@ export default function App() {
     const result = await requestJson('/api/v1/fiscal-policy', {
       method: 'PUT',
       body: {
-        defaultSaleDocumentType: fiscalPolicyForm.defaultSaleDocumentType || 'ELECTRONIC_INVOICE',
+        defaultSaleDocumentType: fiscalPolicyForm.defaultSaleDocumentType || 'NON_FISCAL_SALE',
         allowDocumentTypeOverride: Boolean(fiscalPolicyForm.allowDocumentTypeOverride),
         requirePinForOverride: Boolean(fiscalPolicyForm.allowDocumentTypeOverride && fiscalPolicyForm.requirePinForOverride),
       },
@@ -1567,7 +1568,7 @@ export default function App() {
     setFiscalPolicy(policy || null);
     setFiscalPolicyForm({
       ...createFiscalPolicyForm(),
-      defaultSaleDocumentType: policy?.defaultSaleDocumentType || 'ELECTRONIC_INVOICE',
+      defaultSaleDocumentType: policy?.defaultSaleDocumentType || 'NON_FISCAL_SALE',
       allowDocumentTypeOverride: policy?.allowDocumentTypeOverride ?? true,
       requirePinForOverride: policy?.requirePinForOverride ?? true,
     });
@@ -1647,11 +1648,6 @@ export default function App() {
       mode: configuration?.mode || 'MOCK',
       environment: configuration?.environment || 'TEST',
       softwareId: configuration?.softwareId || '',
-      certificateAlias: configuration?.certificateAlias || '',
-      certificateFingerprint: configuration?.certificateFingerprint || '',
-      certificateExpiresAt: configuration?.certificateExpiresAt
-        ? toDateTimeLocalValue(new Date(configuration.certificateExpiresAt))
-        : '',
       serviceBaseUrl: configuration?.serviceBaseUrl || '',
       testSetId: configuration?.testSetId || '',
       acceptedResponsibility: Boolean(configuration?.acceptedResponsibility),
@@ -1677,15 +1673,26 @@ export default function App() {
 
   async function saveDianConfiguration() {
     requireCompany();
-    const configuration = await requestJson(`/api/v1/dian-configuration/companies/${activeCompanyId}`, {
+    const payload = {
+      mode: dianConfigurationForm.mode,
+      environment: dianConfigurationForm.environment,
+      softwareId: dianConfigurationForm.softwareId,
+      softwarePin: dianConfigurationForm.softwarePin,
+      technicalKey: dianConfigurationForm.technicalKey,
+      certificatePassword: dianConfigurationForm.certificatePassword,
+      serviceBaseUrl: dianConfigurationForm.serviceBaseUrl,
+      testSetId: dianConfigurationForm.testSetId,
+      acceptedResponsibility: dianConfigurationForm.acceptedResponsibility,
+    };
+    const formData = new FormData();
+    formData.append('configuration', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+    if (dianConfigurationForm.certificateFile) {
+      formData.append('certificateFile', dianConfigurationForm.certificateFile);
+    }
+    const configuration = await requestFormData(`/api/v1/dian-configuration/companies/${activeCompanyId}`, {
       ...context,
       method: 'PUT',
-      body: {
-        ...dianConfigurationForm,
-        certificateExpiresAt: dianConfigurationForm.certificateExpiresAt
-          ? new Date(dianConfigurationForm.certificateExpiresAt).toISOString()
-          : null,
-      },
+      formData,
     });
     setDianConfiguration(configuration);
     hydrateDianConfigurationForm(configuration);
@@ -2760,7 +2767,7 @@ export default function App() {
             <AccountingConfigurationPanel accounts={accountingAccounts} rules={accountingRules} readiness={accountingReadiness} onLoad={() => execute(loadAccountingConfiguration, { successMessage: 'Estado contable actualizado.' })} onInitializeBasicSetup={() => execute(initializeBasicAccountingSetup, { successMessage: 'Plantilla basica completada correctamente.' })} onConfigure={(payload) => execute(() => saveAccountingConfiguration(payload), { successMessage: 'Configuracion contable guardada correctamente.' })} onUpdateAccount={(accountId, payload) => execute(() => updateAccountingAccount(accountId, payload), { successMessage: 'Cuenta contable actualizada correctamente.' })} onDeactivateAccount={(accountId) => execute(() => deactivateAccountingAccount(accountId), { successMessage: 'Cuenta contable inactivada correctamente.' })} onUpdateRule={(ruleId, payload) => execute(() => updateAccountingRule(ruleId, payload), { successMessage: 'Regla contable actualizada correctamente.' })} onDeactivateRule={(ruleId) => execute(() => deactivateAccountingRule(ruleId), { successMessage: 'Regla contable inactivada correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Configuracion contable'])} />
           )}
           {currentStep === 'Ventas' && (
-            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode), { silentRunning: true, silentSuccess: true })} onClose={() => execute(closeSale, { successMessage: 'Venta cerrada correctamente.' })} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} fiscalPolicy={fiscalPolicy} documentOverride={saleDocumentOverride} overrideForm={saleDocumentOverrideForm} setOverrideForm={setSaleDocumentOverrideForm} fiscalDocumentTypeOptions={runtimeCatalogs.fiscalDocumentTypeOptions} authorizerOptions={managedUsers} onLoadAuthorizers={() => loadCompanyUsers('')} onRequestDocumentOverride={(payload) => execute(() => requestSaleDocumentTypeOverride(payload), { successMessage: 'Cambio de documento fiscal autorizado para esta venta.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
+            <SaleForm form={saleForm} setForm={setSaleForm} saleId={saleId} customerSearch={customerSearch} setCustomerSearch={setCustomerSearch} customerOptions={customerOptions} selectedCustomer={selectedCustomer} onSearchCustomers={searchCustomers} onSelectCustomer={selectCustomer} updateItem={updateSaleItem} addItem={addSaleItem} removeItem={removeSaleItem} onScanBarcode={(barcode) => execute(() => scanSaleBarcode(barcode), { silentRunning: true, silentSuccess: true })} onClose={() => execute(closeSale, { successMessage: 'Venta cerrada correctamente.' })} onPrintReceipt={(targetSaleId) => execute(() => openSaleReceipt(targetSaleId))} serviceConsumption={serviceConsumption} onLoadServiceConsumption={(serviceProductId) => execute(() => loadServiceConsumptionSuggestions(serviceProductId))} onUpdateServiceConsumptionQuantity={updateServiceConsumptionQuantity} onUpdateServiceConsumptionReason={updateServiceConsumptionReason} onConfirmServiceConsumption={() => execute(confirmServiceSupplyConsumption)} fiscalPolicy={fiscalPolicy} documentOverride={saleDocumentOverride} overrideForm={saleDocumentOverrideForm} setOverrideForm={setSaleDocumentOverrideForm} fiscalDocumentTypeOptions={runtimeCatalogs.fiscalDocumentTypeOptions} authorizerOptions={managedUsers} onLoadAuthorizers={() => loadCompanyUsers('')} onRequestDocumentOverride={(payload) => execute(() => requestSaleDocumentTypeOverride(payload), { successMessage: 'Cambio de cierre autorizado para esta venta.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Ventas)} paymentOptions={runtimeCatalogs.paymentMethodOptions} walletOptions={runtimeCatalogs.virtualWalletOptions} />
           )}
           {currentStep === 'Registro de Ventas' && (
             <SalesRegistryPanel sales={salesList} selectedSale={selectedSaleDetail} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} onViewDetail={(sale) => execute(() => openSaleDetail(sale), { silentNullSuccess: true })} onCloseDetail={() => setSelectedSaleDetail(null)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules['Registro de Ventas'])} paymentOptions={runtimeCatalogs.paymentMethodOptions} />

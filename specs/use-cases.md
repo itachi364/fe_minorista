@@ -765,3 +765,66 @@ Flujo principal:
 3. El actor revisa utilidad/perdida, liquidez esperada y obligaciones.
 
 Acceptance criteria: AC-388.
+
+## UC-051: Administrar contador asociado a empresa
+
+Actor: ROOT.
+
+Flujo principal:
+1. ROOT crea o selecciona un contador.
+2. ROOT selecciona una empresa cliente.
+3. El sistema valida que la empresa no tenga otro contador activo.
+4. ROOT confirma la asociacion.
+5. El sistema crea la asociacion activa, genera auditoria y, si aplica, envia credenciales temporales por correo.
+
+Flujo alterno:
+- Si la empresa ya tiene contador activo, el sistema rechaza la asociacion o exige reemplazo explicito auditado.
+
+Acceptance criteria: AC-405, AC-406, AC-411.
+
+## UC-052: Consultar empresas desde portal contador
+
+Actor: Contador.
+
+Flujo principal:
+1. El contador inicia sesion.
+2. Si tiene contrasena temporal, el sistema exige cambio de clave antes de operar.
+3. El contador abre el portal `Contadores`.
+4. El sistema lista solo empresas asociadas activamente.
+5. El contador selecciona una empresa y consulta reportes financieros, fiscales y contables.
+
+Flujo alterno:
+- Si intenta consultar una empresa no asociada, el sistema rechaza la solicitud y audita la denegacion.
+
+Acceptance criteria: AC-404, AC-407, AC-408, AC-409, AC-410.
+
+## UC-053: Calcular retenciones de proveedor
+
+Actor: Administrador empresarial, usuario contable o contador con permiso de lectura.
+
+Flujo principal:
+1. El actor registra o selecciona proveedor con regimen, responsabilidades fiscales, municipio y CIIU.
+2. El actor crea compra, gasto o pago con concepto, fecha y valor.
+3. El sistema cruza perfil fiscal de empresa y proveedor con reglas versionadas.
+4. El sistema muestra retenciones aplicadas/no aplicadas, base, tarifa, valor y regla usada.
+5. Al confirmar, el sistema guarda snapshot fiscal, valor neto a pagar y asiento contable.
+
+Flujo alterno:
+- Si faltan CIIU, regla fiscal o regla contable obligatoria, el sistema rechaza con error funcional y no persiste efectos parciales.
+
+Acceptance criteria: AC-412, AC-413, AC-414, AC-415, AC-416.
+
+## UC-054: Enviar correos operativos
+
+Actor: Sistema.
+
+Flujo principal:
+1. Ocurre un evento de negocio: credenciales temporales creadas, inventario bajo o reporte listo.
+2. El productor publica evento por Outbox.
+3. El servicio/adaptador de notificaciones genera correo desde plantilla aprobada.
+4. El sistema envia el correo y registra intento/resultado.
+
+Flujo alterno:
+- Si el proveedor de correo falla, el sistema registra error sanitizado y reintenta segun politica sin revertir el hecho de negocio.
+
+Acceptance criteria: AC-411, AC-417, AC-418, AC-419.

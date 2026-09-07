@@ -33,6 +33,7 @@ import com.msvanegasg.facturaelectronica.billing.application.port.out.Accounting
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AuditEventPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.CompanyFiscalPolicyRepositoryPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.DianConfigurationReadinessPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ElectronicDocumentProviderPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FinalConsumerProfileRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalDocumentUsagePort;
@@ -76,6 +77,7 @@ public class SaleManagementService implements ManageSaleUseCase {
     private final CompanyFiscalPolicyRepositoryPort companyFiscalPolicyRepository;
     private final SaleDocumentTypeOverrideRepositoryPort saleDocumentTypeOverrideRepository;
     private final OperationalPinValidationPort operationalPinValidationPort;
+    private final DianConfigurationReadinessPort dianConfigurationReadiness;
     private final AssignFiscalNumberUseCase assignFiscalNumberUseCase;
     private final DomainEventPublisherPort eventPublisher;
     private final IdGeneratorPort idGenerator;
@@ -126,7 +128,24 @@ public class SaleManagementService implements ManageSaleUseCase {
         this(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort, accountingEntryPort,
                 auditEventPort, finalConsumerProfileRepository, licenseValidationPort, FiscalDocumentUsagePort.noop(),
                 CompanyFiscalPolicyRepositoryPort.defaultsOnly(), SaleDocumentTypeOverrideRepositoryPort.noop(),
-                OperationalPinValidationPort.allowAll(), assignFiscalNumberUseCase, eventPublisher, idGenerator,
+                OperationalPinValidationPort.allowAll(), DianConfigurationReadinessPort.alwaysReady(),
+                assignFiscalNumberUseCase, eventPublisher, idGenerator, clock);
+    }
+
+    public SaleManagementService(SaleRepositoryPort saleRepository, InventoryAvailabilityPort inventoryAvailability,
+            ElectronicDocumentProviderPort providerPort, InventoryMovementPort inventoryMovementPort,
+            AccountingEntryPort accountingEntryPort, AuditEventPort auditEventPort,
+            FinalConsumerProfileRepositoryPort finalConsumerProfileRepository,
+            LicenseValidationPort licenseValidationPort, FiscalDocumentUsagePort fiscalDocumentUsagePort,
+            CompanyFiscalPolicyRepositoryPort companyFiscalPolicyRepository,
+            SaleDocumentTypeOverrideRepositoryPort saleDocumentTypeOverrideRepository,
+            OperationalPinValidationPort operationalPinValidationPort,
+            AssignFiscalNumberUseCase assignFiscalNumberUseCase, DomainEventPublisherPort eventPublisher,
+            IdGeneratorPort idGenerator, ClockPort clock) {
+        this(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort, accountingEntryPort,
+                auditEventPort, finalConsumerProfileRepository, licenseValidationPort, fiscalDocumentUsagePort,
+                companyFiscalPolicyRepository, saleDocumentTypeOverrideRepository, operationalPinValidationPort,
+                DianConfigurationReadinessPort.alwaysReady(), assignFiscalNumberUseCase, eventPublisher, idGenerator,
                 clock);
     }
 
@@ -138,6 +157,7 @@ public class SaleManagementService implements ManageSaleUseCase {
             CompanyFiscalPolicyRepositoryPort companyFiscalPolicyRepository,
             SaleDocumentTypeOverrideRepositoryPort saleDocumentTypeOverrideRepository,
             OperationalPinValidationPort operationalPinValidationPort,
+            DianConfigurationReadinessPort dianConfigurationReadiness,
             AssignFiscalNumberUseCase assignFiscalNumberUseCase, DomainEventPublisherPort eventPublisher,
             IdGeneratorPort idGenerator, ClockPort clock) {
         this.saleRepository = Objects.requireNonNull(saleRepository);
@@ -152,6 +172,7 @@ public class SaleManagementService implements ManageSaleUseCase {
         this.companyFiscalPolicyRepository = Objects.requireNonNull(companyFiscalPolicyRepository);
         this.saleDocumentTypeOverrideRepository = Objects.requireNonNull(saleDocumentTypeOverrideRepository);
         this.operationalPinValidationPort = Objects.requireNonNull(operationalPinValidationPort);
+        this.dianConfigurationReadiness = Objects.requireNonNull(dianConfigurationReadiness);
         this.assignFiscalNumberUseCase = Objects.requireNonNull(assignFiscalNumberUseCase);
         this.eventPublisher = Objects.requireNonNull(eventPublisher);
         this.idGenerator = Objects.requireNonNull(idGenerator);
@@ -180,14 +201,22 @@ public class SaleManagementService implements ManageSaleUseCase {
         Sale sale = saleRepository.findByCompanyIdAndId(companyId, saleId)
                 .orElseThrow(() -> new SaleNotFoundException(saleId));
         if (sale.status() != SaleStatus.DRAFT) {
-            return BillingResultMapper.toSaleResult(applyPostValidationEffects(sale));
+            return BillingResultMapper.toSaleResult(applyPostConfirmationEffects(sale));
         }
-        LicensePolicy licensePolicy = licenseValidationPort.policy(companyId, LicenseAction.ISSUE_FISCAL_DOCUMENT);
         sale.lines().forEach(line -> ensureAvailable(sale.companyId(), line));
         Instant now = clock.now();
-        ensureMonthlyDocumentQuota(companyId, licensePolicy, now);
         ElectronicDocumentType documentType = resolveSaleDocumentType(sale);
         accountingEntryPort.ensureSalePostingConfigured(companyId);
+        if (documentType == ElectronicDocumentType.NON_FISCAL_SALE) {
+            Sale confirmed = saleRepository.save(sale.confirmWithoutElectronicDocument(now));
+            Sale completed = applyPostConfirmationEffects(confirmed);
+            publishConfirmedSaleEvents(completed);
+            auditEventPort.register(toAuditEvent(completed));
+            return BillingResultMapper.toSaleResult(completed);
+        }
+        ensureDianReadyForElectronicIssuing(companyId);
+        LicensePolicy licensePolicy = licenseValidationPort.policy(companyId, LicenseAction.ISSUE_FISCAL_DOCUMENT);
+        ensureMonthlyDocumentQuota(companyId, licensePolicy, now);
         UUID documentId = idGenerator.newId();
         FiscalNumberResult fiscalNumber = assignFiscalNumberUseCase.assign(new AssignFiscalNumberCommand(
                 sale.companyId(), documentType, LocalDate.ofInstant(now, ZoneOffset.UTC), FiscalEnvironment.TEST));
@@ -195,7 +224,7 @@ public class SaleManagementService implements ManageSaleUseCase {
         ElectronicDocument document = documentFromProvider(documentId, sale, documentType, fiscalNumber, provider,
                 idempotencyKey, now);
         Sale confirmed = saleRepository.save(sale.confirm(document, now));
-        Sale completed = applyPostValidationEffects(confirmed);
+        Sale completed = applyPostConfirmationEffects(confirmed);
         publishConfirmedSaleEvents(completed);
         auditEventPort.register(toAuditEvent(completed));
         return BillingResultMapper.toSaleResult(completed);
@@ -289,8 +318,8 @@ public class SaleManagementService implements ManageSaleUseCase {
     @Override
     public PosReceiptResult printableReceipt(UUID companyId, UUID saleId, int widthMm) {
         SaleResult sale = findById(companyId, saleId);
-        if (sale.electronicDocument() == null) {
-            throw new IllegalStateException("sale has no electronic document");
+        if (sale.status() != SaleStatus.CONFIRMED) {
+            throw new IllegalStateException("La venta debe estar confirmada antes de imprimir comprobante.");
         }
         return PosReceiptRenderer.render(sale, widthMm);
     }
@@ -306,6 +335,13 @@ public class SaleManagementService implements ManageSaleUseCase {
                 command.saleChannel() == null ? SaleChannel.POS : command.saleChannel(), command.idempotencyKey(),
                 command.createdBy(), clock.now(), lines);
         return BillingResultMapper.toSaleResult(saleRepository.save(sale));
+    }
+
+    private void ensureDianReadyForElectronicIssuing(UUID companyId) {
+        if (!dianConfigurationReadiness.isReadyForElectronicIssuing(companyId)) {
+            throw new IllegalStateException(
+                    "Debes configurar, probar y activar DIAN real para esta empresa antes de emitir documentos electronicos. Si la empresa no esta obligada a transmitir a DIAN, configura venta interna no fiscal.");
+        }
     }
 
     private SaleLine toLine(UUID companyId, SaleLineCommand command) {
@@ -396,6 +432,30 @@ public class SaleManagementService implements ManageSaleUseCase {
                 provider.errorMessage(), idempotencyKey, issuedAt, null, null);
     }
 
+    private Sale applyPostConfirmationEffects(Sale sale) {
+        if (sale.electronicDocument() == null) {
+            return applyCommercialPostConfirmationEffects(sale);
+        }
+        return applyPostValidationEffects(sale);
+    }
+
+    private Sale applyCommercialPostConfirmationEffects(Sale sale) {
+        if (sale.status() != SaleStatus.CONFIRMED) {
+            return sale;
+        }
+        Sale current = sale;
+        String effectIdempotencyKey = current.idempotencyKey();
+        if (!current.commercialInventoryApplied()) {
+            inventoryMovementPort.applySaleOut(current, effectIdempotencyKey);
+            current = saleRepository.save(current.markCommercialInventoryApplied(clock.now()));
+        }
+        if (!current.commercialAccountingApplied()) {
+            accountingEntryPort.postSale(current, effectIdempotencyKey);
+            current = saleRepository.save(current.markCommercialAccountingApplied(clock.now()));
+        }
+        return current;
+    }
+
     private Sale applyPostValidationEffects(Sale sale) {
         ElectronicDocument document = sale.electronicDocument();
         if (document == null || document.status() != ElectronicDocumentStatus.VALIDATED) {
@@ -420,6 +480,12 @@ public class SaleManagementService implements ManageSaleUseCase {
     private void publishConfirmedSaleEvents(Sale sale) {
         ElectronicDocument document = sale.electronicDocument();
         if (document == null) {
+            if (sale.status() == SaleStatus.CONFIRMED) {
+                eventPublisher.publish(event(EventTypes.SALE_CONFIRMED, sale, null, salePayload(sale, null),
+                        sale.idempotencyKey() + ":sale-confirmed"));
+                eventPublisher.publish(event(EventTypes.AUDIT_EVENT_REQUESTED, sale, null, auditPayload(sale),
+                        sale.idempotencyKey() + ":audit-requested"));
+            }
             return;
         }
         if (document.status() == ElectronicDocumentStatus.VALIDATED) {
@@ -443,15 +509,16 @@ public class SaleManagementService implements ManageSaleUseCase {
     }
 
     private static Map<String, Object> salePayload(Sale sale, ElectronicDocument document) {
-        Map<String, Object> payload = electronicDocumentPayload(sale, document);
+        Map<String, Object> payload = document == null ? new LinkedHashMap<>() : electronicDocumentPayload(sale, document);
         payload.put("saleChannel", sale.saleChannel().name());
         payload.put("saleStatus", sale.status().name());
         payload.put("customerId", sale.customerId() == null ? null : sale.customerId().toString());
         payload.put("subtotal", sale.subtotal());
         payload.put("taxTotal", sale.taxTotal());
         payload.put("lines", sale.lines().stream().map(SaleManagementService::saleLinePayload).toList());
-        payload.put("inventoryApplied", document.inventoryApplied());
-        payload.put("accountingApplied", document.accountingApplied());
+        payload.put("inventoryApplied", document == null ? sale.commercialInventoryApplied() : document.inventoryApplied());
+        payload.put("accountingApplied", document == null ? sale.commercialAccountingApplied() : document.accountingApplied());
+        payload.put("electronicDocumentIssued", document != null);
         return payload;
     }
 
@@ -510,6 +577,14 @@ public class SaleManagementService implements ManageSaleUseCase {
     }
     private static AuditEventCommand toAuditEvent(Sale sale) {
         ElectronicDocument document = sale.electronicDocument();
+        if (document == null) {
+            String detail = """
+                    {"saleId":"%s","electronicDocumentIssued":false,"inventoryApplied":%s,"accountingApplied":%s}
+                    """.formatted(sale.id(), sale.commercialInventoryApplied(), sale.commercialAccountingApplied())
+                    .trim();
+            return new AuditEventCommand(sale.companyId(), sale.createdBy(), "SALE", "SALE",
+                    sale.id().toString(), "CONFIRM_NON_FISCAL_SALE", AuditResult.SUCCESS, detail);
+        }
         AuditResult result = document.status() == ElectronicDocumentStatus.VALIDATED
                 ? AuditResult.SUCCESS
                 : AuditResult.FAILURE;

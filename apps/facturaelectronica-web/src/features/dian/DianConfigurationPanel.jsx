@@ -43,17 +43,27 @@ export function DianConfigurationPanel({
         <Field label="Software ID" value={form.softwareId} onChange={(value) => setForm({ ...form, softwareId: value })} disabled={!isReal} />
         <Field label="Software PIN" value={form.softwarePin} onChange={(value) => setForm({ ...form, softwarePin: value })} type="password" disabled={!isReal} autoComplete="new-password" />
         <Field label="Clave tecnica" value={form.technicalKey} onChange={(value) => setForm({ ...form, technicalKey: value })} type="password" disabled={!isReal} autoComplete="new-password" />
-        <Field label="Alias certificado" value={form.certificateAlias} onChange={(value) => setForm({ ...form, certificateAlias: value })} disabled={!isReal} />
-        <Field label="Huella certificado" value={form.certificateFingerprint} onChange={(value) => setForm({ ...form, certificateFingerprint: value })} disabled={!isReal} />
-        <Field label="Vencimiento certificado" value={form.certificateExpiresAt} onChange={(value) => setForm({ ...form, certificateExpiresAt: value })} type="datetime-local" disabled={!isReal} />
         <Field label="Password certificado" value={form.certificatePassword} onChange={(value) => setForm({ ...form, certificatePassword: value })} type="password" disabled={!isReal} autoComplete="new-password" />
         <Field label="URL servicio DIAN" value={form.serviceBaseUrl} onChange={(value) => setForm({ ...form, serviceBaseUrl: value })} disabled={!isReal} />
         <Field label="Set de pruebas" value={form.testSetId} onChange={(value) => setForm({ ...form, testSetId: value })} disabled={!isReal} />
+        <label className="field">
+          Certificado digital (.p12 o .pfx)
+          <input
+            accept=".p12,.pfx,application/x-pkcs12"
+            disabled={!isReal}
+            key={form.certificateFile?.name || 'dian-certificate-empty'}
+            onChange={(event) => setForm({ ...form, certificateFile: event.target.files?.[0] || null })}
+            type="file"
+          />
+          {form.certificateFile && <span className="field-note">{form.certificateFile.name}</span>}
+          {!form.certificateFile && configuration?.certificateConfigured && <span className="field-note">Certificado empresarial ya configurado; selecciona otro archivo solo para reemplazarlo.</span>}
+        </label>
       </div>
-      <label>
-        Certificado en base64 / PEM
-        <textarea value={form.certificatePayload} onChange={(event) => setForm({ ...form, certificatePayload: event.target.value })} disabled={!isReal} rows={5} />
-      </label>
+      {configuration?.certificateConfigured && <div className="status-row">
+        <StatusBadge label="Alias" value={configuration.certificateAlias || 'No disponible'} />
+        <StatusBadge label="Huella" value={configuration.certificateFingerprint || 'No disponible'} />
+        <StatusBadge label="Vence" value={configuration.certificateExpiresAt ? new Date(configuration.certificateExpiresAt).toLocaleDateString('es-CO') : 'No disponible'} tone={configuration.certificateExpiresAt && new Date(configuration.certificateExpiresAt) > new Date() ? 'ok' : 'warn'} />
+      </div>}
       <CheckField label="La empresa acepta que es responsable de su habilitacion, certificado y credenciales ante la DIAN." checked={form.acceptedResponsibility} onChange={(value) => setForm({ ...form, acceptedResponsibility: value })} disabled={!isReal} />
     </FormPanel>
 

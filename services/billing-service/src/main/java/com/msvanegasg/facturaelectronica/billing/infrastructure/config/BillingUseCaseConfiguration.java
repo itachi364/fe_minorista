@@ -14,6 +14,7 @@ import com.msvanegasg.facturaelectronica.billing.application.port.out.Accounting
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AuditEventPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.CompanyFiscalPolicyRepositoryPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.DianConfigurationReadinessPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ElectronicDocumentProviderPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FinalConsumerProfileRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalDocumentUsagePort;
@@ -50,12 +51,14 @@ public class BillingUseCaseConfiguration {
             CompanyFiscalPolicyRepositoryPort companyFiscalPolicyRepository,
             SaleDocumentTypeOverrideRepositoryPort saleDocumentTypeOverrideRepository,
             OperationalPinValidationPort operationalPinValidationPort,
+            DianConfigurationReadinessPort dianConfigurationReadiness,
             AssignFiscalNumberUseCase assignFiscalNumberUseCase, DomainEventPublisherPort eventPublisher,
             IdGeneratorPort idGenerator, ClockPort clock) {
         return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
                 accountingEntryPort, auditEventPort, finalConsumerProfileRepository, licenseValidationPort,
                 fiscalDocumentUsagePort, companyFiscalPolicyRepository, saleDocumentTypeOverrideRepository,
-                operationalPinValidationPort, assignFiscalNumberUseCase, eventPublisher, idGenerator, clock);
+                operationalPinValidationPort, dianConfigurationReadiness, assignFiscalNumberUseCase, eventPublisher,
+                idGenerator, clock);
     }
 
     @Bean
@@ -66,8 +69,10 @@ public class BillingUseCaseConfiguration {
 
     @Bean
     CreateNumberingResolutionUseCase createNumberingResolutionUseCase(
-            NumberingResolutionRepositoryPort numberingResolutionRepository, IdGeneratorPort idGenerator) {
-        return new CreateNumberingResolutionService(numberingResolutionRepository, idGenerator);
+            NumberingResolutionRepositoryPort numberingResolutionRepository, IdGeneratorPort idGenerator,
+            DianConfigurationReadinessPort dianConfigurationReadiness) {
+        return new CreateNumberingResolutionService(numberingResolutionRepository, idGenerator,
+                dianConfigurationReadiness);
     }
 
     @Bean

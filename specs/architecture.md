@@ -287,3 +287,27 @@ Riesgos:
 - DIAN real depende de certificados y proceso de habilitacion por empresa.
 - El readiness no debe duplicar reglas de negocio; debe consultar capacidades de dominio o endpoints internos estables.
 - Las metricas y logs deben evitar datos sensibles, especialmente certificados, tokens, PIN y payloads fiscales completos.
+
+## Decision TASK-289 a TASK-295
+
+La fase 36 introduce el modulo de contadores, reglas fiscales/retenciones y notificaciones por correo sin crear privilegios globales nuevos fuera de ROOT.
+
+Responsabilidades objetivo:
+
+- `identity-service`: usuarios contador, contrasenas temporales, cambio obligatorio en primer ingreso y estado de credenciales.
+- `tenant-service`: asociaciones contador-empresa, restriccion de un contador activo por empresa y perfil fiscal/contable empresarial.
+- `thirdparty-service`: perfil fiscal canonico de clientes/proveedores, incluyendo responsabilidades, regimen, municipio y nuevo `ciiuCode`.
+- `accounting-service`: reglas fiscales versionadas, calculo de retenciones, snapshots aplicados, cuentas PUC sugeridas y validacion de reglas contables.
+- `reporting-service`: datasets normalizados para portal contador y exportaciones.
+- `inventory-service`: eventos de inventario bajo al cruzar umbral configurado por producto.
+- `notification-service` o modulo equivalente: puerto de notificaciones, plantillas, adaptadores SMTP/SES/local, reintentos y auditoria.
+- `bff-service`: borde publico, validacion de asociacion activa del contador, composicion de reportes y bloqueo de accesos no autorizados.
+- SPA NexoFiscal: portal contador, formularios de CIIU/perfil fiscal y estados de notificacion sin decidir autorizacion final.
+
+Reglas arquitectonicas:
+
+- El contador es un actor multiempresa limitado, no un ROOT parcial.
+- La asociacion activa es condicion obligatoria para consultar datos empresariales.
+- El perfil fiscal de proveedor no se duplica en otro modulo; se reutiliza desde terceros.
+- Las reglas fiscales deben ser versionadas y probables con fixtures normativos, porque DUR/retenciones/parametros territoriales cambian.
+- El envio de correo es un efecto secundario asincrono; fallos de correo se auditan y reintentan sin corromper la transaccion de negocio.

@@ -13,9 +13,12 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import com.msvanegasg.facturaelectronica.billing.application.dto.AssignFiscalNumberCommand;
+import com.msvanegasg.facturaelectronica.billing.application.dto.CompanyFiscalPolicyCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.ConfigureIssuerProfileCommand;
 import com.msvanegasg.facturaelectronica.billing.application.dto.CreateNumberingResolutionCommand;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.CompanyFiscalPolicyRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IssuerProfileRepositoryPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.DianConfigurationReadinessPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.NumberingResolutionRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
 import com.msvanegasg.facturaelectronica.billing.domain.model.FiscalEnvironment;
@@ -73,6 +76,53 @@ class IssuerAndNumberingConfigurationServiceTest {
         assertThat(result.prefix()).isEqualTo("POS");
         assertThat(result.currentNumber()).isEqualTo(99);
         assertThat(result.active()).isTrue();
+    }
+
+    @Test
+    void fiscalPolicyDefaultsToNonFiscalSale() {
+        var service = new CompanyFiscalPolicyService(new InMemoryCompanyFiscalPolicyRepository(),
+                () -> java.time.Instant.parse("2026-05-19T10:00:00Z"));
+
+        var result = service.findByCompanyId(COMPANY_ID);
+
+        assertThat(result.defaultSaleDocumentType()).isEqualTo(ElectronicDocumentType.NON_FISCAL_SALE);
+    }
+
+    @Test
+    void configuresNonFiscalSaleAsDefaultPolicy() {
+        InMemoryCompanyFiscalPolicyRepository repository = new InMemoryCompanyFiscalPolicyRepository();
+        var service = new CompanyFiscalPolicyService(repository,
+                () -> java.time.Instant.parse("2026-05-19T10:00:00Z"));
+
+        var result = service.configure(new CompanyFiscalPolicyCommand(COMPANY_ID,
+                ElectronicDocumentType.NON_FISCAL_SALE, true, false));
+
+        assertThat(result.defaultSaleDocumentType()).isEqualTo(ElectronicDocumentType.NON_FISCAL_SALE);
+        assertThat(repository.findByCompanyId(COMPANY_ID)).isPresent();
+    }
+
+    @Test
+    void rejectsElectronicResolutionWhenDianConfigurationIsNotReady() {
+        var service = new CreateNumberingResolutionService(new InMemoryNumberingResolutionRepository(),
+                () -> RESOLUTION_ID, companyId -> false);
+
+        assertThatThrownBy(() -> service.create(new CreateNumberingResolutionCommand(COMPANY_ID,
+                ElectronicDocumentType.ELECTRONIC_INVOICE, "18760000001", "FE", 100, 200,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), FiscalEnvironment.TEST)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("configurar, probar y activar DIAN real");
+    }
+
+    @Test
+    void rejectsNonFiscalSaleAsNumberingResolutionType() {
+        var service = new CreateNumberingResolutionService(new InMemoryNumberingResolutionRepository(),
+                () -> RESOLUTION_ID, DianConfigurationReadinessPort.alwaysReady());
+
+        assertThatThrownBy(() -> service.create(new CreateNumberingResolutionCommand(COMPANY_ID,
+                ElectronicDocumentType.NON_FISCAL_SALE, "18760000001", "NF", 100, 200,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), FiscalEnvironment.TEST)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("El tipo de resolucion debe corresponder a un documento fiscal electronico.");
     }
 
     @Test
@@ -297,6 +347,24 @@ class IssuerAndNumberingConfigurationServiceTest {
             return current.companyId().equals(candidate.companyId())
                     && current.documentType() == candidate.documentType()
                     && current.environment() == candidate.environment();
+        }
+    }
+
+    private static final class InMemoryCompanyFiscalPolicyRepository implements CompanyFiscalPolicyRepositoryPort {
+        private final Map<UUID, com.msvanegasg.facturaelectronica.billing.domain.model.CompanyFiscalPolicy> policies =
+                new HashMap<>();
+
+        @Override
+        public com.msvanegasg.facturaelectronica.billing.domain.model.CompanyFiscalPolicy save(
+                com.msvanegasg.facturaelectronica.billing.domain.model.CompanyFiscalPolicy policy) {
+            policies.put(policy.companyId(), policy);
+            return policy;
+        }
+
+        @Override
+        public Optional<com.msvanegasg.facturaelectronica.billing.domain.model.CompanyFiscalPolicy> findByCompanyId(
+                UUID companyId) {
+            return Optional.ofNullable(policies.get(companyId));
         }
     }
 }

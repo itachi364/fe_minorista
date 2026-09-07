@@ -17,6 +17,7 @@ import com.msvanegasg.facturaelectronica.dianprovider.application.usecase.Provid
 import com.msvanegasg.facturaelectronica.dianprovider.application.usecase.DianCertificateExpiredException;
 import com.msvanegasg.facturaelectronica.dianprovider.application.usecase.DianConfigurationIncompleteException;
 import com.msvanegasg.facturaelectronica.dianprovider.application.usecase.DianConfigurationNotFoundException;
+import com.msvanegasg.facturaelectronica.dianprovider.application.usecase.DianInvalidCertificateException;
 import com.msvanegasg.facturaelectronica.dianprovider.observability.CorrelationId;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -49,7 +50,7 @@ public class DianProviderExceptionHandler {
     }
 
     @ExceptionHandler({ IllegalStateException.class, DianConfigurationIncompleteException.class,
-            DianCertificateExpiredException.class })
+            DianCertificateExpiredException.class, DianInvalidCertificateException.class })
     ResponseEntity<ApiErrorResponse> handleBusiness(RuntimeException exception, HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, ApiErrorCode.EXTERNAL_PROVIDER_ERROR, exception.getMessage(), List.of(),
                 request);

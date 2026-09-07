@@ -810,3 +810,95 @@ Reglas:
 
 - Los health checks tecnicos viven en Actuator o herramienta de monitoreo.
 - Los snapshots funcionales solo consolidan estado de negocio para soporte y administracion.
+
+## Fase 36 Modulo De Contadores, Reglas Fiscales Y Notificaciones
+
+Estado: documentado; pendiente de implementacion.
+
+### Contadores y asociaciones
+
+Tablas objetivo sugeridas:
+
+- `identity.accountant_profile`
+- `tenant.accountant_company_assignment`
+
+Restricciones:
+
+- `identity.accountant_profile.user_id` debe ser unico.
+- `tenant.accountant_company_assignment(company_id)` debe tener unicidad parcial para filas activas, garantizando maximo un contador activo por empresa.
+- `tenant.accountant_company_assignment(accountant_user_id, company_id)` debe impedir duplicados activos o historicos inconsistentes.
+
+Reglas:
+
+- La autorizacion del portal contador siempre deriva de una asociacion activa vigente.
+- La baja de una asociacion debe ser logica para conservar auditoria.
+- ROOT puede reemplazar contador con una operacion explicita que inactiva la asociacion anterior y crea la nueva en la misma transaccion.
+
+### Extension fiscal de terceros
+
+Tabla ajustada:
+
+- `thirdparty.third_party`
+
+Campo objetivo:
+
+- `ciiu_code varchar(10) null`
+
+Reglas:
+
+- El campo referencia catalogo CIIU vigente cuando exista en `catalog-service`.
+- El valor queda en el tercero porque el proveedor ya concentra regimen, responsabilidades fiscales y municipio.
+- Los calculos de retencion deben tomar un snapshot de `ciiu_code` al momento de confirmar la operacion.
+
+### Perfil fiscal/contable de empresa
+
+Tablas objetivo sugeridas:
+
+- `tenant.company_tax_profile`
+- `tenant.company_tax_profile_responsibility`
+- `tenant.company_tax_profile_ciiu`
+
+Campos principales:
+
+- `company_tax_profile`: `company_id`, `company_size`, `financial_reporting_group`, `tax_regime`, `vat_responsible`, `withholding_agent`, `large_taxpayer`, `self_withholding`, `simple_regime`, `ica_municipality_code`, `valid_from`, `valid_to`, `updated_by`, `updated_at`.
+- `company_tax_profile_responsibility`: `company_id`, `tax_responsibility_code`, `active`.
+- `company_tax_profile_ciiu`: `company_id`, `ciiu_code`, `primary_activity`, `active`.
+
+Reglas:
+
+- El perfil empresarial se versiona por vigencia o conserva auditoria suficiente para explicar calculos historicos.
+- Las responsabilidades RUT de empresa no reemplazan responsabilidades del tercero; ambas se evaluan juntas.
+
+### Reglas fiscales y retenciones
+
+Tablas objetivo sugeridas:
+
+- `accounting.fiscal_rule_set`
+- `accounting.withholding_rule`
+- `accounting.withholding_calculation_snapshot`
+
+Campos principales:
+
+- `fiscal_rule_set`: `id`, `country_code`, `name`, `version`, `valid_from`, `valid_to`, `source_reference`, `status`.
+- `withholding_rule`: `id`, `rule_set_id`, `withholding_type`, `operation_type`, `concept_code`, `base_min_amount`, `rate`, `buyer_conditions`, `third_party_conditions`, `municipality_code`, `ciiu_code`, `valid_from`, `valid_to`, `priority`, `active`.
+- `withholding_calculation_snapshot`: `id`, `company_id`, `source_type`, `source_id`, `third_party_id`, `operation_date`, `gross_amount`, `tax_amount`, `withholding_type`, `base_amount`, `rate`, `amount`, `rule_version`, `decision`, `reason`, `created_at`.
+
+Reglas:
+
+- `buyer_conditions` y `third_party_conditions` pueden ser JSON/JSONB solo para condiciones versionadas y validadas por dominio, no para logica libre no testeable.
+- Historicos guardan la regla aplicada; no se recalculan automaticamente al cambiar tarifas o normatividad.
+- Compras, gastos y pagos no deben generar asientos parciales si falla el calculo obligatorio de retenciones o la regla contable asociada.
+
+### Notificaciones por correo
+
+Tablas objetivo sugeridas:
+
+- `notification.email_message`
+- `notification.email_delivery_attempt`
+
+Reglas:
+
+- Las notificaciones nacen de eventos de dominio publicados por Outbox.
+- Estados: `PENDING`, `SENT`, `FAILED`, `RETRYING`, `CANCELLED`.
+- Los errores se guardan sanitizados; no se persisten passwords, tokens completos, URLs privadas ni credenciales SMTP.
+- Para reportes pesados se guarda solo el token/hash del link intermediado, nunca URL directa de storage.

@@ -2,6 +2,8 @@ package com.msvanegasg.facturaelectronica.dianprovider.interfaces.rest;
 
 import java.util.UUID;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import com.msvanegasg.facturaelectronica.dianprovider.application.dto.DianConfigurationCommand;
 import com.msvanegasg.facturaelectronica.dianprovider.application.dto.DianConfigurationResult;
 import com.msvanegasg.facturaelectronica.dianprovider.interfaces.rest.dto.DianConfigurationRequest;
@@ -14,10 +16,22 @@ final class DianConfigurationRestMapper {
 
     static DianConfigurationCommand toCommand(UUID companyId, UUID userId, DianConfigurationRequest request) {
         return new DianConfigurationCommand(companyId, request.mode(), request.environment(), request.softwareId(),
-                request.softwarePin(), request.technicalKey(), request.certificatePayload(),
-                request.certificatePassword(), request.certificateAlias(), request.certificateFingerprint(),
-                request.certificateExpiresAt(), request.serviceBaseUrl(), request.testSetId(),
-                request.acceptedResponsibility(), userId);
+                request.softwarePin(), request.technicalKey(), null, null, request.certificatePassword(),
+                request.serviceBaseUrl(), request.testSetId(), request.acceptedResponsibility(), userId);
+    }
+
+    static DianConfigurationCommand toCommand(UUID companyId, UUID userId, DianConfigurationRequest request,
+            MultipartFile certificateFile) {
+        try {
+            byte[] content = certificateFile == null || certificateFile.isEmpty() ? null : certificateFile.getBytes();
+            String fileName = certificateFile == null || certificateFile.isEmpty() ? null
+                    : certificateFile.getOriginalFilename();
+            return new DianConfigurationCommand(companyId, request.mode(), request.environment(), request.softwareId(),
+                    request.softwarePin(), request.technicalKey(), fileName, content, request.certificatePassword(),
+                    request.serviceBaseUrl(), request.testSetId(), request.acceptedResponsibility(), userId);
+        } catch (Exception exception) {
+            throw new IllegalArgumentException("No fue posible leer el certificado DIAN.", exception);
+        }
     }
 
     static DianConfigurationResponse toResponse(DianConfigurationResult result) {

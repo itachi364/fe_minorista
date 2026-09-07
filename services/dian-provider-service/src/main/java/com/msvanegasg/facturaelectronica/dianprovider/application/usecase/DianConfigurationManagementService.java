@@ -4,9 +4,11 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.msvanegasg.facturaelectronica.dianprovider.application.dto.CertificateMetadata;
 import com.msvanegasg.facturaelectronica.dianprovider.application.dto.DianConfigurationCommand;
 import com.msvanegasg.facturaelectronica.dianprovider.application.dto.DianConfigurationResult;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.in.ManageDianConfigurationUseCase;
+import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.CertificateMetadataExtractorPort;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.DianConfigurationRepositoryPort;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.DianTechnicalArtifactPort;
@@ -22,19 +24,31 @@ public class DianConfigurationManagementService implements ManageDianConfigurati
 
     private final DianConfigurationRepositoryPort repository;
     private final SecretVaultPort secretVault;
+    private final CertificateMetadataExtractorPort certificateMetadataExtractor;
     private final DianTechnicalArtifactPort technicalArtifacts;
     private final IdGeneratorPort idGenerator;
     private final ClockPort clock;
 
     public DianConfigurationManagementService(DianConfigurationRepositoryPort repository, SecretVaultPort secretVault,
             IdGeneratorPort idGenerator, ClockPort clock) {
-        this(repository, secretVault, () -> { }, idGenerator, clock);
+        this(repository, secretVault, (fileName, content, password) -> {
+            throw new DianInvalidCertificateException("El certificado DIAN debe cargarse como archivo .p12 o .pfx.");
+        }, () -> { }, idGenerator, clock);
     }
 
     public DianConfigurationManagementService(DianConfigurationRepositoryPort repository, SecretVaultPort secretVault,
             DianTechnicalArtifactPort technicalArtifacts, IdGeneratorPort idGenerator, ClockPort clock) {
+        this(repository, secretVault, (fileName, content, password) -> {
+            throw new DianInvalidCertificateException("El certificado DIAN debe cargarse como archivo .p12 o .pfx.");
+        }, technicalArtifacts, idGenerator, clock);
+    }
+
+    public DianConfigurationManagementService(DianConfigurationRepositoryPort repository, SecretVaultPort secretVault,
+            CertificateMetadataExtractorPort certificateMetadataExtractor, DianTechnicalArtifactPort technicalArtifacts,
+            IdGeneratorPort idGenerator, ClockPort clock) {
         this.repository = repository;
         this.secretVault = secretVault;
+        this.certificateMetadataExtractor = certificateMetadataExtractor;
         this.technicalArtifacts = technicalArtifacts;
         this.idGenerator = idGenerator;
         this.clock = clock;
@@ -58,8 +72,7 @@ public class DianConfigurationManagementService implements ManageDianConfigurati
                 "dian/software-pin", command.softwarePin());
         String technicalKeyRef = secretRef(current == null ? null : current.technicalKeySecretRef(),
                 command.companyId(), "dian/technical-key", command.technicalKey());
-        String certificateRef = secretRef(current == null ? null : current.certificateSecretRef(),
-                command.companyId(), "dian/certificate", command.certificatePayload());
+        CertificateUpdate certificate = certificateUpdate(current, command);
         if (hasText(command.certificatePassword())) {
             secretVault.storeCompanySecret(command.companyId(), "dian/certificate-password",
                     command.certificatePassword());
@@ -67,11 +80,11 @@ public class DianConfigurationManagementService implements ManageDianConfigurati
         DianCompanyConfiguration configuration = new DianCompanyConfiguration(id, command.companyId(),
                 command.mode() == null ? DianConnectionMode.MOCK : command.mode(),
                 command.environment() == null ? DianEnvironment.TEST : command.environment(), command.softwareId(),
-                pinRef, technicalKeyRef, certificateRef, command.certificateAlias(), command.certificateFingerprint(),
-                command.certificateExpiresAt(), command.serviceBaseUrl(), command.testSetId(),
+                pinRef, technicalKeyRef, certificate.ref(), certificate.alias(), certificate.fingerprint(),
+                certificate.expiresAt(), command.serviceBaseUrl(), command.testSetId(),
                 command.acceptedResponsibility(), inferStatus(command.mode(), command.acceptedResponsibility(), pinRef,
-                        technicalKeyRef, certificateRef, command.softwareId(), command.certificateFingerprint(),
-                        command.certificateExpiresAt(), now),
+                        technicalKeyRef, certificate.ref(), command.softwareId(), certificate.fingerprint(),
+                        certificate.expiresAt(), now),
                 current == null ? DianTestStatus.NOT_TESTED : current.lastTestStatus(),
                 current == null ? null : current.lastTestAt(), current == null ? null : current.lastTestMessage(),
                 command.updatedBy(), createdAt, now);
@@ -117,6 +130,11 @@ public class DianConfigurationManagementService implements ManageDianConfigurati
         if (configuration.hasExpiredCertificate(now)) {
             throw new DianCertificateExpiredException("El certificado DIAN configurado esta vencido.");
         }
+        if (!secretVault.isCompanySecretRef(configuration.companyId(), "dian/certificate",
+                configuration.certificateSecretRef())) {
+            throw new DianConfigurationIncompleteException(
+                    "El certificado DIAN configurado no pertenece a la empresa del documento.");
+        }
         if (!configuration.isRealModeComplete(now)) {
             throw new DianConfigurationIncompleteException(
                     "La configuracion DIAN real esta incompleta o no tiene responsabilidad empresarial aceptada.");
@@ -129,6 +147,30 @@ public class DianConfigurationManagementService implements ManageDianConfigurati
             return currentRef;
         }
         return secretVault.storeCompanySecret(companyId, secretName, value);
+    }
+
+    private CertificateUpdate certificateUpdate(DianCompanyConfiguration current, DianConfigurationCommand command) {
+        String currentRef = current == null ? null : current.certificateSecretRef();
+        String currentAlias = current == null ? null : current.certificateAlias();
+        String currentFingerprint = current == null ? null : current.certificateFingerprint();
+        Instant currentExpiresAt = current == null ? null : current.certificateExpiresAt();
+        if (command.certificateFileContent() == null || command.certificateFileContent().length == 0) {
+            if (currentRef != null && !secretVault.isCompanySecretRef(command.companyId(), "dian/certificate",
+                    currentRef)) {
+                throw new DianConfigurationIncompleteException(
+                        "El certificado DIAN configurado no pertenece a la empresa del documento.");
+            }
+            return new CertificateUpdate(currentRef, currentAlias, currentFingerprint, currentExpiresAt);
+        }
+        CertificateMetadata metadata = certificateMetadataExtractor.extract(command.certificateFileName(),
+                command.certificateFileContent(), command.certificatePassword());
+        String certificateRef = secretVault.storeCompanySecret(command.companyId(), "dian/certificate",
+                command.certificateFileContent());
+        if (!secretVault.isCompanySecretRef(command.companyId(), "dian/certificate", certificateRef)) {
+            throw new DianConfigurationIncompleteException(
+                    "El certificado DIAN configurado no pertenece a la empresa del documento.");
+        }
+        return new CertificateUpdate(certificateRef, metadata.alias(), metadata.fingerprint(), metadata.expiresAt());
     }
 
     private static DianConfigurationStatus inferStatus(DianConnectionMode mode, boolean acceptedResponsibility,
@@ -145,5 +187,8 @@ public class DianConfigurationManagementService implements ManageDianConfigurati
 
     private static boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private record CertificateUpdate(String ref, String alias, String fingerprint, Instant expiresAt) {
     }
 }

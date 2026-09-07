@@ -240,6 +240,9 @@
 - AC-394: Dado el modulo de Configuracion DIAN, cuando una empresa configure certificado real, entonces la UI debe permitir seleccionar un unico archivo `.p12` o `.pfx`, capturar password como campo secreto y no ofrecer textarea para pegar el certificado.
 - AC-395: Dado un archivo de certificado subido, cuando el backend lo reciba, entonces debe validar extension, tamano, tipo/estructura PKCS#12, password, alias, fingerprint y vencimiento; la base de datos solo persiste referencia segura y metadata no sensible.
 - AC-396: Dada la caja de herramientas DIAN local, cuando se implemente o valide el flujo, entonces deben usarse XSD, Schematron, XSL/listas de codigos y XML de ejemplo como fixtures sanitizados, sin versionar artefactos innecesarios como `.DS_Store`, `__MACOSX` o jars no usados.
+- AC-397: Dado un documento fiscal de una empresa, cuando se emita en modo DIAN real, entonces `dian-provider-service` debe usar exclusivamente el certificado asociado al mismo `company_id`; si la referencia pertenece a otra empresa, ROOT o una configuracion global, la emision debe fallar cerrada con error funcional.
+- AC-398: Dada una empresa sin configuracion DIAN real propia activa, probada exitosamente y con certificado configurado, cuando intente crear o activar una resolucion electronica, entonces `billing-service` debe rechazar la operacion con error funcional y no debe persistir la resolucion activa.
+- AC-399: Dada una empresa configurada con `NON_FISCAL_SALE`, cuando cierre una venta, entonces `billing-service` debe confirmar la venta, liquidar impuestos desde las lineas, aplicar inventario/contabilidad de forma idempotente y no generar documento electronico, CUFE/CUDE, QR DIAN ni envio a `dian-provider-service`.
 
 ## Autenticacion productiva, sesion segura y proteccion del navegador
 
@@ -436,3 +439,26 @@
 - AC-388: Dadas cuentas por cobrar, pagar, gastos, compras, pagos diarios y ventas, cuando el administrador consulte gestion financiera diaria, entonces debe ver vencimientos, saldos, alertas y utilidad/perdida esperada.
 - AC-389: Dado un archivo empresarial subido en local o produccion, cuando se almacene o descargue, entonces debe usar prefijos por empresa/categoria, cifrado productivo, metadata auditable y links controlados sin exponer credenciales ni rutas privadas.
 - AC-390: Dado cualquier microservicio desplegado, cuando se consulte monitoreo, entonces debe exponer health liveness/readiness, metricas y logs correlacionables; las alertas deben identificar degradacion de DIAN, storage, jobs y errores funcionales recurrentes.
+- AC-400: Dado ROOT en el modulo `Licencias`, cuando abra `Tipo de licencia`, entonces no debe aparecer la opcion `Basico`.
+- AC-401: Dado ROOT en el modulo `Licencias`, cuando seleccione `Completo`, entonces todos los modulos licenciables quedan seleccionados y la seleccion manual de checks queda bloqueada por ser un preset.
+- AC-402: Dado ROOT en el modulo `Licencias`, cuando seleccione `POS y facturacion`, entonces quedan seleccionados solamente `COMPANY`, `INVENTORY`, `BILLING`, `REPORTS`, `THIRDPARTY`, `ACCOUNTING` y `USERS`.
+- AC-403: Dado ROOT en el modulo `Licencias`, cuando seleccione `Personalizado`, entonces puede marcar o desmarcar manualmente los modulos que quiere incluir en la licencia.
+
+## Fase 36: Modulo de contadores, reglas fiscales y notificaciones
+
+- AC-404: Dado un usuario contador autenticado, cuando abra el portal `Contadores`, entonces solo debe ver empresas con asociacion activa a su usuario y nunca empresas no vinculadas.
+- AC-405: Dada una empresa con contador activo, cuando ROOT intente asociar otro contador activo a la misma empresa, entonces el backend debe rechazar la operacion con error funcional o exigir reemplazo explicito auditado.
+- AC-406: Dado ROOT, cuando asocie un contador a una empresa, entonces la asociacion debe quedar auditada con contador, empresa, actor, estado, fecha y correlation ID.
+- AC-407: Dado un contador vinculado a varias empresas, cuando seleccione una empresa en su portal, entonces puede consultar ventas, compras, gastos, nomina, ingresos, egresos, cartera, cuentas por pagar y reportes contables solo de esa empresa.
+- AC-408: Dado un contador sin permiso delegado de escritura, cuando intente crear, modificar, anular, emitir o configurar informacion de una empresa vinculada, entonces el sistema debe rechazar la accion y conservar auditoria de denegacion.
+- AC-409: Dado ROOT creando credenciales de contador o administrador empresarial, cuando se genere contrasena temporal, entonces el usuario debe quedar con `passwordChangeRequired=true`, expiracion configurada y acceso funcional bloqueado hasta cambiarla.
+- AC-410: Dado un usuario con contrasena temporal vigente, cuando inicie sesion, entonces debe poder autenticarse solo para completar cambio de clave y no para operar modulos antes del cambio exitoso.
+- AC-411: Dado que ROOT cree credenciales temporales, cuando la transaccion finalice, entonces se debe emitir evento de notificacion y enviar correo al usuario con instrucciones, vigencia y obligatoriedad de cambio de clave.
+- AC-412: Dado el formulario de cliente/proveedor, cuando se registre o actualice un tercero proveedor, entonces debe permitir capturar `ciiuCode` valido desde catalogo CIIU y persistirlo junto con municipio, regimen y responsabilidades fiscales existentes.
+- AC-413: Dado un proveedor con regimen, responsabilidades, municipio y CIIU registrados, cuando se cree una compra o gasto sujeto a retenciones, entonces el backend debe calcular retenciones usando reglas versionadas y devolver desglose por concepto, base, tarifa, valor y regla aplicada.
+- AC-414: Dada una regla especial por regimen SIMPLE, no responsable, autorretenedor, gran contribuyente u otra responsabilidad fiscal, cuando aplique a la operacion, entonces el motor debe excluir, ajustar o marcar la retencion segun la regla vigente y explicar la decision funcionalmente.
+- AC-415: Dada una compra o gasto con retenciones calculadas, cuando se confirme, entonces debe conservar valor bruto, impuestos, retenciones, valor neto a pagar, tercero, municipio, CIIU, version de regla y asiento contable asociado.
+- AC-416: Dada una compra, gasto o pago que requiere retencion pero carece de configuracion fiscal/contable obligatoria, cuando se confirme, entonces debe responder `400/409` funcional y no generar asiento parcial ni cuenta por pagar inconsistente.
+- AC-417: Dado un producto con umbral de desabastecimiento configurado, cuando un movimiento o venta deje su stock igual o menor al umbral, entonces el sistema debe emitir notificacion de inventario bajo por correo sin duplicarla dentro de la ventana configurada.
+- AC-418: Dado un reporte pesado solicitado con notificacion por correo, cuando el job pase a `READY`, entonces el sistema debe enviar correo con link intermediado de descarga y auditar intento/resultado sin exponer URL directa de storage.
+- AC-419: Dada cualquier notificacion por correo, cuando falle el proveedor SMTP/SES o equivalente, entonces el sistema debe registrar error sanitizado, permitir reintento controlado y no revertir el hecho de negocio ya confirmado salvo que la notificacion sea requisito explicito de seguridad.

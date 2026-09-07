@@ -183,7 +183,7 @@ export function createResolutionForm() {
 
 export function createFiscalPolicyForm() {
   return {
-    defaultSaleDocumentType: 'ELECTRONIC_INVOICE',
+    defaultSaleDocumentType: 'NON_FISCAL_SALE',
     allowDocumentTypeOverride: true,
     requirePinForOverride: true,
   };
@@ -207,11 +207,8 @@ export function createDianConfigurationForm() {
     softwareId: '',
     softwarePin: '',
     technicalKey: '',
-    certificatePayload: '',
+    certificateFile: null,
     certificatePassword: '',
-    certificateAlias: '',
-    certificateFingerprint: '',
-    certificateExpiresAt: '',
     serviceBaseUrl: '',
     testSetId: '',
     acceptedResponsibility: false,

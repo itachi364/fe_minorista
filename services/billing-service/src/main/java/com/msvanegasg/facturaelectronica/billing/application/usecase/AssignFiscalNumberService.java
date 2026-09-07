@@ -46,6 +46,7 @@ public class AssignFiscalNumberService implements AssignFiscalNumberUseCase {
             case CREDIT_NOTE -> "nota credito";
             case DEBIT_NOTE -> "nota debito";
             case POS_ADJUSTMENT_NOTE -> "nota de ajuste POS";
+            case NON_FISCAL_SALE -> "venta interna no fiscal";
         };
     }
 }

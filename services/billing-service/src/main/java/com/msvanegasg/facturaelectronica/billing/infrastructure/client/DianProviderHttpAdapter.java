@@ -60,6 +60,7 @@ public class DianProviderHttpAdapter implements ElectronicDocumentProviderPort {
             case CREDIT_NOTE -> "/api/v1/provider/credit-notes";
             case DEBIT_NOTE -> "/api/v1/provider/debit-notes";
             case POS_ADJUSTMENT_NOTE -> "/api/v1/provider/pos-adjustment-notes";
+            case NON_FISCAL_SALE -> throw new IllegalArgumentException("non fiscal sales are not submitted to DIAN");
         };
     }
 

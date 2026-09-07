@@ -15,7 +15,18 @@ public record SaleResponse(UUID id, UUID companyId, BuyerIdentificationMode buye
         PaymentMethodCode paymentMethodCode,
         VirtualWalletCode virtualWalletCode, SaleChannel saleChannel, SaleStatus status, BigDecimal subtotal,
         BigDecimal discountTotal, BigDecimal taxTotal, BigDecimal total, String idempotencyKey, UUID createdBy,
-        Instant createdAt, Instant confirmedAt, List<SaleLineResponse> lines, ElectronicDocumentResponse electronicDocument) {
+        Instant createdAt, Instant confirmedAt, List<SaleLineResponse> lines, ElectronicDocumentResponse electronicDocument,
+        Instant inventoryAppliedAt, Instant accountingAppliedAt) {
+
+    public SaleResponse(UUID id, UUID companyId, BuyerIdentificationMode buyerIdentificationMode, UUID customerId,
+            PaymentMethodCode paymentMethodCode, VirtualWalletCode virtualWalletCode, SaleChannel saleChannel,
+            SaleStatus status, BigDecimal subtotal, BigDecimal discountTotal, BigDecimal taxTotal, BigDecimal total,
+            String idempotencyKey, UUID createdBy, Instant createdAt, Instant confirmedAt,
+            List<SaleLineResponse> lines, ElectronicDocumentResponse electronicDocument) {
+        this(id, companyId, buyerIdentificationMode, customerId, paymentMethodCode, virtualWalletCode, saleChannel,
+                status, subtotal, discountTotal, taxTotal, total, idempotencyKey, createdBy, createdAt, confirmedAt,
+                lines, electronicDocument, null, null);
+    }
 
     public SaleResponse(UUID id, UUID companyId, UUID customerId, PaymentMethodCode paymentMethodCode,
             VirtualWalletCode virtualWalletCode, SaleChannel saleChannel, SaleStatus status, BigDecimal subtotal,
@@ -24,6 +35,7 @@ public record SaleResponse(UUID id, UUID companyId, BuyerIdentificationMode buye
             ElectronicDocumentResponse electronicDocument) {
         this(id, companyId, customerId == null ? BuyerIdentificationMode.FINAL_CONSUMER : BuyerIdentificationMode.IDENTIFIED_CUSTOMER,
                 customerId, paymentMethodCode, virtualWalletCode, saleChannel, status, subtotal, discountTotal,
-                taxTotal, total, idempotencyKey, createdBy, createdAt, confirmedAt, lines, electronicDocument);
+                taxTotal, total, idempotencyKey, createdBy, createdAt, confirmedAt, lines, electronicDocument,
+                null, null);
     }
 }

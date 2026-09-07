@@ -14,14 +14,14 @@ public record CompanyFiscalPolicy(UUID companyId, ElectronicDocumentType default
     }
 
     public static CompanyFiscalPolicy defaults(UUID companyId) {
-        return new CompanyFiscalPolicy(companyId, ElectronicDocumentType.ELECTRONIC_INVOICE, true, true,
+        return new CompanyFiscalPolicy(companyId, ElectronicDocumentType.NON_FISCAL_SALE, true, true,
                 Instant.EPOCH);
     }
 
     public static CompanyFiscalPolicy configure(UUID companyId, ElectronicDocumentType defaultSaleDocumentType,
             boolean allowDocumentTypeOverride, boolean requirePinForOverride, Instant updatedAt) {
         ElectronicDocumentType normalizedDefault = defaultSaleDocumentType == null
-                ? ElectronicDocumentType.ELECTRONIC_INVOICE
+                ? ElectronicDocumentType.NON_FISCAL_SALE
                 : defaultSaleDocumentType;
         if (!normalizedDefault.isSaleDocument()) {
             throw new IllegalArgumentException("defaultSaleDocumentType must be a sale document type");

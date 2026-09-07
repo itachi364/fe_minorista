@@ -115,11 +115,20 @@ Estado TASK-036:
 - La plataforma se presenta como software parametrizable para conexion DIAN por empresa, no como proveedor tecnologico DIAN.
 - La configuracion DIAN pertenece a una sola empresa y queda aislada por `company_id`.
 - La configuracion debe soportar al menos `MOCK` para desarrollo/E2E y `SOFTWARE_PROPIO_CLIENTE` para el modo objetivo donde la empresa opera su propio software parametrizado.
+- `billing-service` valida DIAN antes de crear/activar resoluciones o emitir documentos electronicos. La compuerta consulta `dian-provider-service` por `companyId` y falla cerrada si la configuracion no esta en modo `REAL`, `ACTIVE`, con prueba `SUCCESS` y certificado cargado.
+- Las empresas que no deban transmitir a DIAN pueden usar `NON_FISCAL_SALE` como politica de cierre: la venta confirma inventario/contabilidad e impuestos internos, pero no genera documento electronico, CUFE/CUDE ni QR DIAN.
 - La UI debe mostrar una declaracion clara antes de activar modo real: la empresa es responsable de su proceso DIAN, certificado, software ID/PIN, resoluciones, rangos y cumplimiento normativo.
 - Certificados, PIN tecnico, claves, tokens y credenciales se almacenan fuera de base de datos como secretos cifrados o referencias seguras. La DB solo guarda alias, huella, vencimiento, estado, referencias y metadata no sensible.
 - Toda carga, actualizacion, prueba, activacion, inactivacion y uso de configuracion DIAN registra auditoria segura sin exponer secretos ni payloads completos.
 - El modo real debe bloquear emision cuando la configuracion este incompleta, vencida, inactiva, no probada o no habilitada.
 - La integracion productiva final debe validar XML UBL, firma, CUFE/CUDE, QR, AttachedDocument, ApplicationResponse y reglas XSD/Schematron vigentes antes de salir a produccion.
+
+#### Context7 evidence
+
+| Technology | Topic | Finding | Decision impact |
+|---|---|---|---|
+| Spring Boot 3.5.9 | RestClient para llamadas HTTP internas | Spring Boot documenta `RestClient` como API bloqueante recomendada y `RestClient.Builder` configurable por alcance/base URL. | `billing-service` agrega un adaptador HTTP pequeno para consultar readiness DIAN en `dian-provider-service`. |
+| React | Select controlado y renderizado condicional | La documentacion oficial muestra selects controlados con `value`/`onChange` y renderizado derivado de estado/props. | La SPA deriva las opciones de cierre desde catalogos runtime y muestra `NON_FISCAL_SALE` sin manipular el DOM directamente. |
 
 ### Diseno de cierre DIAN real
 
@@ -3307,6 +3316,57 @@ Context7 evidence:
 - Impresion termica: la SPA usa WebSerial/ESC-POS cuando el navegador lo soporta y conserva impresion web como fallback. La compatibilidad comercial requiere prueba con hardware real 58/80 mm.
 - Storage seguro: `tenant-service` genera enlaces temporales prefirmados en S3 o firmados localmente con HMAC, valida PDF real en evidencias y bloquea firmas inseguras conocidas como baseline antimalware local.
 - Observabilidad local: todos los servicios no DIAN agregan Actuator Prometheus; `docker-compose.observability.yml` levanta Prometheus/Grafana con dashboard y alertas iniciales.
+
+### TASK-281 - Presets de licencia ROOT
+- Estado: Implementada.
+- Decision de diseno: Los planes comerciales visibles en ROOT se modelan como presets de UI sobre el contrato backend existente de `planCode` + `enabledModules`. El backend conserva modulos explicitos como fuente de autorizacion; la SPA deriva la lista al cambiar plan para evitar que `FULL` o `POS` queden inconsistentes por clics manuales.
+- Planes visibles: `POS`, `FULL` y `CUSTOM`; la opcion `BASIC` se retira de la pantalla ROOT.
+- Preset `FULL`: selecciona todos los valores de `licenseModuleOptions`.
+- Preset `POS`: selecciona `COMPANY`, `INVENTORY`, `BILLING`, `REPORTS`, `THIRDPARTY`, `ACCOUNTING` y `USERS`.
+- Preset `CUSTOM`: conserva y permite editar manualmente `enabledModules`.
+- Context7 evidence:
+  - Library/tool: React.
+  - Topic consulted: controlled form select and checkbox list updates.
+  - Relevant finding: React recomienda mantener la seleccion como estado controlado y actualizar arrays creando copias con spread/filter o derivando valores desde el evento.
+  - Decision impact: `LicenseAdminPanel` actualiza `planCode` y `enabledModules` juntos al cambiar el select, y solo permite toggles manuales para `CUSTOM`.
+
+### TASK-289 - Diseno modulo de contadores, reglas fiscales y notificaciones
+- Estado: Documentada; pendiente de implementacion.
+- Fase: Fase 36: Modulo de contadores, reglas fiscales y notificaciones.
+- Decision de diseno: El contador externo es un actor global limitado, similar a ROOT solo en que puede ver varias empresas, pero sin alcance administrativo global. Su visibilidad nace exclusivamente de asociaciones activas contador-empresa administradas por ROOT.
+- Cardinalidad: Un contador puede tener muchas empresas activas. Una empresa solo puede tener un contador activo; el reemplazo debe ser explicito, transaccional y auditado.
+- Portal contador: La SPA debe presentar una vista consolidada con empresas asociadas y reportes financieros/fiscales por empresa: ventas, compras, gastos, nomina, ingresos, egresos, cartera, cuentas por pagar, libro/movimientos contables y resumen de retenciones.
+- Seguridad: Los endpoints del contador validan asociacion activa en backend/BFF antes de consultar cualquier dato. El contador es lectura por defecto y no puede emitir documentos, modificar terceros, cambiar contabilidad ni administrar empresa sin permiso delegado futuro.
+- Terceros: El modulo `Cliente / proveedor` sigue siendo la fuente canonica del perfil fiscal del proveedor. Ya captura responsabilidades fiscales, regimen tributario y municipio; se agrega `ciiuCode` para completar el snapshot fiscal usado por retenciones.
+- Motor fiscal: Compras, gastos y pagos deben solicitar calculo de retenciones a reglas versionadas que crucen empresa compradora, proveedor/tercero, regimen, responsabilidades, municipio, CIIU, concepto, base, fecha y normativa vigente. El resultado conserva regla aplicada, decision, base, tarifa, valor retenido y explicacion funcional.
+- PUC y DUR: El PUC se usa como base de cuentas y dinamicas contables configurables por empresa; el DUR/Estatuto Tributario/RUT/responsabilidades DIAN y parametros territoriales alimentan reglas versionadas, no condicionales hardcodeados en UI.
+- Configuracion empresa: El onboarding empresarial debe capturar perfil fiscal/contable: tamano, grupo NIIF, regimen, responsabilidades RUT, responsable IVA, agente retenedor, gran contribuyente, autorretenedor, SIMPLE, municipio ICA y actividades CIIU.
+- Contrasenas temporales: ROOT provisiona administradores empresariales y contadores con clave temporal, expiracion y `passwordChangeRequired`. El primer login solo permite cambiar clave antes de acceder a modulos.
+- Notificaciones: Se define un puerto de correo con adaptadores local y productivo SMTP/SES o equivalente. Los eventos iniciales son credenciales temporales, inventario bajo y reporte asincrono listo.
+- Reportes asincronos: `REPORT_EXPORT_READY` reutiliza links intermediados de descarga; el correo no debe incluir URL directa de S3/storage, bucket/key interna ni tokens no protegidos.
+- Inventario bajo: La alerta se dispara al cruzar umbral configurable por producto y debe deduplicarse por ventana para evitar ruido operativo.
+- Auditoria: Asociaciones, reemplazos, accesos de contador, calculos fiscales, confirmaciones con retencion, credenciales temporales y notificaciones deben registrar correlation ID y errores sanitizados.
+
+#### Evidencia normativa
+- Fuente: DIAN Normatividad, Estatuto Tributario y DUR 1625 de 2016.
+  - URL: `https://www.dian.gov.co/Contribuyentes-Plus/Paginas/Normatividad.aspx`
+  - Impacto: Las reglas fiscales deben ser versionadas y trazables a fuente oficial vigente.
+- Fuente: Decreto 2650 de 1993, Plan Unico de Cuentas.
+  - URL: `https://suin-juriscol.gov.co/viewDocument.asp?id=1772403`
+  - Impacto: El PUC orienta cuentas y dinamicas, pero la empresa conserva configuracion contable propia.
+- Fuente: DIAN Responsabilidades RUT.
+  - URL: `https://www.dian.gov.co/impuestos/RUT/Paginas/Responsabilidades-y-Usuarios-Aduaneros.aspx`
+  - Impacto: Responsabilidades como agente retenedor, responsable IVA, SIMPLE, gran contribuyente o autorretenedor condicionan calculos.
+
+#### Context7 evidence
+- Library/tool: Spring Boot.
+  - Topic consulted: `JavaMailSender` and `spring.mail.*` properties.
+  - Relevant finding: Spring Boot auto-configura `JavaMailSender` con `spring-boot-starter-mail` y propiedades `spring.mail.*`; los timeouts SMTP se configuran con propiedades anidadas.
+  - Decision impact: El correo se disena como puerto de notificaciones con adaptador SMTP/SES, timeouts configurables y pruebas por adaptador.
+- Library/tool: Spring Security.
+  - Topic consulted: authentication success handling and password management.
+  - Relevant finding: Spring Security permite personalizar manejadores de autenticacion exitosa y paginas/flujos de cambio de contrasena.
+  - Decision impact: El primer login con clave temporal debe autenticar, pero redirigir/bloquear funcionalmente hasta completar cambio de clave.
 
 #### Context7 evidence
 - Library/tool: Spring Boot.

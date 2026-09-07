@@ -1,14 +1,13 @@
 import { CheckField, Field, FormPanel, SelectField, StatusBadge } from '../../components/forms.jsx';
 import { companyLabel } from '../../utils/company.js';
-import { licenseModuleLabel, licenseModuleOptions } from '../../data/licenseModules.js';
+import {
+  canEditLicenseModules,
+  licenseModuleLabel,
+  licenseModuleOptions,
+  licensePlanOptions,
+  modulesForLicensePlan,
+} from '../../data/licenseModules.js';
 import { DataTable } from '../../components/DataTable.jsx';
-
-const planOptions = [
-  { value: 'BASIC', label: 'Basico' },
-  { value: 'POS', label: 'POS y facturacion' },
-  { value: 'FULL', label: 'Completo' },
-  { value: 'CUSTOM', label: 'Personalizado' },
-];
 
 export function LicenseAdminPanel({
   form,
@@ -26,8 +25,20 @@ export function LicenseAdminPanel({
   const selectedCompany = companies.find((company) => company.id === form.companyId);
   const selectedModules = new Set(form.enabledModules || []);
   const licenseLoadedForSelectedCompany = Boolean(form.companyId && license?.companyId === form.companyId);
+  const manualModuleSelection = canEditLicenseModules(form.planCode);
+
+  function changePlan(planCode) {
+    setForm({
+      ...form,
+      planCode,
+      enabledModules: modulesForLicensePlan(planCode, form.enabledModules),
+    });
+  }
 
   function toggleModule(moduleCode, checked) {
+    if (!manualModuleSelection) {
+      return;
+    }
     const nextModules = checked
       ? [...selectedModules, moduleCode]
       : [...selectedModules].filter((current) => current !== moduleCode);
@@ -45,7 +56,7 @@ export function LicenseAdminPanel({
               {companies.map((company) => <option key={company.id} value={company.id}>{companyLabel(company)}</option>)}
             </select>
           </label>
-          <SelectField label="Tipo de licencia" value={form.planCode} onChange={(value) => setForm({ ...form, planCode: value })} options={planOptions} disabled={busy} />
+          <SelectField label="Tipo de licencia" value={form.planCode} onChange={changePlan} options={licensePlanOptions} disabled={busy} />
           <Field label="Fecha inicio" value={form.validFrom} onChange={(value) => setForm({ ...form, validFrom: value })} type="date" />
           <Field label="Fecha vencimiento" value={form.validTo} onChange={(value) => setForm({ ...form, validTo: value })} type="date" />
           <Field label="Maximo usuarios" value={form.maxUsers} onChange={(value) => setForm({ ...form, maxUsers: value })} type="number" />
@@ -58,7 +69,7 @@ export function LicenseAdminPanel({
               label={module.label}
               checked={selectedModules.has(module.value)}
               onChange={(checked) => toggleModule(module.value, checked)}
-              disabled={busy}
+              disabled={busy || !manualModuleSelection}
             />
           ))}
         </section>

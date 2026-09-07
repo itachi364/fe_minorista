@@ -11,7 +11,8 @@ public record Sale(UUID id, UUID companyId, BuyerIdentificationMode buyerIdentif
         PaymentMethodCode paymentMethodCode,
         VirtualWalletCode virtualWalletCode, SaleChannel saleChannel, SaleStatus status, BigDecimal subtotal,
         BigDecimal discountTotal, BigDecimal taxTotal, BigDecimal total, String idempotencyKey, UUID createdBy,
-        Instant createdAt, Instant confirmedAt, List<SaleLine> lines, ElectronicDocument electronicDocument) {
+        Instant createdAt, Instant confirmedAt, List<SaleLine> lines, ElectronicDocument electronicDocument,
+        Instant inventoryAppliedAt, Instant accountingAppliedAt) {
 
     public Sale {
         require(id, "id");
@@ -38,6 +39,16 @@ public record Sale(UUID id, UUID companyId, BuyerIdentificationMode buyerIdentif
         }
     }
 
+    public Sale(UUID id, UUID companyId, BuyerIdentificationMode buyerIdentificationMode, UUID customerId,
+            PaymentMethodCode paymentMethodCode, VirtualWalletCode virtualWalletCode, SaleChannel saleChannel,
+            SaleStatus status, BigDecimal subtotal, BigDecimal discountTotal, BigDecimal taxTotal, BigDecimal total,
+            String idempotencyKey, UUID createdBy, Instant createdAt, Instant confirmedAt, List<SaleLine> lines,
+            ElectronicDocument electronicDocument) {
+        this(id, companyId, buyerIdentificationMode, customerId, paymentMethodCode, virtualWalletCode, saleChannel,
+                status, subtotal, discountTotal, taxTotal, total, idempotencyKey, createdBy, createdAt, confirmedAt,
+                lines, electronicDocument, null, null);
+    }
+
     public static Sale draft(UUID id, UUID companyId, BuyerIdentificationMode buyerIdentificationMode, UUID customerId,
             PaymentMethodCode paymentMethodCode,
             VirtualWalletCode virtualWalletCode, SaleChannel saleChannel, String idempotencyKey, UUID createdBy,
@@ -48,7 +59,7 @@ public record Sale(UUID id, UUID companyId, BuyerIdentificationMode buyerIdentif
         BigDecimal total = lines.stream().map(SaleLine::total).reduce(BigDecimal.ZERO, BigDecimal::add);
         return new Sale(id, companyId, buyerIdentificationMode, customerId, paymentMethodCode, virtualWalletCode,
                 saleChannel, SaleStatus.DRAFT, subtotal, discount, tax, total, idempotencyKey, createdBy, createdAt,
-                null, lines, null);
+                null, lines, null, null, null);
     }
 
     public static Sale draft(UUID id, UUID companyId, UUID customerId, PaymentMethodCode paymentMethodCode,
@@ -67,14 +78,43 @@ public record Sale(UUID id, UUID companyId, BuyerIdentificationMode buyerIdentif
                 : SaleStatus.REJECTED;
         return new Sale(id, companyId, buyerIdentificationMode, customerId, paymentMethodCode, virtualWalletCode,
                 saleChannel, nextStatus, subtotal, discountTotal, taxTotal, total, idempotencyKey, createdBy,
-                createdAt, confirmedAt, lines, document);
+                createdAt, confirmedAt, lines, document, null, null);
+    }
+
+    public Sale confirmWithoutElectronicDocument(Instant confirmedAt) {
+        require(confirmedAt, "confirmedAt");
+        return new Sale(id, companyId, buyerIdentificationMode, customerId, paymentMethodCode, virtualWalletCode,
+                saleChannel, SaleStatus.CONFIRMED, subtotal, discountTotal, taxTotal, total, idempotencyKey,
+                createdBy, createdAt, confirmedAt, lines, null, inventoryAppliedAt, accountingAppliedAt);
     }
 
     public Sale withElectronicDocument(ElectronicDocument document) {
         require(document, "document");
         return new Sale(id, companyId, buyerIdentificationMode, customerId, paymentMethodCode, virtualWalletCode,
                 saleChannel, status, subtotal, discountTotal, taxTotal, total, idempotencyKey, createdBy, createdAt,
-                confirmedAt, lines, document);
+                confirmedAt, lines, document, inventoryAppliedAt, accountingAppliedAt);
+    }
+
+    public boolean commercialInventoryApplied() {
+        return inventoryAppliedAt != null;
+    }
+
+    public boolean commercialAccountingApplied() {
+        return accountingAppliedAt != null;
+    }
+
+    public Sale markCommercialInventoryApplied(Instant appliedAt) {
+        require(appliedAt, "appliedAt");
+        return new Sale(id, companyId, buyerIdentificationMode, customerId, paymentMethodCode, virtualWalletCode,
+                saleChannel, status, subtotal, discountTotal, taxTotal, total, idempotencyKey, createdBy, createdAt,
+                confirmedAt, lines, electronicDocument, appliedAt, accountingAppliedAt);
+    }
+
+    public Sale markCommercialAccountingApplied(Instant appliedAt) {
+        require(appliedAt, "appliedAt");
+        return new Sale(id, companyId, buyerIdentificationMode, customerId, paymentMethodCode, virtualWalletCode,
+                saleChannel, status, subtotal, discountTotal, taxTotal, total, idempotencyKey, createdBy, createdAt,
+                confirmedAt, lines, electronicDocument, inventoryAppliedAt, appliedAt);
     }
 
     private static void require(Object value, String field) {

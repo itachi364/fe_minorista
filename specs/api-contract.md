@@ -588,6 +588,7 @@ Retirados en TASK-059 lote 2. Los consumidores deben usar `/api/v1/customers`, `
   "phone": "3000000000",
   "address": "Calle 1 # 2-3",
   "municipalityCode": "11001",
+  "ciiuCode": "6201",
   "taxResponsibilities": ["O-13"],
   "taxRegime": "RESPONSABLE_IVA",
   "roles": ["CUSTOMER"]
@@ -605,6 +606,7 @@ Reglas:
 - Un tercero puede tener rol `CUSTOMER`, `SUPPLIER` o `BOTH`.
 - `taxResponsibilities` acepta `O-13`, `O-15`, `O-23`, `O-47` o `R-99-PN`; `R-99-PN` es excluyente.
 - `taxRegime` acepta `ORDINARIO`, `SIMPLE`, `RESPONSABLE_IVA` o `NO_RESPONSABLE_IVA`.
+- `ciiuCode` es el codigo CIIU/actividad economica del tercero cuando aplique. Para proveedores usados en compras, gastos o retenciones debe conservarse como entrada fiscal del motor de reglas.
 - Si el tercero es solo `CUSTOMER` y `personType=NATURAL`, el backend exige perfil automatico: `identificationTypeCode` distinto de `31`, `verificationDigit=null`, `businessName=null`, `tradeName=null`, `taxResponsibilities=["R-99-PN"]` y `taxRegime=NO_RESPONSABLE_IVA`.
 - Ninguna consulta puede retornar terceros de otra empresa.
 
@@ -905,6 +907,8 @@ Reglas:
 Reglas:
 
 - `POST /api/v1/numbering-resolutions` crea una resolucion activa y desactiva otras resoluciones activas de la misma empresa, tipo documental y ambiente.
+- `POST /api/v1/numbering-resolutions` y `PUT /api/v1/numbering-resolutions/{resolutionId}/activate` rechazan resoluciones electronicas si la empresa no tiene configuracion DIAN propia en modo `REAL`, estado `ACTIVE`, prueba `SUCCESS` y certificado configurado.
+- `NON_FISCAL_SALE` no es un tipo valido para resoluciones de numeracion y no consume rango DIAN.
 - `PUT /api/v1/numbering-resolutions/{resolutionId}/activate` activa la resolucion indicada y desactiva otras resoluciones activas del mismo alcance.
 - `PUT /api/v1/numbering-resolutions/{resolutionId}/deactivate` inactiva la resolucion indicada sin eliminar historial ni reutilizar consecutivos.
 
@@ -980,7 +984,8 @@ Reglas:
 - Si `buyerIdentificationMode=IDENTIFIED_CUSTOMER`, `customerId` es obligatorio y debe pertenecer a la empresa.
 - Si `buyerIdentificationMode=FINAL_CONSUMER`, `customerId` debe ser nulo; billing resuelve el perfil fiscal desde configuracion persistida.
 - La SPA no envia `saleChannel`; el flujo `Venta POS` usa canal interno `POS`.
-- El canal `POS` no define por si solo el tipo fiscal. El tipo fiscal se resuelve por politica empresarial: por defecto `ELECTRONIC_INVOICE`, con `ELECTRONIC_POS` como opcion parametrizable o override autorizado.
+- El canal `POS` no define por si solo el tipo fiscal. El tipo fiscal se resuelve por politica empresarial: por defecto seguro `NON_FISCAL_SALE`; `ELECTRONIC_INVOICE` y `ELECTRONIC_POS` quedan como opciones parametrizables u override autorizado solo con DIAN lista.
+- Cuando la politica resuelve `NON_FISCAL_SALE`, `POST /api/v1/sales/{saleId}/confirm` confirma la venta comercial, conserva subtotal/IVA/total, aplica inventario/contabilidad y retorna `electronicDocument=null`, sin CUFE/CUDE, QR DIAN ni envio a `dian-provider-service`.
 - La SPA no envia `unitPrice`, `taxCode` ni `taxRate` como fuente fiscal; billing toma precio e impuesto desde `inventory-service`.
 
 ### Politica fiscal y override operacional
@@ -998,7 +1003,7 @@ Reglas:
 ```json
 {
   "companyId": "uuid",
-  "defaultSaleDocumentType": "ELECTRONIC_INVOICE",
+  "defaultSaleDocumentType": "NON_FISCAL_SALE",
   "allowDocumentTypeOverride": true,
   "requirePinForOverride": true,
   "active": true
@@ -1271,7 +1276,7 @@ Endpoints publicos via BFF, visibles para ROOT y administradores empresariales c
 
 `DianConfigurationRequest`:
 
-Estado legacy actual: el contrato JSON acepta `certificatePayload` como texto/base64 de solo entrada. Este campo queda deprecado para la implementacion comercial y debe reemplazarse por carga multipart `.p12/.pfx`.
+Estado vigente TASK-275: el certificado real no se acepta como texto/base64/PEM. Para cargar o reemplazar certificado se usa `multipart/form-data` en el mismo endpoint `PUT /api/v1/dian-configuration/companies/{companyId}`. La parte `configuration` contiene el JSON de configuracion y la parte `certificateFile` contiene un unico archivo `.p12` o `.pfx`. Si no se envia archivo, se conserva el certificado empresarial ya configurado, siempre que su referencia pertenezca al mismo `companyId`.
 
 ```json
 {
@@ -1280,11 +1285,7 @@ Estado legacy actual: el contrato JSON acepta `certificatePayload` como texto/ba
   "softwareId": "uuid-o-identificador-dian",
   "softwarePin": "valor-sensible-solo-entrada",
   "technicalKey": "valor-sensible-solo-entrada",
-  "certificatePayload": "base64-o-pem-solo-entrada",
   "certificatePassword": "valor-sensible-solo-entrada",
-  "certificateAlias": "certificado empresa",
-  "certificateFingerprint": "sha256:...",
-  "certificateExpiresAt": "2027-08-19T00:00:00Z",
   "serviceBaseUrl": "https://catalogo-vpfe-hab.dian.gov.co/...",
   "testSetId": "set-pruebas",
   "acceptedResponsibility": true
@@ -1294,7 +1295,7 @@ Estado legacy actual: el contrato JSON acepta `certificatePayload` como texto/ba
 Contrato objetivo para certificado:
 
 ```http
-PUT /api/v1/dian-configuration/companies/{companyId}/certificate
+PUT /api/v1/dian-configuration/companies/{companyId}
 Content-Type: multipart/form-data
 X-Company-Id: {companyId}
 X-User-Id: {userId}
@@ -1303,9 +1304,16 @@ X-Correlation-Id: {correlationId}
 
 Partes multipart:
 
+- `configuration`: JSON `DianConfigurationRequest` sin `certificatePayload`, alias, fingerprint ni vencimiento manuales.
 - `certificateFile`: archivo unico `.p12` o `.pfx`.
-- `certificatePassword`: password de solo entrada.
-- `certificateAlias`: alias funcional opcional.
+- El password viaja dentro de `configuration.certificatePassword` como secreto de solo entrada.
+- Alias, fingerprint SHA-256 y vencimiento se derivan del archivo PKCS#12 validado por backend.
+
+Reglas:
+
+- El secreto del certificado queda asociado al `companyId` de la ruta.
+- ROOT puede ejecutar la administracion sobre una empresa seleccionada, pero no aporta ni reutiliza certificado propio.
+- La emision real falla si el certificado configurado no pertenece al `companyId` del documento fiscal.
 
 Respuesta:
 
@@ -1811,7 +1819,9 @@ Implementado en TASK-047 para `/api/v1/third-parties`, `/api/v1/customers` y `/a
   "phone": "3000000000",
   "address": "Calle 1 # 2-3",
   "municipalityCode": "11001",
+  "ciiuCode": "6201",
   "taxResponsibilities": ["O-13"],
+  "taxRegime": "RESPONSABLE_IVA",
   "active": true
 }
 ```
@@ -3617,3 +3627,182 @@ Reglas:
 - Los reportes pesados de fase 35 deben reutilizar los contratos de jobs definidos para Fase 24.
 - La descarga mantiene link intermediado y URL prefirmada de corta vida generada al momento del clic.
 - La UI debe consumir datasets normalizados, no JSON crudo de microservicios.
+
+## Contratos objetivo fase 36 - contadores, reglas fiscales y notificaciones
+
+Estado: documentado; pendiente de implementacion.
+
+### Administracion ROOT de contadores
+
+```http
+POST /api/v1/platform/accountants
+Idempotency-Key: {key}
+Content-Type: application/json
+```
+
+```json
+{
+  "email": "contador@example.com",
+  "fullName": "Contador Externo",
+  "documentNumber": "123456789",
+  "professionalCard": "TP-12345",
+  "sendTemporaryCredentials": true
+}
+```
+
+```http
+POST /api/v1/platform/accountants/{accountantId}/company-assignments
+Idempotency-Key: {key}
+Content-Type: application/json
+```
+
+```json
+{
+  "companyId": "uuid",
+  "replaceExistingAccountant": false,
+  "notes": "Contador recomendado por ROOT"
+}
+```
+
+Reglas:
+
+- ROOT es el unico actor que crea contadores y administra asociaciones contador-empresa.
+- `replaceExistingAccountant=false` debe rechazar la asociacion si la empresa ya tiene contador activo.
+- Al crear credenciales temporales se emite evento de notificacion; la contrasena no se vuelve a exponer despues del flujo inicial.
+
+### Portal de contador
+
+```http
+GET /api/v1/accountant/companies
+Accept: application/json
+```
+
+Respuesta objetivo:
+
+```json
+{
+  "companies": [
+    {
+      "companyId": "uuid",
+      "name": "Empresa Cliente SAS",
+      "identificationNumber": "900123456",
+      "assignmentStatus": "ACTIVE",
+      "assignedAt": "2026-09-07T10:00:00Z"
+    }
+  ]
+}
+```
+
+```http
+POST /api/v1/accountant/companies/{companyId}/reports/query
+Content-Type: application/json
+```
+
+Reglas:
+
+- El BFF debe validar asociacion activa antes de enrutar al reporte.
+- La respuesta reutiliza datasets normalizados de `reporting-service`.
+- El contador tiene lectura por defecto; cualquier escritura futura requiere permiso delegado explicito.
+
+### Perfil fiscal/contable de empresa
+
+```http
+PUT /api/v1/companies/{companyId}/tax-profile
+Content-Type: application/json
+```
+
+Payload objetivo:
+
+```json
+{
+  "companySize": "SMALL",
+  "financialReportingGroup": "GROUP_2",
+  "taxRegime": "ORDINARIO",
+  "rutResponsibilities": ["O-13", "O-15"],
+  "vatResponsible": true,
+  "withholdingAgent": true,
+  "largeTaxpayer": false,
+  "selfWithholding": false,
+  "simpleRegime": false,
+  "icaMunicipalityCode": "11001",
+  "ciiuCodes": ["6201"]
+}
+```
+
+Reglas:
+
+- Este perfil describe la empresa usuaria y sus obligaciones; no reemplaza el perfil fiscal del proveedor registrado en terceros.
+- El motor de retenciones cruza este perfil empresarial con el perfil del tercero proveedor/cliente.
+- Los cambios deben ser versionados o auditados para no recalcular historicos sin trazabilidad.
+
+### Calculo de retenciones
+
+```http
+POST /api/v1/fiscal-calculations/withholdings
+X-Company-Id: {companyId}
+Content-Type: application/json
+```
+
+Payload objetivo:
+
+```json
+{
+  "operationType": "PURCHASE",
+  "thirdPartyId": "uuid",
+  "conceptCode": "PURCHASE_GENERAL",
+  "operationDate": "2026-09-07",
+  "grossAmount": 1000000,
+  "taxAmount": 190000,
+  "municipalityCode": "11001"
+}
+```
+
+Respuesta objetivo:
+
+```json
+{
+  "companyId": "uuid",
+  "thirdPartyId": "uuid",
+  "thirdPartyFiscalSnapshot": {
+    "taxRegime": "SIMPLE",
+    "taxResponsibilities": ["O-47"],
+    "municipalityCode": "11001",
+    "ciiuCode": "6201"
+  },
+  "items": [
+    {
+      "withholdingType": "RETEFUENTE",
+      "conceptCode": "PURCHASE_GENERAL",
+      "baseAmount": 1000000,
+      "rate": 0,
+      "amount": 0,
+      "ruleVersion": "2026-01",
+      "decision": "NOT_APPLIED",
+      "reason": "Regla fiscal vigente no aplica retencion para el perfil evaluado."
+    }
+  ],
+  "grossAmount": 1190000,
+  "withholdingTotal": 0,
+  "netPayable": 1190000
+}
+```
+
+Reglas:
+
+- El calculo usa el tercero registrado como fuente fiscal: regimen, responsabilidades, municipio, tipo de persona y `ciiuCode`.
+- Las reglas deben estar versionadas por vigencia normativa y no deben vivir hardcodeadas en UI.
+- La confirmacion de compras/gastos debe persistir snapshot de reglas aplicadas para trazabilidad.
+
+### Eventos de notificacion por correo
+
+Eventos objetivo:
+
+- `USER_TEMP_CREDENTIALS_CREATED`: credenciales temporales de administrador empresarial o contador.
+- `LOW_STOCK_THRESHOLD_REACHED`: producto con stock menor o igual al umbral configurado.
+- `REPORT_EXPORT_READY`: reporte asincrono listo para descarga.
+
+Reglas:
+
+- Los correos se envian mediante puerto de notificaciones y adaptadores por ambiente.
+- Los links de descarga son intermediados por la aplicacion; no contienen URL directa de storage.
+- Los intentos, fallos y reintentos quedan auditados con error sanitizado.

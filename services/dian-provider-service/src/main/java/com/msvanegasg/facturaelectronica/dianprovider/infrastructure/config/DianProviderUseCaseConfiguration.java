@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.ClockPort;
+import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.CertificateMetadataExtractorPort;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.DianConfigurationRepositoryPort;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.DianIdentifierCalculationPort;
 import com.msvanegasg.facturaelectronica.dianprovider.application.port.out.DianSignaturePort;
@@ -24,20 +25,22 @@ public class DianProviderUseCaseConfiguration {
 
     @Bean
     DianProviderSubmissionService dianProviderSubmissionService(ProviderSubmissionRepositoryPort repository,
-            DianConfigurationRepositoryPort configurationRepository, DianTechnicalArtifactPort technicalArtifacts,
-            FiscalDocumentXmlBuilderPort xmlBuilder, DianIdentifierCalculationPort identifierCalculator,
-            DianSignaturePort signature, DianTechnicalValidationPort technicalValidation, DianTransportPort transport,
+            DianConfigurationRepositoryPort configurationRepository, SecretVaultPort secretVault,
+            DianTechnicalArtifactPort technicalArtifacts, FiscalDocumentXmlBuilderPort xmlBuilder,
+            DianIdentifierCalculationPort identifierCalculator, DianSignaturePort signature,
+            DianTechnicalValidationPort technicalValidation, DianTransportPort transport,
             FiscalArtifactStoragePort artifactStorage, DianSubmissionTraceRepositoryPort traceRepository,
             IdGeneratorPort idGenerator, ClockPort clock, DianProviderProperties properties) {
-        return new DianProviderSubmissionService(repository, configurationRepository, technicalArtifacts, xmlBuilder,
-                identifierCalculator, signature, technicalValidation, transport, artifactStorage, traceRepository,
-                idGenerator, clock, properties);
+        return new DianProviderSubmissionService(repository, configurationRepository, secretVault, technicalArtifacts,
+                xmlBuilder, identifierCalculator, signature, technicalValidation, transport, artifactStorage,
+                traceRepository, idGenerator, clock, properties);
     }
 
     @Bean
     DianConfigurationManagementService dianConfigurationManagementService(DianConfigurationRepositoryPort repository,
-            SecretVaultPort secretVault, DianTechnicalArtifactPort technicalArtifacts, IdGeneratorPort idGenerator,
-            ClockPort clock) {
-        return new DianConfigurationManagementService(repository, secretVault, technicalArtifacts, idGenerator, clock);
+            SecretVaultPort secretVault, CertificateMetadataExtractorPort certificateMetadataExtractor,
+            DianTechnicalArtifactPort technicalArtifacts, IdGeneratorPort idGenerator, ClockPort clock) {
+        return new DianConfigurationManagementService(repository, secretVault, certificateMetadataExtractor,
+                technicalArtifacts, idGenerator, clock);
     }
 }

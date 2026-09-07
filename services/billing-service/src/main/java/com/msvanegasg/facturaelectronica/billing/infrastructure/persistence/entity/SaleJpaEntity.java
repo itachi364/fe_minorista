@@ -65,6 +65,10 @@ public class SaleJpaEntity {
     private Instant createdAt;
     @Column(name = "confirmed_at")
     private Instant confirmedAt;
+    @Column(name = "inventory_applied_at")
+    private Instant inventoryAppliedAt;
+    @Column(name = "accounting_applied_at")
+    private Instant accountingAppliedAt;
     @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SaleLineJpaEntity> lines = new ArrayList<>();
     @OneToOne(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -112,6 +116,10 @@ public class SaleJpaEntity {
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getConfirmedAt() { return confirmedAt; }
     public void setConfirmedAt(Instant confirmedAt) { this.confirmedAt = confirmedAt; }
+    public Instant getInventoryAppliedAt() { return inventoryAppliedAt; }
+    public void setInventoryAppliedAt(Instant inventoryAppliedAt) { this.inventoryAppliedAt = inventoryAppliedAt; }
+    public Instant getAccountingAppliedAt() { return accountingAppliedAt; }
+    public void setAccountingAppliedAt(Instant accountingAppliedAt) { this.accountingAppliedAt = accountingAppliedAt; }
     public List<SaleLineJpaEntity> getLines() { return lines; }
     public ElectronicDocumentJpaEntity getElectronicDocument() { return electronicDocument; }
     public void setElectronicDocument(ElectronicDocumentJpaEntity electronicDocument) {

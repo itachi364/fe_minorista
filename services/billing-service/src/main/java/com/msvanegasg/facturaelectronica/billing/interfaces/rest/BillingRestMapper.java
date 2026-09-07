@@ -49,7 +49,8 @@ final class BillingRestMapper {
                 result.discountTotal(), result.taxTotal(), result.total(), result.idempotencyKey(),
                 result.createdBy(), result.createdAt(), result.confirmedAt(), result.lines().stream()
                 .map(BillingRestMapper::toLineResponse).toList(),
-                result.electronicDocument() == null ? null : toDocumentResponse(result.electronicDocument()));
+                result.electronicDocument() == null ? null : toDocumentResponse(result.electronicDocument()),
+                result.inventoryAppliedAt(), result.accountingAppliedAt());
     }
 
     static ConfigureIssuerProfileCommand toCommand(UUID companyId, IssuerProfileRequest request) {

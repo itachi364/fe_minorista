@@ -38,6 +38,7 @@ import com.msvanegasg.facturaelectronica.billing.application.port.in.AssignFisca
 import com.msvanegasg.facturaelectronica.billing.application.port.out.AccountingEntryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.CompanyFiscalPolicyRepositoryPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.DianConfigurationReadinessPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ElectronicDocumentProviderPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalDocumentUsagePort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGeneratorPort;
@@ -198,7 +199,7 @@ class SaleManagementServiceTest {
         when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
                 .thenReturn(LicensePolicy.unlimited());
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
-        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.empty());
+        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.of(electronicInvoicePolicy()));
         when(providerPort.submit(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
                 org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_INVOICE),
                 org.mockito.ArgumentMatchers.eq("confirm-1")))
@@ -243,7 +244,7 @@ class SaleManagementServiceTest {
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
         when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
                 .thenReturn(LicensePolicy.unlimited());
-        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.empty());
+        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.of(electronicInvoicePolicy()));
         when(providerPort.submit(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
                 org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_INVOICE),
                 org.mockito.ArgumentMatchers.eq("close-1")))
@@ -278,7 +279,7 @@ class SaleManagementServiceTest {
         when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
                 .thenReturn(LicensePolicy.unlimited());
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
-        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.empty());
+        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.of(electronicInvoicePolicy()));
         when(providerPort.submit(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
                 org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_INVOICE),
                 org.mockito.ArgumentMatchers.eq("confirm-1")))
@@ -329,6 +330,48 @@ class SaleManagementServiceTest {
     }
 
     @Test
+    void confirmsNonFiscalSaleWithoutDianResolutionOrProvider() {
+        SaleManagementService service = service();
+        when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
+        when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
+        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.empty());
+        when(idGenerator.newId()).thenReturn(SALE_EVENT_ID, AUDIT_EVENT_ID);
+        when(clock.now()).thenReturn(NOW);
+        when(saleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service.confirm(COMPANY_ID, SALE_ID, "confirm-1");
+
+        assertThat(result.status()).isEqualTo(SaleStatus.CONFIRMED);
+        assertThat(result.electronicDocument()).isNull();
+        assertThat(result.inventoryAppliedAt()).isEqualTo(NOW);
+        assertThat(result.accountingAppliedAt()).isEqualTo(NOW);
+        verify(licenseValidationPort, never()).policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT);
+        verify(assignFiscalNumberUseCase, never()).assign(any());
+        verify(providerPort, never()).submit(any(), any(), any(), any());
+        verify(inventoryMovementPort).applySaleOut(any(), org.mockito.ArgumentMatchers.eq("sale-1"));
+        verify(accountingEntryPort).postSale(any(), org.mockito.ArgumentMatchers.eq("sale-1"));
+    }
+
+    @Test
+    void blocksElectronicSaleWhenDianConfigurationIsNotReady() {
+        DianConfigurationReadinessPort readiness = companyId -> false;
+        SaleManagementService service = service(readiness);
+        when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
+        when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
+        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.of(electronicInvoicePolicy()));
+        when(clock.now()).thenReturn(NOW);
+
+        assertThatThrownBy(() -> service.confirm(COMPANY_ID, SALE_ID, "confirm-1"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("configurar, probar y activar DIAN real");
+
+        verify(licenseValidationPort, never()).policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT);
+        verify(assignFiscalNumberUseCase, never()).assign(any());
+        verify(providerPort, never()).submit(any(), any(), any(), any());
+        verify(saleRepository, never()).save(any());
+    }
+
+    @Test
     void overridesDocumentTypeForDraftSaleWithOperationalPin() {
         InMemorySaleDocumentTypeOverrideRepository overrideRepository = new InMemorySaleDocumentTypeOverrideRepository();
         SaleManagementService service = service(overrideRepository,
@@ -356,7 +399,7 @@ class SaleManagementServiceTest {
         when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
                 .thenReturn(LicensePolicy.unlimited());
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
-        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.empty());
+        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.of(electronicInvoicePolicy()));
         when(providerPort.submit(any(), org.mockito.ArgumentMatchers.eq(DOCUMENT_ID),
                 org.mockito.ArgumentMatchers.eq(ElectronicDocumentType.ELECTRONIC_INVOICE),
                 org.mockito.ArgumentMatchers.eq("confirm-1")))
@@ -382,6 +425,8 @@ class SaleManagementServiceTest {
     @Test
     void blocksConfirmWhenLicenseIsNotAllowed() {
         when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
+        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.of(electronicInvoicePolicy()));
+        when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
         when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
                 .thenThrow(new LicenseBlockedException("La licencia de la empresa esta suspendida."));
 
@@ -397,6 +442,7 @@ class SaleManagementServiceTest {
         FiscalDocumentUsagePort fiscalDocumentUsagePort = org.mockito.Mockito.mock(FiscalDocumentUsagePort.class);
         SaleManagementService service = service(fiscalDocumentUsagePort);
         when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
+        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.of(electronicInvoicePolicy()));
         when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
                 .thenReturn(new LicensePolicy(null, 1));
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
@@ -416,9 +462,8 @@ class SaleManagementServiceTest {
     void blocksConfirmBeforeFiscalEmissionWhenAccountingSetupIsMissing() {
         SaleManagementService service = service();
         when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
-        when(licenseValidationPort.policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT))
-                .thenReturn(LicensePolicy.unlimited());
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
+        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.of(electronicInvoicePolicy()));
         when(clock.now()).thenReturn(NOW);
         doThrow(new IllegalStateException("Debes inicializar la configuracion contable basica antes de cerrar ventas."))
                 .when(accountingEntryPort).ensureSalePostingConfigured(COMPANY_ID);
@@ -513,6 +558,17 @@ class SaleManagementServiceTest {
                 assignFiscalNumberUseCase, eventPublisher, idGenerator, clock);
     }
 
+    private SaleManagementService service(DianConfigurationReadinessPort readiness) {
+        return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
+                accountingEntryPort, auditEventPort,
+                companyId -> Optional.of(new com.msvanegasg.facturaelectronica.billing.domain.model.FinalConsumerProfile(
+                        new UUID(0L, 222L), null, "FINAL_CONSUMER", 31, "222222222222", "Consumidor final",
+                        true, "TEST", "TEST", Instant.EPOCH)),
+                licenseValidationPort, FiscalDocumentUsagePort.noop(), companyFiscalPolicyRepository,
+                SaleDocumentTypeOverrideRepositoryPort.noop(), OperationalPinValidationPort.allowAll(), readiness,
+                assignFiscalNumberUseCase, eventPublisher, idGenerator, clock);
+    }
+
     private SaleManagementService service(SaleDocumentTypeOverrideRepositoryPort overrideRepository,
             OperationalPinValidationPort operationalPinValidationPort) {
         return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
@@ -553,6 +609,10 @@ class SaleManagementServiceTest {
                 List.of(com.msvanegasg.facturaelectronica.billing.domain.model.SaleLine.calculate(LINE_ID, PRODUCT_ID,
                         new BigDecimal("2.00"), new BigDecimal("15000.00"), BigDecimal.ZERO, "IVA_19",
                         new BigDecimal("19.00"))));
+    }
+
+    private static CompanyFiscalPolicy electronicInvoicePolicy() {
+        return CompanyFiscalPolicy.configure(COMPANY_ID, ElectronicDocumentType.ELECTRONIC_INVOICE, true, true, NOW);
     }
 
     private static InventoryProductSnapshot productSnapshot(UUID productId) {

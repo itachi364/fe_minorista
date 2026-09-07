@@ -44,7 +44,7 @@ public class FiscalNoteProviderHttpAdapter implements FiscalNoteProviderPort {
             case CREDIT_NOTE -> "/api/v1/provider/credit-notes";
             case DEBIT_NOTE -> "/api/v1/provider/debit-notes";
             case POS_ADJUSTMENT_NOTE -> "/api/v1/provider/pos-adjustment-notes";
-            case ELECTRONIC_INVOICE, ELECTRONIC_POS -> throw new IllegalArgumentException("unsupported note type");
+            case ELECTRONIC_INVOICE, ELECTRONIC_POS, NON_FISCAL_SALE -> throw new IllegalArgumentException("unsupported note type");
         };
     }
 

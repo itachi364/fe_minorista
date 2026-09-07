@@ -95,7 +95,8 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
                 entity.getDiscountTotal(), entity.getTaxTotal(), entity.getTotal(), entity.getIdempotencyKey(), entity.getCreatedBy(),
                 entity.getCreatedAt(), entity.getConfirmedAt(),
                 entity.getLines().stream().map(SalePersistenceAdapter::toLineDomain).toList(),
-                entity.getElectronicDocument() == null ? null : toDocumentDomain(entity.getId(), entity.getElectronicDocument()));
+                entity.getElectronicDocument() == null ? null : toDocumentDomain(entity.getId(), entity.getElectronicDocument()),
+                entity.getInventoryAppliedAt(), entity.getAccountingAppliedAt());
     }
 
     private static SaleLine toLineDomain(SaleLineJpaEntity entity) {
@@ -133,6 +134,8 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
         entity.setCreatedBy(sale.createdBy());
         entity.setCreatedAt(sale.createdAt());
         entity.setConfirmedAt(sale.confirmedAt());
+        entity.setInventoryAppliedAt(sale.inventoryAppliedAt());
+        entity.setAccountingAppliedAt(sale.accountingAppliedAt());
         entity.replaceLines(sale.lines().stream().map(SalePersistenceAdapter::toLineEntity).toList());
         if (sale.electronicDocument() != null) {
             entity.setElectronicDocument(toDocumentEntity(sale.electronicDocument()));

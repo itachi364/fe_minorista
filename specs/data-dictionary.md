@@ -170,6 +170,7 @@ Campos equivalentes a `thirdparty.customer`, orientados a proveedor.
 | phone | varchar(50) | No | Telefono. |
 | address | varchar(250) | No | Direccion. |
 | municipality_code | varchar(20) | No | Codigo municipio DIAN/DANE cuando aplique. |
+| ciiu_code | varchar(10) | No | Codigo CIIU/actividad economica del tercero cuando aplique. |
 | tax_regime | varchar(30) | No | ORDINARIO, SIMPLE, RESPONSABLE_IVA, NO_RESPONSABLE_IVA. |
 | active | boolean | Si | Estado. |
 
@@ -1159,3 +1160,140 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | retention_until | timestamptz | No | Fecha hasta la cual debe conservarse el archivo. |
 | download_policy | varchar(40) | No | Politica de descarga: intermediada, prefirmada corta o interna. |
 | last_downloaded_at | timestamptz | No | Ultima descarga registrada. |
+
+## Extensiones TASK-289 a TASK-295
+
+### `identity.accountant_profile`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del perfil de contador. |
+| user_id | uuid | Si | Usuario autenticable asociado. |
+| document_number | varchar(40) | No | Documento profesional o personal del contador. |
+| professional_card | varchar(80) | No | Tarjeta profesional cuando aplique. |
+| status | varchar(20) | Si | `ACTIVE`, `INACTIVE` o `SUSPENDED`. |
+| created_by | uuid | Si | ROOT que creo el perfil. |
+| created_at | timestamptz | Si | Fecha de creacion. |
+| updated_at | timestamptz | Si | Fecha de ultima actualizacion. |
+
+### `tenant.accountant_company_assignment`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador de la asociacion. |
+| accountant_user_id | uuid | Si | Usuario contador asociado. |
+| company_id | uuid | Si | Empresa asesorada. |
+| status | varchar(20) | Si | `ACTIVE`, `INACTIVE` o `REPLACED`. |
+| assigned_by | uuid | Si | ROOT que creo o reemplazo la asociacion. |
+| assigned_at | timestamptz | Si | Fecha de asignacion. |
+| ended_at | timestamptz | No | Fecha de retiro/reemplazo. |
+| notes | varchar(500) | No | Observacion funcional sanitizada. |
+
+### Extension `identity.user_account`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| password_change_required | boolean | Si | Indica que el usuario debe cambiar clave antes de operar. |
+| temporary_password_expires_at | timestamptz | No | Vencimiento de la contrasena temporal. |
+| temporary_password_created_by | uuid | No | Usuario ROOT que provisiono la credencial temporal. |
+
+### `accounting.fiscal_rule_set`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del paquete de reglas. |
+| country_code | varchar(2) | Si | Pais de aplicacion, inicialmente `CO`. |
+| name | varchar(120) | Si | Nombre funcional del paquete. |
+| version | varchar(40) | Si | Version normativa o interna. |
+| valid_from | date | Si | Inicio de vigencia. |
+| valid_to | date | No | Fin de vigencia. |
+| source_reference | varchar(500) | Si | Referencia normativa o parametrica. |
+| status | varchar(20) | Si | `DRAFT`, `ACTIVE`, `INACTIVE`. |
+
+### `tenant.company_tax_profile`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| company_id | uuid | Si | Empresa propietaria del perfil. |
+| company_size | varchar(20) | Si | `MICRO`, `SMALL`, `MEDIUM` o `LARGE`. |
+| financial_reporting_group | varchar(20) | Si | Grupo contable/NIIF aplicable. |
+| tax_regime | varchar(40) | Si | Regimen tributario empresarial. |
+| vat_responsible | boolean | Si | Indica si la empresa es responsable de IVA. |
+| withholding_agent | boolean | Si | Indica si la empresa practica retenciones cuando aplique. |
+| large_taxpayer | boolean | Si | Indica clasificacion de gran contribuyente. |
+| self_withholding | boolean | Si | Indica condicion de autorretenedor. |
+| simple_regime | boolean | Si | Indica si pertenece al regimen SIMPLE. |
+| ica_municipality_code | varchar(20) | No | Municipio base para ICA/reteICA. |
+| valid_from | date | Si | Inicio de vigencia del perfil. |
+| valid_to | date | No | Fin de vigencia. |
+| updated_by | uuid | Si | Usuario que modifico el perfil. |
+| updated_at | timestamptz | Si | Fecha de actualizacion. |
+
+### `tenant.company_tax_profile_responsibility`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| company_id | uuid | Si | Empresa propietaria. |
+| tax_responsibility_code | varchar(20) | Si | Responsabilidad RUT/DIAN de la empresa. |
+| active | boolean | Si | Estado de la responsabilidad. |
+
+### `tenant.company_tax_profile_ciiu`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| company_id | uuid | Si | Empresa propietaria. |
+| ciiu_code | varchar(10) | Si | Codigo CIIU empresarial. |
+| primary_activity | boolean | Si | Indica actividad principal. |
+| active | boolean | Si | Estado de la actividad. |
+
+### `accounting.withholding_rule`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador de regla. |
+| rule_set_id | uuid | Si | Paquete normativo asociado. |
+| withholding_type | varchar(30) | Si | `RETEFUENTE`, `RETEIVA`, `RETEICA` u otro aprobado. |
+| operation_type | varchar(40) | Si | `PURCHASE`, `EXPENSE`, `PAYMENT`, `PAYROLL`. |
+| concept_code | varchar(80) | Si | Concepto fiscal/contable evaluado. |
+| base_min_amount | numeric(19,2) | No | Base minima monetaria si aplica. |
+| rate | numeric(9,6) | Si | Tarifa aplicable. |
+| buyer_conditions | json/jsonb | No | Condiciones del comprador/empresa validadas por dominio. |
+| third_party_conditions | json/jsonb | No | Condiciones del tercero/proveedor validadas por dominio. |
+| municipality_code | varchar(20) | No | Municipio cuando la regla es territorial. |
+| ciiu_code | varchar(10) | No | CIIU cuando la regla depende de actividad economica. |
+| priority | integer | Si | Prioridad de evaluacion. |
+| active | boolean | Si | Estado operacional. |
+
+### `accounting.withholding_calculation_snapshot`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del calculo aplicado. |
+| company_id | uuid | Si | Empresa propietaria de la operacion. |
+| source_type | varchar(40) | Si | Compra, gasto, pago o fuente aprobada. |
+| source_id | uuid | Si | Identificador del hecho economico. |
+| third_party_id | uuid | Si | Tercero evaluado. |
+| operation_date | date | Si | Fecha de causacion/evaluacion. |
+| withholding_type | varchar(30) | Si | Tipo de retencion. |
+| base_amount | numeric(19,2) | Si | Base usada. |
+| rate | numeric(9,6) | Si | Tarifa aplicada. |
+| amount | numeric(19,2) | Si | Valor retenido. |
+| rule_version | varchar(40) | Si | Version de regla aplicada. |
+| decision | varchar(30) | Si | `APPLIED`, `NOT_APPLIED`, `EXEMPT`, `BLOCKED`. |
+| reason | varchar(500) | No | Explicacion funcional sanitizada. |
+| created_at | timestamptz | Si | Fecha de calculo. |
+
+### `notification.email_message`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del mensaje. |
+| event_type | varchar(80) | Si | Evento origen de la notificacion. |
+| recipient_email | varchar(180) | Si | Correo destinatario normalizado. |
+| template_code | varchar(80) | Si | Plantilla usada. |
+| status | varchar(20) | Si | `PENDING`, `SENT`, `FAILED`, `RETRYING`, `CANCELLED`. |
+| related_company_id | uuid | No | Empresa relacionada cuando aplique. |
+| related_user_id | uuid | No | Usuario relacionado cuando aplique. |
+| sanitized_error | varchar(500) | No | Error seguro para soporte. |
+| created_at | timestamptz | Si | Fecha de creacion. |
+| sent_at | timestamptz | No | Fecha de envio exitoso. |

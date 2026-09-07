@@ -21,6 +21,11 @@ final class PosReceiptRenderer {
         String number = sale.electronicDocument() == null
                 ? sale.id().toString()
                 : sale.electronicDocument().prefix() + sale.electronicDocument().documentNumber();
+        boolean electronicDocument = sale.electronicDocument() != null;
+        String title = electronicDocument ? "Factura electronica POS" : "Comprobante interno de venta";
+        String cufeCudeLabel = electronicDocument ? "CUFE/CUDE:" : "Referencia interna:";
+        String cufeCudeValue = electronicDocument ? sale.electronicDocument().cufeCude() : sale.id().toString();
+        String qrLabel = electronicDocument ? "QR:" : "QR interno:";
         String qrPayload = qrPayload(sale, number, safeWidth);
         String html = """
                 <!doctype html>
@@ -48,9 +53,9 @@ final class PosReceiptRenderer {
                     @media print { button { display: none; } }
                   </style>
                 </head>
-                <body>
+                  <body>
                   <h1>NexoFiscal POS</h1>
-                  <h2>Factura electronica POS</h2>
+                  <h2>%s</h2>
                   <p class="center">Venta: %s</p>
                   <p class="center">Documento: %s</p>
                   <p class="center">Fecha: %s</p>
@@ -68,9 +73,9 @@ final class PosReceiptRenderer {
                     </tbody>
                   </table>
                   <div class="line"></div>
-                  <p>CUFE/CUDE:</p>
+                  <p>%s</p>
                   <p class="qr">%s</p>
-                  <p>QR:</p>
+                  <p>%s</p>
                   <div class="qr-code">%s</div>
                   <p class="qr">%s</p>
                   <div class="line"></div>
@@ -78,11 +83,11 @@ final class PosReceiptRenderer {
                   <script>window.addEventListener('load', () => setTimeout(() => window.print(), 250));</script>
                 </body>
                 </html>
-                """.formatted(escape(number), safeWidth, safeWidth, sale.id(), escape(number),
+                """.formatted(escape(number), safeWidth, safeWidth, escape(title), sale.id(), escape(number),
                 sale.confirmedAt() == null ? sale.createdAt() : sale.confirmedAt(), lines(sale),
                 money(sale.subtotal()), money(sale.taxTotal()), money(sale.total()),
-                escape(sale.electronicDocument() == null ? "" : sale.electronicDocument().cufeCude()),
-                qrSvg(qrPayload), escape(qrPayload));
+                escape(cufeCudeLabel), escape(cufeCudeValue), escape(qrLabel), qrSvg(qrPayload, electronicDocument),
+                escape(qrPayload));
         return new PosReceiptResult("nexofiscal-pos-" + number + ".html", "text/html; charset=UTF-8",
                 html.getBytes(StandardCharsets.UTF_8));
     }
@@ -121,12 +126,14 @@ final class PosReceiptRenderer {
         return "/api/v1/sales/%s/receipt?widthMm=%s&document=%s".formatted(sale.id(), safeWidth, number);
     }
 
-    private static String qrSvg(String payload) {
+    private static String qrSvg(String payload, boolean electronicDocument) {
         try {
             BitMatrix matrix = new QRCodeWriter().encode(payload, BarcodeFormat.QR_CODE, 0, 0);
             StringBuilder svg = new StringBuilder("<svg viewBox=\"0 0 ")
                     .append(matrix.getWidth()).append(' ').append(matrix.getHeight())
-                    .append("\" role=\"img\" aria-label=\"Codigo QR DIAN\"><rect width=\"100%\" height=\"100%\" fill=\"#fff\"/>");
+                .append("\" role=\"img\" aria-label=\"")
+                .append(electronicDocument ? "Codigo QR DIAN" : "Codigo QR interno")
+                .append("\"><rect width=\"100%\" height=\"100%\" fill=\"#fff\"/>");
             for (int y = 0; y < matrix.getHeight(); y++) {
                 for (int x = 0; x < matrix.getWidth(); x++) {
                     if (matrix.get(x, y)) {

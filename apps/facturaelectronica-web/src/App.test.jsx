@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import App from './App.jsx';
 import { AccountingConfigurationPanel } from './features/accounting/AccountingConfigurationPanel.jsx';
+import { DianConfigurationPanel } from './features/dian/DianConfigurationPanel.jsx';
 import { ReportsForm } from './features/reports/ReportsForm.jsx';
 import { loadStoredSession, saveStoredSession, SESSION_TIMEOUT_MS } from './utils/sessionStorage.js';
 
@@ -95,6 +96,7 @@ const TEST_RUNTIME_CATALOGS = {
     { value: 'DAVIPLATA', label: 'Daviplata' },
   ],
   fiscalDocumentTypeOptions: [
+    { value: 'NON_FISCAL_SALE', label: 'Venta interna no fiscal' },
     { value: 'ELECTRONIC_INVOICE', label: 'Factura electronica de venta' },
     { value: 'ELECTRONIC_POS', label: 'POS electronico' },
   ],
@@ -223,6 +225,41 @@ test('accounting configuration shows readiness diagnostics by accounting event',
   expect(screen.getByText('Crea una regla contable activa para ventas confirmadas.')).toBeInTheDocument();
   expect(screen.getByText('Egreso confirmado')).toBeInTheDocument();
   expect(screen.getByText('Listo para operar')).toBeInTheDocument();
+});
+
+test('dian configuration uses p12 or pfx file input instead of certificate textarea', () => {
+  const { container } = render(<DianConfigurationPanel
+    form={{
+      mode: 'REAL',
+      environment: 'TEST',
+      softwareId: '',
+      softwarePin: '',
+      technicalKey: '',
+      certificateFile: null,
+      certificatePassword: '',
+      serviceBaseUrl: '',
+      testSetId: '',
+      acceptedResponsibility: false,
+    }}
+    setForm={vi.fn()}
+    configuration={{
+      status: 'DRAFT',
+      certificateConfigured: false,
+    }}
+    onSave={vi.fn()}
+    onTest={vi.fn()}
+    onActivate={vi.fn()}
+    onDeactivate={vi.fn()}
+    busy={false}
+  />);
+
+  const certificateInput = screen.getByLabelText('Certificado digital (.p12 o .pfx)');
+
+  expect(certificateInput).toHaveAttribute('type', 'file');
+  expect(certificateInput).toHaveAttribute('accept', expect.stringContaining('.p12'));
+  expect(certificateInput).toHaveAttribute('accept', expect.stringContaining('.pfx'));
+  expect(screen.queryByText('Certificado en base64 / PEM')).not.toBeInTheDocument();
+  expect(container.querySelector('textarea')).toBeNull();
 });
 
 test('login with active license hides login and shows operational shell', async () => {
@@ -523,6 +560,61 @@ test('root assigns configurable company license', async () => {
   expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toMatchObject({
     planCode: 'CUSTOM',
     enabledModules: ['COMPANY', 'BILLING', 'USERS'],
+  });
+});
+
+test('root license plan presets select modules and remove basic option', async () => {
+  const createdCompany = { id: COMPANY_ID, legalName: 'Empresa Demo SAS', tradeName: 'Tienda Demo', identificationTypeCode: 31, identificationNumber: '900123456', verificationDigit: '7', email: 'admin@example.com', status: 'ACTIVE' };
+  const savedLicense = {
+    ...ACTIVE_LICENSE,
+    companyId: COMPANY_ID,
+    planCode: 'FULL',
+    enabledModules: ['COMPANY', 'THIRDPARTY', 'INVENTORY', 'BILLING', 'ACCOUNTING', 'PAYROLL', 'REPORTS', 'CATALOGS', 'AUDIT', 'USERS'],
+  };
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(jsonResponse({
+      ...LOGIN_RESPONSE,
+      email: 'root@example.com',
+      fullName: 'Root Platform User',
+      globalRoles: ['ROOT'],
+    }))
+    .mockResolvedValueOnce(jsonResponse([createdCompany]))
+    .mockResolvedValueOnce(jsonResponse(savedLicense));
+  vi.stubGlobal('fetch', fetchMock);
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByText('Panel global')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Licencias' }));
+  fireEvent.change(screen.getByLabelText('Empresa contratante'), { target: { value: COMPANY_ID } });
+  expect(screen.queryByRole('option', { name: 'Basico' })).not.toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText('Tipo de licencia'), { target: { value: 'POS' } });
+  expect(screen.getByLabelText('Empresa y configuracion')).toBeChecked();
+  expect(screen.getByLabelText('Clientes y proveedores')).toBeChecked();
+  expect(screen.getByLabelText('Inventario')).toBeChecked();
+  expect(screen.getByLabelText('Ventas y facturacion electronica')).toBeChecked();
+  expect(screen.getByLabelText('Contabilidad')).toBeChecked();
+  expect(screen.getByLabelText('Reportes')).toBeChecked();
+  expect(screen.getByLabelText('Usuarios, roles y permisos')).toBeChecked();
+  expect(screen.getByLabelText('Nomina')).not.toBeChecked();
+  expect(screen.getByLabelText('Catalogos')).not.toBeChecked();
+  expect(screen.getByLabelText('Logs y auditoria')).not.toBeChecked();
+  expect(screen.getByLabelText('Nomina')).toBeDisabled();
+
+  fireEvent.change(screen.getByLabelText('Tipo de licencia'), { target: { value: 'FULL' } });
+  expect(screen.getByLabelText('Nomina')).toBeChecked();
+  expect(screen.getByLabelText('Catalogos')).toBeChecked();
+  expect(screen.getByLabelText('Logs y auditoria')).toBeChecked();
+  expect(screen.getByLabelText('Usuarios, roles y permisos')).toBeDisabled();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar licencia' }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+  expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toMatchObject({
+    planCode: 'FULL',
+    enabledModules: ['COMPANY', 'THIRDPARTY', 'INVENTORY', 'BILLING', 'ACCOUNTING', 'PAYROLL', 'REPORTS', 'CATALOGS', 'AUDIT', 'USERS'],
   });
 });
 
@@ -1178,7 +1270,7 @@ test('requests fiscal document override before confirming the same sale draft', 
 
   fireEvent.click(screen.getByRole('button', { name: 'Ventas' }));
   expect(screen.getAllByRole('button', { name: 'Cerrar venta' })).toHaveLength(1);
-  fireEvent.click(screen.getByRole('button', { name: 'Solicitar cambio de documento fiscal' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Solicitar cambio de cierre' }));
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
   fireEvent.change(screen.getByLabelText('Usuario autorizador'), { target: { value: authorizer.email } });
   fireEvent.change(screen.getByLabelText('PIN operacional'), { target: { value: '123456' } });

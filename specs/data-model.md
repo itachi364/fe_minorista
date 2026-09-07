@@ -208,7 +208,7 @@ Modelo objetivo:
 - `thirdparty.third_party` consolida identidad fiscal de clientes y proveedores.
 - `thirdparty.third_party_role` permite que el mismo tercero sea `CUSTOMER`, `SUPPLIER` o ambos sin duplicar documento.
 - Para `identification_type_code=31` (NIT) se calcula automaticamente `verification_digit`; para otros documentos queda nulo.
-- Campos clave: `company_id`, `person_type`, `identification_type_code`, `identification_number`, `verification_digit`, `full_name`, `business_name`, `trade_name`, `email`, `phone`, `address`, `municipality_code`, `tax_regime`, `active`.
+- Campos clave: `company_id`, `person_type`, `identification_type_code`, `identification_number`, `verification_digit`, `full_name`, `business_name`, `trade_name`, `email`, `phone`, `address`, `municipality_code`, `ciiu_code`, `tax_regime`, `active`.
 - `thirdparty.third_party_tax_responsibility` conserva responsabilidades fiscales DIAN por tercero con codigos `O-13`, `O-15`, `O-23`, `O-47` o `R-99-PN`.
 - Restriccion objetivo: `unique(company_id, identification_type_code, identification_number)`.
 
@@ -1026,3 +1026,88 @@ Reglas:
 
 - Los health checks tecnicos se exponen por mecanismo de observabilidad; las tablas funcionales son apoyo para soporte.
 - Las URLs prefirmadas no se persisten como historico.
+
+## Extensiones TASK-289 a TASK-295
+
+Estado: modelo objetivo documentado; pendiente de implementacion.
+
+### Modulo de contadores
+
+Modelo logico:
+
+- `identity.user_account` conserva el usuario autenticable del contador.
+- `identity.accountant_profile` conserva datos propios del contador externo: documento, tarjeta profesional opcional, estado y fecha de activacion.
+- `tenant.accountant_company_assignment` relaciona contador y empresa.
+
+Reglas:
+
+- Un contador puede tener muchas asociaciones activas.
+- Una empresa puede tener maximo una asociacion activa de contador.
+- El contador consulta empresas por asociacion activa; no se autoriza por confiar en un `company_id` enviado desde cliente.
+- El acceso es lectura por defecto. Escrituras futuras requieren permisos delegados explicitos y auditoria.
+
+### CIIU en terceros y perfil fiscal existente
+
+`thirdparty.third_party` sigue siendo la fuente canonica del perfil fiscal de clientes/proveedores. El sistema no crea una configuracion fiscal paralela para proveedores.
+
+Campo objetivo:
+
+- `ciiu_code`: codigo CIIU/actividad economica del tercero cuando aplique.
+
+Reglas:
+
+- El motor fiscal usa `tax_regime`, `third_party_tax_responsibility`, `municipality_code`, `person_type`, roles y `ciiu_code` como snapshot de evaluacion.
+- Para proveedores usados en compras, gastos o pagos sujetos a retencion, la ausencia de CIIU requerido por la regla debe producir error funcional o advertencia segun el concepto.
+
+### Perfil fiscal/contable de empresa
+
+Modelo logico:
+
+- `tenant.company_tax_profile` conserva obligaciones y clasificacion fiscal/contable de la empresa usuaria.
+
+Campos logicos:
+
+- Tamano empresarial.
+- Grupo contable/NIIF.
+- Regimen tributario.
+- Responsabilidades RUT.
+- Responsable de IVA.
+- Agente retenedor.
+- Gran contribuyente.
+- Autorretenedor.
+- Regimen SIMPLE.
+- Municipio ICA.
+- Actividades economicas CIIU.
+
+Reglas:
+
+- Este perfil pertenece a la empresa y se cruza con el perfil fiscal del tercero.
+- Los cambios deben quedar auditados y, cuando afecten calculos, versionados por vigencia.
+
+### Reglas fiscales y retenciones
+
+Modelo logico:
+
+- `accounting.fiscal_rule_set`: paquete versionado de reglas fiscales por vigencia.
+- `accounting.withholding_rule`: regla de retencion por tipo, concepto, base, tarifa, condiciones de empresa, condiciones de tercero, municipio y vigencia.
+- `accounting.withholding_calculation_snapshot`: resultado aplicado a compra, gasto o pago.
+
+Reglas:
+
+- Las reglas citan fuente normativa o parametro interno: Estatuto Tributario, DUR, PUC, responsabilidad RUT, acuerdo municipal o decision contable de empresa.
+- La regla aplicada se guarda como snapshot para que cambios normativos futuros no reescriban historicos.
+- El calculo puede sugerir cuentas PUC, pero la contabilizacion debe validar reglas contables activas de la empresa.
+
+### Contrasenas temporales y notificaciones
+
+Modelo logico:
+
+- `identity.user_account` agrega banderas de cambio obligatorio y expiracion de credencial temporal.
+- `notification.email_message` conserva intentos de correo, estado, plantilla, destinatario, evento origen y error sanitizado.
+- La fuente transaccional publica eventos por Outbox; el adaptador de correo consume y reintenta de forma controlada.
+
+Reglas:
+
+- Credenciales temporales aplican a contador y administrador empresarial creado por ROOT.
+- El primer ingreso con clave temporal solo permite cambio de clave antes de operar.
+- Correos de reportes usan links intermediados; correos de inventario no deben incluir informacion sensible de costos salvo que se apruebe por permiso/configuracion.
