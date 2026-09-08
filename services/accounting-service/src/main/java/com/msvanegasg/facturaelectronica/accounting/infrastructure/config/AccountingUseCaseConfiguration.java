@@ -17,6 +17,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageCh
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageExpenseUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageFiscalCatalogUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.QueryAccountingBooksUseCase;
+import com.msvanegasg.facturaelectronica.accounting.application.port.in.QueryWithholdingSnapshotsUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountsPayablePaymentRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountsReceivablePaymentRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountsReceivableRepositoryPort;
@@ -24,6 +25,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.port.out.Account
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingEntryRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingRuleRepositoryPort;
+import com.msvanegasg.facturaelectronica.accounting.application.port.out.CompanyTaxProfilePort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.ExpenseRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.FiscalParameterRepositoryPort;
@@ -41,6 +43,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.usecase.ExpenseM
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.GenerateAccountingEntryService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.FiscalCatalogManagementService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.QueryAccountingBooksService;
+import com.msvanegasg.facturaelectronica.accounting.application.usecase.QueryWithholdingSnapshotsService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.WithholdingCalculationService;
 import com.msvanegasg.facturaelectronica.eventing.DomainEventPublisherPort;
 
@@ -109,16 +112,23 @@ public class AccountingUseCaseConfiguration {
             WithholdingRuleRepositoryPort ruleRepository,
             WithholdingCalculationSnapshotRepositoryPort snapshotRepository,
             ThirdPartyFiscalProfilePort thirdPartyFiscalProfilePort,
+            CompanyTaxProfilePort companyTaxProfilePort,
             IdGeneratorPort idGenerator,
             Clock accountingClock, FiscalParameterRepositoryPort parameterRepository) {
         return new WithholdingCalculationService(ruleRepository, snapshotRepository, thirdPartyFiscalProfilePort,
-                idGenerator, accountingClock, parameterRepository);
+                idGenerator, accountingClock, parameterRepository, companyTaxProfilePort);
     }
 
     @Bean
     ManageFiscalCatalogUseCase manageFiscalCatalogUseCase(WithholdingRuleRepositoryPort ruleRepository,
             FiscalParameterRepositoryPort parameterRepository, IdGeneratorPort idGenerator) {
         return new FiscalCatalogManagementService(ruleRepository, parameterRepository, idGenerator);
+    }
+
+    @Bean
+    QueryWithholdingSnapshotsUseCase queryWithholdingSnapshotsUseCase(
+            WithholdingCalculationSnapshotRepositoryPort snapshotRepository) {
+        return new QueryWithholdingSnapshotsService(snapshotRepository);
     }
 
     @Bean
@@ -131,9 +141,10 @@ public class AccountingUseCaseConfiguration {
     @Bean
     ManageExpenseUseCase manageExpenseUseCase(ExpenseRepositoryPort expenseRepository,
             AccountsPayableRepositoryPort payableRepository, GenerateAccountingEntryUseCase accountingEntryUseCase,
-            IdGeneratorPort idGenerator, Clock accountingClock) {
+            IdGeneratorPort idGenerator, Clock accountingClock,
+            CalculateWithholdingsUseCase calculateWithholdingsUseCase) {
         return new ExpenseManagementService(expenseRepository, payableRepository, accountingEntryUseCase, idGenerator,
-                accountingClock);
+                accountingClock, calculateWithholdingsUseCase);
     }
 
 

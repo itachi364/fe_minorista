@@ -148,7 +148,7 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
 
     private static AccessRule tenantAccessRule(URI uri) {
         String normalized = normalizeApiPath(uri.getPath());
-        if (normalized.matches("companies/[^/]+/branding(/.*)?")) {
+        if (normalized.matches("companies/[^/]+/(branding|tax-profile)(/.*)?")) {
             return new AccessRule(Set.of("COMPANY_SETTINGS_MANAGE"), Set.of("COMPANY_SETTINGS_MANAGE"));
         }
         if (normalized.matches("companies/[^/]+/files(/.*)?")) {

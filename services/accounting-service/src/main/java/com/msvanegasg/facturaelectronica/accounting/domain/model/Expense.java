@@ -22,7 +22,8 @@ public record Expense(
         ExpenseStatus status,
         String idempotencyKey,
         Instant createdAt,
-        Instant confirmedAt) {
+        Instant confirmedAt,
+        String fiscalConceptCode) {
 
     public Expense {
         require(id, "id");
@@ -41,14 +42,27 @@ public record Expense(
         require(status, "status");
         idempotencyKey = normalizeRequired(idempotencyKey, 120, "idempotencyKey");
         require(createdAt, "createdAt");
+        fiscalConceptCode = normalizeOptional(fiscalConceptCode, 80, "fiscalConceptCode");
+        if (subtotal.add(taxTotal).compareTo(total) != 0) {
+            throw new IllegalArgumentException("subtotal plus taxTotal must equal total");
+        }
+    }
+
+    public static Expense pending(UUID id, UUID companyId, UUID supplierId, ExpenseType expenseType,
+            LocalDate expenseDate, String concept, BigDecimal subtotal, BigDecimal taxTotal, BigDecimal total,
+            PaymentCondition paymentCondition, LocalDate dueDate, String evidenceUrl, String idempotencyKey,
+            Instant createdAt, String fiscalConceptCode) {
+        return new Expense(id, companyId, supplierId, expenseType, expenseDate, concept, subtotal, taxTotal, total,
+                paymentCondition, dueDate, evidenceUrl, ExpenseStatus.PENDING, idempotencyKey, createdAt, null,
+                fiscalConceptCode);
     }
 
     public static Expense pending(UUID id, UUID companyId, UUID supplierId, ExpenseType expenseType,
             LocalDate expenseDate, String concept, BigDecimal subtotal, BigDecimal taxTotal, BigDecimal total,
             PaymentCondition paymentCondition, LocalDate dueDate, String evidenceUrl, String idempotencyKey,
             Instant createdAt) {
-        return new Expense(id, companyId, supplierId, expenseType, expenseDate, concept, subtotal, taxTotal, total,
-                paymentCondition, dueDate, evidenceUrl, ExpenseStatus.PENDING, idempotencyKey, createdAt, null);
+        return pending(id, companyId, supplierId, expenseType, expenseDate, concept, subtotal, taxTotal, total,
+                paymentCondition, dueDate, evidenceUrl, idempotencyKey, createdAt, null);
     }
 
     public Expense confirm(Instant confirmedAt) {
@@ -57,7 +71,7 @@ public record Expense(
         }
         return new Expense(id, companyId, supplierId, expenseType, expenseDate, concept, subtotal, taxTotal, total,
                 paymentCondition, dueDate, evidenceUrl, ExpenseStatus.CONFIRMED, idempotencyKey, createdAt,
-                confirmedAt);
+                confirmedAt, fiscalConceptCode);
     }
 
     private static void requireMoney(BigDecimal value, String field) {

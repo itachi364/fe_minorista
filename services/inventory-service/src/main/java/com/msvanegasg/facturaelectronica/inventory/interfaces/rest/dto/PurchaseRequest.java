@@ -24,5 +24,6 @@ public record PurchaseRequest(
         @Size(max = 700)
         @Pattern(regexp = "^(https?://|/api/v1/companies/).+", message = "La evidencia debe ser una URL http/https o una referencia interna valida.")
         String evidenceUrl,
-        @NotEmpty List<@Valid PurchaseLineRequest> lines) {
+        @NotEmpty List<@Valid PurchaseLineRequest> lines,
+        String fiscalConceptCode) {
 }

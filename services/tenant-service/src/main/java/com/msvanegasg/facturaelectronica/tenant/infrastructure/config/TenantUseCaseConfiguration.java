@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyLicenseUseCase;
 import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyUseCase;
 import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyBrandingUseCase;
+import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyTaxProfileUseCase;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.BrandingAssetStoragePort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyBrandingRepositoryPort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyFileAssetUseCase;
@@ -17,11 +18,13 @@ import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyFile
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyFileStoragePort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyLicenseRepositoryPort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyRepositoryPort;
+import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyTaxProfileRepositoryPort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyFileAssetManagementService;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyBrandingManagementService;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyLicenseManagementService;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyManagementService;
+import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyTaxProfileManagementService;
 
 @Configuration
 public class TenantUseCaseConfiguration {
@@ -50,6 +53,14 @@ public class TenantUseCaseConfiguration {
             BrandingAssetStoragePort storage,
             ClockPort clock) {
         return new CompanyBrandingManagementService(companyRepository, brandingRepository, storage, clock);
+    }
+
+    @Bean
+    ManageCompanyTaxProfileUseCase manageCompanyTaxProfileUseCase(
+            CompanyRepositoryPort companyRepository,
+            CompanyTaxProfileRepositoryPort profileRepository,
+            ClockPort clock) {
+        return new CompanyTaxProfileManagementService(companyRepository, profileRepository, clock);
     }
 
     @Bean

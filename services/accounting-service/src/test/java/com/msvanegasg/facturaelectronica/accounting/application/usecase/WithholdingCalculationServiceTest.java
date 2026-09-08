@@ -1,6 +1,7 @@
 package com.msvanegasg.facturaelectronica.accounting.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -22,6 +23,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.CompanyTaxPr
 import com.msvanegasg.facturaelectronica.accounting.application.dto.ThirdPartyFiscalProfileCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCalculationResult;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.IdGeneratorPort;
+import com.msvanegasg.facturaelectronica.accounting.application.port.out.FiscalParameterRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.ThirdPartyFiscalProfilePort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.WithholdingCalculationSnapshotRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.WithholdingRuleRepositoryPort;
@@ -30,6 +32,7 @@ import com.msvanegasg.facturaelectronica.accounting.domain.model.CompanyTaxProfi
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalOperationType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalCalculationBase;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalThresholdOperator;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalParameter;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalThresholdTreatment;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalThresholdUnit;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.ThirdPartyFiscalProfile;
@@ -102,6 +105,54 @@ class WithholdingCalculationServiceTest {
         assertThat(context.snapshots.snapshots).hasSize(1);
         assertThat(context.snapshots.snapshots.get(0).sourceId()).isEqualTo(SOURCE_ID);
         assertThat(context.snapshots.snapshots.get(0).withholdingType()).isEqualTo(WithholdingType.RETEIVA);
+    }
+
+    @Test
+    void reusesPersistedSnapshotForSameDocument() {
+        TestContext context = new TestContext();
+        context.rules.rules.add(reteivaSimpleRule());
+        CalculateWithholdingsCommand command = new CalculateWithholdingsCommand(COMPANY_ID,
+                FiscalOperationType.PURCHASE, THIRD_PARTY_ID, "PURCHASE_GENERAL", OPERATION_DATE,
+                money("1000000"), money("190000"), "11001", AccountingSourceType.PURCHASE, SOURCE_ID,
+                companyProfile(), simpleSupplier());
+
+        WithholdingCalculationResult first = context.service().calculate(command);
+        context.rules.rules.clear();
+        WithholdingCalculationResult second = context.service().calculate(command);
+
+        assertThat(context.snapshots.snapshots).hasSize(1);
+        assertThat(second.withholdingTotal()).isEqualByComparingTo(first.withholdingTotal());
+        assertThat(second.items()).extracting("decision").containsExactly(WithholdingDecision.APPLIED);
+    }
+
+    @Test
+    void resolvesPersistedCompanyProfileWhenRequestDoesNotSendIt() {
+        TestContext context = new TestContext();
+        context.rules.rules.add(reteivaSimpleRule());
+
+        WithholdingCalculationResult result = context.serviceWithCompanyProfile().calculate(
+                new CalculateWithholdingsCommand(COMPANY_ID, FiscalOperationType.PURCHASE, THIRD_PARTY_ID,
+                        "PURCHASE_GENERAL", OPERATION_DATE, money("1000000"), money("190000"), "11001",
+                        null, null, null, simpleSupplier()));
+
+        assertThat(result.items()).singleElement().satisfies(item ->
+                assertThat(item.amount()).isEqualByComparingTo("28500.00"));
+    }
+
+    @Test
+    void blocksDocumentConfirmationWithoutPersistingSnapshot() {
+        TestContext context = new TestContext();
+        CompanyTaxProfileCommand profile = new CompanyTaxProfileCommand("ORDINARIO", Set.of("O-13"), true, true,
+                false, false, false, "11001", Set.of("6201"), false, true);
+        CalculateWithholdingsCommand command = new CalculateWithholdingsCommand(COMPANY_ID,
+                FiscalOperationType.PURCHASE, THIRD_PARTY_ID, "PURCHASE_GENERAL", OPERATION_DATE,
+                money("1000000"), money("190000"), "11001", AccountingSourceType.PURCHASE, SOURCE_ID, profile,
+                ordinarySupplier());
+
+        assertThatThrownBy(() -> context.service().calculate(command))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("ReteICA");
+        assertThat(context.snapshots.snapshots).isEmpty();
     }
 
     @Test
@@ -277,6 +328,29 @@ class WithholdingCalculationServiceTest {
             return new WithholdingCalculationService(rules, snapshots, (companyId, thirdPartyId) -> Optional.empty(),
                     idGenerator, Clock.fixed(Instant.parse("2026-09-07T10:00:00Z"), ZoneOffset.UTC));
         }
+
+        WithholdingCalculationService serviceWithCompanyProfile() {
+            return new WithholdingCalculationService(rules, snapshots,
+                    (companyId, thirdPartyId) -> Optional.empty(), idGenerator,
+                    Clock.fixed(Instant.parse("2026-09-07T10:00:00Z"), ZoneOffset.UTC),
+                    emptyFiscalParameters(), companyId -> Optional.of(
+                            new CompanyTaxProfile("ORDINARIO", Set.of("O-13", "O-23"), true, true, false,
+                                    false, false, "11001", Set.of("6201"), true, false)));
+        }
+
+        private static FiscalParameterRepositoryPort emptyFiscalParameters() {
+            return new FiscalParameterRepositoryPort() {
+                @Override
+                public Optional<FiscalParameter> findEffective(String code, LocalDate date) {
+                    return Optional.empty();
+                }
+
+                @Override
+                public List<FiscalParameter> findAll() {
+                    return List.of();
+                }
+            };
+        }
     }
 
     private static final class InMemoryWithholdingRuleRepository implements WithholdingRuleRepositoryPort {
@@ -300,6 +374,16 @@ class WithholdingCalculationServiceTest {
         @Override
         public void saveAll(List<WithholdingCalculationSnapshot> snapshots) {
             this.snapshots.addAll(snapshots);
+        }
+
+        @Override
+        public List<WithholdingCalculationSnapshot> findBySource(UUID companyId, AccountingSourceType sourceType,
+                UUID sourceId) {
+            return snapshots.stream()
+                    .filter(snapshot -> snapshot.companyId().equals(companyId))
+                    .filter(snapshot -> snapshot.sourceType() == sourceType)
+                    .filter(snapshot -> snapshot.sourceId().equals(sourceId))
+                    .toList();
         }
     }
 

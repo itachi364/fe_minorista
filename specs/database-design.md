@@ -735,7 +735,7 @@ Estado: documentado; pendiente de implementacion.
 
 ### Readiness empresarial
 
-Tablas objetivo sugeridas:
+Tablas implementadas:
 
 - `tenant.company_readiness_snapshot`
 - `tenant.company_readiness_check`
@@ -860,13 +860,13 @@ Tablas objetivo sugeridas:
 
 Campos principales:
 
-- `company_tax_profile`: `company_id`, `company_size`, `financial_reporting_group`, `tax_regime`, `vat_responsible`, `withholding_agent`, `large_taxpayer`, `self_withholding`, `simple_regime`, `ica_municipality_code`, `valid_from`, `valid_to`, `updated_by`, `updated_at`.
-- `company_tax_profile_responsibility`: `company_id`, `tax_responsibility_code`, `active`.
-- `company_tax_profile_ciiu`: `company_id`, `ciiu_code`, `primary_activity`, `active`.
+- `company_tax_profile`: `company_id`, `company_size`, `financial_reporting_group`, `tax_regime`, `vat_responsible`, `withholding_agent`, `vat_withholding_agent`, `ica_withholding_agent`, `large_taxpayer`, `self_withholding`, `simple_regime`, `ica_municipality_code`, `updated_by`, `updated_at`.
+- `company_tax_profile_responsibility`: `company_id`, `responsibility_code`.
+- `company_tax_profile_ciiu`: `company_id`, `ciiu_code`.
 
 Reglas:
 
-- El perfil empresarial se versiona por vigencia o conserva auditoria suficiente para explicar calculos historicos.
+- El perfil vigente conserva usuario y fecha de actualizacion; los calculos confirmados preservan el snapshot de cada decision para explicar historicos.
 - Las responsabilidades RUT de empresa no reemplazan responsabilidades del tercero; ambas se evaluan juntas.
 
 ### Reglas fiscales y retenciones
@@ -887,7 +887,10 @@ Reglas:
 
 - `buyer_conditions` y `third_party_conditions` pueden ser JSON/JSONB solo para condiciones versionadas y validadas por dominio, no para logica libre no testeable.
 - Historicos guardan la regla aplicada; no se recalculan automaticamente al cambiar tarifas o normatividad.
+- Existe indice unico por `company_id`, `source_type`, `source_id` y `withholding_type` para impedir snapshots duplicados por reintentos.
+- `inventory.purchase` y `accounting.accounting_expense` conservan `fiscal_concept_code`; ambos validan subtotal, IVA y total antes de confirmar.
 - Compras, gastos y pagos no deben generar asientos parciales si falla el calculo obligatorio de retenciones o la regla contable asociada.
+- Las plantillas basicas de compra, gasto y activo acreditan `2205` por el neto pagable y separan retefuente, reteIVA y reteICA en `2365`, `2367` y `2368`; `V014` actualiza exclusivamente las plantillas basicas existentes.
 
 ### Notificaciones por correo
 

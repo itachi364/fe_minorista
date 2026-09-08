@@ -21,6 +21,6 @@ public record WithholdingCalculationRequest(
         String municipalityCode,
         AccountingSourceType sourceType,
         UUID sourceId,
-        @NotNull @Valid CompanyTaxProfileRequest companyProfile,
+        @Valid CompanyTaxProfileRequest companyProfile,
         @Valid ThirdPartyFiscalProfileRequest thirdPartyProfile) {
 }

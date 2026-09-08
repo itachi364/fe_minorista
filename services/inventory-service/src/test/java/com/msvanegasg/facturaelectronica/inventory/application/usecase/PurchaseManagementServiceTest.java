@@ -85,6 +85,6 @@ class PurchaseManagementServiceTest {
                 PaymentCondition.CREDIT, LocalDate.of(2026, 12, 31), null, "purchase-1", NOW,
                 List.of(new PurchaseLine(LINE_ID, PURCHASE_ID, null, "Factura proveedor cafe", new BigDecimal("5.00"),
                         new BigDecimal("9000.00"), new BigDecimal("45000.00"), new BigDecimal("8550.00"),
-                        new BigDecimal("53550.00"))));
+                        new BigDecimal("53550.00"))), "ANY");
     }
 }

@@ -592,3 +592,9 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-308: El motor fiscal debe evaluar una condicion CIIU contra cualquiera de las actividades registradas para el tercero y conservar compatibilidad de lectura con el campo singular historico durante la migracion.
 - RF-309: En compras y gastos la fecha limite de pago solo debe solicitarse y persistirse cuando la condicion sea credito; las operaciones de contado no deben mostrar ni enviar dicho dato.
 - RF-310: El catalogo fiscal debe ubicarse en el grupo de navegacion `Configuracion`, junto a los catalogos generales, sin cambiar sus controles de autorizacion.
+- RF-311: La empresa debe persistir un perfil fiscal autoritativo con regimen, responsabilidades RUT, obligaciones de retencion, municipio ICA y actividades CIIU, administrable desde `Empresa y configuracion`.
+- RF-312: Compras y gastos deben capturar concepto fiscal, subtotal antes de impuestos, IVA y total; el backend debe validar que `subtotal + taxTotal = total` antes de calcular o confirmar.
+- RF-313: La SPA debe permitir solicitar una vista previa del motor fiscal para una compra o gasto pendiente y mostrar por retencion base, tarifa, valor, decision, razon, version y referencia normativa.
+- RF-314: La confirmacion de una compra o gasto debe recalcular retenciones en backend usando el perfil empresarial y el perfil persistido del proveedor; ningun valor fiscal calculado por el navegador se considera autoritativo.
+- RF-315: Una decision fiscal `BLOCKED`, un proveedor ausente/inactivo o una configuracion fiscal obligatoria incompleta debe impedir la confirmacion sin dejar el documento confirmado, cuenta por pagar ni asiento parcial.
+- RF-316: La confirmacion debe conservar snapshots fiscales por documento, contabilizar las retenciones y crear la cuenta por pagar por el valor neto; la consulta posterior debe recuperar el mismo desglose aun despues de recargar la SPA.

@@ -20,6 +20,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingC
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.CalculateWithholdingsUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.FiscalParameterRepositoryPort;
+import com.msvanegasg.facturaelectronica.accounting.application.port.out.CompanyTaxProfilePort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.ThirdPartyFiscalProfilePort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.WithholdingCalculationSnapshotRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.WithholdingRuleRepositoryPort;
@@ -46,6 +47,7 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
     private final IdGeneratorPort idGenerator;
     private final Clock clock;
     private final FiscalParameterRepositoryPort parameterRepository;
+    private final CompanyTaxProfilePort companyTaxProfilePort;
 
     public WithholdingCalculationService(WithholdingRuleRepositoryPort ruleRepository,
             WithholdingCalculationSnapshotRepositoryPort snapshotRepository,
@@ -53,28 +55,41 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
             IdGeneratorPort idGenerator,
             Clock clock) {
         this(ruleRepository, snapshotRepository, thirdPartyFiscalProfilePort, idGenerator, clock,
-                FiscalParameterRepositoryPortDefaults.forTests());
+                FiscalParameterRepositoryPortDefaults.forTests(), companyId -> java.util.Optional.empty());
     }
 
     public WithholdingCalculationService(WithholdingRuleRepositoryPort ruleRepository,
             WithholdingCalculationSnapshotRepositoryPort snapshotRepository,
             ThirdPartyFiscalProfilePort thirdPartyFiscalProfilePort, IdGeneratorPort idGenerator, Clock clock,
             FiscalParameterRepositoryPort parameterRepository) {
+        this(ruleRepository, snapshotRepository, thirdPartyFiscalProfilePort, idGenerator, clock, parameterRepository,
+                companyId -> java.util.Optional.empty());
+    }
+
+    public WithholdingCalculationService(WithholdingRuleRepositoryPort ruleRepository,
+            WithholdingCalculationSnapshotRepositoryPort snapshotRepository,
+            ThirdPartyFiscalProfilePort thirdPartyFiscalProfilePort, IdGeneratorPort idGenerator, Clock clock,
+            FiscalParameterRepositoryPort parameterRepository, CompanyTaxProfilePort companyTaxProfilePort) {
         this.ruleRepository = Objects.requireNonNull(ruleRepository);
         this.snapshotRepository = Objects.requireNonNull(snapshotRepository);
         this.thirdPartyFiscalProfilePort = Objects.requireNonNull(thirdPartyFiscalProfilePort);
         this.idGenerator = Objects.requireNonNull(idGenerator);
         this.clock = Objects.requireNonNull(clock);
         this.parameterRepository = Objects.requireNonNull(parameterRepository);
+        this.companyTaxProfilePort = Objects.requireNonNull(companyTaxProfilePort);
     }
 
     @Override
     public WithholdingCalculationResult calculate(CalculateWithholdingsCommand command) {
         validate(command);
-        CompanyTaxProfile companyProfile = toCompanyProfile(command.companyProfile());
+        CompanyTaxProfile companyProfile = resolveCompanyProfile(command);
         ThirdPartyFiscalProfile thirdPartyProfile = resolveThirdPartyProfile(command);
         BigDecimal taxableBase = money(command.taxableBaseAmount());
         BigDecimal taxAmount = money(command.taxAmount());
+        List<WithholdingCalculationSnapshot> existing = existingSnapshots(command);
+        if (!existing.isEmpty()) {
+            return fromSnapshots(command, thirdPartyProfile, taxableBase, taxAmount, existing);
+        }
         List<WithholdingRule> rules = ruleRepository.findActiveRules(command.companyId(), command.operationType(),
                 command.operationDate()).stream()
                 .filter(rule -> rule.appliesTo(command.operationType(), command.conceptCode(), command.operationDate(),
@@ -89,6 +104,13 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
                         : null;
         List<WithholdingCalculationItemResult> items = calculateItems(command, companyProfile, thirdPartyProfile,
                 taxableBase, taxAmount, rules, uvtValue, parameterVersion);
+        if (command.sourceType() != null && command.sourceId() != null
+                && items.stream().anyMatch(item -> item.decision() == WithholdingDecision.BLOCKED)) {
+            String reasons = items.stream().filter(item -> item.decision() == WithholdingDecision.BLOCKED)
+                    .map(WithholdingCalculationItemResult::reason).distinct()
+                    .collect(java.util.stream.Collectors.joining(" "));
+            throw new IllegalStateException(reasons);
+        }
         persistSnapshots(command, items);
         BigDecimal withholdingTotal = items.stream()
                 .filter(item -> item.decision() == WithholdingDecision.APPLIED)
@@ -99,6 +121,32 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
         BigDecimal grossAmount = taxableBase.add(taxAmount).setScale(2, RoundingMode.HALF_UP);
         return new WithholdingCalculationResult(command.companyId(), thirdPartyProfile.thirdPartyId(),
                 toCommand(thirdPartyProfile), items, grossAmount, taxAmount, withholdingTotal,
+                grossAmount.subtract(withholdingTotal).setScale(2, RoundingMode.HALF_UP));
+    }
+
+    private List<WithholdingCalculationSnapshot> existingSnapshots(CalculateWithholdingsCommand command) {
+        if (command.sourceType() == null || command.sourceId() == null) {
+            return List.of();
+        }
+        return snapshotRepository.findBySource(command.companyId(), command.sourceType(), command.sourceId());
+    }
+
+    private WithholdingCalculationResult fromSnapshots(CalculateWithholdingsCommand command,
+            ThirdPartyFiscalProfile profile, BigDecimal taxableBase, BigDecimal taxAmount,
+            List<WithholdingCalculationSnapshot> snapshots) {
+        List<WithholdingCalculationItemResult> items = snapshots.stream().map(snapshot ->
+                new WithholdingCalculationItemResult(snapshot.withholdingType(), command.conceptCode(),
+                        snapshot.baseAmount(), snapshot.rate(), snapshot.amount(), snapshot.ruleVersion(),
+                        snapshot.decision(), snapshot.reason(), snapshot.ruleId(), snapshot.parameterVersion(),
+                        snapshot.legalReference(), snapshot.sourceUrl())).toList();
+        BigDecimal withholdingTotal = items.stream()
+                .filter(item -> item.decision() == WithholdingDecision.APPLIED)
+                .filter(item -> item.withholdingType() != WithholdingType.AUTORETENCION)
+                .map(WithholdingCalculationItemResult::amount).reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal grossAmount = taxableBase.add(taxAmount).setScale(2, RoundingMode.HALF_UP);
+        return new WithholdingCalculationResult(command.companyId(), profile.thirdPartyId(), toCommand(profile),
+                items, grossAmount, taxAmount, withholdingTotal,
                 grossAmount.subtract(withholdingTotal).setScale(2, RoundingMode.HALF_UP));
     }
 
@@ -232,6 +280,15 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
                         "No fue posible resolver el perfil fiscal del tercero para calcular retenciones."));
     }
 
+    private CompanyTaxProfile resolveCompanyProfile(CalculateWithholdingsCommand command) {
+        if (command.companyProfile() != null) {
+            return toCompanyProfile(command.companyProfile());
+        }
+        return companyTaxProfilePort.findByCompanyId(command.companyId())
+                .orElseThrow(() -> new IllegalStateException(
+                        "La empresa no tiene un perfil fiscal configurado para calcular retenciones."));
+    }
+
     private static CompanyTaxProfile toCompanyProfile(CompanyTaxProfileCommand command) {
         return new CompanyTaxProfile(command.taxRegime(), command.rutResponsibilities(), command.vatResponsible(),
                 command.withholdingAgent(), command.largeTaxpayer(), command.selfWithholding(), command.simpleRegime(),
@@ -259,7 +316,6 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
         Objects.requireNonNull(command.thirdPartyId(), "thirdPartyId is required");
         Objects.requireNonNull(command.operationDate(), "operationDate is required");
         Objects.requireNonNull(command.taxableBaseAmount(), "taxableBaseAmount is required");
-        Objects.requireNonNull(command.companyProfile(), "companyProfile is required");
         if (command.taxableBaseAmount().signum() < 0 || money(command.taxAmount()).signum() < 0) {
             throw new IllegalArgumentException("withholding amounts cannot be negative");
         }

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingRuleRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.Account;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingAmountType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingEventType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingRule;
 
@@ -31,7 +32,8 @@ class BasicAccountingSetupServiceTest {
 
         assertThat(result.templateName()).isEqualTo("BASIC_COLOMBIA_SMALL_BUSINESS");
         assertThat(result.accounts()).extracting("code")
-                .containsExactly("1105", "1110", "1305", "1435", "1520", "2205", "2408", "4135", "5105", "5135");
+                .containsExactly("1105", "1110", "1305", "1435", "1520", "2205", "2365", "2367", "2368",
+                        "2408", "4135", "5105", "5135");
         assertThat(result.rules()).extracting("eventType").containsExactly(
                 AccountingEventType.SALE_CONFIRMED,
                 AccountingEventType.INVENTORY_REPLENISHMENT_CONFIRMED,
@@ -42,6 +44,13 @@ class BasicAccountingSetupServiceTest {
                 AccountingEventType.ACCOUNTS_PAYABLE_PAYMENT_REGISTERED,
                 AccountingEventType.ACCOUNTS_RECEIVABLE_PAYMENT_REGISTERED,
                 AccountingEventType.PAYROLL_DAILY_PAYMENT_REGISTERED);
+        assertThat(result.rules())
+                .filteredOn(rule -> rule.eventType() == AccountingEventType.PURCHASE_CONFIRMED)
+                .singleElement()
+                .satisfies(rule -> assertThat(rule.lines()).extracting("amountType")
+                        .containsExactly(AccountingAmountType.SUBTOTAL, AccountingAmountType.TAX_TOTAL,
+                                AccountingAmountType.NET_PAYABLE, AccountingAmountType.RETEFUENTE,
+                                AccountingAmountType.RETEIVA, AccountingAmountType.RETEICA));
         assertThat(context.rules.findByCompanyId(COMPANY_ID, null, true)).hasSize(9);
     }
 
@@ -63,7 +72,7 @@ class BasicAccountingSetupServiceTest {
                 .singleElement()
                 .extracting("active")
                 .isEqualTo(true);
-        assertThat(context.accounts.findByCompanyId(COMPANY_ID, null)).hasSize(10);
+        assertThat(context.accounts.findByCompanyId(COMPANY_ID, null)).hasSize(13);
         assertThat(context.rules.findByCompanyId(COMPANY_ID, AccountingEventType.SALE_CONFIRMED, true)).hasSize(1);
         assertThat(context.rules.findByCompanyId(COMPANY_ID, AccountingEventType.SALE_CONFIRMED, false)).isEmpty();
         assertThat(second.rules()).filteredOn(rule -> rule.eventType() == AccountingEventType.SALE_CONFIRMED)

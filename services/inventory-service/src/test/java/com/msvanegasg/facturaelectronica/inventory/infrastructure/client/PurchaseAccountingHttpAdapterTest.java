@@ -40,9 +40,11 @@ class PurchaseAccountingHttpAdapterTest {
 
     @Test
     void postsAccountingEntryAndPayableForCreditPurchase() throws IOException {
+        CapturingHandler fiscalHandler = new CapturingHandler(200,
+                "{\"items\":[{\"withholdingType\":\"RETEFUENTE\",\"decision\":\"APPLIED\",\"amount\":1125.00}],\"grossAmount\":53550.00,\"withholdingTotal\":1125.00,\"netPayable\":52425.00}");
         CapturingHandler entryHandler = new CapturingHandler(201);
         CapturingHandler payableHandler = new CapturingHandler(201);
-        startServer(entryHandler, payableHandler);
+        startServer(fiscalHandler, entryHandler, payableHandler);
 
         adapter().applyConfirmedPurchase(confirmedPurchase(), USER_ID);
 
@@ -50,26 +52,43 @@ class PurchaseAccountingHttpAdapterTest {
         assertThat(entryHandler.requestBody).contains("\"sourceType\":\"PURCHASE\"");
         assertThat(entryHandler.requestBody).contains("\"sourceId\":\"" + PURCHASE_ID + "\"");
         assertThat(entryHandler.requestBody).contains("\"entryDate\":\"2026-08-18\"");
+        assertThat(entryHandler.requestBody).contains("\"retefuente\":1125.00");
+        assertThat(entryHandler.requestBody).contains("\"netPayable\":52425.00");
         assertThat(entryHandler.companyId).isEqualTo(COMPANY_ID.toString());
         assertThat(payableHandler.requestBody).contains("\"sourceType\":\"PURCHASE\"");
         assertThat(payableHandler.requestBody).contains("\"sourceId\":\"" + PURCHASE_ID + "\"");
-        assertThat(payableHandler.requestBody).contains("\"totalAmount\":53550.00");
+        assertThat(payableHandler.requestBody).contains("\"totalAmount\":52425.00");
+        assertThat(fiscalHandler.requestBody).contains("\"conceptCode\":\"ANY\"");
+        assertThat(fiscalHandler.requestBody).contains("\"sourceId\":\"" + PURCHASE_ID + "\"");
     }
 
     @Test
     void propagatesAccountingFailuresSoPurchaseFlowIsVerifiable() throws IOException {
-        startServer(new CapturingHandler(500), new CapturingHandler(201));
+        startServer(new CapturingHandler(500), new CapturingHandler(201), new CapturingHandler(201));
 
         assertThatThrownBy(() -> adapter().applyConfirmedPurchase(confirmedPurchase(), USER_ID))
                 .isInstanceOf(HttpServerErrorException.class);
+    }
+
+    @Test
+    void exposesFiscalRejectionAsBusinessError() throws IOException {
+        startServer(new CapturingHandler(400,
+                "{\"message\":\"Falta un catalogo ReteICA publicado para el municipio.\"}"),
+                new CapturingHandler(201), new CapturingHandler(201));
+
+        assertThatThrownBy(() -> adapter().applyConfirmedPurchase(confirmedPurchase(), USER_ID))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("ReteICA");
     }
 
     private PurchaseAccountingHttpAdapter adapter() {
         return new PurchaseAccountingHttpAdapter(RestClient.builder(), "http://localhost:" + server.getAddress().getPort());
     }
 
-    private void startServer(CapturingHandler entryHandler, CapturingHandler payableHandler) throws IOException {
+    private void startServer(CapturingHandler fiscalHandler, CapturingHandler entryHandler,
+            CapturingHandler payableHandler) throws IOException {
         server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/fiscal-calculations/withholdings", fiscalHandler::handle);
         server.createContext("/api/v1/accounting-entries", entryHandler::handle);
         server.createContext("/api/v1/accounts-payable", payableHandler::handle);
         server.start();
@@ -80,24 +99,31 @@ class PurchaseAccountingHttpAdapterTest {
                 new BigDecimal("8550.00"), new BigDecimal("53550.00"), PaymentCondition.CREDIT,
                 LocalDate.of(2026, 12, 31), null, "purchase-1", Instant.parse("2026-08-18T10:00:00Z"),
                 List.of(new PurchaseLine(UUID.randomUUID(), PURCHASE_ID, null, "Factura proveedor cafe", BigDecimal.ONE,
-                        BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.TEN)))
+                        BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.TEN)), "ANY")
                 .confirm(CONFIRMED_AT);
     }
 
     private static final class CapturingHandler {
 
         private final int status;
+        private final String responseBody;
         private String requestBody;
         private String companyId;
 
         private CapturingHandler(int status) {
+            this(status, "{}");
+        }
+
+        private CapturingHandler(int status, String responseBody) {
             this.status = status;
+            this.responseBody = responseBody;
         }
 
         private void handle(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
             companyId = exchange.getRequestHeaders().getFirst("X-Company-Id");
             requestBody = new String(exchange.getRequestBody().readAllBytes());
-            byte[] body = "{}".getBytes();
+            byte[] body = responseBody.getBytes();
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(status, body.length);
             exchange.getResponseBody().write(body);
             exchange.close();

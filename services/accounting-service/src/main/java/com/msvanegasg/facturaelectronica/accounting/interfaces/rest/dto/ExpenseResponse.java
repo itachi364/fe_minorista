@@ -12,5 +12,13 @@ import com.msvanegasg.facturaelectronica.accounting.domain.model.PaymentConditio
 public record ExpenseResponse(UUID id, UUID companyId, UUID supplierId, ExpenseType expenseType,
         LocalDate expenseDate, String concept, BigDecimal subtotal, BigDecimal taxTotal, BigDecimal total,
         PaymentCondition paymentCondition, LocalDate dueDate, String evidenceUrl, ExpenseStatus status,
-        String idempotencyKey, Instant createdAt, Instant confirmedAt) {
+        String idempotencyKey, Instant createdAt, Instant confirmedAt, String fiscalConceptCode) {
+
+    public ExpenseResponse(UUID id, UUID companyId, UUID supplierId, ExpenseType expenseType,
+            LocalDate expenseDate, String concept, BigDecimal subtotal, BigDecimal taxTotal, BigDecimal total,
+            PaymentCondition paymentCondition, LocalDate dueDate, String evidenceUrl, ExpenseStatus status,
+            String idempotencyKey, Instant createdAt, Instant confirmedAt) {
+        this(id, companyId, supplierId, expenseType, expenseDate, concept, subtotal, taxTotal, total, paymentCondition,
+                dueDate, evidenceUrl, status, idempotencyKey, createdAt, confirmedAt, null);
+    }
 }

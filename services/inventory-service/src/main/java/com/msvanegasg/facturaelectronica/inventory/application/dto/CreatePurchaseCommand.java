@@ -9,5 +9,12 @@ import com.msvanegasg.facturaelectronica.inventory.domain.model.PaymentCondition
 
 public record CreatePurchaseCommand(UUID companyId, UUID supplierId, BigDecimal subtotal, BigDecimal taxTotal,
         BigDecimal total, PaymentCondition paymentCondition, LocalDate dueDate, String evidenceUrl,
-        String idempotencyKey, UUID createdBy, List<PurchaseLineCommand> lines) {
+        String idempotencyKey, UUID createdBy, List<PurchaseLineCommand> lines, String fiscalConceptCode) {
+
+    public CreatePurchaseCommand(UUID companyId, UUID supplierId, BigDecimal subtotal, BigDecimal taxTotal,
+            BigDecimal total, PaymentCondition paymentCondition, LocalDate dueDate, String evidenceUrl,
+            String idempotencyKey, UUID createdBy, List<PurchaseLineCommand> lines) {
+        this(companyId, supplierId, subtotal, taxTotal, total, paymentCondition, dueDate, evidenceUrl, idempotencyKey,
+                createdBy, lines, null);
+    }
 }

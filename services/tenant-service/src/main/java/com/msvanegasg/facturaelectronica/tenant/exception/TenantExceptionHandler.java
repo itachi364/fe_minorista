@@ -17,6 +17,7 @@ import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyBrand
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyFileAssetNotFoundException;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyLicenseNotFoundException;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyNotFoundException;
+import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyTaxProfileNotFoundException;
 import com.msvanegasg.facturaelectronica.tenant.observability.CorrelationId;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,6 +48,7 @@ public class TenantExceptionHandler {
 
     @ExceptionHandler({
             CompanyNotFoundException.class,
+            CompanyTaxProfileNotFoundException.class,
             CompanyLicenseNotFoundException.class,
             CompanyFileAssetNotFoundException.class,
             CompanyBrandingAssetNotFoundException.class

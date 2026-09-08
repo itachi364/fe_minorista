@@ -1,5 +1,6 @@
 import { DataTable } from '../../components/DataTable.jsx';
 import { Field, FormPanel, SelectField } from '../../components/forms.jsx';
+import { FiscalCalculationResult } from '../accounting/FiscalCalculationResult.jsx';
 
 export function ExpensesPanel({
   form,
@@ -10,6 +11,9 @@ export function ExpensesPanel({
   setFilters,
   onCreate,
   onConfirm,
+  onCalculate,
+  onViewFiscal,
+  fiscalResult,
   busy,
 }) {
   const supplierOptions = suppliers.map((thirdParty) => ({
@@ -25,7 +29,10 @@ export function ExpensesPanel({
         <SelectField label="Proveedor" value={form.supplierId} onChange={(value) => setForm({ ...form, supplierId: value })} options={supplierOptions} placeholder="Proveedor opcional" />
         <Field label="Fecha del gasto" value={form.expenseDate} onChange={(value) => setForm({ ...form, expenseDate: value })} type="date" />
         <Field label="Concepto" value={form.concept} onChange={(value) => setForm({ ...form, concept: value })} />
-        <Field label="Costo total" value={form.total} onChange={(value) => setForm({ ...form, total: value })} type="number" min="0" step="0.01" />
+        <SelectField label="Concepto fiscal" value={form.fiscalConceptCode} onChange={(value) => setForm({ ...form, fiscalConceptCode: value })} options={expenseConceptOptions} />
+        <Field label="Subtotal" value={form.subtotal} onChange={(value) => setAmounts(form, setForm, { subtotal: value })} type="number" min="0" step="0.01" />
+        <Field label="IVA" value={form.taxTotal} onChange={(value) => setAmounts(form, setForm, { taxTotal: value })} type="number" min="0" step="0.01" />
+        <Field label="Total" value={form.total} onChange={() => {}} readOnly />
         <SelectField label="Condicion de pago" value={form.paymentCondition} onChange={(value) => setForm({ ...form, paymentCondition: value, dueDate: value === 'CREDIT' ? form.dueDate : '' })} options={paymentConditionOptions} />
         {form.paymentCondition === 'CREDIT' && <Field label="Fecha limite de pago" value={form.dueDate} onChange={(value) => setForm({ ...form, dueDate: value })} type="date" />}
         <SelectField label="Soporte o evidencia" value={form.evidenceType} onChange={(value) => setForm({ ...form, evidenceType: value, evidenceUrl: '', evidenceFile: null })} options={evidenceOptions} placeholder="Sin evidencia" />
@@ -39,6 +46,8 @@ export function ExpensesPanel({
         )}
       </div>
     </FormPanel>
+
+    <FiscalCalculationResult result={fiscalResult} title="Calculo fiscal de gasto" />
 
     <section className="tool-panel">
       <header className="panel-header">
@@ -57,7 +66,7 @@ export function ExpensesPanel({
       </div>
       <DataTable
         columns={['Fecha', 'Tipo', 'Concepto', 'Estado', 'Total', 'Vence', 'Acciones']}
-        rows={expenses.map((expense) => expenseRow(expense, onConfirm, busy))}
+        rows={expenses.map((expense) => expenseRow(expense, onConfirm, onCalculate, onViewFiscal, busy))}
         rowKey={(_row, index) => expenses[index]?.id || index}
         emptyMessage="Sin gastos registrados para el filtro actual."
         sectionClassName="embedded-table"
@@ -81,7 +90,14 @@ const evidenceOptions = [
   { value: 'URL', label: 'URL' },
 ];
 
-function expenseRow(expense, onConfirm, busy) {
+const expenseConceptOptions = [
+  { value: 'ANY', label: 'Gasto general' },
+  { value: 'SERVICE_GENERAL_DECLARANT', label: 'Servicio general de declarante' },
+  { value: 'REAL_ESTATE_LEASE', label: 'Arrendamiento de inmueble' },
+  { value: 'CARGO_TRANSPORT', label: 'Transporte de carga' },
+];
+
+function expenseRow(expense, onConfirm, onCalculate, onViewFiscal, busy) {
   return [
     shortDate(expense.expenseDate || expense.createdAt),
     expense.expenseType === 'ASSET_PURCHASE' ? 'Compra de activo' : 'Gasto operativo',
@@ -92,10 +108,19 @@ function expenseRow(expense, onConfirm, busy) {
     {
       searchText: `${expense.status || ''} ${expense.concept || ''}`,
       content: expense.status === 'CONFIRMED'
-        ? 'Sin acciones'
-        : <button className="secondary" disabled={busy} onClick={() => onConfirm(expense.id)} type="button">Confirmar</button>,
+        ? <button className="secondary" disabled={busy} onClick={() => onViewFiscal(expense)} type="button">Detalle fiscal</button>
+        : <div className="row-actions">
+          <button className="secondary" disabled={busy} onClick={() => onCalculate(expense)} type="button">Calcular</button>
+          <button className="secondary" disabled={busy} onClick={() => onConfirm(expense.id)} type="button">Confirmar</button>
+        </div>,
     },
   ];
+}
+
+function setAmounts(form, setForm, patch) {
+  const next = { ...form, ...patch };
+  next.total = String(Number(next.subtotal || 0) + Number(next.taxTotal || 0));
+  setForm(next);
 }
 
 function shortDate(value) {

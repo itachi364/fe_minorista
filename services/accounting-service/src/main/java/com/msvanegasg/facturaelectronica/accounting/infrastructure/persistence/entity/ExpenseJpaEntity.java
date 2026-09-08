@@ -59,4 +59,6 @@ public class ExpenseJpaEntity {
     private Instant createdAt;
     @Column(name = "confirmed_at")
     private Instant confirmedAt;
+    @Column(name = "fiscal_concept_code", length = 80)
+    private String fiscalConceptCode;
 }

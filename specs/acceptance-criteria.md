@@ -478,3 +478,14 @@
 - AC-430: Dada una regla fiscal condicionada por CIIU, cuando cualquiera de los codigos del tercero coincide, entonces la regla es candidata; si ninguno coincide, no aplica.
 - AC-431: Dada una compra o gasto de contado, cuando se edite el formulario, entonces no aparece fecha limite de pago y el payload la envia nula; al elegir credito aparece `Fecha limite de pago` y el backend conserva su validacion obligatoria.
 - AC-432: Dado un usuario autorizado, cuando abra `Configuracion`, entonces encuentra `Catalogos` con la clasificacion CIIU oficial y `Catalogo fiscal` como opcion hermana.
+
+## Integracion operativa del motor fiscal
+
+- AC-433: Dada una empresa, cuando su administrador configure el perfil fiscal, entonces regimen, responsabilidades, agentes de retencion, municipio ICA y multiples CIIU quedan persistidos y vuelven a cargarse al abrir la configuracion.
+- AC-434: Dada una compra o gasto pendiente con proveedor, concepto fiscal, subtotal e IVA validos, cuando el usuario solicite calcular retenciones, entonces ve el desglose autoritativo sin confirmar el documento ni generar asiento o cuenta por pagar.
+- AC-435: Dado un proveedor registrado con regimen, responsabilidades, municipio y multiples CIIU, cuando se calcule o confirme una operacion, entonces el backend consulta ese perfil persistido y aplica la regla mas especifica vigente.
+- AC-436: Dada una operacion cuyo calculo contiene `BLOCKED`, cuando el usuario intente confirmarla, entonces la API rechaza la confirmacion y el documento permanece pendiente sin efectos contables parciales.
+- AC-437: Dada una operacion sin bloqueos, cuando se confirme, entonces persiste snapshots por tipo de retencion, genera asiento con ReteFuente/ReteIVA/ReteICA y crea cuenta por pagar por `netPayable` cuando sea a credito.
+- AC-438: Dada una compra o gasto confirmado, cuando el usuario abra su detalle fiscal despues de recargar la SPA, entonces ve importes, decisiones y evidencia normativa del calculo guardado.
+- AC-439: Dado un cliente que intente enviar retenciones calculadas o modificar el neto, cuando confirme, entonces el backend ignora esos valores y recalcula desde datos persistidos.
+- AC-440: Dado un documento con `subtotal + taxTotal != total`, proveedor ausente o inactivo, cuando se calcule o confirme, entonces recibe error funcional y no se crean efectos financieros.

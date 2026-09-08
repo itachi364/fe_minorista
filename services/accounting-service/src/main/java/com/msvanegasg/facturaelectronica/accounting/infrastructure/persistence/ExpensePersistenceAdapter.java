@@ -47,7 +47,8 @@ public class ExpensePersistenceAdapter implements ExpenseRepositoryPort {
         return new Expense(entity.getId(), entity.getCompanyId(), entity.getSupplierId(), entity.getExpenseType(),
                 entity.getExpenseDate(), entity.getConcept(), entity.getSubtotal(), entity.getTaxTotal(), entity.getTotal(),
                 entity.getPaymentCondition(), entity.getDueDate(), entity.getEvidenceUrl(), entity.getStatus(),
-                entity.getIdempotencyKey(), entity.getCreatedAt(), entity.getConfirmedAt());
+                entity.getIdempotencyKey(), entity.getCreatedAt(), entity.getConfirmedAt(),
+                entity.getFiscalConceptCode());
     }
 
     private static ExpenseJpaEntity toEntity(Expense expense) {
@@ -68,6 +69,7 @@ public class ExpensePersistenceAdapter implements ExpenseRepositoryPort {
         entity.setIdempotencyKey(expense.idempotencyKey());
         entity.setCreatedAt(expense.createdAt());
         entity.setConfirmedAt(expense.confirmedAt());
+        entity.setFiscalConceptCode(expense.fiscalConceptCode());
         return entity;
     }
 }

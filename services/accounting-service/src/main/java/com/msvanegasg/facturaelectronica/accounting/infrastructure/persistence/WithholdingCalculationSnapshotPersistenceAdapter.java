@@ -1,11 +1,13 @@
 package com.msvanegasg.facturaelectronica.accounting.infrastructure.persistence;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.WithholdingCalculationSnapshotRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingCalculationSnapshot;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingSourceType;
 import com.msvanegasg.facturaelectronica.accounting.infrastructure.persistence.entity.WithholdingCalculationSnapshotJpaEntity;
 import com.msvanegasg.facturaelectronica.accounting.infrastructure.persistence.repository.WithholdingCalculationSnapshotJpaRepository;
 
@@ -21,6 +23,13 @@ public class WithholdingCalculationSnapshotPersistenceAdapter implements Withhol
     @Override
     public void saveAll(List<WithholdingCalculationSnapshot> snapshots) {
         repository.saveAll(snapshots.stream().map(WithholdingCalculationSnapshotPersistenceAdapter::toEntity).toList());
+    }
+
+    @Override
+    public List<WithholdingCalculationSnapshot> findBySource(UUID companyId, AccountingSourceType sourceType,
+            UUID sourceId) {
+        return repository.findByCompanyIdAndSourceTypeAndSourceIdOrderByWithholdingType(companyId, sourceType,
+                sourceId).stream().map(WithholdingCalculationSnapshotPersistenceAdapter::toDomain).toList();
     }
 
     private static WithholdingCalculationSnapshotJpaEntity toEntity(WithholdingCalculationSnapshot snapshot) {
@@ -44,5 +53,13 @@ public class WithholdingCalculationSnapshotPersistenceAdapter implements Withhol
         entity.setLegalReference(snapshot.legalReference());
         entity.setSourceUrl(snapshot.sourceUrl());
         return entity;
+    }
+
+    private static WithholdingCalculationSnapshot toDomain(WithholdingCalculationSnapshotJpaEntity entity) {
+        return new WithholdingCalculationSnapshot(entity.getId(), entity.getCompanyId(), entity.getSourceType(),
+                entity.getSourceId(), entity.getThirdPartyId(), entity.getOperationDate(), entity.getWithholdingType(),
+                entity.getBaseAmount(), entity.getRate(), entity.getAmount(), entity.getRuleVersion(),
+                entity.getDecision(), entity.getReason(), entity.getCreatedAt(), entity.getRuleId(),
+                entity.getParameterVersion(), entity.getLegalReference(), entity.getSourceUrl());
     }
 }

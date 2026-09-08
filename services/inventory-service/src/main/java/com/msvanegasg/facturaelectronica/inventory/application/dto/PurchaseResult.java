@@ -11,5 +11,14 @@ import com.msvanegasg.facturaelectronica.inventory.domain.model.PurchaseStatus;
 
 public record PurchaseResult(UUID id, UUID companyId, UUID supplierId, PurchaseStatus status, BigDecimal subtotal,
         BigDecimal taxTotal, BigDecimal total, PaymentCondition paymentCondition, LocalDate dueDate, String evidenceUrl,
-        String idempotencyKey, Instant createdAt, Instant confirmedAt, List<PurchaseLineResult> lines) {
+        String idempotencyKey, Instant createdAt, Instant confirmedAt, List<PurchaseLineResult> lines,
+        String fiscalConceptCode) {
+
+    public PurchaseResult(UUID id, UUID companyId, UUID supplierId, PurchaseStatus status, BigDecimal subtotal,
+            BigDecimal taxTotal, BigDecimal total, PaymentCondition paymentCondition, LocalDate dueDate,
+            String evidenceUrl, String idempotencyKey, Instant createdAt, Instant confirmedAt,
+            List<PurchaseLineResult> lines) {
+        this(id, companyId, supplierId, status, subtotal, taxTotal, total, paymentCondition, dueDate, evidenceUrl,
+                idempotencyKey, createdAt, confirmedAt, lines, null);
+    }
 }

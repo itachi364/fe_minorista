@@ -123,7 +123,7 @@ public final class AccountingRestMapper {
         return new CalculateWithholdingsCommand(companyId, request.operationType(), request.thirdPartyId(),
                 request.conceptCode(), request.operationDate(), request.taxableBaseAmount(), request.taxAmount(),
                 request.municipalityCode(), request.sourceType(), request.sourceId(),
-                new CompanyTaxProfileCommand(request.companyProfile().taxRegime(),
+                request.companyProfile() == null ? null : new CompanyTaxProfileCommand(request.companyProfile().taxRegime(),
                         request.companyProfile().rutResponsibilities(), request.companyProfile().vatResponsible(),
                         request.companyProfile().withholdingAgent(), request.companyProfile().largeTaxpayer(),
                         request.companyProfile().selfWithholding(), request.companyProfile().simpleRegime(),
@@ -146,7 +146,7 @@ public final class AccountingRestMapper {
         return new CreateExpenseCommand(companyId, request.supplierId(), request.expenseType(),
                 request.expenseDate(), request.concept(), valueOr(request.subtotal(), request.total()),
                 valueOr(request.taxTotal(), BigDecimal.ZERO), request.total(), request.paymentCondition(),
-                request.dueDate(), request.evidenceUrl(), idempotencyKey);
+                request.dueDate(), request.evidenceUrl(), idempotencyKey, request.fiscalConceptCode());
     }
 
     public static RegisterPayablePaymentCommand toCommand(UUID companyId, UUID payableId,
@@ -251,7 +251,7 @@ public final class AccountingRestMapper {
         return new ExpenseResponse(result.id(), result.companyId(), result.supplierId(), result.expenseType(),
                 result.expenseDate(), result.concept(), result.subtotal(), result.taxTotal(), result.total(),
                 result.paymentCondition(), result.dueDate(), result.evidenceUrl(), result.status(),
-                result.idempotencyKey(), result.createdAt(), result.confirmedAt());
+                result.idempotencyKey(), result.createdAt(), result.confirmedAt(), result.fiscalConceptCode());
     }
 
 

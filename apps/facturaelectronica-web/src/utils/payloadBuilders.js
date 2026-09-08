@@ -93,22 +93,27 @@ export function buildProductPayload(form) {
 
 export function buildPurchasePayload(form) {
   const lines = (form.lines || []).map((line) => {
-    const total = toNumber(line.total) ?? 0;
+    const subtotal = toNumber(line.subtotal) ?? 0;
+    const tax = toNumber(line.tax) ?? 0;
+    const total = Number((subtotal + tax).toFixed(2));
     return compactObject({
       description: line.description,
       quantity: 1,
-      unitCost: total,
-      subtotal: total,
-      tax: 0,
+      unitCost: subtotal,
+      subtotal,
+      tax,
       total,
     });
   });
-  const total = Number(lines.reduce((current, line) => current + Number(line.total || 0), 0).toFixed(2));
+  const subtotal = Number(lines.reduce((current, line) => current + Number(line.subtotal || 0), 0).toFixed(2));
+  const taxTotal = Number(lines.reduce((current, line) => current + Number(line.tax || 0), 0).toFixed(2));
+  const total = Number((subtotal + taxTotal).toFixed(2));
   return compactObject({
     supplierId: form.supplierId || null,
-    subtotal: total,
-    taxTotal: 0,
+    subtotal,
+    taxTotal,
     total,
+    fiscalConceptCode: form.fiscalConceptCode || 'ANY',
     paymentCondition: form.paymentCondition,
     dueDate: form.paymentCondition === 'CREDIT' ? form.dueDate : undefined,
     evidenceUrl: form.evidenceType ? form.evidenceUrl : undefined,
@@ -117,15 +122,18 @@ export function buildPurchasePayload(form) {
 }
 
 export function buildExpensePayload(form) {
-  const total = toNumber(form.total);
+  const subtotal = toNumber(form.subtotal) ?? 0;
+  const taxTotal = toNumber(form.taxTotal) ?? 0;
+  const total = Number((subtotal + taxTotal).toFixed(2));
   return compactObject({
     supplierId: form.supplierId || null,
     expenseType: form.expenseType || 'OPERATING_EXPENSE',
     expenseDate: form.expenseDate,
     concept: form.concept,
-    subtotal: total,
-    taxTotal: 0,
+    subtotal,
+    taxTotal,
     total,
+    fiscalConceptCode: form.fiscalConceptCode || 'ANY',
     paymentCondition: form.paymentCondition,
     dueDate: form.paymentCondition === 'CREDIT' ? form.dueDate : undefined,
     evidenceUrl: form.evidenceType ? form.evidenceUrl : undefined,

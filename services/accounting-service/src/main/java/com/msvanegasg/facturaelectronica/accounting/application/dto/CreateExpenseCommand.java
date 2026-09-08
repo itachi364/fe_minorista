@@ -9,5 +9,12 @@ import com.msvanegasg.facturaelectronica.accounting.domain.model.PaymentConditio
 
 public record CreateExpenseCommand(UUID companyId, UUID supplierId, ExpenseType expenseType, LocalDate expenseDate,
         String concept, BigDecimal subtotal, BigDecimal taxTotal, BigDecimal total, PaymentCondition paymentCondition,
-        LocalDate dueDate, String evidenceUrl, String idempotencyKey) {
+        LocalDate dueDate, String evidenceUrl, String idempotencyKey, String fiscalConceptCode) {
+
+    public CreateExpenseCommand(UUID companyId, UUID supplierId, ExpenseType expenseType, LocalDate expenseDate,
+            String concept, BigDecimal subtotal, BigDecimal taxTotal, BigDecimal total,
+            PaymentCondition paymentCondition, LocalDate dueDate, String evidenceUrl, String idempotencyKey) {
+        this(companyId, supplierId, expenseType, expenseDate, concept, subtotal, taxTotal, total, paymentCondition,
+                dueDate, evidenceUrl, idempotencyKey, null);
+    }
 }

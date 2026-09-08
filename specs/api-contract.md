@@ -3707,6 +3707,7 @@ Reglas:
 ### Perfil fiscal/contable de empresa
 
 ```http
+GET /api/v1/companies/{companyId}/tax-profile
 PUT /api/v1/companies/{companyId}/tax-profile
 Content-Type: application/json
 ```
@@ -3715,12 +3716,14 @@ Payload objetivo:
 
 ```json
 {
-  "companySize": "SMALL",
-  "financialReportingGroup": "GROUP_2",
+  "companySize": "PEQUENA",
+  "financialReportingGroup": "GRUPO_2",
   "taxRegime": "ORDINARIO",
   "rutResponsibilities": ["O-13", "O-15"],
   "vatResponsible": true,
   "withholdingAgent": true,
+  "vatWithholdingAgent": true,
+  "icaWithholdingAgent": false,
   "largeTaxpayer": false,
   "selfWithholding": false,
   "simpleRegime": false,
@@ -3809,7 +3812,15 @@ Reglas:
 
 - El calculo usa el tercero registrado como fuente fiscal: regimen, responsabilidades, municipio, tipo de persona y `ciiuCodes`.
 - Las reglas deben estar versionadas por vigencia normativa y no deben vivir hardcodeadas en UI.
-- La confirmacion de compras/gastos debe persistir snapshot de reglas aplicadas para trazabilidad.
+- Si `companyProfile` y `thirdPartyProfile` se omiten, el backend carga los perfiles persistidos de la empresa y del tercero; esta es la modalidad autoritativa usada por compras y gastos.
+- Una vista previa no envia `sourceType/sourceId` y no persiste snapshots. La confirmacion los envia y conserva la decision fiscal por documento.
+
+```http
+GET /api/v1/fiscal-calculations/withholdings/snapshots?sourceType=PURCHASE&sourceId={documentId}
+X-Company-Id: {companyId}
+```
+
+La respuesta es una lista de snapshots. La combinacion empresa, tipo de documento, documento y tipo de retencion es idempotente.
 
 ### Catalogos fiscales
 

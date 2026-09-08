@@ -39,7 +39,8 @@ final class InventoryResultMapper {
                 purchase.subtotal(), purchase.taxTotal(), purchase.total(), purchase.paymentCondition(),
                 purchase.dueDate(), purchase.evidenceUrl(),
                 purchase.idempotencyKey(), purchase.createdAt(), purchase.confirmedAt(),
-                purchase.lines().stream().map(InventoryResultMapper::toPurchaseLineResult).toList());
+                purchase.lines().stream().map(InventoryResultMapper::toPurchaseLineResult).toList(),
+                purchase.fiscalConceptCode());
     }
 
     private static PurchaseLineResult toPurchaseLineResult(PurchaseLine line) {

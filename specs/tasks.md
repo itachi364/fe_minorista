@@ -7340,6 +7340,17 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
   - Pruebas: dominio/API/persistencia de terceros, coincidencia CIIU del motor, payloads y renderizado condicional frontend, migraciones y build Docker local.
   - Catalogo fiscal efectivo: 502 clases CIIU Rev. 4 A.C. actualizacion 2022; `catalog-service` queda en Flyway `V011` tras corregir la carga transitoria Rev. 5 sin alterar `V010`.
 
+- [x] TASK-298: Integrar motor fiscal con compras y gastos desde frontend
+  - Estado: DONE.
+  - Requisitos: RF-311, RF-312, RF-313, RF-314, RF-315, RF-316.
+  - Acceptance criteria: AC-433, AC-434, AC-435, AC-436, AC-437, AC-438, AC-439, AC-440.
+  - Entregables: perfil fiscal empresarial persistido, concepto/base/IVA en documentos, vista previa, confirmacion autoritativa, snapshots consultables, neto contable y detalle frontend.
+  - Servicios: `tenant-service`, `thirdparty-service`, `inventory-service`, `accounting-service`, `bff-service` y SPA.
+  - Pruebas: dominio, persistencia, REST, integracion HTTP, rollback/bloqueo, idempotencia, payloads y renderizado frontend.
+  - Resultado: perfil fiscal empresarial persistido y administrable; compras/gastos capturan concepto fiscal, subtotal e IVA; la SPA ofrece vista previa; la confirmacion recalcula con perfiles persistidos, bloquea decisiones `BLOCKED`, conserva snapshots idempotentes, contabiliza retenciones y usa `netPayable` en cuentas por pagar.
+  - Migraciones: `tenant V007`, `inventory V008`, `accounting V012`, `accounting V013` y `accounting V014` aplicadas en Docker local.
+  - Verificacion: `tenant-service` 42 pruebas, `inventory-service` 54 pruebas, `accounting-service` 91 pruebas y `bff-service` 38 pruebas sin fallos; frontend 45 pruebas y build Vite exitoso. Despliegue local saludable en `http://localhost:5173` con SPA, BFF y servicios afectados respondiendo `200`.
+
 Context7 evidence:
 
 - Library/tool: React.

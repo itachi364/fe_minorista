@@ -51,6 +51,8 @@ public class PurchaseJpaEntity {
     private Instant createdAt;
     @Column(name = "confirmed_at")
     private Instant confirmedAt;
+    @Column(name = "fiscal_concept_code", length = 80)
+    private String fiscalConceptCode;
     @OneToMany(mappedBy = "purchase", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PurchaseLineJpaEntity> lines = new ArrayList<>();
 
@@ -88,6 +90,8 @@ public class PurchaseJpaEntity {
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getConfirmedAt() { return confirmedAt; }
     public void setConfirmedAt(Instant confirmedAt) { this.confirmedAt = confirmedAt; }
+    public String getFiscalConceptCode() { return fiscalConceptCode; }
+    public void setFiscalConceptCode(String fiscalConceptCode) { this.fiscalConceptCode = fiscalConceptCode; }
     public List<PurchaseLineJpaEntity> getLines() { return lines; }
     public void setLines(List<PurchaseLineJpaEntity> lines) { this.lines = lines; }
 }

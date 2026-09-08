@@ -3437,3 +3437,20 @@ Context7 evidence:
 - Fuente: DIAN, Resolucion 000227 de 2025 y Resolucion 000086 de 2023.
   - URLs: `https://www.dian.gov.co/normatividad/Normatividad/Resoluci%C3%B3n%20000227%20de%2023-09-2025.pdf` y `https://normograma.dian.gov.co/dian/compilacion/docs/resolucion_dian_0086_2023.htm`.
   - Impacto: para RUT e impuestos el catalogo usa CIIU Rev. 4 A.C. con la actualizacion DANE 2022. La migracion correctiva `V011` reemplaza los items Rev. 5 cargados por `V010` sin modificar el historial de Flyway; una futura adopcion DIAN requerira una migracion nueva.
+
+### Integracion operativa del motor fiscal TASK-298
+
+- Perfil empresarial: `tenant-service` es propietario de `company_tax_profile`, responsabilidades y CIIU; expone lectura y actualizacion aisladas por empresa. `accounting-service` lo consulta mediante puerto HTTP para cada calculo autoritativo.
+- Documento fiscalizable: compra y gasto conservan `fiscalConceptCode`, `subtotal`, `taxTotal` y `total`. La primera version aplica un concepto fiscal por documento.
+- Vista previa: endpoints por compra/gasto pendiente construyen el comando desde datos persistidos. No incluyen `sourceType/sourceId`, por lo que no escriben snapshots ni efectos contables.
+- Confirmacion de gasto: dentro de la transaccion local de `accounting-service`, recalcula con `sourceType=EXPENSE`, rechaza `BLOCKED`, persiste snapshots, genera asiento y crea cuenta por pagar neta.
+- Confirmacion de compra: `inventory-service` invoca una operacion contable idempotente por `sourceId`; una excepcion revierte su transaccion local y deja la compra pendiente. La operacion remota es idempotente porque Spring no propaga transacciones por HTTP.
+- Consulta: `accounting-service` expone snapshots agregados por `companyId/sourceType/sourceId`; la SPA usa esa consulta para mostrar el detalle despues de recargar.
+- Seguridad: perfiles y documentos se resuelven en backend; la UI nunca envia decisiones, tarifas, retenciones ni neto durante la confirmacion.
+- Plantilla contable: compras, gastos y activos reconocen el neto pagable en `2205` y las obligaciones de retefuente, reteIVA y reteICA en `2365`, `2367` y `2368`. La migracion `V014` completa solo las plantillas basicas preexistentes y conserva reglas empresariales personalizadas.
+
+#### Context7 evidence TASK-298
+- Library/tool: Spring Framework 6.2.
+  - Topic consulted: rollback declarativo y limites de transacciones sobre llamadas HTTP.
+  - Relevant finding: por defecto una `RuntimeException` revierte la transaccion local, pero el contexto transaccional no se propaga a servicios remotos.
+  - Decision impact: gastos usan una transaccion local unica; compras combinan rollback local con operacion contable remota idempotente por documento.

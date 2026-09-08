@@ -254,6 +254,19 @@ El catalogo general `CIIU` contiene las clases DANE CIIU Rev. 4 A.C. actualizaci
 
 En compras y gastos, `Fecha limite de pago` solo aparece para operaciones a credito porque alimenta la cuenta por pagar. Las operaciones de contado no envian fecha de vencimiento.
 
+### Prueba del motor fiscal desde la aplicacion
+
+1. En `Configuracion contable`, usa `Completar plantilla basica` si la empresa aun no tiene sus cuentas y reglas iniciales.
+2. En `Empresa y configuracion`, guarda el perfil fiscal de la empresa: regimen, responsabilidades RUT, condiciones de agente, municipio ICA y CIIU.
+3. En `Clientes y proveedores`, registra un proveedor con regimen tributario, responsabilidades, municipio y uno o varios CIIU.
+4. En `Compras` o `Gastos`, crea un documento indicando proveedor, concepto fiscal, subtotal e IVA. El total se calcula automaticamente.
+5. En la tabla de pendientes, usa `Calcular` para ver base, tarifa, valor, decision, regla y razon sin confirmar el documento.
+6. Usa `Confirmar`. El backend recalcula con los perfiles persistidos, crea los snapshots y contabiliza la cuenta por pagar por el valor neto cuando la operacion es a credito.
+7. En un documento confirmado, usa `Detalle fiscal` para volver a consultar el mismo resultado persistido.
+
+Si una obligacion requiere una regla ausente, por ejemplo ReteICA sin catalogo municipal vigente, la vista previa muestra `BLOCKED` y la confirmacion falla sin crear asiento ni cuenta por pagar.
+La plantilla basica contabiliza el neto del proveedor en `2205` y las retenciones en `2365` (retefuente), `2367` (reteIVA) y `2368` (reteICA).
+
 ## Seguridad
 
 - La SPA no debe registrar credenciales, tokens, certificados ni datos sensibles en consola.

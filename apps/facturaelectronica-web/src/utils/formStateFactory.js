@@ -21,6 +21,24 @@ export function createCompanyBrandingForm() {
   };
 }
 
+export function createCompanyTaxProfileForm() {
+  return {
+    companySize: 'MICRO',
+    financialReportingGroup: 'GRUPO_3',
+    taxRegime: '',
+    rutResponsibilities: [],
+    vatResponsible: false,
+    withholdingAgent: false,
+    vatWithholdingAgent: false,
+    icaWithholdingAgent: false,
+    largeTaxpayer: false,
+    selfWithholding: false,
+    simpleRegime: false,
+    icaMunicipalityCode: '',
+    ciiuCodes: [],
+  };
+}
+
 export function createCompanyAdminForm() {
   return { fullName: '', email: '', password: '', role: 'OWNER' };
 }
@@ -115,7 +133,8 @@ export function createPurchaseForm() {
     evidenceType: '',
     evidenceUrl: '',
     evidenceFile: null,
-    lines: [{ description: '', total: '' }],
+    fiscalConceptCode: 'ANY',
+    lines: [{ description: '', subtotal: '', tax: '0', total: '' }],
   };
 }
 
@@ -128,6 +147,7 @@ export function createExpenseForm() {
     subtotal: '',
     taxTotal: '0',
     total: '',
+    fiscalConceptCode: 'ANY',
     paymentCondition: 'CASH',
     dueDate: '',
     evidenceType: '',

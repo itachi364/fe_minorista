@@ -81,7 +81,8 @@ final class InventoryRestMapper {
                 valueOr(request.taxTotal(), BigDecimal.ZERO), total, request.paymentCondition(), request.dueDate(),
                 request.evidenceUrl(),
                 idempotencyKey, createdBy,
-                request.lines().stream().map(InventoryRestMapper::toLineCommand).toList());
+                request.lines().stream().map(InventoryRestMapper::toLineCommand).toList(),
+                request.fiscalConceptCode());
     }
 
     static ProductResponse toResponse(ProductResult result) {
@@ -137,7 +138,8 @@ final class InventoryRestMapper {
         return new PurchaseResponse(result.id(), result.companyId(), result.supplierId(), result.status(),
                 result.subtotal(), result.taxTotal(), result.total(), result.paymentCondition(), result.dueDate(),
                 result.evidenceUrl(), result.idempotencyKey(), result.createdAt(), result.confirmedAt(),
-                result.lines().stream().map(InventoryRestMapper::toLineResponse).toList());
+                result.lines().stream().map(InventoryRestMapper::toLineResponse).toList(),
+                result.fiscalConceptCode());
     }
 
     private static PurchaseLineCommand toLineCommand(PurchaseLineRequest request) {

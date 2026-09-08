@@ -20,7 +20,7 @@ final class AccountingOperationsMapper {
         return new ExpenseResult(expense.id(), expense.companyId(), expense.supplierId(), expense.expenseType(),
                 expense.expenseDate(), expense.concept(), expense.subtotal(), expense.taxTotal(), expense.total(),
                 expense.paymentCondition(), expense.dueDate(), expense.evidenceUrl(), expense.status(),
-                expense.idempotencyKey(), expense.createdAt(), expense.confirmedAt());
+                expense.idempotencyKey(), expense.createdAt(), expense.confirmedAt(), expense.fiscalConceptCode());
     }
 
     static AccountsPayableResult toResult(AccountsPayable payable) {

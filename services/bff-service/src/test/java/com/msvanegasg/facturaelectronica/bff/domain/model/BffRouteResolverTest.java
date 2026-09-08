@@ -40,6 +40,8 @@ class BffRouteResolverTest {
                 .isEqualTo(TargetService.TENANT);
         assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/branding"))
                 .isEqualTo(TargetService.TENANT);
+        assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/tax-profile"))
+                .isEqualTo(TargetService.TENANT);
         assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/branding/assets/HEADER_LOGO"))
                 .isEqualTo(TargetService.TENANT);
         assertThat(resolver.resolve("/api/v1/companies/11111111-1111-1111-1111-111111111111/files/22222222-2222-2222-2222-222222222222/download-link"))

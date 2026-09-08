@@ -10,6 +10,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,6 +22,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.msvanegasg.facturaelectronica.accounting.application.dto.CreateExpenseCommand;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.GenerateAccountingEntryCommand;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCalculationItemResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCalculationResult;
+import com.msvanegasg.facturaelectronica.accounting.application.port.in.CalculateWithholdingsUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.GenerateAccountingEntryUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountsPayableRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.ExpenseRepositoryPort;
@@ -32,6 +36,8 @@ import com.msvanegasg.facturaelectronica.accounting.domain.model.Expense;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.ExpenseStatus;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.ExpenseType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.PaymentCondition;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingDecision;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingType;
 
 @ExtendWith(MockitoExtension.class)
 class ExpenseManagementServiceTest {
@@ -51,6 +57,8 @@ class ExpenseManagementServiceTest {
     private GenerateAccountingEntryUseCase accountingEntryUseCase;
     @Mock
     private IdGeneratorPort idGenerator;
+    @Mock
+    private CalculateWithholdingsUseCase calculateWithholdingsUseCase;
 
     @Test
     void createsCreditExpenseWithDueDate() {
@@ -74,7 +82,7 @@ class ExpenseManagementServiceTest {
                 .thenReturn(Optional.empty());
         when(idGenerator.newId()).thenReturn(PAYABLE_ID);
         when(payableRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        ExpenseManagementService service = service();
+        ExpenseManagementService service = serviceWithFiscal();
 
         var result = service.confirm(COMPANY_ID, EXPENSE_ID);
 
@@ -84,19 +92,21 @@ class ExpenseManagementServiceTest {
         verify(accountingEntryUseCase).generate(entryCaptor.capture());
         assertThat(entryCaptor.getValue().eventType()).isEqualTo(AccountingEventType.OPERATING_EXPENSE_CONFIRMED);
         assertThat(entryCaptor.getValue().sourceType()).isEqualTo(AccountingSourceType.EXPENSE);
+        assertThat(entryCaptor.getValue().retefuente()).isEqualByComparingTo("2500.00");
+        assertThat(entryCaptor.getValue().netPayable()).isEqualByComparingTo("116500.00");
         ArgumentCaptor<AccountsPayable> payableCaptor = ArgumentCaptor.forClass(AccountsPayable.class);
         verify(payableRepository).save(payableCaptor.capture());
-        assertThat(payableCaptor.getValue().totalAmount()).isEqualByComparingTo("119000.00");
+        assertThat(payableCaptor.getValue().totalAmount()).isEqualByComparingTo("116500.00");
     }
 
     @Test
     void confirmAssetPurchaseUsesAssetAccountingEvent() {
         Expense assetPurchase = Expense.pending(EXPENSE_ID, COMPANY_ID, SUPPLIER_ID, ExpenseType.ASSET_PURCHASE,
                 LocalDate.of(2026, 5, 20), "Nevera para el negocio", money("2000000.00"), money("380000.00"),
-                money("2380000.00"), PaymentCondition.CASH, null, null, "asset-1", NOW);
+                money("2380000.00"), PaymentCondition.CASH, null, null, "asset-1", NOW, "ANY");
         when(expenseRepository.findByCompanyIdAndId(COMPANY_ID, EXPENSE_ID)).thenReturn(Optional.of(assetPurchase));
         when(expenseRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        ExpenseManagementService service = service();
+        ExpenseManagementService service = serviceWithFiscal();
 
         service.confirm(COMPANY_ID, EXPENSE_ID);
 
@@ -112,19 +122,33 @@ class ExpenseManagementServiceTest {
                 CLOCK);
     }
 
+    private ExpenseManagementService serviceWithFiscal() {
+        when(calculateWithholdingsUseCase.calculate(any())).thenReturn(fiscalResult());
+        return new ExpenseManagementService(expenseRepository, payableRepository, accountingEntryUseCase, idGenerator,
+                CLOCK, calculateWithholdingsUseCase);
+    }
+
     private static CreateExpenseCommand command() {
         return new CreateExpenseCommand(COMPANY_ID, SUPPLIER_ID, ExpenseType.OPERATING_EXPENSE,
                 LocalDate.of(2026, 5, 20),
                 "Servicio publico energia", money("100000.00"), money("19000.00"), money("119000.00"),
                 PaymentCondition.CREDIT, LocalDate.of(2026, 6, 20), "https://example.local/evidence.pdf",
-                "expense-1");
+                "expense-1", "ANY");
     }
 
     private static Expense expense() {
         return Expense.pending(EXPENSE_ID, COMPANY_ID, SUPPLIER_ID, ExpenseType.OPERATING_EXPENSE,
                 LocalDate.of(2026, 5, 20),
                 "Servicio publico energia", money("100000.00"), money("19000.00"), money("119000.00"),
-                PaymentCondition.CREDIT, LocalDate.of(2026, 6, 20), null, "expense-1", NOW);
+                PaymentCondition.CREDIT, LocalDate.of(2026, 6, 20), null, "expense-1", NOW, "ANY");
+    }
+
+    private static WithholdingCalculationResult fiscalResult() {
+        WithholdingCalculationItemResult item = new WithholdingCalculationItemResult(WithholdingType.RETEFUENTE,
+                "ANY", money("100000.00"), money("0.025"), money("2500.00"), "TEST-2026",
+                WithholdingDecision.APPLIED, "Regla de prueba");
+        return new WithholdingCalculationResult(COMPANY_ID, SUPPLIER_ID, null, List.of(item), money("119000.00"),
+                money("19000.00"), money("2500.00"), money("116500.00"));
     }
 
     private static BigDecimal money(String value) {

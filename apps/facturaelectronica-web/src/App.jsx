@@ -7,6 +7,7 @@ import { navigationGroups, steps } from './data/navigation.js';
 import {
   createCatalogItemForm,
   createCompanyBrandingForm,
+  createCompanyTaxProfileForm,
   createCompanyAdminForm,
   createAccountsReceivableForm,
   createCompanyForm,
@@ -41,6 +42,7 @@ import { CatalogAdminPanel } from './features/catalogs/CatalogAdminPanel.jsx';
 import { AdminModal } from './features/company/AdminModal.jsx';
 import { CompanyBrandingModal, CompanyBrandingPanel } from './features/company/CompanyBrandingPanel.jsx';
 import { CompanyForm } from './features/company/CompanyForm.jsx';
+import { CompanyTaxProfilePanel } from './features/company/CompanyTaxProfilePanel.jsx';
 import { CompanySessionPanel } from './features/company/CompanySessionPanel.jsx';
 import { IssuerForm } from './features/company/IssuerForm.jsx';
 import { DianConfigurationPanel } from './features/dian/DianConfigurationPanel.jsx';
@@ -116,6 +118,8 @@ export default function App() {
   const [editingCompanyId, setEditingCompanyId] = useState('');
   const [companyBrandingForm, setCompanyBrandingForm] = useState(createCompanyBrandingForm);
   const [companyBranding, setCompanyBranding] = useState(null);
+  const [companyTaxProfileForm, setCompanyTaxProfileForm] = useState(createCompanyTaxProfileForm);
+  const [companyTaxProfile, setCompanyTaxProfile] = useState(null);
   const [brandingEditorForm, setBrandingEditorForm] = useState(createCompanyBrandingForm);
   const [brandingEditor, setBrandingEditor] = useState(null);
   const [brandingModalOpen, setBrandingModalOpen] = useState(false);
@@ -164,8 +168,10 @@ export default function App() {
   const [productList, setProductList] = useState([]);
   const [purchaseForm, setPurchaseForm] = useState(createPurchaseForm);
   const [purchaseList, setPurchaseList] = useState([]);
+  const [purchaseFiscalResult, setPurchaseFiscalResult] = useState(null);
   const [expenseForm, setExpenseForm] = useState(createExpenseForm);
   const [expenseList, setExpenseList] = useState([]);
+  const [expenseFiscalResult, setExpenseFiscalResult] = useState(null);
   const [accountsReceivableForm, setAccountsReceivableForm] = useState(createAccountsReceivableForm);
   const [receivablePaymentForm, setReceivablePaymentForm] = useState(createReceivablePaymentForm);
   const [accountsReceivableList, setAccountsReceivableList] = useState([]);
@@ -344,6 +350,31 @@ export default function App() {
       ignore = true;
     };
   }, [session, token, activeCompanyId]);
+
+  useEffect(() => {
+    if (!session || !activeCompanyId || import.meta.env.MODE === 'test') {
+      setCompanyTaxProfile(null);
+      setCompanyTaxProfileForm(createCompanyTaxProfileForm());
+      return undefined;
+    }
+    let ignore = false;
+    requestJson(`/api/v1/companies/${activeCompanyId}/tax-profile`, context)
+      .then((profile) => {
+        if (!ignore) {
+          setCompanyTaxProfile(profile);
+          setCompanyTaxProfileForm(toCompanyTaxProfileForm(profile));
+        }
+      })
+      .catch(() => {
+        if (!ignore) {
+          setCompanyTaxProfile(null);
+          setCompanyTaxProfileForm(createCompanyTaxProfileForm());
+        }
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [session, activeCompanyId, context]);
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -852,6 +883,8 @@ export default function App() {
     setEditingCompanyId('');
     setCompanyBranding(null);
     setCompanyBrandingForm(createCompanyBrandingForm());
+    setCompanyTaxProfile(null);
+    setCompanyTaxProfileForm(createCompanyTaxProfileForm());
     setBrandingEditor(null);
     setBrandingEditorForm(createCompanyBrandingForm());
     setBrandingModalOpen(false);
@@ -886,8 +919,10 @@ export default function App() {
     setEditingProductId('');
     setPurchaseForm(createPurchaseForm());
     setPurchaseList([]);
+    setPurchaseFiscalResult(null);
     setExpenseForm(createExpenseForm());
     setExpenseList([]);
+    setExpenseFiscalResult(null);
     setAccountsReceivableForm(createAccountsReceivableForm());
     setReceivablePaymentForm(createReceivablePaymentForm());
     setAccountsReceivableList([]);
@@ -1085,6 +1120,18 @@ export default function App() {
         accentColor: result?.accentColor || '',
       });
     }
+    return result;
+  }
+
+  async function saveCompanyTaxProfile() {
+    requireCompany();
+    const result = await requestJson(`/api/v1/companies/${activeCompanyId}/tax-profile`, {
+      ...context,
+      method: 'PUT',
+      body: companyTaxProfileForm,
+    });
+    setCompanyTaxProfile(result);
+    setCompanyTaxProfileForm(toCompanyTaxProfileForm(result));
     return result;
   }
 
@@ -1976,7 +2023,20 @@ export default function App() {
       idempotencyKey: createIdempotencyKey('purchase-confirm'),
     });
     setPurchaseList((current) => [purchase, ...current.filter((item) => item.id !== purchase.id)]);
+    setPurchaseFiscalResult(await loadDocumentFiscalSnapshot('PURCHASE', purchase));
     return purchase;
+  }
+
+  async function calculatePurchaseFiscal(purchase) {
+    const result = await calculateDocumentFiscal('PURCHASE', purchase);
+    setPurchaseFiscalResult(result);
+    return result;
+  }
+
+  async function viewPurchaseFiscal(purchase) {
+    const result = await loadDocumentFiscalSnapshot('PURCHASE', purchase);
+    setPurchaseFiscalResult(result);
+    return result;
   }
 
   async function loadExpenseList() {
@@ -2013,7 +2073,48 @@ export default function App() {
       idempotencyKey: createIdempotencyKey('expense-confirm'),
     });
     setExpenseList((current) => [expense, ...current.filter((item) => item.id !== expense.id)]);
+    setExpenseFiscalResult(await loadDocumentFiscalSnapshot('EXPENSE', expense));
     return expense;
+  }
+
+  async function calculateExpenseFiscal(expense) {
+    const result = await calculateDocumentFiscal('EXPENSE', expense);
+    setExpenseFiscalResult(result);
+    return result;
+  }
+
+  async function viewExpenseFiscal(expense) {
+    const result = await loadDocumentFiscalSnapshot('EXPENSE', expense);
+    setExpenseFiscalResult(result);
+    return result;
+  }
+
+  async function calculateDocumentFiscal(sourceType, document) {
+    requireCompany();
+    return requestJson('/api/v1/fiscal-calculations/withholdings', {
+      ...context,
+      method: 'POST',
+      body: {
+        operationType: sourceType,
+        thirdPartyId: document.supplierId,
+        conceptCode: document.fiscalConceptCode || 'ANY',
+        operationDate: sourceType === 'EXPENSE'
+          ? document.expenseDate
+          : String(document.createdAt || new Date().toISOString()).slice(0, 10),
+        taxableBaseAmount: Number(document.subtotal || 0),
+        taxAmount: Number(document.taxTotal || 0),
+      },
+    });
+  }
+
+  async function loadDocumentFiscalSnapshot(sourceType, document) {
+    requireCompany();
+    const items = await requestJson(`/api/v1/fiscal-calculations/withholdings/snapshots${buildQuery({ sourceType, sourceId: document.id })}`, context);
+    const withholdingTotal = items
+      .filter((item) => item.decision === 'APPLIED' && item.withholdingType !== 'AUTORETENCION')
+      .reduce((total, item) => total + Number(item.amount || 0), 0);
+    const grossAmount = Number(document.total || 0);
+    return { items, grossAmount, withholdingTotal, netPayable: grossAmount - withholdingTotal };
   }
 
   async function loadAccountsReceivableList() {
@@ -2620,8 +2721,10 @@ export default function App() {
     setSaleForm((current) => ({ ...current, customerId: '' }));
     setPurchaseForm(createPurchaseForm());
     setPurchaseList([]);
+    setPurchaseFiscalResult(null);
     setExpenseForm(createExpenseForm());
     setExpenseList([]);
+    setExpenseFiscalResult(null);
     setAccountsReceivableForm(createAccountsReceivableForm());
     setReceivablePaymentForm(createReceivablePaymentForm());
     setAccountsReceivableList([]);
@@ -2731,6 +2834,11 @@ export default function App() {
                 documentTypeOptions={runtimeCatalogs.dianDocumentTypes}
               />
               {!isRoot && <CompanyBrandingPanel form={companyBrandingForm} setForm={setCompanyBrandingForm} branding={companyBranding} onSave={() => execute(saveCompanyBranding)} onUploadAsset={(purpose, file) => execute(() => uploadCompanyBrandingAsset(purpose, file))} busy={busy} disabled={!activeCompanyId || !canUse(['COMPANY_SETTINGS_MANAGE'])} />}
+              {activeCompanyId && <CompanyTaxProfilePanel form={companyTaxProfileForm} setForm={setCompanyTaxProfileForm}
+                profile={companyTaxProfile} onSave={() => execute(saveCompanyTaxProfile, { successMessage: 'Perfil fiscal guardado correctamente.' })}
+                busy={busy} disabled={!canUse(['COMPANY_SETTINGS_MANAGE']) && !isRoot}
+                taxRegimeOptions={runtimeCatalogs.taxRegimeOptions} responsibilityOptions={runtimeCatalogs.taxResponsibilityOptions}
+                ciiuOptions={runtimeCatalogs.ciiuOptions} locations={runtimeCatalogs.locations} />}
             </>
           )}
           {currentStep === 'Puesta en marcha' && (
@@ -2754,10 +2862,10 @@ export default function App() {
             <ProductForm form={productForm} setForm={setProductForm} onSubmit={() => execute(createProduct)} busy={busy || !activeCompanyId || !canUse(['INVENTORY_MANAGE'])} taxOptions={runtimeCatalogs.salesTaxOptions} itemTypeCatalog={runtimeCatalogs.itemTypeCatalog} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} products={productList} editingProductId={editingProductId} onNew={startNewProduct} onEdit={editProduct} onDeactivate={(productId) => execute(() => deactivateProduct(productId), { successMessage: 'Producto inactivado correctamente.' })} onBarcodeLookup={(barcode) => execute(() => lookupInventoryProductByBarcode(barcode), { silentRunning: true, silentSuccess: true, silentNullSuccess: true })} />
           )}
           {currentStep === 'Compras' && (
-            <PurchasesPanel form={purchaseForm} setForm={setPurchaseForm} suppliers={supplierList} purchases={purchaseList} filters={operationalListFilters} setFilters={setOperationalListFilters} onCreate={() => execute(createPurchase, { successMessage: 'Compra creada correctamente.' })} onConfirm={(purchaseId) => execute(() => confirmPurchase(purchaseId), { successMessage: 'Compra confirmada correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Compras)} />
+            <PurchasesPanel form={purchaseForm} setForm={setPurchaseForm} suppliers={supplierList} purchases={purchaseList} filters={operationalListFilters} setFilters={setOperationalListFilters} onCreate={() => execute(createPurchase, { successMessage: 'Compra creada correctamente.' })} onCalculate={(purchase) => execute(() => calculatePurchaseFiscal(purchase), { successMessage: 'Retenciones calculadas correctamente.' })} onViewFiscal={(purchase) => execute(() => viewPurchaseFiscal(purchase), { silentSuccess: true })} fiscalResult={purchaseFiscalResult} onConfirm={(purchaseId) => execute(() => confirmPurchase(purchaseId), { successMessage: 'Compra confirmada correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Compras)} />
           )}
           {currentStep === 'Gastos' && (
-            <ExpensesPanel form={expenseForm} setForm={setExpenseForm} suppliers={supplierList} expenses={expenseList} filters={operationalListFilters} setFilters={setOperationalListFilters} onCreate={() => execute(createExpense, { successMessage: 'Gasto creado correctamente.' })} onConfirm={(expenseId) => execute(() => confirmExpense(expenseId), { successMessage: 'Gasto confirmado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Gastos)} />
+            <ExpensesPanel form={expenseForm} setForm={setExpenseForm} suppliers={supplierList} expenses={expenseList} filters={operationalListFilters} setFilters={setOperationalListFilters} onCreate={() => execute(createExpense, { successMessage: 'Gasto creado correctamente.' })} onCalculate={(expense) => execute(() => calculateExpenseFiscal(expense), { successMessage: 'Retenciones calculadas correctamente.' })} onViewFiscal={(expense) => execute(() => viewExpenseFiscal(expense), { silentSuccess: true })} fiscalResult={expenseFiscalResult} onConfirm={(expenseId) => execute(() => confirmExpense(expenseId), { successMessage: 'Gasto confirmado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Gastos)} />
           )}
           {currentStep === 'Deudores' && (
             <ReceivablesPanel form={accountsReceivableForm} setForm={setAccountsReceivableForm} paymentForm={receivablePaymentForm} setPaymentForm={setReceivablePaymentForm} customers={customerList} receivables={accountsReceivableList} filters={operationalListFilters} setFilters={setOperationalListFilters} paymentOptions={runtimeCatalogs.paymentMethodOptions} onCreate={() => execute(createAccountsReceivable, { successMessage: 'Deudor creado correctamente.' })} onRegisterPayment={() => execute(registerReceivablePayment, { successMessage: 'Abono registrado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Deudores)} />
@@ -3024,6 +3132,21 @@ function normalizeListResponse(response) {
     return response.records;
   }
   return [];
+}
+
+function toCompanyTaxProfileForm(profile) {
+  const defaults = createCompanyTaxProfileForm();
+  if (!profile) {
+    return defaults;
+  }
+  return {
+    ...defaults,
+    ...profile,
+    rutResponsibilities: Array.from(profile.rutResponsibilities || []),
+    ciiuCodes: Array.from(profile.ciiuCodes || []),
+    icaMunicipalityCode: profile.icaMunicipalityCode || '',
+    taxRegime: profile.taxRegime || '',
+  };
 }
 
 function optionalBoolean(value) {

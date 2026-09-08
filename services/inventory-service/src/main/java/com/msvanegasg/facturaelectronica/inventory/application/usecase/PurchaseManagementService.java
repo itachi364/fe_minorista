@@ -19,6 +19,8 @@ import com.msvanegasg.facturaelectronica.inventory.domain.model.PurchaseStatus;
 
 import java.util.UUID;
 
+import org.springframework.transaction.annotation.Transactional;
+
 public class PurchaseManagementService implements ManagePurchaseUseCase {
 
     private final PurchaseRepositoryPort purchaseRepository;
@@ -53,11 +55,18 @@ public class PurchaseManagementService implements ManagePurchaseUseCase {
     }
 
     @Override
+    @Transactional
     public PurchaseResult confirm(UUID companyId, UUID purchaseId, UUID createdBy) {
         Purchase purchase = purchaseRepository.findByCompanyIdAndId(companyId, purchaseId)
                 .orElseThrow(() -> new PurchaseNotFoundException(purchaseId));
         if (purchase.status() == PurchaseStatus.CONFIRMED) {
             return InventoryResultMapper.toPurchaseResult(purchase);
+        }
+        if (purchase.supplierId() == null) {
+            throw new IllegalStateException("Selecciona un proveedor antes de confirmar la compra.");
+        }
+        if (purchase.fiscalConceptCode() == null) {
+            throw new IllegalStateException("Selecciona el concepto fiscal antes de confirmar la compra.");
         }
         Purchase confirmed = purchaseRepository.save(purchase.confirm(clock.now()));
         purchaseAccountingPort.applyConfirmedPurchase(confirmed, createdBy);
@@ -71,7 +80,7 @@ public class PurchaseManagementService implements ManagePurchaseUseCase {
                 : command.paymentCondition();
         Purchase purchase = Purchase.pending(purchaseId, command.companyId(), command.supplierId(), command.subtotal(),
                 command.taxTotal(), command.total(), paymentCondition, command.dueDate(), command.evidenceUrl(),
-                command.idempotencyKey(), clock.now(), lines);
+                command.idempotencyKey(), clock.now(), lines, command.fiscalConceptCode());
         return InventoryResultMapper.toPurchaseResult(purchaseRepository.save(purchase));
     }
 

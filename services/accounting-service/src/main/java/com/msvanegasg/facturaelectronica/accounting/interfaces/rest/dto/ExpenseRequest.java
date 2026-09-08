@@ -25,5 +25,6 @@ public record ExpenseRequest(
         LocalDate dueDate,
         @Size(max = 700)
         @Pattern(regexp = "^(https?://|/api/v1/companies/).+", message = "La evidencia debe ser una URL http/https o una referencia interna valida.")
-        String evidenceUrl) {
+        String evidenceUrl,
+        String fiscalConceptCode) {
 }

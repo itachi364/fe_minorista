@@ -53,7 +53,8 @@ public class PurchasePersistenceAdapter implements PurchaseRepositoryPort {
                 entity.getSubtotal(), entity.getTaxTotal(), entity.getTotal(), entity.getPaymentCondition(),
                 entity.getDueDate(), entity.getEvidenceUrl(), entity.getIdempotencyKey(), entity.getCreatedAt(),
                 entity.getConfirmedAt(),
-                entity.getLines().stream().map(line -> toLineDomain(entity.getId(), line)).toList());
+                entity.getLines().stream().map(line -> toLineDomain(entity.getId(), line)).toList(),
+                entity.getFiscalConceptCode());
     }
 
     private static PurchaseLine toLineDomain(UUID purchaseId, PurchaseLineJpaEntity entity) {
@@ -76,6 +77,7 @@ public class PurchasePersistenceAdapter implements PurchaseRepositoryPort {
         entity.setIdempotencyKey(purchase.idempotencyKey());
         entity.setCreatedAt(purchase.createdAt());
         entity.setConfirmedAt(purchase.confirmedAt());
+        entity.setFiscalConceptCode(purchase.fiscalConceptCode());
         entity.replaceLines(purchase.lines().stream().map(PurchasePersistenceAdapter::toLineEntity).toList());
         return entity;
     }
