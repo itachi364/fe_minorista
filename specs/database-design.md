@@ -902,3 +902,12 @@ Reglas:
 - Estados: `PENDING`, `SENT`, `FAILED`, `RETRYING`, `CANCELLED`.
 - Los errores se guardan sanitizados; no se persisten passwords, tokens completos, URLs privadas ni credenciales SMTP.
 - Para reportes pesados se guarda solo el token/hash del link intermediado, nunca URL directa de storage.
+
+### CIIU multiactividad de terceros
+
+Tabla: `thirdparty.third_party_ciiu`.
+
+- Clave primaria compuesta: `third_party_id`, `ciiu_code`.
+- `third_party_id` referencia `thirdparty.third_party(id)` con borrado en cascada.
+- La migracion copia todo `third_party.ciiu_code` no vacio; la columna historica se conserva temporalmente como actividad principal compatible.
+- Los clientes exclusivamente naturales no conservan filas CIIU; proveedores naturales y terceros juridicos pueden tener varias.

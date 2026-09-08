@@ -1297,3 +1297,10 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | sanitized_error | varchar(500) | No | Error seguro para soporte. |
 | created_at | timestamptz | Si | Fecha de creacion. |
 | sent_at | timestamptz | No | Fecha de envio exitoso. |
+
+### `thirdparty.third_party_ciiu`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| third_party_id | uuid | Si | Tercero propietario de la actividad economica. |
+| ciiu_code | varchar(10) | Si | Codigo oficial CIIU seleccionado. |

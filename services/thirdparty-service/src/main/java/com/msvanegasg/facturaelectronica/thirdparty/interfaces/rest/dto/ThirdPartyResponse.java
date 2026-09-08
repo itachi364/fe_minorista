@@ -22,8 +22,18 @@ public record ThirdPartyResponse(
         String address,
         String municipalityCode,
         String ciiuCode,
+        Set<String> ciiuCodes,
         Set<String> taxResponsibilities,
         TaxRegime taxRegime,
         Set<ThirdPartyRole> roles,
         boolean active) {
+
+    public ThirdPartyResponse(UUID id, UUID companyId, PersonType personType, Integer identificationTypeCode,
+            String identificationNumber, Integer verificationDigit, String fullName, String businessName,
+            String tradeName, String email, String phone, String address, String municipalityCode, String ciiuCode,
+            Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles, boolean active) {
+        this(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit, fullName,
+                businessName, tradeName, email, phone, address, municipalityCode, ciiuCode,
+                ciiuCode == null ? Set.of() : Set.of(ciiuCode), taxResponsibilities, taxRegime, roles, active);
+    }
 }

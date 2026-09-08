@@ -21,7 +21,17 @@ public record ThirdPartyCommand(
         String address,
         String municipalityCode,
         String ciiuCode,
+        Set<String> ciiuCodes,
         Set<String> taxResponsibilities,
         TaxRegime taxRegime,
         Set<ThirdPartyRole> roles) {
+
+    public ThirdPartyCommand(UUID companyId, PersonType personType, Integer identificationTypeCode,
+            String identificationNumber, Integer verificationDigit, String fullName, String businessName,
+            String tradeName, String email, String phone, String address, String municipalityCode, String ciiuCode,
+            Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles) {
+        this(companyId, personType, identificationTypeCode, identificationNumber, verificationDigit, fullName,
+                businessName, tradeName, email, phone, address, municipalityCode, ciiuCode, null,
+                taxResponsibilities, taxRegime, roles);
+    }
 }

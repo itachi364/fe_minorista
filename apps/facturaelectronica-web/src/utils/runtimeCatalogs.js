@@ -7,6 +7,7 @@ export const emptyRuntimeCatalogs = {
   dianDocumentTypes: [],
   taxResponsibilityOptions: [],
   taxRegimeOptions: [],
+  ciiuOptions: [],
   salesTaxOptions: [],
   paymentMethodOptions: [],
   virtualWalletOptions: [],
@@ -26,6 +27,7 @@ const catalogMap = {
   DIAN_DOCUMENT_TYPE: 'dianDocumentTypes',
   TAX_RESPONSIBILITY: 'taxResponsibilityOptions',
   TAX_REGIME: 'taxRegimeOptions',
+  CIIU: 'ciiuOptions',
   SALES_TAX: 'salesTaxOptions',
   PAYMENT_METHOD: 'paymentMethodOptions',
   VIRTUAL_WALLET: 'virtualWalletOptions',
@@ -63,7 +65,7 @@ export async function loadRuntimeCatalogs({ token, companyId, userId }) {
 
 function toOption(item) {
   const value = normalizeValue(item);
-  const prefixedCatalogs = new Set(['DIAN_DOCUMENT_TYPE', 'TAX_RESPONSIBILITY']);
+  const prefixedCatalogs = new Set(['DIAN_DOCUMENT_TYPE', 'TAX_RESPONSIBILITY', 'CIIU']);
   const label = prefixedCatalogs.has(item.catalogCode) && !item.label?.startsWith(`${item.code} -`)
     ? `${item.code} - ${item.label}`
     : item.label;

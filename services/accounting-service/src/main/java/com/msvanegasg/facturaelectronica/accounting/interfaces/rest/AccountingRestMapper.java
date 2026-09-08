@@ -138,7 +138,8 @@ public final class AccountingRestMapper {
                                 request.thirdPartyProfile().taxRegime(),
                                 request.thirdPartyProfile().taxResponsibilities(),
                                 request.thirdPartyProfile().municipalityCode(),
-                                request.thirdPartyProfile().ciiuCode(), request.thirdPartyProfile().active()));
+                                request.thirdPartyProfile().ciiuCode(), request.thirdPartyProfile().ciiuCodes(),
+                                request.thirdPartyProfile().active()));
     }
 
     public static CreateExpenseCommand toCommand(UUID companyId, ExpenseRequest request, String idempotencyKey) {
@@ -405,7 +406,8 @@ public final class AccountingRestMapper {
 
     private static ThirdPartyFiscalProfileResponse toResponse(ThirdPartyFiscalProfileCommand result) {
         return new ThirdPartyFiscalProfileResponse(result.thirdPartyId(), result.taxRegime(),
-                result.taxResponsibilities(), result.municipalityCode(), result.ciiuCode(), result.active());
+                result.taxResponsibilities(), result.municipalityCode(), result.ciiuCode(), result.ciiuCodes(),
+                result.active());
     }
 
     private static BigDecimal valueOr(BigDecimal value, BigDecimal fallback) {

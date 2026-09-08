@@ -469,3 +469,12 @@
 - AC-424: Dada una empresa obligada a practicar ReteICA, cuando no existe catalogo publicado para el municipio y fecha, entonces el resultado es `BLOCKED` y no se genera valor ni asiento parcial.
 - AC-425: Dada una regla publicada, cuando ROOT necesite cambiar tarifa, base o condiciones, entonces crea una nueva version o cierra la vigencia anterior; el historial aplicado permanece inmutable.
 - AC-426: Dado un usuario sin alcance ROOT ni permiso contable de empresa, cuando intente mutar catalogos fiscales, entonces la API rechaza la accion y no filtra informacion de otras empresas.
+
+## CIIU multiactividad y vencimientos de credito
+
+- AC-427: Dado un tercero persona juridica o con rol proveedor, cuando se registre, entonces puede seleccionar uno o varios codigos CIIU desde una lista dual con busqueda y la API conserva todos los codigos.
+- AC-428: Dado un tercero cuyo unico rol es cliente y cuya persona es natural, cuando se cree o actualice, entonces la UI no muestra CIIU y el backend persiste una coleccion vacia aunque llegue un valor residual.
+- AC-429: Dado un tercero historico con `ciiu_code`, cuando se aplique la migracion, entonces ese codigo queda disponible en `ciiuCodes` sin perdida y la respuesta mantiene temporalmente `ciiuCode` como actividad principal compatible.
+- AC-430: Dada una regla fiscal condicionada por CIIU, cuando cualquiera de los codigos del tercero coincide, entonces la regla es candidata; si ninguno coincide, no aplica.
+- AC-431: Dada una compra o gasto de contado, cuando se edite el formulario, entonces no aparece fecha limite de pago y el payload la envia nula; al elegir credito aparece `Fecha limite de pago` y el backend conserva su validacion obligatoria.
+- AC-432: Dado un usuario autorizado, cuando abra `Configuracion`, entonces encuentra `Catalogos` con la clasificacion CIIU oficial y `Catalogo fiscal` como opcion hermana.

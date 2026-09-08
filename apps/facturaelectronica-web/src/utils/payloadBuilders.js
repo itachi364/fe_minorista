@@ -70,7 +70,7 @@ export function buildThirdPartyPayload(form, companyMunicipalityCode) {
     phone: normalizedForm.phone,
     address: normalizedForm.address,
     municipalityCode: normalizedForm.municipalityCode,
-    ciiuCode: normalizedForm.ciiuCode,
+    ciiuCodes: simpleNaturalCustomer ? [] : commaList(normalizedForm.ciiuCodes),
     taxResponsibilities: commaList(normalizedForm.taxResponsibilities),
     taxRegime: normalizedForm.taxRegime,
     roles,

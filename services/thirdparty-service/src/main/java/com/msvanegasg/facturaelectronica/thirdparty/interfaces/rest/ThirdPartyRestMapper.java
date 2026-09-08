@@ -16,7 +16,7 @@ public final class ThirdPartyRestMapper {
         return new ThirdPartyCommand(companyId, request.personType(), request.identificationTypeCode(),
                 request.identificationNumber(), request.verificationDigit(), request.fullName(),
                 request.businessName(), request.tradeName(), request.email(), request.phone(), request.address(),
-                request.municipalityCode(), request.ciiuCode(), request.taxResponsibilities(), request.taxRegime(),
+                request.municipalityCode(), request.ciiuCode(), request.ciiuCodes(), request.taxResponsibilities(), request.taxRegime(),
                 request.roles());
     }
 
@@ -24,7 +24,7 @@ public final class ThirdPartyRestMapper {
         return new ThirdPartyResponse(result.id(), result.companyId(), result.personType(),
                 result.identificationTypeCode(), result.identificationNumber(), result.verificationDigit(),
                 result.fullName(), result.businessName(), result.tradeName(), result.email(), result.phone(),
-                result.address(), result.municipalityCode(), result.ciiuCode(), result.taxResponsibilities(),
+                result.address(), result.municipalityCode(), result.ciiuCode(), result.ciiuCodes(), result.taxResponsibilities(),
                 result.taxRegime(), result.roles(), result.active());
     }
 }

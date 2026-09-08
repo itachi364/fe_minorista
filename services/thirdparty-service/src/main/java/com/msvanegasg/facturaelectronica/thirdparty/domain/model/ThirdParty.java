@@ -31,7 +31,7 @@ public final class ThirdParty {
     private final String phone;
     private final String address;
     private final String municipalityCode;
-    private final String ciiuCode;
+    private final Set<String> ciiuCodes;
     private final Set<String> taxResponsibilities;
     private final TaxRegime taxRegime;
     private final Set<ThirdPartyRole> roles;
@@ -40,7 +40,7 @@ public final class ThirdParty {
     private ThirdParty(UUID id, UUID companyId, PersonType personType, Integer identificationTypeCode,
             String identificationNumber, Integer verificationDigit, String fullName, String businessName,
             String tradeName, String email, String phone, String address, String municipalityCode,
-            String ciiuCode, Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles,
+            Set<String> ciiuCodes, Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles,
             boolean active) {
         this.id = id;
         this.companyId = companyId;
@@ -55,7 +55,7 @@ public final class ThirdParty {
         this.phone = phone;
         this.address = address;
         this.municipalityCode = municipalityCode;
-        this.ciiuCode = ciiuCode;
+        this.ciiuCodes = ciiuCodes;
         this.taxResponsibilities = taxResponsibilities;
         this.taxRegime = taxRegime;
         this.roles = roles;
@@ -67,7 +67,7 @@ public final class ThirdParty {
             String phone, String address, String municipalityCode, Set<String> taxResponsibilities,
             TaxRegime taxRegime, Set<ThirdPartyRole> roles) {
         return restore(null, companyId, personType, identificationTypeCode, identificationNumber, null, fullName,
-                businessName, tradeName, email, phone, address, municipalityCode, taxResponsibilities, taxRegime,
+                businessName, tradeName, email, phone, address, municipalityCode, Set.of(), taxResponsibilities, taxRegime,
                 roles, true);
     }
 
@@ -76,7 +76,16 @@ public final class ThirdParty {
             String phone, String address, String municipalityCode, String ciiuCode,
             Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles) {
         return restore(null, companyId, personType, identificationTypeCode, identificationNumber, null, fullName,
-                businessName, tradeName, email, phone, address, municipalityCode, ciiuCode, taxResponsibilities,
+                businessName, tradeName, email, phone, address, municipalityCode, legacyCiiuCodes(ciiuCode), taxResponsibilities,
+                taxRegime, roles, true);
+    }
+
+    public static ThirdParty create(UUID companyId, PersonType personType, Integer identificationTypeCode,
+            String identificationNumber, String fullName, String businessName, String tradeName, String email,
+            String phone, String address, String municipalityCode, Set<String> ciiuCodes,
+            Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles) {
+        return restore(null, companyId, personType, identificationTypeCode, identificationNumber, null, fullName,
+                businessName, tradeName, email, phone, address, municipalityCode, ciiuCodes, taxResponsibilities,
                 taxRegime, roles, true);
     }
 
@@ -85,13 +94,23 @@ public final class ThirdParty {
             String tradeName, String email, String phone, String address, String municipalityCode,
             Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles, boolean active) {
         return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
-                fullName, businessName, tradeName, email, phone, address, municipalityCode, null, taxResponsibilities,
+                fullName, businessName, tradeName, email, phone, address, municipalityCode, Set.of(), taxResponsibilities,
                 taxRegime, roles, active);
     }
 
     public static ThirdParty restore(UUID id, UUID companyId, PersonType personType, Integer identificationTypeCode,
             String identificationNumber, Integer verificationDigit, String fullName, String businessName,
             String tradeName, String email, String phone, String address, String municipalityCode, String ciiuCode,
+            Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles, boolean active) {
+        return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
+                fullName, businessName, tradeName, email, phone, address, municipalityCode,
+                legacyCiiuCodes(ciiuCode), taxResponsibilities, taxRegime, roles, active);
+    }
+
+    public static ThirdParty restore(UUID id, UUID companyId, PersonType personType, Integer identificationTypeCode,
+            String identificationNumber, Integer verificationDigit, String fullName, String businessName,
+            String tradeName, String email, String phone, String address, String municipalityCode,
+            Set<String> ciiuCodes,
             Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles, boolean active) {
         UUID requiredCompanyId = Objects.requireNonNull(companyId, "companyId is required");
         PersonType requiredPersonType = Objects.requireNonNull(personType, "personType is required");
@@ -120,7 +139,7 @@ public final class ThirdParty {
                         "phone"),
                 normalizeOptional(address, MAX_ADDRESS_LENGTH, "address"), normalizeOptional(municipalityCode,
                         MAX_MUNICIPALITY_CODE_LENGTH, "municipalityCode"),
-                normalizeOptional(ciiuCode, MAX_CIIU_CODE_LENGTH, "ciiuCode"), normalizedTaxResponsibilities,
+                simpleNaturalCustomer ? Set.of() : normalizeCiiuCodes(ciiuCodes), normalizedTaxResponsibilities,
                 normalizedTaxRegime, requiredRoles, active);
     }
 
@@ -128,7 +147,7 @@ public final class ThirdParty {
             String email, String phone, String address, String municipalityCode, Set<String> taxResponsibilities,
             TaxRegime taxRegime, Set<ThirdPartyRole> roles) {
         return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
-                fullName, businessName, tradeName, email, phone, address, municipalityCode, taxResponsibilities,
+                fullName, businessName, tradeName, email, phone, address, municipalityCode, Set.of(), taxResponsibilities,
                 taxRegime, roles, active);
     }
 
@@ -136,19 +155,27 @@ public final class ThirdParty {
             String email, String phone, String address, String municipalityCode, String ciiuCode,
             Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles) {
         return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
-                fullName, businessName, tradeName, email, phone, address, municipalityCode, ciiuCode,
+                fullName, businessName, tradeName, email, phone, address, municipalityCode, legacyCiiuCodes(ciiuCode),
+                taxResponsibilities, taxRegime, roles, active);
+    }
+
+    public ThirdParty update(PersonType personType, String fullName, String businessName, String tradeName,
+            String email, String phone, String address, String municipalityCode, Set<String> ciiuCodes,
+            Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles) {
+        return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
+                fullName, businessName, tradeName, email, phone, address, municipalityCode, ciiuCodes,
                 taxResponsibilities, taxRegime, roles, active);
     }
 
     public ThirdParty activate() {
         return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
-                fullName, businessName, tradeName, email, phone, address, municipalityCode, ciiuCode,
+                fullName, businessName, tradeName, email, phone, address, municipalityCode, ciiuCodes,
                 taxResponsibilities, taxRegime, roles, true);
     }
 
     public ThirdParty deactivate() {
         return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
-                fullName, businessName, tradeName, email, phone, address, municipalityCode, ciiuCode,
+                fullName, businessName, tradeName, email, phone, address, municipalityCode, ciiuCodes,
                 taxResponsibilities, taxRegime, roles, false);
     }
 
@@ -205,7 +232,11 @@ public final class ThirdParty {
     }
 
     public String ciiuCode() {
-        return ciiuCode;
+        return ciiuCodes.stream().sorted().findFirst().orElse(null);
+    }
+
+    public Set<String> ciiuCodes() {
+        return ciiuCodes;
     }
 
     public Set<String> taxResponsibilities() {
@@ -292,6 +323,25 @@ public final class ThirdParty {
             throw new IllegalArgumentException("roles are required");
         }
         EnumSet<ThirdPartyRole> normalized = EnumSet.copyOf(roles);
+        return Collections.unmodifiableSet(normalized);
+    }
+
+    private static Set<String> legacyCiiuCodes(String ciiuCode) {
+        String normalized = normalizeOptional(ciiuCode, MAX_CIIU_CODE_LENGTH, "ciiuCode");
+        return normalized == null ? Set.of() : Set.of(normalized);
+    }
+
+    private static Set<String> normalizeCiiuCodes(Set<String> values) {
+        if (values == null || values.isEmpty()) {
+            return Set.of();
+        }
+        java.util.TreeSet<String> normalized = new java.util.TreeSet<>();
+        for (String value : values) {
+            String code = normalizeOptional(value, MAX_CIIU_CODE_LENGTH, "ciiuCode");
+            if (code != null) {
+                normalized.add(code);
+            }
+        }
         return Collections.unmodifiableSet(normalized);
     }
 

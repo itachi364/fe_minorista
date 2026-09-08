@@ -7333,6 +7333,13 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - TASK-279.
     - TASK-294.
 
+- [x] TASK-297: Implementar CIIU multiactividad, catalogo oficial y vencimiento condicional
+  - Requisitos: RF-306, RF-307, RF-308, RF-309, RF-310.
+  - Acceptance criteria: AC-427, AC-428, AC-429, AC-430, AC-431, AC-432.
+  - Entregables: migraciones de catalogo/terceros, contratos compatibles, dominio fiscal multivalor, selector dual filtrable, formularios de compra/gasto y navegacion.
+  - Pruebas: dominio/API/persistencia de terceros, coincidencia CIIU del motor, payloads y renderizado condicional frontend, migraciones y build Docker local.
+  - Catalogo fiscal efectivo: 502 clases CIIU Rev. 4 A.C. actualizacion 2022; `catalog-service` queda en Flyway `V011` tras corregir la carga transitoria Rev. 5 sin alterar `V010`.
+
 Context7 evidence:
 
 - Library/tool: React.

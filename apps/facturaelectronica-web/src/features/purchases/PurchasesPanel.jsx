@@ -37,8 +37,8 @@ export function PurchasesPanel({
       <p className="hint">Registra facturas de proveedores para control financiero y reinversion. El stock se ajusta desde Inventario.</p>
       <div className="form-grid">
         <SelectField label="Proveedor" value={form.supplierId} onChange={(value) => setForm({ ...form, supplierId: value })} options={supplierOptions} placeholder="Proveedor opcional" />
-        <SelectField label="Condicion de pago" value={form.paymentCondition} onChange={(value) => setForm({ ...form, paymentCondition: value })} options={paymentConditionOptions} />
-        <Field label="Fecha de vencimiento" value={form.dueDate} onChange={(value) => setForm({ ...form, dueDate: value })} type="date" disabled={form.paymentCondition !== 'CREDIT'} />
+        <SelectField label="Condicion de pago" value={form.paymentCondition} onChange={(value) => setForm({ ...form, paymentCondition: value, dueDate: value === 'CREDIT' ? form.dueDate : '' })} options={paymentConditionOptions} />
+        {form.paymentCondition === 'CREDIT' && <Field label="Fecha limite de pago" value={form.dueDate} onChange={(value) => setForm({ ...form, dueDate: value })} type="date" />}
         <SelectField label="Soporte o evidencia" value={form.evidenceType} onChange={(value) => setForm({ ...form, evidenceType: value, evidenceUrl: '', evidenceFile: null })} options={evidenceOptions} placeholder="Sin evidencia" />
         {form.evidenceType === 'URL' && <Field label="URL de evidencia" value={form.evidenceUrl} onChange={(value) => setForm({ ...form, evidenceUrl: value })} placeholder="https://..." />}
         {form.evidenceType === 'PDF' && (

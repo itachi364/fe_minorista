@@ -197,6 +197,23 @@ class WithholdingCalculationServiceTest {
         assertThat(result.netPayable()).isEqualByComparingTo("1000000.00");
     }
 
+    @Test
+    void matchesRuleAgainstAnyThirdPartyCiiuActivity() {
+        TestContext context = new TestContext();
+        context.rules.rules.add(rule(UUID.randomUUID(), FiscalOperationType.PURCHASE, "PURCHASE_GENERAL",
+                WithholdingType.RETEFUENTE, "0.025000", FiscalThresholdUnit.COP, "0",
+                WithholdingDecision.APPLIED, null, "6201", 10));
+        ThirdPartyFiscalProfileCommand supplier = new ThirdPartyFiscalProfileCommand(THIRD_PARTY_ID, "ORDINARIO",
+                Set.of("O-05"), "11001", null, Set.of("4711", "6201"), true);
+
+        WithholdingCalculationResult result = context.service().calculate(command(supplier));
+
+        assertThat(result.items()).singleElement().satisfies(item -> {
+            assertThat(item.decision()).isEqualTo(WithholdingDecision.APPLIED);
+            assertThat(item.amount()).isEqualByComparingTo("25000.00");
+        });
+    }
+
     private static CalculateWithholdingsCommand command(ThirdPartyFiscalProfileCommand thirdPartyProfile) {
         return new CalculateWithholdingsCommand(COMPANY_ID, FiscalOperationType.PURCHASE, THIRD_PARTY_ID,
                 "PURCHASE_GENERAL", OPERATION_DATE, money("1000000"), money("190000"), "11001", null, null,

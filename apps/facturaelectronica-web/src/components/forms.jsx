@@ -72,14 +72,20 @@ export function MultiSelectField({ label, value, onChange, options, disabledValu
   </label>;
 }
 
-export function DualListField({ label, value, onChange, options, exclusiveValues = [], disabled = false }) {
+export function DualListField({ label, value, onChange, options, exclusiveValues = [], disabled = false, searchable = false }) {
   const selectedValues = Array.isArray(value) ? value : [];
   const selectedSet = new Set(selectedValues);
   const exclusiveSet = new Set(exclusiveValues);
-  const availableOptions = options.filter((option) => !selectedSet.has(option.value));
-  const selectedOptions = options.filter((option) => selectedSet.has(option.value));
   const [availableSelection, setAvailableSelection] = useSelectState();
   const [selectedSelection, setSelectedSelection] = useSelectState();
+  const [availableSearch, setAvailableSearch] = useState('');
+  const [selectedSearch, setSelectedSearch] = useState('');
+  const availableOptions = options
+    .filter((option) => !selectedSet.has(option.value))
+    .filter((option) => matchesOption(option, availableSearch));
+  const selectedOptions = options
+    .filter((option) => selectedSet.has(option.value))
+    .filter((option) => matchesOption(option, selectedSearch));
 
   function addSelected() {
     if (availableSelection.length === 0) {
@@ -109,6 +115,7 @@ export function DualListField({ label, value, onChange, options, exclusiveValues
     <div className="dual-list-grid">
       <label>
         Disponibles
+        {searchable && <input aria-label={`${label}: buscar disponibles`} value={availableSearch} onChange={(event) => setAvailableSearch(event.target.value)} placeholder="Buscar por codigo o actividad" type="search" />}
         <select multiple size={6} value={availableSelection} onChange={(event) => setAvailableSelection(valuesFromSelect(event))} disabled={disabled}>
           {availableOptions.map((option) => (
             <option key={option.value} value={option.value}>{option.label}</option>
@@ -121,6 +128,7 @@ export function DualListField({ label, value, onChange, options, exclusiveValues
       </div>
       <label>
         Seleccionadas
+        {searchable && <input aria-label={`${label}: buscar seleccionadas`} value={selectedSearch} onChange={(event) => setSelectedSearch(event.target.value)} placeholder="Buscar seleccionadas" type="search" />}
         <select multiple size={6} value={selectedSelection} onChange={(event) => setSelectedSelection(valuesFromSelect(event))} disabled={disabled}>
           {selectedOptions.map((option) => (
             <option key={option.value} value={option.value}>{option.label}</option>
@@ -129,6 +137,14 @@ export function DualListField({ label, value, onChange, options, exclusiveValues
       </label>
     </div>
   </fieldset>;
+}
+
+function matchesOption(option, search) {
+  const normalizedSearch = search.trim().toLocaleLowerCase('es');
+  return !normalizedSearch
+    || `${option.value || ''} ${option.label || ''} ${option.description || ''}`
+      .toLocaleLowerCase('es')
+      .includes(normalizedSearch);
 }
 
 function valuesFromSelect(event) {

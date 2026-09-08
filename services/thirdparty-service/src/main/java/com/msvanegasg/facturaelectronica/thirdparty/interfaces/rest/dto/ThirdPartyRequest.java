@@ -27,7 +27,17 @@ public record ThirdPartyRequest(
         @Size(max = 250) String address,
         @Size(max = 20) String municipalityCode,
         @Size(max = 10) String ciiuCode,
+        Set<@Size(max = 10) String> ciiuCodes,
         Set<@Size(max = 20) String> taxResponsibilities,
         TaxRegime taxRegime,
         @NotEmpty Set<ThirdPartyRole> roles) {
+
+    public ThirdPartyRequest(PersonType personType, Integer identificationTypeCode, String identificationNumber,
+            Integer verificationDigit, String fullName, String businessName, String tradeName, String email,
+            String phone, String address, String municipalityCode, String ciiuCode,
+            Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles) {
+        this(personType, identificationTypeCode, identificationNumber, verificationDigit, fullName, businessName,
+                tradeName, email, phone, address, municipalityCode, ciiuCode, null, taxResponsibilities, taxRegime,
+                roles);
+    }
 }

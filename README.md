@@ -250,6 +250,10 @@ Flyway crea y evoluciona las tablas al iniciar el servicio. Los catalogos funcio
 
 El catalogo fiscal de `accounting-service` versiona UVT, conceptos, bases, tarifas, exenciones y fuentes normativas. Las reglas nacionales se actualizan mediante nuevas migraciones; ReteICA se configura por municipio y vigencia. Una operacion que requiera una regla territorial ausente queda bloqueada para evitar retenciones o asientos con tarifas asumidas.
 
+El catalogo general `CIIU` contiene las clases DANE CIIU Rev. 4 A.C. actualizacion 2022 adoptadas por la DIAN para el RUT y los procesos fiscales. Los terceros juridicos y proveedores pueden seleccionar varias actividades; los clientes exclusivamente naturales no requieren CIIU. El campo historico `ciiuCode` se conserva temporalmente como alias de compatibilidad mientras `ciiuCodes` es la fuente canonica. La CIIU Rev. 5 publicada por DANE en 2026 no se usa fiscalmente hasta que la DIAN formalice su adopcion.
+
+En compras y gastos, `Fecha limite de pago` solo aparece para operaciones a credito porque alimenta la cuenta por pagar. Las operaciones de contado no envian fecha de vencimiento.
+
 ## Seguridad
 
 - La SPA no debe registrar credenciales, tokens, certificados ni datos sensibles en consola.

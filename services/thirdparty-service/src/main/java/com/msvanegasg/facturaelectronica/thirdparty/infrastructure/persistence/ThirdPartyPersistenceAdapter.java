@@ -3,6 +3,7 @@ package com.msvanegasg.facturaelectronica.thirdparty.infrastructure.persistence;
 import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
@@ -67,7 +68,8 @@ public class ThirdPartyPersistenceAdapter implements ThirdPartyRepositoryPort {
         return ThirdParty.restore(entity.getId(), entity.getCompanyId(), entity.getPersonType(),
                 entity.getIdentificationTypeCode(), entity.getIdentificationNumber(), entity.getVerificationDigit(),
                 entity.getFullName(), entity.getBusinessName(), entity.getTradeName(), entity.getEmail(),
-                entity.getPhone(), entity.getAddress(), entity.getMunicipalityCode(), entity.getCiiuCode(),
+                entity.getPhone(), entity.getAddress(), entity.getMunicipalityCode(),
+                mergeCiiuCodes(entity.getCiiuCodes(), entity.getCiiuCode()),
                 entity.getTaxResponsibilities(), entity.getTaxRegime(), entity.getRoles(),
                 Boolean.TRUE.equals(entity.getActive()));
     }
@@ -89,10 +91,22 @@ public class ThirdPartyPersistenceAdapter implements ThirdPartyRepositoryPort {
                 .address(thirdParty.address())
                 .municipalityCode(thirdParty.municipalityCode())
                 .ciiuCode(thirdParty.ciiuCode())
+                .ciiuCodes(new LinkedHashSet<>(thirdParty.ciiuCodes()))
                 .taxResponsibilities(new LinkedHashSet<>(thirdParty.taxResponsibilities()))
                 .taxRegime(thirdParty.taxRegime())
                 .roles(new LinkedHashSet<>(thirdParty.roles()))
                 .active(thirdParty.active())
                 .build();
+    }
+
+    private static Set<String> mergeCiiuCodes(Set<String> ciiuCodes, String legacyCiiuCode) {
+        LinkedHashSet<String> merged = new LinkedHashSet<>();
+        if (ciiuCodes != null) {
+            merged.addAll(ciiuCodes);
+        }
+        if (legacyCiiuCode != null && !legacyCiiuCode.isBlank()) {
+            merged.add(legacyCiiuCode);
+        }
+        return merged;
     }
 }

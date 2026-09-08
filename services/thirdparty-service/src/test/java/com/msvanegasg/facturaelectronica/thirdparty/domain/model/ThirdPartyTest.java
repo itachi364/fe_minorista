@@ -20,10 +20,31 @@ class ThirdPartyTest {
 
         assertThat(thirdParty.verificationDigit()).isEqualTo(8);
         assertThat(thirdParty.ciiuCode()).isEqualTo("6201");
+        assertThat(thirdParty.ciiuCodes()).containsExactly("6201");
         assertThat(thirdParty.taxResponsibilities()).containsExactly("O-13");
         assertThat(thirdParty.taxRegime()).isEqualTo(TaxRegime.RESPONSABLE_IVA);
         assertThat(thirdParty.hasRole(ThirdPartyRole.CUSTOMER)).isTrue();
         assertThat(thirdParty.hasRole(ThirdPartyRole.SUPPLIER)).isTrue();
+    }
+
+    @Test
+    void storesMultipleCiiuActivitiesForSupplier() {
+        ThirdParty thirdParty = ThirdParty.create(COMPANY_ID, PersonType.JURIDICA, 31, "900123456", null,
+                "Proveedor SAS", "Proveedor", null, null, null, "11001", Set.of("6201", "4711"),
+                Set.of("O-13"), TaxRegime.ORDINARIO, Set.of(ThirdPartyRole.SUPPLIER));
+
+        assertThat(thirdParty.ciiuCodes()).containsExactly("4711", "6201");
+        assertThat(thirdParty.ciiuCode()).isEqualTo("4711");
+    }
+
+    @Test
+    void clearsResidualCiiuActivitiesForSimpleNaturalCustomer() {
+        ThirdParty thirdParty = ThirdParty.create(COMPANY_ID, PersonType.NATURAL, 13, "1234567890",
+                "Cliente Natural", null, null, null, null, null, "11001", Set.of("6201"),
+                Set.of("R-99-PN"), TaxRegime.NO_RESPONSABLE_IVA, Set.of(ThirdPartyRole.CUSTOMER));
+
+        assertThat(thirdParty.ciiuCodes()).isEmpty();
+        assertThat(thirdParty.ciiuCode()).isNull();
     }
 
     @Test

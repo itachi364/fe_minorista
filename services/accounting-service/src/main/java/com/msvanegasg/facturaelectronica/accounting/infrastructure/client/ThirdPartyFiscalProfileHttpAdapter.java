@@ -39,7 +39,8 @@ public class ThirdPartyFiscalProfileHttpAdapter implements ThirdPartyFiscalProfi
             }
             return Optional.of(new ThirdPartyFiscalProfile(response.id(), response.taxRegime(),
                     response.taxResponsibilities() == null ? Set.of() : response.taxResponsibilities(),
-                    response.municipalityCode(), response.ciiuCode(), response.active()));
+                    response.municipalityCode(), mergeCiiuCodes(response.ciiuCodes(), response.ciiuCode()),
+                    response.active()));
         } catch (RuntimeException exception) {
             return Optional.empty();
         }
@@ -51,6 +52,18 @@ public class ThirdPartyFiscalProfileHttpAdapter implements ThirdPartyFiscalProfi
             Set<String> taxResponsibilities,
             String municipalityCode,
             String ciiuCode,
+            Set<String> ciiuCodes,
             boolean active) {
+    }
+
+    private static Set<String> mergeCiiuCodes(Set<String> ciiuCodes, String legacyCiiuCode) {
+        java.util.LinkedHashSet<String> merged = new java.util.LinkedHashSet<>();
+        if (ciiuCodes != null) {
+            merged.addAll(ciiuCodes);
+        }
+        if (legacyCiiuCode != null && !legacyCiiuCode.isBlank()) {
+            merged.add(legacyCiiuCode);
+        }
+        return merged;
     }
 }

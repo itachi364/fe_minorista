@@ -9,5 +9,6 @@ public record ThirdPartyFiscalProfileResponse(
         Set<String> taxResponsibilities,
         String municipalityCode,
         String ciiuCode,
+        Set<String> ciiuCodes,
         boolean active) {
 }

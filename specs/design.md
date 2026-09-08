@@ -3414,3 +3414,26 @@ Context7 evidence:
 - Decision impact: el adaptador S3 de archivos empresariales devuelve URLs de corta vida; local mantiene paridad con HMAC.
 
 <!-- END SDD TASK DESIGN TRACEABILITY -->
+
+### CIIU multiactividad y vencimientos de credito TASK-297
+
+- Persistencia: `thirdparty.third_party_ciiu` almacena la relacion `third_party_id`/`ciiu_code`; la migracion copia el `ciiu_code` historico y conserva temporalmente esa columna como actividad principal compatible.
+- Dominio/API: terceros reciben y exponen `ciiuCodes`; `ciiuCode` permanece como alias de compatibilidad y se deriva de la primera actividad ordenada. Un cliente exclusivamente natural siempre normaliza la coleccion a vacia.
+- Catalogos: `catalog-service` publica una definicion regulatoria `CIIU` y sus items oficiales DANE con version y vigencia. La SPA consume ese catalogo para una lista dual filtrable, sin captura libre.
+- Motor fiscal: el perfil fiscal del tercero usa un conjunto inmutable de CIIU y las reglas comparan por pertenencia; la autorretencion continua usando los CIIU propios de la empresa.
+- UX financiera: compras y gastos renderizan `Fecha limite de pago` solo al seleccionar credito; volver a contado limpia el valor antes de construir el payload.
+- Navegacion: `Catalogo fiscal` se agrupa bajo `Configuracion`; permisos y endpoints permanecen sin cambios.
+
+#### Context7 evidence TASK-297
+- Library/tool: React.
+  - Topic consulted: estado controlado de arreglos y renderizado condicional.
+  - Relevant finding: las selecciones multiples deben actualizarse creando nuevos arreglos y los campos dependientes pueden derivarse del estado durante el render.
+  - Decision impact: `ciiuCodes` se maneja como arreglo controlado y la fecha limite/CIIU se muestran solo cuando la regla de formulario lo requiere.
+
+#### Evidencia normativa TASK-297
+- Fuente: DANE, Clasificacion Industrial Internacional Uniforme adaptada para Colombia.
+  - URL: `https://www.dane.gov.co/index.php/sistema-estadistico-nacional-sen/normas-y-estandares/nomenclaturas-y-clasificaciones/clasificaciones/clasificacion-industrial-internacional-uniforme-de-todas-las-actividades-economicas-ciiu`
+  - Hallazgo: DANE publico CIIU Rev. 5 A.C. mediante Resolucion 992 de 2026, pero esa publicacion estadistica no sustituye por si sola la clasificacion fiscal adoptada por la DIAN.
+- Fuente: DIAN, Resolucion 000227 de 2025 y Resolucion 000086 de 2023.
+  - URLs: `https://www.dian.gov.co/normatividad/Normatividad/Resoluci%C3%B3n%20000227%20de%2023-09-2025.pdf` y `https://normograma.dian.gov.co/dian/compilacion/docs/resolucion_dian_0086_2023.htm`.
+  - Impacto: para RUT e impuestos el catalogo usa CIIU Rev. 4 A.C. con la actualizacion DANE 2022. La migracion correctiva `V011` reemplaza los items Rev. 5 cargados por `V010` sin modificar el historial de Flyway; una futura adopcion DIAN requerira una migracion nueva.

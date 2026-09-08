@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { CheckField, Field, SelectField } from '../../components/forms.jsx';
 
 export function CatalogAdminPanel({
@@ -14,6 +15,7 @@ export function CatalogAdminPanel({
   busy,
   isRoot,
 }) {
+  const [itemSearch, setItemSearch] = useState('');
   const catalogOptions = definitions.map((definition) => ({
     value: definition.code,
     label: definition.label,
@@ -21,6 +23,9 @@ export function CatalogAdminPanel({
   const selectedDefinition = definitions.find((definition) => definition.code === selectedCatalogCode);
   const canEditGlobal = Boolean(isRoot && selectedDefinition?.globalEditableByRoot);
   const canToggleActivation = Boolean(isRoot ? selectedDefinition?.globalEditableByRoot : selectedDefinition?.companyConfigurable);
+  const normalizedSearch = itemSearch.trim().toLocaleLowerCase('es');
+  const visibleItems = items.filter((item) => !normalizedSearch
+    || `${item.code} ${item.label} ${item.description || ''}`.toLocaleLowerCase('es').includes(normalizedSearch));
 
   return <section className="catalog-admin stack">
     <section className="tool-panel">
@@ -72,6 +77,9 @@ export function CatalogAdminPanel({
           <p className="hint">{isRoot ? 'Usa actualizar para editar catalogos globales permitidos y activar o inactivar disponibilidad global.' : 'Activa o inactiva registros configurables para la empresa activa.'}</p>
         </div>
       </header>
+      <div className="form-grid compact">
+        <Field label="Buscar registro" value={itemSearch} onChange={setItemSearch} type="search" placeholder="Codigo o descripcion" />
+      </div>
       <div className="table-wrap">
         <table className="data-table">
           <thead>
@@ -85,8 +93,8 @@ export function CatalogAdminPanel({
             </tr>
           </thead>
           <tbody>
-            {items.length === 0 && <tr><td colSpan="6">No hay registros cargados.</td></tr>}
-            {items.map((item) => (
+            {visibleItems.length === 0 && <tr><td colSpan="6">No hay registros para el filtro actual.</td></tr>}
+            {visibleItems.map((item) => (
               <tr key={`${item.catalogCode}-${item.code}`}>
                 <td><code>{item.code}</code></td>
                 <td>{item.label}</td>

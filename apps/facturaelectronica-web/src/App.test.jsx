@@ -88,6 +88,10 @@ const TEST_RUNTIME_CATALOGS = {
     { value: 'RESPONSABLE_IVA', label: 'Responsable de IVA' },
     { value: 'NO_RESPONSABLE_IVA', label: 'No responsable de IVA' },
   ],
+  ciiuOptions: [
+    { value: '4711', label: '4711 - Comercio al por menor' },
+    { value: '6201', label: '6201 - Desarrollo de sistemas informaticos' },
+  ],
   paymentMethodOptions: [
     { value: 'CASH', label: 'Efectivo' },
     { value: 'VIRTUAL_WALLET', label: 'Billetera virtual' },
@@ -842,7 +846,7 @@ test('creates simple natural customer with automatic fiscal profile', async () =
   expect(screen.queryByLabelText('Nombre comercial')).not.toBeInTheDocument();
   expect(screen.getByLabelText('Responsabilidades fiscales')).toHaveValue('R-99-PN - No responsable / No aplica');
   expect(screen.getByLabelText('Regimen tributario')).toHaveValue('No responsable de IVA');
-  fireEvent.change(screen.getByLabelText('Codigo CIIU'), { target: { value: '6201' } });
+  expect(screen.queryByRole('group', { name: 'Actividades economicas CIIU' })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Guardar tercero' }));
 
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(7));
@@ -858,7 +862,7 @@ test('creates simple natural customer with automatic fiscal profile', async () =
   expect(thirdPartyPayload.tradeName).toBeNull();
   expect(thirdPartyPayload.taxResponsibilities).toEqual(['R-99-PN']);
   expect(thirdPartyPayload.taxRegime).toBe('NO_RESPONSABLE_IVA');
-  expect(thirdPartyPayload.ciiuCode).toBe('6201');
+  expect(thirdPartyPayload.ciiuCodes).toEqual([]);
   expect(thirdPartyPayload.roles).toEqual(['CUSTOMER']);
   expect(thirdPartyPayload.role).toBeUndefined();
   expect(screen.getByLabelText('Numero de documento')).toHaveValue('');

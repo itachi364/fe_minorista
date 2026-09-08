@@ -3769,7 +3769,7 @@ Payload objetivo:
     "taxRegime": "SIMPLE",
     "taxResponsibilities": ["O-47"],
     "municipalityCode": "11001",
-    "ciiuCode": "6201",
+    "ciiuCodes": ["4711", "6201"],
     "active": true
   }
 }
@@ -3785,7 +3785,7 @@ Respuesta objetivo:
     "taxRegime": "SIMPLE",
     "taxResponsibilities": ["O-47"],
     "municipalityCode": "11001",
-    "ciiuCode": "6201"
+    "ciiuCodes": ["4711", "6201"]
   },
   "items": [
     {
@@ -3807,7 +3807,7 @@ Respuesta objetivo:
 
 Reglas:
 
-- El calculo usa el tercero registrado como fuente fiscal: regimen, responsabilidades, municipio, tipo de persona y `ciiuCode`.
+- El calculo usa el tercero registrado como fuente fiscal: regimen, responsabilidades, municipio, tipo de persona y `ciiuCodes`.
 - Las reglas deben estar versionadas por vigencia normativa y no deben vivir hardcodeadas en UI.
 - La confirmacion de compras/gastos debe persistir snapshot de reglas aplicadas para trazabilidad.
 
@@ -3837,3 +3837,9 @@ Reglas:
 - Los correos se envian mediante puerto de notificaciones y adaptadores por ambiente.
 - Los links de descarga son intermediados por la aplicacion; no contienen URL directa de storage.
 - Los intentos, fallos y reintentos quedan auditados con error sanitizado.
+
+### Terceros con multiples CIIU
+
+`POST /api/v1/third-parties` y sus respuestas usan `ciiuCodes: string[]`. Durante la transicion aceptan y responden tambien `ciiuCode`; si solo llega el campo historico se incorpora a la coleccion y la respuesta singular representa la primera actividad ordenada. Para un cliente exclusivamente natural ambos valores se normalizan a vacio/nulo.
+
+El snapshot `thirdPartyProfile` del calculo fiscal usa `ciiuCodes`; el motor considera satisfecha una condicion cuando el codigo de la regla pertenece a esa coleccion.

@@ -80,7 +80,7 @@ export function createThirdPartyForm() {
     phone: '',
     address: '',
     municipalityCode: '',
-    ciiuCode: '',
+    ciiuCodes: [],
     taxResponsibilities: [],
     taxRegime: '',
   };

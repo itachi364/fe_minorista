@@ -20,6 +20,7 @@ export function normalizeThirdPartyForm(form, companyMunicipalityCode) {
     verificationDigit: '',
     businessName: '',
     tradeName: '',
+    ciiuCodes: [],
     taxResponsibilities: [SIMPLE_NATURAL_CUSTOMER_RESPONSIBILITY],
     taxRegime: SIMPLE_NATURAL_CUSTOMER_REGIME,
     municipalityCode: hasAddress ? form.municipalityCode || fallbackMunicipalityCode : fallbackMunicipalityCode,

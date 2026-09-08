@@ -587,3 +587,8 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-303: Las exenciones y exclusiones deben tener precedencia sobre reglas de aplicacion, alcance por empresa/tercero/concepto/impuesto, vigencia y evidencia normativa o documental auditable.
 - RF-304: La autorretencion debe calcularse con el CIIU propio de la empresa y la tabla vigente; ReteICA debe usar exclusivamente catalogos territoriales aprobados por municipio y bloquearse cuando la configuracion obligatoria no exista.
 - RF-305: ROOT debe administrar versiones nacionales del catalogo fiscal y los usuarios contables autorizados deben administrar reglas territoriales o empresariales sin modificar versiones publicadas ni acceder a otra empresa.
+- RF-306: Un tercero juridico o con rol proveedor debe poder registrar multiples actividades economicas CIIU desde el catalogo oficial vigente; un cliente exclusivamente natural no requiere CIIU y el sistema debe limpiar cualquier valor residual.
+- RF-307: El catalogo general debe exponer la clasificacion CIIU oficial de DANE con codigo, descripcion, fuente, version y vigencia, y la UI debe permitir buscar y seleccionar varias actividades sin captura libre.
+- RF-308: El motor fiscal debe evaluar una condicion CIIU contra cualquiera de las actividades registradas para el tercero y conservar compatibilidad de lectura con el campo singular historico durante la migracion.
+- RF-309: En compras y gastos la fecha limite de pago solo debe solicitarse y persistirse cuando la condicion sea credito; las operaciones de contado no deben mostrar ni enviar dicho dato.
+- RF-310: El catalogo fiscal debe ubicarse en el grupo de navegacion `Configuracion`, junto a los catalogos generales, sin cambiar sus controles de autorizacion.

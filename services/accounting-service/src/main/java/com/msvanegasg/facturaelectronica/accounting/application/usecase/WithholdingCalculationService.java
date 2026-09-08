@@ -243,12 +243,13 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
             UUID fallbackThirdPartyId) {
         UUID thirdPartyId = command.thirdPartyId() == null ? fallbackThirdPartyId : command.thirdPartyId();
         return new ThirdPartyFiscalProfile(thirdPartyId, command.taxRegime(), command.taxResponsibilities(),
-                command.municipalityCode(), command.ciiuCode(), command.active());
+                command.municipalityCode(), command.ciiuCodes(), command.active());
     }
 
     private static ThirdPartyFiscalProfileCommand toCommand(ThirdPartyFiscalProfile profile) {
         return new ThirdPartyFiscalProfileCommand(profile.thirdPartyId(), profile.taxRegime(),
-                profile.taxResponsibilities(), profile.municipalityCode(), profile.ciiuCode(), profile.active());
+                profile.taxResponsibilities(), profile.municipalityCode(), profile.ciiuCode(), profile.ciiuCodes(),
+                profile.active());
     }
 
     private static void validate(CalculateWithholdingsCommand command) {

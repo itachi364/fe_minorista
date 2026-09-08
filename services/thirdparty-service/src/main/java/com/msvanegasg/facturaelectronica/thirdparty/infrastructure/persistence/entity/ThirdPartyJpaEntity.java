@@ -80,6 +80,12 @@ public class ThirdPartyJpaEntity {
     private String ciiuCode;
 
     @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "third_party_ciiu", joinColumns = @JoinColumn(name = "third_party_id"))
+    @Column(name = "ciiu_code", nullable = false, length = 10)
+    @Builder.Default
+    private Set<String> ciiuCodes = new LinkedHashSet<>();
+
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "third_party_tax_responsibility", joinColumns = @JoinColumn(name = "third_party_id"))
     @Column(name = "tax_responsibility_code", nullable = false, length = 20)
     @Builder.Default

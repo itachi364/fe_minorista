@@ -18,6 +18,7 @@ export function ThirdPartyForm({
   documentTypeOptionsSource = [],
   taxResponsibilityOptionsSource = [],
   taxRegimeOptionsSource = [],
+  ciiuOptionsSource = [],
   thirdPartyRoleCatalog = [],
   personTypeCatalog = [],
   locations,
@@ -78,7 +79,7 @@ export function ThirdPartyForm({
         <Field label="Telefono" value={normalizedForm.phone} onChange={(value) => update({ ...normalizedForm, phone: value })} />
         <Field label="Direccion" value={normalizedForm.address} onChange={updateAddress} />
         <MunicipalityFields municipalityCode={normalizedForm.municipalityCode} onChange={(value) => update({ ...normalizedForm, municipalityCode: value })} disabled={simpleNaturalCustomer && !naturalCustomerHasAddress} locations={locations} />
-        <Field label="Codigo CIIU" value={normalizedForm.ciiuCode} onChange={(value) => update({ ...normalizedForm, ciiuCode: value })} />
+        {!simpleNaturalCustomer && <DualListField label="Actividades economicas CIIU" value={normalizedForm.ciiuCodes} onChange={(values) => update({ ...normalizedForm, ciiuCodes: values })} options={ciiuOptionsSource} searchable />}
         {simpleNaturalCustomer
           ? <Field label="Responsabilidades fiscales" value={fiscalResponsibilityLabel} onChange={() => {}} readOnly />
           : <DualListField label="Responsabilidades fiscales" value={normalizedForm.taxResponsibilities} onChange={updateTaxResponsibilities} options={taxResponsibilityOptionsSource} exclusiveValues={['R-99-PN']} />}
@@ -121,7 +122,7 @@ function thirdPartyRow(thirdParty) {
     `${thirdParty.identificationNumber || ''}${thirdParty.verificationDigit !== null && thirdParty.verificationDigit !== undefined ? `-${thirdParty.verificationDigit}` : ''}`,
     thirdParty.businessName || thirdParty.fullName || thirdParty.tradeName || '',
     thirdParty.personType === 'JURIDICA' ? 'Juridica' : 'Natural',
-    thirdParty.ciiuCode || '',
+    (thirdParty.ciiuCodes || (thirdParty.ciiuCode ? [thirdParty.ciiuCode] : [])).join(', '),
     thirdParty.email || '',
     thirdParty.phone || '',
     thirdParty.active === false ? 'Inactivo' : 'Activo',

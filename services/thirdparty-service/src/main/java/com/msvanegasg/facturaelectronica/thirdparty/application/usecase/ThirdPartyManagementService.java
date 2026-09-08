@@ -29,7 +29,8 @@ public class ThirdPartyManagementService implements ManageThirdPartyUseCase {
         ThirdParty thirdParty = ThirdParty.restore(null, command.companyId(), command.personType(),
                 command.identificationTypeCode(), command.identificationNumber(), command.verificationDigit(),
                 command.fullName(), command.businessName(), command.tradeName(), command.email(), command.phone(),
-                command.address(), command.municipalityCode(), command.ciiuCode(), command.taxResponsibilities(),
+                command.address(), command.municipalityCode(), mergeCiiuCodes(command.ciiuCodes(), command.ciiuCode()),
+                command.taxResponsibilities(),
                 command.taxRegime(), command.roles(), true);
         return toResult(repository.save(thirdParty));
     }
@@ -44,7 +45,8 @@ public class ThirdPartyManagementService implements ManageThirdPartyUseCase {
         }
         ThirdParty updated = existing.update(command.personType(), command.fullName(), command.businessName(),
                 command.tradeName(), command.email(), command.phone(), command.address(), command.municipalityCode(),
-                command.ciiuCode(), command.taxResponsibilities(), command.taxRegime(), command.roles());
+                mergeCiiuCodes(command.ciiuCodes(), command.ciiuCode()), command.taxResponsibilities(),
+                command.taxRegime(), command.roles());
         return toResult(repository.save(updated));
     }
 
@@ -103,8 +105,20 @@ public class ThirdPartyManagementService implements ManageThirdPartyUseCase {
                 thirdParty.identificationTypeCode(), thirdParty.identificationNumber(),
                 thirdParty.verificationDigit(), thirdParty.fullName(), thirdParty.businessName(),
                 thirdParty.tradeName(), thirdParty.email(), thirdParty.phone(), thirdParty.address(),
-                thirdParty.municipalityCode(), thirdParty.ciiuCode(), thirdParty.taxResponsibilities(), thirdParty.taxRegime(),
+                thirdParty.municipalityCode(), thirdParty.ciiuCode(), thirdParty.ciiuCodes(),
+                thirdParty.taxResponsibilities(), thirdParty.taxRegime(),
                 thirdParty.roles(), thirdParty.active());
+    }
+
+    private static java.util.Set<String> mergeCiiuCodes(java.util.Set<String> ciiuCodes, String legacyCiiuCode) {
+        java.util.LinkedHashSet<String> merged = new java.util.LinkedHashSet<>();
+        if (ciiuCodes != null) {
+            merged.addAll(ciiuCodes);
+        }
+        if (legacyCiiuCode != null && !legacyCiiuCode.isBlank()) {
+            merged.add(legacyCiiuCode);
+        }
+        return merged;
     }
 
     private static Integer normalizeDocumentType(Integer value) {

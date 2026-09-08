@@ -129,7 +129,7 @@ public record WithholdingRule(
             return false;
         }
         return ciiuCode == null || withholdingType == WithholdingType.AUTORETENCION
-                || Objects.equals(ciiuCode, thirdPartyProfile.ciiuCode());
+                || thirdPartyProfile.hasCiiu(ciiuCode);
     }
 
     public boolean thresholdReached(BigDecimal base, BigDecimal uvtValue) {
