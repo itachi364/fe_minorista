@@ -127,7 +127,12 @@ public final class AccountingRestMapper {
                         request.companyProfile().rutResponsibilities(), request.companyProfile().vatResponsible(),
                         request.companyProfile().withholdingAgent(), request.companyProfile().largeTaxpayer(),
                         request.companyProfile().selfWithholding(), request.companyProfile().simpleRegime(),
-                        request.companyProfile().icaMunicipalityCode(), request.companyProfile().ciiuCodes()),
+                        request.companyProfile().icaMunicipalityCode(), request.companyProfile().ciiuCodes(),
+                        request.companyProfile().vatWithholdingAgent() == null
+                                ? request.companyProfile().rutResponsibilities() != null
+                                        && request.companyProfile().rutResponsibilities().contains("O-23")
+                                : request.companyProfile().vatWithholdingAgent(),
+                        Boolean.TRUE.equals(request.companyProfile().icaWithholdingAgent())),
                 request.thirdPartyProfile() == null ? null
                         : new ThirdPartyFiscalProfileCommand(request.thirdPartyProfile().thirdPartyId(),
                                 request.thirdPartyProfile().taxRegime(),
@@ -394,7 +399,8 @@ public final class AccountingRestMapper {
     private static WithholdingCalculationItemResponse toResponse(WithholdingCalculationItemResult result) {
         return new WithholdingCalculationItemResponse(result.withholdingType(), result.conceptCode(),
                 result.baseAmount(), result.rate(), result.amount(), result.ruleVersion(), result.decision(),
-                result.reason());
+                result.reason(), result.ruleId(), result.parameterVersion(), result.legalReference(),
+                result.sourceUrl());
     }
 
     private static ThirdPartyFiscalProfileResponse toResponse(ThirdPartyFiscalProfileCommand result) {

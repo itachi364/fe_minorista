@@ -122,6 +122,7 @@ public class BffProxyController {
                 || normalized.startsWith("issuers")
                 || normalized.startsWith("numbering-resolutions")
                 || normalized.startsWith("fiscal-policy")
+                || normalized.startsWith("fiscal-catalog")
                 || normalized.startsWith("payroll");
     }
 

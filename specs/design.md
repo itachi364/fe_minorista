@@ -3353,6 +3353,31 @@ Context7 evidence:
 - El motor genera snapshots de calculo cuando hay documento origen, para que compras/gastos/pagos conserven la trazabilidad de regla, tarifa, base, decision y razon funcional.
 - Las semillas iniciales cubren ReteIVA para proveedores SIMPLE como base de prueba; el catalogo completo de conceptos, tarifas, UVT/bases, ReteICA territorial, exenciones y autorretencion debe cargarse de forma controlada antes de produccion.
 
+#### Catalogo fiscal definitivo TASK-296
+- `fiscal_parameter` conserva parametros anuales como UVT con fuente y vigencia.
+- `withholding_rule` se extiende con unidad/valor de umbral, base de calculo, tratamiento del umbral, decision, especificidad y referencia normativa.
+- La evaluacion agrupa por tipo de retencion y selecciona una sola regla por precedencia: exclusion/exencion, empresa/territorio, CIIU/responsabilidad/regimen, concepto especifico y prioridad.
+- Las exenciones documentales pueden dirigirse a un tercero mediante `targetThirdPartyId`; conservan `evidenceReference` y tienen mayor especificidad que reglas generales.
+- La autorretencion evalua el CIIU de la empresa. ReteICA requiere municipio, calidad de agente territorial y catalogo publicado; la ausencia de cualquiera produce `BLOCKED`.
+- Las versiones publicadas son inmutables. Las correcciones cierran vigencia o crean una version posterior y los snapshots preservan parametro y fuente aplicados.
+- La UI administrativa permite consultar catalogos globales y editar solo reglas empresariales/territoriales autorizadas.
+
+#### Context7 evidence TASK-296
+- Library/tool: Spring Boot.
+  - Topic consulted: validacion `@Valid` en DTO REST y transacciones en servicios JPA.
+  - Relevant finding: Spring MVC ejecuta Bean Validation al ingresar al controlador y `@Transactional` delimita la unidad atomica de publicacion/reemplazo.
+  - Decision impact: los comandos externos se validan antes del dominio y la publicacion de versiones se realiza transaccionalmente.
+- Library/tool: Flyway.
+  - Topic consulted: migraciones versionadas y datos de referencia repetibles.
+  - Relevant finding: las migraciones versionadas se aplican una vez y las repetibles se reejecutan al cambiar checksum.
+  - Decision impact: `V008` no se modifica; el esquema y semillas normativas se evolucionan en `V009` y posteriores para conservar auditoria.
+
+#### Evidencia normativa TASK-296
+- Resolucion DIAN 000238 de 2025: fija UVT 2026 en `$52.374`.
+- Decreto 572 de 2025: modifica bases minimas y tabla de autorretencion; aplicacion desde 2025-06-01.
+- Estatuto Tributario, articulos 437-1, 437-2 y 911: agentes/tarifas ReteIVA y tratamiento del SIMPLE.
+- Ley 14 de 1983 y acuerdos territoriales: ICA/ReteICA depende de jurisdiccion municipal y actividad.
+
 #### Evidencia normativa
 - Fuente: DIAN Normatividad, Estatuto Tributario y DUR 1625 de 2016.
   - URL: `https://www.dian.gov.co/Contribuyentes-Plus/Paginas/Normatividad.aspx`

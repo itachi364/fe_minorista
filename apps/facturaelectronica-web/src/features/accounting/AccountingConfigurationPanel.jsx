@@ -29,6 +29,12 @@ const amountTypeOptions = [
   { value: 'TOTAL', label: 'Total' },
   { value: 'SUBTOTAL', label: 'Subtotal' },
   { value: 'TAX_TOTAL', label: 'Impuesto' },
+  { value: 'RETEFUENTE', label: 'Retencion en la fuente' },
+  { value: 'RETEIVA', label: 'Retencion de IVA' },
+  { value: 'RETEICA', label: 'Retencion de ICA' },
+  { value: 'AUTORETENCION', label: 'Autorretencion' },
+  { value: 'WITHHOLDING_TOTAL', label: 'Total retenciones' },
+  { value: 'NET_PAYABLE', label: 'Neto por pagar' },
 ];
 
 const eventLabels = Object.fromEntries(eventOptions.map((option) => [option.value, option.label]));

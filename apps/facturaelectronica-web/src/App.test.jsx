@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import App from './App.jsx';
 import { AccountingConfigurationPanel } from './features/accounting/AccountingConfigurationPanel.jsx';
 import { DianConfigurationPanel } from './features/dian/DianConfigurationPanel.jsx';
+import { FiscalCatalogPanel } from './features/accounting/FiscalCatalogPanel.jsx';
 import { ReportsForm } from './features/reports/ReportsForm.jsx';
 import { loadStoredSession, saveStoredSession, SESSION_TIMEOUT_MS } from './utils/sessionStorage.js';
 
@@ -167,6 +168,44 @@ test('accounting configuration basic template is completed with idempotent setup
 
   await waitFor(() => expect(onInitializeBasicSetup).toHaveBeenCalledTimes(1));
   expect(onConfigure).not.toHaveBeenCalled();
+});
+
+test('accounting configuration exposes fiscal withholding amount types', () => {
+  render(<AccountingConfigurationPanel
+    accounts={[]}
+    rules={[]}
+    onLoad={vi.fn()}
+    onConfigure={vi.fn()}
+    busy={false}
+  />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Agregar regla' }));
+
+  const options = screen.getAllByRole('option').map((item) => item.textContent);
+  expect(options).toEqual(expect.arrayContaining([
+    'Retencion en la fuente', 'Retencion de IVA', 'Retencion de ICA',
+    'Autorretencion', 'Total retenciones', 'Neto por pagar',
+  ]));
+});
+
+test('root can deactivate a national fiscal rule', () => {
+  const onDeactivate = vi.fn();
+  render(<FiscalCatalogPanel
+    parameters={[]}
+    rules={[{
+      id: 'rule-global', companyId: null, withholdingType: 'RETEFUENTE', conceptCode: 'SERVICE',
+      rate: 0.04, thresholdValue: 2, thresholdUnit: 'UVT', validFrom: '2026-01-01',
+      validTo: null, active: true, decision: 'APPLIED',
+    }]}
+    isRoot
+    onLoad={vi.fn()}
+    onSave={vi.fn()}
+    onDeactivate={onDeactivate}
+    busy={false}
+  />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Inactivar' }));
+  expect(onDeactivate).toHaveBeenCalledWith(expect.objectContaining({ id: 'rule-global', companyId: null }));
 });
 
 test('accounting configuration shows usage and protects used accounts and rules', () => {

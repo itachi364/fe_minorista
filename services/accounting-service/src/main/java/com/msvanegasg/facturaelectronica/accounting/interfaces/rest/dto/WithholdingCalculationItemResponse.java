@@ -1,6 +1,7 @@
 package com.msvanegasg.facturaelectronica.accounting.interfaces.rest.dto;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingDecision;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingType;
@@ -13,5 +14,9 @@ public record WithholdingCalculationItemResponse(
         BigDecimal amount,
         String ruleVersion,
         WithholdingDecision decision,
-        String reason) {
+        String reason,
+        UUID ruleId,
+        String parameterVersion,
+        String legalReference,
+        String sourceUrl) {
 }

@@ -7286,7 +7286,32 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
   - Validacion ejecutada:
     - `.\mvnw.cmd -pl services\thirdparty-service,services\accounting-service,services\bff-service -am test`: BUILD SUCCESS.
   - Pendiente normativo-operativo:
-    - Cargar el catalogo completo de tarifas/bases por concepto, municipio ICA, exenciones y reglas especiales aprobadas por contador o fuente oficial vigente antes de usarlo como motor definitivo en produccion.
+    - Cada empresa debe cargar y aprobar las tarifas ReteICA de sus municipios; el motor bloquea ese calculo cuando falta el catalogo territorial para evitar aplicar una tarifa nacional inexistente.
+
+- [x] TASK-296: Completar catalogo fiscal versionado y motor de precedencia
+  - Estado: DONE (2026-09-07).
+  - Requisitos: RF-294, RF-295, RF-297, RF-301, RF-302, RF-303, RF-304, RF-305.
+  - Acceptance criteria: AC-413 a AC-416, AC-420 a AC-426.
+  - Descripcion: Incorporar parametros UVT, metadatos normativos, conceptos, unidades de base, decisiones de exencion/bloqueo, precedencia determinista, autorretencion por CIIU y ReteICA territorial sin valores asumidos.
+  - Dependencias:
+    - TASK-292.
+    - TASK-293.
+  - Archivos principales:
+    - `services/accounting-service/src/main/**`.
+    - `services/accounting-service/src/test/**`.
+    - `services/accounting-service/src/main/resources/db/migration/V009__complete_fiscal_catalog.sql`.
+    - `services/accounting-service/src/main/resources/db/migration/V010__seed_self_withholding_rates.sql`.
+    - `services/accounting-service/src/main/resources/db/migration/V011__add_third_party_fiscal_exemptions.sql`.
+    - `scripts/generate-self-withholding-migration.ps1`.
+    - `apps/facturaelectronica-web/src/features/accounting/FiscalCatalogPanel.jsx`.
+    - `specs/**` y `README.md`.
+  - Pruebas: dominio, precedencia, umbrales UVT, exenciones, SIMPLE, ReteIVA, autorretencion CIIU, bloqueo ReteICA, REST, persistencia y UI.
+  - Validacion ejecutada:
+    - `.\mvnw.cmd -pl services\accounting-service,services\bff-service -am test`: BUILD SUCCESS; accounting 87, BFF 38 y eventing 3 pruebas sin fallos.
+    - `npm test -- --run`: 42 pruebas web sin fallos.
+    - `npm run build`: compilacion de produccion exitosa.
+    - Flyway: migraciones fiscales versionadas hasta `011`.
+    - Catalogo de autorretencion: 501 codigos CIIU generados desde la tabla oficial del Decreto 572 de 2025.
 
 - [ ] TASK-294: Implementar contrasenas temporales para administradores y contadores
   - Estado: TODO.

@@ -39,6 +39,10 @@ public class WithholdingCalculationSnapshotPersistenceAdapter implements Withhol
         entity.setDecision(snapshot.decision());
         entity.setReason(snapshot.reason());
         entity.setCreatedAt(snapshot.createdAt());
+        entity.setRuleId(snapshot.ruleId());
+        entity.setParameterVersion(snapshot.parameterVersion());
+        entity.setLegalReference(snapshot.legalReference());
+        entity.setSourceUrl(snapshot.sourceUrl());
         return entity;
     }
 }

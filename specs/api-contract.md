@@ -3811,6 +3811,19 @@ Reglas:
 - Las reglas deben estar versionadas por vigencia normativa y no deben vivir hardcodeadas en UI.
 - La confirmacion de compras/gastos debe persistir snapshot de reglas aplicadas para trazabilidad.
 
+### Catalogos fiscales
+
+```http
+GET /api/v1/fiscal-catalog/parameters?date=2026-09-07
+GET /api/v1/fiscal-catalog/rules?operationType=PURCHASE&active=true
+POST /api/v1/fiscal-catalog/rules
+PUT /api/v1/fiscal-catalog/rules/{ruleId}/deactivate
+```
+
+Una regla incluye `thresholdUnit` (`COP`, `UVT`), `thresholdValue`, `thresholdOperator` (`GT`, `GTE`), `calculationBase` (`TAXABLE_BASE`, `VAT_AMOUNT`, `COMPANY_INCOME`), `thresholdTreatment` (`FULL_AMOUNT`, `EXCESS`), `decision`, `rate`, `legalReference`, `sourceUrl`, `validFrom`, `validTo`, `priority` y condiciones fiscales. Las mutaciones globales son exclusivas de ROOT; las empresariales requieren `X-Company-Id` y permiso contable. Una exencion dirigida a `targetThirdPartyId` exige `decision=EXEMPT` y `evidenceReference` no vacio.
+
+El resultado de calculo agrega `ruleId`, `parameterVersion`, `legalReference` y `sourceUrl`. Si ReteICA es obligatoria pero no hay regla municipal publicada, el item usa `decision=BLOCKED`; el consumidor no puede confirmar la operacion.
+
 ### Eventos de notificacion por correo
 
 Eventos objetivo:

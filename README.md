@@ -248,6 +248,8 @@ services/<servicio>/src/main/resources/db/migration
 
 Flyway crea y evoluciona las tablas al iniciar el servicio. Los catalogos funcionales viven en base de datos y el entorno local mantiene solo los datos minimos necesarios para validar acceso inicial y flujos operativos.
 
+El catalogo fiscal de `accounting-service` versiona UVT, conceptos, bases, tarifas, exenciones y fuentes normativas. Las reglas nacionales se actualizan mediante nuevas migraciones; ReteICA se configura por municipio y vigencia. Una operacion que requiera una regla territorial ausente queda bloqueada para evitar retenciones o asientos con tarifas asumidas.
+
 ## Seguridad
 
 - La SPA no debe registrar credenciales, tokens, certificados ni datos sensibles en consola.

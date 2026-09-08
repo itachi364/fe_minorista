@@ -5,6 +5,9 @@ import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -16,10 +19,13 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingC
 import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCalculationResult;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.CalculateWithholdingsUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.IdGeneratorPort;
+import com.msvanegasg.facturaelectronica.accounting.application.port.out.FiscalParameterRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.ThirdPartyFiscalProfilePort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.WithholdingCalculationSnapshotRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.WithholdingRuleRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.CompanyTaxProfile;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalCalculationBase;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalParameter;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.ThirdPartyFiscalProfile;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingCalculationSnapshot;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingDecision;
@@ -39,17 +45,27 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
     private final ThirdPartyFiscalProfilePort thirdPartyFiscalProfilePort;
     private final IdGeneratorPort idGenerator;
     private final Clock clock;
+    private final FiscalParameterRepositoryPort parameterRepository;
 
     public WithholdingCalculationService(WithholdingRuleRepositoryPort ruleRepository,
             WithholdingCalculationSnapshotRepositoryPort snapshotRepository,
             ThirdPartyFiscalProfilePort thirdPartyFiscalProfilePort,
             IdGeneratorPort idGenerator,
             Clock clock) {
+        this(ruleRepository, snapshotRepository, thirdPartyFiscalProfilePort, idGenerator, clock,
+                FiscalParameterRepositoryPortDefaults.forTests());
+    }
+
+    public WithholdingCalculationService(WithholdingRuleRepositoryPort ruleRepository,
+            WithholdingCalculationSnapshotRepositoryPort snapshotRepository,
+            ThirdPartyFiscalProfilePort thirdPartyFiscalProfilePort, IdGeneratorPort idGenerator, Clock clock,
+            FiscalParameterRepositoryPort parameterRepository) {
         this.ruleRepository = Objects.requireNonNull(ruleRepository);
         this.snapshotRepository = Objects.requireNonNull(snapshotRepository);
         this.thirdPartyFiscalProfilePort = Objects.requireNonNull(thirdPartyFiscalProfilePort);
         this.idGenerator = Objects.requireNonNull(idGenerator);
         this.clock = Objects.requireNonNull(clock);
+        this.parameterRepository = Objects.requireNonNull(parameterRepository);
     }
 
     @Override
@@ -63,10 +79,16 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
                 command.operationDate()).stream()
                 .filter(rule -> rule.appliesTo(command.operationType(), command.conceptCode(), command.operationDate(),
                         companyProfile, thirdPartyProfile))
-                .sorted(Comparator.comparingInt(WithholdingRule::priority))
+                .sorted(rulePrecedence())
                 .toList();
-        List<WithholdingCalculationItemResult> items = calculateItems(command, thirdPartyProfile, taxableBase,
-                taxAmount, rules);
+        BigDecimal uvtValue = resolveUvt(command, rules);
+        String parameterVersion = rules.stream().anyMatch(rule -> rule.thresholdUnit()
+                == com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalThresholdUnit.UVT)
+                        ? parameterRepository.findEffective("UVT", command.operationDate()).map(FiscalParameter::version)
+                                .orElse(null)
+                        : null;
+        List<WithholdingCalculationItemResult> items = calculateItems(command, companyProfile, thirdPartyProfile,
+                taxableBase, taxAmount, rules, uvtValue, parameterVersion);
         persistSnapshots(command, items);
         BigDecimal withholdingTotal = items.stream()
                 .filter(item -> item.decision() == WithholdingDecision.APPLIED)
@@ -81,13 +103,28 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
     }
 
     private List<WithholdingCalculationItemResult> calculateItems(CalculateWithholdingsCommand command,
-            ThirdPartyFiscalProfile thirdPartyProfile, BigDecimal taxableBase, BigDecimal taxAmount,
-            List<WithholdingRule> rules) {
-        List<WithholdingCalculationItemResult> calculated = rules.stream()
-                .map(rule -> calculateRule(command.conceptCode(), taxableBase, taxAmount, rule))
-                .toList();
+            CompanyTaxProfile companyProfile, ThirdPartyFiscalProfile thirdPartyProfile, BigDecimal taxableBase,
+            BigDecimal taxAmount, List<WithholdingRule> rules, BigDecimal uvtValue, String parameterVersion) {
+        Map<WithholdingType, WithholdingRule> selected = new EnumMap<>(WithholdingType.class);
+        rules.forEach(rule -> selected.putIfAbsent(rule.withholdingType(), rule));
+        List<WithholdingCalculationItemResult> calculated = new ArrayList<>(selected.values().stream()
+                .map(rule -> calculateRule(command.conceptCode(), taxableBase, taxAmount, uvtValue,
+                        parameterVersion, rule))
+                .toList());
+        if (companyProfile.icaWithholdingAgent() && selected.get(WithholdingType.RETEICA) == null) {
+            calculated.add(thirdPartyProfile.isSimpleRegime()
+                    ? notApplied(WithholdingType.RETEICA, command.conceptCode(), taxableBase, SIMPLE_EXCLUSION_REASON)
+                    : blocked(WithholdingType.RETEICA, command.conceptCode(), taxableBase,
+                            "Falta un catalogo ReteICA publicado para el municipio y la fecha de la operacion."));
+        }
+        if (companyProfile.selfWithholding() && command.operationType()
+                == com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalOperationType.RECEIPT
+                && selected.get(WithholdingType.AUTORETENCION) == null) {
+            calculated.add(blocked(WithholdingType.AUTORETENCION, command.conceptCode(), taxableBase,
+                    "No existe tarifa de autorretencion vigente para el CIIU propio de la empresa."));
+        }
         if (!calculated.isEmpty()) {
-            return calculated;
+            return List.copyOf(calculated);
         }
         if (thirdPartyProfile.isSimpleRegime()) {
             return List.of(
@@ -101,16 +138,63 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
     }
 
     private WithholdingCalculationItemResult calculateRule(String conceptCode, BigDecimal taxableBase,
-            BigDecimal taxAmount, WithholdingRule rule) {
-        BigDecimal baseAmount = rule.withholdingType() == WithholdingType.RETEIVA ? taxAmount : taxableBase;
-        if (baseAmount.compareTo(rule.baseMinAmount()) < 0) {
-            return new WithholdingCalculationItemResult(rule.withholdingType(), conceptCode, baseAmount, rule.rate(),
+            BigDecimal taxAmount, BigDecimal uvtValue, String parameterVersion, WithholdingRule rule) {
+        BigDecimal evaluatedBase = rule.calculationBase() == FiscalCalculationBase.VAT_AMOUNT ? taxAmount : taxableBase;
+        if (!rule.thresholdReached(evaluatedBase, uvtValue)) {
+            return new WithholdingCalculationItemResult(rule.withholdingType(), conceptCode,
+                    evaluatedBase.setScale(2, RoundingMode.HALF_UP), rule.rate(),
                     BigDecimal.ZERO.setScale(2), rule.ruleSetVersion(), WithholdingDecision.NOT_APPLIED,
-                    "La base de la operacion no supera la base minima de la regla.");
+                    "La base de la operacion no supera el umbral de la regla.", rule.id(), parameterVersion,
+                    rule.legalReference(), rule.sourceUrl());
         }
-        BigDecimal amount = baseAmount.multiply(rule.rate()).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal baseAmount = rule.taxableAmount(evaluatedBase, uvtValue).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal amount = rule.decision() == WithholdingDecision.APPLIED
+                ? baseAmount.multiply(rule.rate()).setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(2);
         return new WithholdingCalculationItemResult(rule.withholdingType(), conceptCode, baseAmount, rule.rate(),
-                amount, rule.ruleSetVersion(), WithholdingDecision.APPLIED, "Regla fiscal aplicada.");
+                amount, rule.ruleSetVersion(), rule.decision(), decisionReason(rule), rule.id(), parameterVersion,
+                rule.legalReference(), rule.sourceUrl());
+    }
+
+    private WithholdingCalculationItemResult blocked(WithholdingType type, String conceptCode, BigDecimal base,
+            String reason) {
+        return new WithholdingCalculationItemResult(type, conceptCode, money(base), BigDecimal.ZERO.setScale(6),
+                BigDecimal.ZERO.setScale(2), null, WithholdingDecision.BLOCKED, reason);
+    }
+
+    private BigDecimal resolveUvt(CalculateWithholdingsCommand command, List<WithholdingRule> rules) {
+        boolean required = rules.stream().anyMatch(rule -> rule.thresholdUnit()
+                == com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalThresholdUnit.UVT);
+        if (!required) {
+            return BigDecimal.ZERO;
+        }
+        return parameterRepository.findEffective("UVT", command.operationDate()).map(FiscalParameter::value)
+                .orElseThrow(() -> new IllegalStateException("No existe una UVT publicada para la fecha de operacion."));
+    }
+
+    private static Comparator<WithholdingRule> rulePrecedence() {
+        return Comparator.comparingInt((WithholdingRule rule) -> decisionRank(rule.decision()))
+                .thenComparing(Comparator.comparingInt(WithholdingRule::effectiveSpecificity).reversed())
+                .thenComparingInt(WithholdingRule::priority)
+                .thenComparing(WithholdingRule::id);
+    }
+
+    private static int decisionRank(WithholdingDecision decision) {
+        return switch (decision) {
+            case EXEMPT -> 0;
+            case NOT_APPLIED -> 1;
+            case BLOCKED -> 2;
+            case APPLIED -> 3;
+        };
+    }
+
+    private static String decisionReason(WithholdingRule rule) {
+        return switch (rule.decision()) {
+            case APPLIED -> "Regla fiscal aplicada.";
+            case EXEMPT -> "Exencion fiscal vigente aplicada.";
+            case NOT_APPLIED -> "Regla de exclusion fiscal vigente aplicada.";
+            case BLOCKED -> "La regla fiscal bloquea la operacion hasta completar su configuracion.";
+        };
     }
 
     private WithholdingCalculationItemResult notApplied(WithholdingType type, String conceptCode, BigDecimal baseAmount,
@@ -129,7 +213,8 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
                 .map(item -> new WithholdingCalculationSnapshot(idGenerator.newId(), command.companyId(),
                         command.sourceType(), command.sourceId(), command.thirdPartyId(), command.operationDate(),
                         item.withholdingType(), item.baseAmount(), item.rate(), item.amount(), item.ruleVersion(),
-                        item.decision(), item.reason(), now))
+                        item.decision(), item.reason(), now, item.ruleId(), item.parameterVersion(),
+                        item.legalReference(), item.sourceUrl()))
                 .toList());
     }
 
@@ -150,7 +235,8 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
     private static CompanyTaxProfile toCompanyProfile(CompanyTaxProfileCommand command) {
         return new CompanyTaxProfile(command.taxRegime(), command.rutResponsibilities(), command.vatResponsible(),
                 command.withholdingAgent(), command.largeTaxpayer(), command.selfWithholding(), command.simpleRegime(),
-                command.icaMunicipalityCode(), command.ciiuCodes());
+                command.icaMunicipalityCode(), command.ciiuCodes(), command.vatWithholdingAgent(),
+                command.icaWithholdingAgent());
     }
 
     private static ThirdPartyFiscalProfile toThirdPartyProfile(ThirdPartyFiscalProfileCommand command,
@@ -180,5 +266,25 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
 
     private static BigDecimal money(BigDecimal value) {
         return value == null ? BigDecimal.ZERO.setScale(2) : value.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private static final class FiscalParameterRepositoryPortDefaults {
+        private FiscalParameterRepositoryPortDefaults() {
+        }
+
+        static FiscalParameterRepositoryPort forTests() {
+            return new FiscalParameterRepositoryPort() {
+                @Override
+                public java.util.Optional<FiscalParameter> findEffective(String code, java.time.LocalDate date) {
+                    return java.util.Optional.of(new FiscalParameter(new UUID(0, 1), "UVT", "TEST-2026",
+                            new BigDecimal("52374"), java.time.LocalDate.of(2026, 1, 1), null, "TEST", "TEST", true));
+                }
+
+                @Override
+                public List<FiscalParameter> findAll() {
+                    return List.of();
+                }
+            };
+        }
     }
 }

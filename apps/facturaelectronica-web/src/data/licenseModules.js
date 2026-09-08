@@ -57,6 +57,7 @@ export const stepLicenseModules = {
   Gastos: 'ACCOUNTING',
   Deudores: 'ACCOUNTING',
   Fiscal: 'BILLING',
+  'Catalogo fiscal': 'ACCOUNTING',
   'Documentos fiscales': 'BILLING',
   'Configuracion contable': 'ACCOUNTING',
   Ventas: 'BILLING',

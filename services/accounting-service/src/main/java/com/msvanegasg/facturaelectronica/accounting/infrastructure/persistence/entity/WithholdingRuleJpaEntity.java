@@ -5,6 +5,11 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalOperationType;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalCalculationBase;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalThresholdOperator;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalThresholdTreatment;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalThresholdUnit;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingDecision;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingType;
 
 import jakarta.persistence.Column;
@@ -77,4 +82,30 @@ public class WithholdingRuleJpaEntity {
 
     @Column(nullable = false)
     private Boolean active;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "threshold_unit", nullable = false, length = 10)
+    private FiscalThresholdUnit thresholdUnit;
+    @Column(name = "threshold_value", nullable = false) private BigDecimal thresholdValue;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "threshold_operator", nullable = false, length = 10)
+    private FiscalThresholdOperator thresholdOperator;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "calculation_base", nullable = false, length = 30)
+    private FiscalCalculationBase calculationBase;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "threshold_treatment", nullable = false, length = 20)
+    private FiscalThresholdTreatment thresholdTreatment;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30) private WithholdingDecision decision;
+    @Column(name = "requires_company_vat_withholding_agent", nullable = false)
+    private Boolean requiresCompanyVatWithholdingAgent;
+    @Column(name = "requires_company_ica_withholding_agent", nullable = false)
+    private Boolean requiresCompanyIcaWithholdingAgent;
+    @Column(name = "legal_reference", length = 250) private String legalReference;
+    @Column(name = "source_url", length = 500) private String sourceUrl;
+    @Column(nullable = false) private Integer specificity;
+    @Column(nullable = false) private Boolean published;
+    @Column(name = "target_third_party_id") private UUID targetThirdPartyId;
+    @Column(name = "evidence_reference", length = 500) private String evidenceReference;
 }

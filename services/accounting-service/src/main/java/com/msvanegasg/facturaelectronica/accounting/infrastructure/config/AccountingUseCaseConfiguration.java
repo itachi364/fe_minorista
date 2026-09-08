@@ -15,6 +15,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.port.in.Generate
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountingRulesUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageChartOfAccountsUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageExpenseUseCase;
+import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageFiscalCatalogUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.QueryAccountingBooksUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountsPayablePaymentRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountsReceivablePaymentRepositoryPort;
@@ -25,6 +26,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.port.out.Account
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.AccountingRuleRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.ExpenseRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.IdGeneratorPort;
+import com.msvanegasg.facturaelectronica.accounting.application.port.out.FiscalParameterRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.ThirdPartyFiscalProfilePort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.WithholdingCalculationSnapshotRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.WithholdingRuleRepositoryPort;
@@ -37,6 +39,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.usecase.Accounti
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.ChartOfAccountsService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.ExpenseManagementService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.GenerateAccountingEntryService;
+import com.msvanegasg.facturaelectronica.accounting.application.usecase.FiscalCatalogManagementService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.QueryAccountingBooksService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.WithholdingCalculationService;
 import com.msvanegasg.facturaelectronica.eventing.DomainEventPublisherPort;
@@ -107,9 +110,15 @@ public class AccountingUseCaseConfiguration {
             WithholdingCalculationSnapshotRepositoryPort snapshotRepository,
             ThirdPartyFiscalProfilePort thirdPartyFiscalProfilePort,
             IdGeneratorPort idGenerator,
-            Clock accountingClock) {
+            Clock accountingClock, FiscalParameterRepositoryPort parameterRepository) {
         return new WithholdingCalculationService(ruleRepository, snapshotRepository, thirdPartyFiscalProfilePort,
-                idGenerator, accountingClock);
+                idGenerator, accountingClock, parameterRepository);
+    }
+
+    @Bean
+    ManageFiscalCatalogUseCase manageFiscalCatalogUseCase(WithholdingRuleRepositoryPort ruleRepository,
+            FiscalParameterRepositoryPort parameterRepository, IdGeneratorPort idGenerator) {
+        return new FiscalCatalogManagementService(ruleRepository, parameterRepository, idGenerator);
     }
 
     @Bean

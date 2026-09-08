@@ -29,6 +29,58 @@ public class WithholdingRulePersistenceAdapter implements WithholdingRuleReposit
                 .toList();
     }
 
+    @Override
+    public List<WithholdingRule> findAll() {
+        return repository.findAll().stream().map(WithholdingRulePersistenceAdapter::toDomain).toList();
+    }
+
+    @Override
+    public java.util.Optional<WithholdingRule> findById(UUID id) {
+        return repository.findById(id).map(WithholdingRulePersistenceAdapter::toDomain);
+    }
+
+    @Override
+    public WithholdingRule save(WithholdingRule rule) {
+        return toDomain(repository.save(toEntity(rule)));
+    }
+
+    private static WithholdingRuleJpaEntity toEntity(WithholdingRule rule) {
+        WithholdingRuleJpaEntity entity = new WithholdingRuleJpaEntity();
+        entity.setId(rule.id());
+        entity.setCompanyId(rule.companyId());
+        entity.setRuleSetVersion(rule.ruleSetVersion());
+        entity.setOperationType(rule.operationType());
+        entity.setConceptCode(rule.conceptCode());
+        entity.setWithholdingType(rule.withholdingType());
+        entity.setBaseMinAmount(rule.baseMinAmount());
+        entity.setRate(rule.rate());
+        entity.setRequiresCompanyWithholdingAgent(rule.requiresCompanyWithholdingAgent());
+        entity.setRequiresCompanyVatResponsible(rule.requiresCompanyVatResponsible());
+        entity.setRequiredThirdPartyTaxRegime(rule.requiredThirdPartyTaxRegime());
+        entity.setRequiredThirdPartyResponsibility(rule.requiredThirdPartyResponsibility());
+        entity.setMunicipalityCode(rule.municipalityCode());
+        entity.setCiiuCode(rule.ciiuCode());
+        entity.setValidFrom(rule.validFrom());
+        entity.setValidTo(rule.validTo());
+        entity.setPriority(rule.priority());
+        entity.setActive(rule.active());
+        entity.setThresholdUnit(rule.thresholdUnit());
+        entity.setThresholdValue(rule.thresholdValue());
+        entity.setThresholdOperator(rule.thresholdOperator());
+        entity.setCalculationBase(rule.calculationBase());
+        entity.setThresholdTreatment(rule.thresholdTreatment());
+        entity.setDecision(rule.decision());
+        entity.setRequiresCompanyVatWithholdingAgent(rule.requiresCompanyVatWithholdingAgent());
+        entity.setRequiresCompanyIcaWithholdingAgent(rule.requiresCompanyIcaWithholdingAgent());
+        entity.setLegalReference(rule.legalReference());
+        entity.setSourceUrl(rule.sourceUrl());
+        entity.setSpecificity(rule.specificity());
+        entity.setPublished(rule.published());
+        entity.setTargetThirdPartyId(rule.targetThirdPartyId());
+        entity.setEvidenceReference(rule.evidenceReference());
+        return entity;
+    }
+
     private static WithholdingRule toDomain(WithholdingRuleJpaEntity entity) {
         return new WithholdingRule(entity.getId(), entity.getCompanyId(), entity.getRuleSetVersion(),
                 entity.getOperationType(), entity.getConceptCode(), entity.getWithholdingType(),
@@ -37,6 +89,12 @@ public class WithholdingRulePersistenceAdapter implements WithholdingRuleReposit
                 Boolean.TRUE.equals(entity.getRequiresCompanyVatResponsible()),
                 entity.getRequiredThirdPartyTaxRegime(), entity.getRequiredThirdPartyResponsibility(),
                 entity.getMunicipalityCode(), entity.getCiiuCode(), entity.getValidFrom(), entity.getValidTo(),
-                entity.getPriority(), Boolean.TRUE.equals(entity.getActive()));
+                entity.getPriority(), Boolean.TRUE.equals(entity.getActive()), entity.getThresholdUnit(),
+                entity.getThresholdValue(), entity.getThresholdOperator(), entity.getCalculationBase(),
+                entity.getThresholdTreatment(), entity.getDecision(),
+                Boolean.TRUE.equals(entity.getRequiresCompanyVatWithholdingAgent()),
+                Boolean.TRUE.equals(entity.getRequiresCompanyIcaWithholdingAgent()), entity.getLegalReference(),
+                entity.getSourceUrl(), entity.getSpecificity(), Boolean.TRUE.equals(entity.getPublished()),
+                entity.getTargetThirdPartyId(), entity.getEvidenceReference());
     }
 }

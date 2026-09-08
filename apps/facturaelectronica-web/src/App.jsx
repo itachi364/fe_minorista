@@ -35,6 +35,7 @@ import {
 } from './utils/formStateFactory.js';
 import { LoginPanel } from './features/auth/LoginPanel.jsx';
 import { AccountingConfigurationPanel } from './features/accounting/AccountingConfigurationPanel.jsx';
+import { FiscalCatalogPanel } from './features/accounting/FiscalCatalogPanel.jsx';
 import { AuditLogPanel } from './features/audit/AuditLogPanel.jsx';
 import { CatalogAdminPanel } from './features/catalogs/CatalogAdminPanel.jsx';
 import { AdminModal } from './features/company/AdminModal.jsx';
@@ -182,6 +183,8 @@ export default function App() {
   const [accountingAccounts, setAccountingAccounts] = useState([]);
   const [accountingRules, setAccountingRules] = useState([]);
   const [accountingReadiness, setAccountingReadiness] = useState([]);
+  const [fiscalParameters, setFiscalParameters] = useState([]);
+  const [fiscalRules, setFiscalRules] = useState([]);
   const [payrollSettingsForm, setPayrollSettingsForm] = useState(createPayrollSettingsForm);
   const [payrollWorkerForm, setPayrollWorkerForm] = useState(createPayrollWorkerForm);
   const [dailyLaborPaymentForm, setDailyLaborPaymentForm] = useState(createDailyLaborPaymentForm);
@@ -200,6 +203,7 @@ export default function App() {
   const autoReportsLoadKeyRef = useRef('');
   const autoFinanceLoadKeyRef = useRef('');
   const autoAccountingLoadKeyRef = useRef('');
+  const autoFiscalCatalogLoadKeyRef = useRef('');
   const autoOperationalPinLoadKeyRef = useRef('');
   const autoOperationalDataLoadKeyRef = useRef('');
   const autoCatalogLoadKeyRef = useRef('');
@@ -246,6 +250,15 @@ export default function App() {
     lastActivityRef.current = now;
     setLastActivityAt(now);
   }
+
+  useEffect(() => {
+    if (currentStep !== 'Catalogo fiscal' || (!activeCompanyId && !isRoot)
+        || !canUse(stepPermissionRules['Catalogo fiscal'])) return;
+    const key = `fiscal-catalog|${activeCompanyId || 'root'}`;
+    if (autoFiscalCatalogLoadKeyRef.current === key) return;
+    autoFiscalCatalogLoadKeyRef.current = key;
+    loadFiscalCatalog().catch(() => undefined);
+  }, [currentStep, activeCompanyId]);
 
   useEffect(() => {
     lastActivityRef.current = lastActivityAt;
@@ -673,6 +686,30 @@ export default function App() {
   async function loadCompanyReadiness() {
     const result = await requestJson('/api/v1/readiness/company', context);
     setCompanyReadiness(result);
+    return result;
+  }
+
+  async function loadFiscalCatalog() {
+    const [parameters, rules] = await Promise.all([
+      requestJson('/api/v1/fiscal-catalog/parameters', context),
+      requestJson('/api/v1/fiscal-catalog/rules?active=true', context),
+    ]);
+    setFiscalParameters(parameters || []);
+    setFiscalRules(rules || []);
+    return rules || [];
+  }
+
+  async function saveFiscalRule(payload, globalRule) {
+    const requestContext = globalRule ? { token, userId: session?.userId } : context;
+    const result = await requestJson('/api/v1/fiscal-catalog/rules', { ...requestContext, method: 'POST', body: payload });
+    await loadFiscalCatalog();
+    return result;
+  }
+
+  async function deactivateFiscalRule(rule) {
+    const requestContext = rule.companyId ? context : { token, userId: session?.userId };
+    const result = await requestJson(`/api/v1/fiscal-catalog/rules/${rule.id}/deactivate`, { ...requestContext, method: 'PUT' });
+    await loadFiscalCatalog();
     return result;
   }
 
@@ -2756,6 +2793,13 @@ export default function App() {
                 ])} rowKey={(row) => row[1]} pageSize={5} />
               </div>
             </>
+          )}
+          {currentStep === 'Catalogo fiscal' && (
+            <FiscalCatalogPanel parameters={fiscalParameters} rules={fiscalRules} isRoot={isRoot}
+              onLoad={() => execute(loadFiscalCatalog, { successMessage: 'Catalogo fiscal actualizado.' })}
+              onSave={(payload, globalRule) => execute(() => saveFiscalRule(payload, globalRule), { successMessage: 'Regla fiscal publicada correctamente.' })}
+              onDeactivate={(rule) => execute(() => deactivateFiscalRule(rule), { successMessage: 'Regla fiscal inactivada correctamente.' })}
+              busy={busy || (!activeCompanyId && !isRoot) || !canUse(stepPermissionRules['Catalogo fiscal'])} />
           )}
           {currentStep === 'DIAN' && (
             <DianConfigurationPanel form={dianConfigurationForm} setForm={setDianConfigurationForm} configuration={dianConfiguration} onSave={() => execute(saveDianConfiguration, { successMessage: 'Configuracion DIAN guardada correctamente.' })} onTest={() => execute(testDianConfiguration, { successMessage: 'Prueba de conexion DIAN finalizada.' })} onActivate={() => execute(activateDianConfiguration, { successMessage: 'Configuracion DIAN activada.' })} onDeactivate={() => execute(deactivateDianConfiguration, { successMessage: 'Configuracion DIAN inactivada.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.DIAN)} />

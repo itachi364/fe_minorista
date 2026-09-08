@@ -68,4 +68,9 @@ public class WithholdingCalculationSnapshotJpaEntity {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
+
+    @Column(name = "rule_id") private UUID ruleId;
+    @Column(name = "parameter_version", length = 40) private String parameterVersion;
+    @Column(name = "legal_reference", length = 250) private String legalReference;
+    @Column(name = "source_url", length = 500) private String sourceUrl;
 }

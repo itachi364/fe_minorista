@@ -4,5 +4,6 @@ public enum FiscalOperationType {
     PURCHASE,
     EXPENSE,
     PAYMENT,
-    PAYROLL
+    PAYROLL,
+    RECEIPT
 }

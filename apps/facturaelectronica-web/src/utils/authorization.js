@@ -10,6 +10,7 @@ export const stepPermissionRules = {
   Gastos: ['ACCOUNTING_MANAGE'],
   Deudores: ['ACCOUNTING_MANAGE'],
   Fiscal: ['FISCAL_DOCUMENTS_ISSUE', 'COMPANY_SETTINGS_MANAGE'],
+  'Catalogo fiscal': ['ACCOUNTING_VIEW', 'ACCOUNTING_MANAGE'],
   'Documentos fiscales': ['FISCAL_DOCUMENTS_ISSUE'],
   'Configuracion contable': ['ACCOUNTING_VIEW', 'ACCOUNTING_MANAGE'],
   Ventas: ['SALES_CREATE'],
