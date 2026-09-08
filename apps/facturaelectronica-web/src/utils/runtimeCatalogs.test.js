@@ -16,6 +16,9 @@ test('loads catalog options and relational locations from backend', async () => 
     if (String(path).includes('TAX_REGIME')) {
       return jsonResponse([{ catalogCode: 'TAX_REGIME', code: 'NO_RESPONSABLE_IVA', label: 'No responsable de IVA', active: true, enabledForCompany: true }]);
     }
+    if (String(path).includes('FISCAL_CONCEPT')) {
+      return jsonResponse([{ catalogCode: 'FISCAL_CONCEPT', code: 'ANY', label: 'Cualquier concepto', active: true, enabledForCompany: true }]);
+    }
     if (String(path).includes('PAYMENT_METHOD')) {
       return jsonResponse([{ catalogCode: 'PAYMENT_METHOD', code: 'CASH', label: 'Efectivo', active: true, enabledForCompany: true }]);
     }
@@ -40,6 +43,9 @@ test('loads catalog options and relational locations from backend', async () => 
   ]);
   expect(catalogs.paymentMethodOptions).toEqual([
     { value: 'CASH', label: 'Efectivo', description: '' },
+  ]);
+  expect(catalogs.fiscalConceptOptions).toEqual([
+    { value: 'ANY', label: 'Cualquier concepto', description: '' },
   ]);
   expect(catalogs.locations).toEqual([{
     departmentCode: '11',

@@ -250,6 +250,8 @@ Flyway crea y evoluciona las tablas al iniciar el servicio. Los catalogos funcio
 
 El catalogo fiscal de `accounting-service` versiona UVT, conceptos, bases, tarifas, exenciones y fuentes normativas. Las reglas nacionales se actualizan mediante nuevas migraciones; ReteICA se configura por municipio y vigencia. Una operacion que requiera una regla territorial ausente queda bloqueada para evitar retenciones o asientos con tarifas asumidas.
 
+ROOT registra en el mismo formulario de empresa el regimen, responsabilidades RUT, CIIU y calidades de responsable de IVA, agente retenedor, agente de ReteIVA/ReteICA, gran contribuyente y autorretenedor. Estos datos se guardan transaccionalmente con la empresa y deben corresponder al RUT y a la orientacion del contador.
+
 El catalogo general `CIIU` contiene las clases DANE CIIU Rev. 4 A.C. actualizacion 2022 adoptadas por la DIAN para el RUT y los procesos fiscales. Los terceros juridicos y proveedores pueden seleccionar varias actividades; los clientes exclusivamente naturales no requieren CIIU. El campo historico `ciiuCode` se conserva temporalmente como alias de compatibilidad mientras `ciiuCodes` es la fuente canonica. La CIIU Rev. 5 publicada por DANE en 2026 no se usa fiscalmente hasta que la DIAN formalice su adopcion.
 
 En compras y gastos, `Fecha limite de pago` solo aparece para operaciones a credito porque alimenta la cuenta por pagar. Las operaciones de contado no envian fecha de vencimiento.
@@ -274,6 +276,7 @@ La plantilla basica contabiliza el neto del proveedor en `2205` y las retencione
 - La sesion web se protege desde el BFF con cookies, CSRF, validaciones de permisos y correlacion de errores.
 - La configuracion DIAN real, certificados y secretos por empresa deben guardarse en un gestor de secretos.
 - Los archivos empresariales se guardan por empresa/categoria; las descargas usan enlaces temporales y en produccion deben usar storage privado cifrado.
+- Las exenciones fiscales dirigidas a un tercero cargan un soporte PDF privado de maximo 5 MB; la regla conserva una referencia interna aislada por empresa.
 - Los errores publicos deben ser claros para el usuario y no exponer trazas internas.
 
 ## Documentacion Tecnica

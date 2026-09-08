@@ -71,6 +71,45 @@ class FiscalCatalogManagementServiceTest {
                 .hasMessageContaining("evidenceReference");
     }
 
+    @Test
+    void specificThirdPartyExemptionRequiresEvidenceFromSameCompany() {
+        Repository repository = new Repository();
+        FiscalCatalogManagementService service = service(repository);
+        CreateWithholdingRuleCommand base = command(COMPANY_ID);
+        CreateWithholdingRuleCommand invalid = new CreateWithholdingRuleCommand(base.companyId(),
+                base.ruleSetVersion(), base.operationType(), base.conceptCode(), base.withholdingType(),
+                BigDecimal.ZERO, base.thresholdUnit(), base.thresholdValue(), base.thresholdOperator(),
+                base.calculationBase(), base.thresholdTreatment(), WithholdingDecision.EXEMPT,
+                base.requiresCompanyWithholdingAgent(), base.requiresCompanyVatResponsible(),
+                base.requiresCompanyVatWithholdingAgent(), base.requiresCompanyIcaWithholdingAgent(),
+                base.requiredThirdPartyTaxRegime(), base.requiredThirdPartyResponsibility(), base.municipalityCode(),
+                base.ciiuCode(), base.validFrom(), base.validTo(), base.priority(), base.specificity(),
+                base.legalReference(), base.sourceUrl(), true, UUID.randomUUID(),
+                "/api/v1/companies/99999999-9999-9999-9999-999999999999/files/asset-id");
+
+        assertThatThrownBy(() -> service.create(invalid)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("rule company");
+    }
+
+    @Test
+    void globalRuleRejectsCompanyEvidence() {
+        Repository repository = new Repository();
+        FiscalCatalogManagementService service = service(repository);
+        CreateWithholdingRuleCommand base = command(null);
+        CreateWithholdingRuleCommand invalid = new CreateWithholdingRuleCommand(base.companyId(),
+                base.ruleSetVersion(), base.operationType(), base.conceptCode(), base.withholdingType(),
+                BigDecimal.ZERO, base.thresholdUnit(), base.thresholdValue(), base.thresholdOperator(),
+                base.calculationBase(), base.thresholdTreatment(), WithholdingDecision.EXEMPT,
+                base.requiresCompanyWithholdingAgent(), base.requiresCompanyVatResponsible(),
+                base.requiresCompanyVatWithholdingAgent(), base.requiresCompanyIcaWithholdingAgent(),
+                base.requiredThirdPartyTaxRegime(), base.requiredThirdPartyResponsibility(), base.municipalityCode(),
+                base.ciiuCode(), base.validFrom(), base.validTo(), base.priority(), base.specificity(),
+                base.legalReference(), base.sourceUrl(), true, UUID.randomUUID(), "/api/v1/companies/any/files/asset");
+
+        assertThatThrownBy(() -> service.create(invalid)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("global rule");
+    }
+
     private static FiscalCatalogManagementService service(Repository repository) {
         FiscalParameterRepositoryPort parameters = new FiscalParameterRepositoryPort() {
             public Optional<FiscalParameter> findEffective(String code, LocalDate date) { return Optional.empty(); }

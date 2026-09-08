@@ -272,7 +272,22 @@ Responsabilidad: empresas, configuracion multiempresa y estado del tenant.
   "identificationTypeCode": 31,
   "identificationNumber": "900123456",
   "verificationDigit": "7",
-  "email": "admin@example.com"
+  "email": "admin@example.com",
+  "taxProfile": {
+    "companySize": "MICRO",
+    "financialReportingGroup": "GRUPO_3",
+    "taxRegime": "RESPONSABLE_IVA",
+    "rutResponsibilities": ["O-13"],
+    "vatResponsible": true,
+    "withholdingAgent": false,
+    "vatWithholdingAgent": false,
+    "icaWithholdingAgent": false,
+    "largeTaxpayer": false,
+    "selfWithholding": false,
+    "simpleRegime": false,
+    "icaMunicipalityCode": "11001",
+    "ciiuCodes": ["4711"]
+  }
 }
 ```
 
@@ -2541,7 +2556,7 @@ Reglas:
 ### Endpoints
 
 - `POST /api/v1/companies`: crea empresa contratante. Uso reservado para ROOT desde la SPA/BFF.
-- `PUT /api/v1/companies/{companyId}`: actualiza datos basicos de la empresa existente.
+- `PUT /api/v1/companies/{companyId}`: actualiza datos generales y perfil fiscal de la empresa existente.
 - `PUT /api/v1/companies/{companyId}/activate`: activa empresa. Uso reservado para ROOT.
 - `PUT /api/v1/companies/{companyId}/suspend`: inactiva/suspende empresa. Uso reservado para ROOT.
 - `GET /api/v1/companies/{companyId}`: consulta datos de empresa para mostrar nombre, identificacion y estado.
@@ -2555,13 +2570,31 @@ Reglas:
   "identificationTypeCode": 31,
   "identificationNumber": "900123456",
   "verificationDigit": "7",
-  "email": "admin@example.com"
+  "email": "admin@example.com",
+  "taxProfile": {
+    "companySize": "MICRO",
+    "financialReportingGroup": "GRUPO_3",
+    "taxRegime": "RESPONSABLE_IVA",
+    "rutResponsibilities": ["O-13"],
+    "vatResponsible": true,
+    "withholdingAgent": false,
+    "vatWithholdingAgent": false,
+    "icaWithholdingAgent": false,
+    "largeTaxpayer": false,
+    "selfWithholding": false,
+    "simpleRegime": false,
+    "icaMunicipalityCode": "11001",
+    "ciiuCodes": ["4711"]
+  }
 }
 ```
+
+`taxProfile` y `taxProfile.taxRegime` son obligatorios en creacion y actualizacion. Empresa y perfil fiscal se persisten dentro de la misma transaccion de `tenant-service`.
 
 Reglas UI/BFF:
 
 - ROOT ve selector de empresa y acciones de crear/actualizar/activar/inactivar.
+- ROOT ve y guarda el perfil fiscal en el mismo formulario, aunque no haya seleccionado una empresa activa.
 - OWNER/ADMIN empresarial ve la empresa activa como campo informativo por nombre, no como lista desplegable.
 - OWNER/ADMIN empresarial usa `PUT /api/v1/companies/{activeCompanyId}` para actualizar su empresa.
 - La UI no debe mostrar UUID como etiqueta principal de empresa; si el backend solo entrega `companyId` en `/me/companies`, la SPA consulta `GET /api/v1/companies/{companyId}` antes de renderizar el encabezado empresarial.
@@ -3311,8 +3344,8 @@ Content-Type: multipart/form-data
 
 Campos multipart:
 
-- `category`: `INVOICE`, `LOGO`, `BACKGROUND`, `PURCHASE_EVIDENCE`, `EXPENSE_EVIDENCE` u `OTHER`.
-- `file`: archivo unico; para `INVOICE`, `PURCHASE_EVIDENCE` y `EXPENSE_EVIDENCE` solo `application/pdf`.
+- `category`: `INVOICE`, `LOGO`, `BACKGROUND`, `PURCHASE_EVIDENCE`, `EXPENSE_EVIDENCE`, `FISCAL_RULE_EVIDENCE` u `OTHER`.
+- `file`: archivo unico; para `INVOICE`, `PURCHASE_EVIDENCE`, `EXPENSE_EVIDENCE` y `FISCAL_RULE_EVIDENCE` solo `application/pdf`, maximo 5 MB y firma `%PDF` valida.
 
 Respuesta:
 
@@ -3831,7 +3864,13 @@ POST /api/v1/fiscal-catalog/rules
 PUT /api/v1/fiscal-catalog/rules/{ruleId}/deactivate
 ```
 
-Una regla incluye `thresholdUnit` (`COP`, `UVT`), `thresholdValue`, `thresholdOperator` (`GT`, `GTE`), `calculationBase` (`TAXABLE_BASE`, `VAT_AMOUNT`, `COMPANY_INCOME`), `thresholdTreatment` (`FULL_AMOUNT`, `EXCESS`), `decision`, `rate`, `legalReference`, `sourceUrl`, `validFrom`, `validTo`, `priority` y condiciones fiscales. Las mutaciones globales son exclusivas de ROOT; las empresariales requieren `X-Company-Id` y permiso contable. Una exencion dirigida a `targetThirdPartyId` exige `decision=EXEMPT` y `evidenceReference` no vacio.
+Una regla incluye `thresholdUnit` (`COP`, `UVT`), `thresholdValue`, `thresholdOperator` (`GT`, `GTE`), `calculationBase` (`TAXABLE_BASE`, `VAT_AMOUNT`, `COMPANY_INCOME`), `thresholdTreatment` (`FULL_AMOUNT`, `EXCESS`), `decision`, `rate`, `legalReference`, `sourceUrl`, `validFrom`, `validTo`, `priority` y condiciones fiscales. Las mutaciones globales son exclusivas de ROOT; las empresariales requieren `X-Company-Id` y permiso contable.
+
+La SPA obtiene `conceptCode`, `ciiuCode`, `requiredThirdPartyTaxRegime`, `requiredThirdPartyResponsibility` y `municipalityCode` desde los catalogos `FISCAL_CONCEPT`, `CIIU`, `TAX_REGIME`, `TAX_RESPONSIBILITY` y DIVIPOLA. Un valor nulo significa que la regla no restringe esa dimension.
+
+Una exencion dirigida a `targetThirdPartyId` exige `decision=EXEMPT`. Antes de publicar, la SPA carga un unico PDF mediante `POST /api/v1/companies/{companyId}/files` con `category=FISCAL_RULE_EVIDENCE` y envia en `evidenceReference` la referencia interna retornada. El backend exige que esa referencia comience por `/api/v1/companies/{companyId}/files/`. Las reglas globales rechazan `targetThirdPartyId` y `evidenceReference`.
+
+Para abrir el soporte, la SPA no navega directamente a la referencia: solicita el binario por el cliente autenticado incluyendo `X-Company-Id`, valida permisos en el BFF y crea un blob temporal solo en el navegador.
 
 El resultado de calculo agrega `ruleId`, `parameterVersion`, `legalReference` y `sourceUrl`. Si ReteICA es obligatoria pero no hay regla municipal publicada, el item usa `decision=BLOCKED`; el consumidor no puede confirmar la operacion.
 

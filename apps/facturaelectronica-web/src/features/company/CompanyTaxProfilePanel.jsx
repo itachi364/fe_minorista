@@ -16,11 +16,21 @@ const reportingGroupOptions = [
 
 export function CompanyTaxProfilePanel({ form, setForm, onSave, busy, disabled, taxRegimeOptions = [],
   responsibilityOptions = [], ciiuOptions = [], locations = [] }) {
+  return (
+    <FormPanel title="Perfil fiscal de la empresa" submitLabel="Guardar perfil fiscal" onSubmit={onSave} busy={busy || disabled}>
+      <CompanyTaxProfileFields form={form} setForm={setForm} taxRegimeOptions={taxRegimeOptions}
+        responsibilityOptions={responsibilityOptions} ciiuOptions={ciiuOptions} locations={locations} />
+    </FormPanel>
+  );
+}
+
+export function CompanyTaxProfileFields({ form, setForm, taxRegimeOptions = [], responsibilityOptions = [],
+  ciiuOptions = [], locations = [] }) {
   const change = (name, value) => setForm({ ...form, [name]: value });
   const changeRegime = (value) => setForm({ ...form, taxRegime: value, simpleRegime: value === 'SIMPLE' });
 
   return (
-    <FormPanel title="Perfil fiscal de la empresa" submitLabel="Guardar perfil fiscal" onSubmit={onSave} busy={busy || disabled}>
+    <>
       <div className="form-grid">
         <SelectField label="Tamano empresarial" value={form.companySize} onChange={(value) => change('companySize', value)} options={companySizeOptions} />
         <SelectField label="Grupo de informacion financiera" value={form.financialReportingGroup} onChange={(value) => change('financialReportingGroup', value)} options={reportingGroupOptions} />
@@ -38,6 +48,6 @@ export function CompanyTaxProfilePanel({ form, setForm, onSave, busy, disabled, 
         <CheckField label="Autorretenedor" checked={form.selfWithholding} onChange={(value) => change('selfWithholding', value)} />
         <CheckField label="Regimen SIMPLE" checked={form.simpleRegime} onChange={(value) => setForm({ ...form, simpleRegime: value, taxRegime: value ? 'SIMPLE' : form.taxRegime })} />
       </div>
-    </FormPanel>
+    </>
   );
 }

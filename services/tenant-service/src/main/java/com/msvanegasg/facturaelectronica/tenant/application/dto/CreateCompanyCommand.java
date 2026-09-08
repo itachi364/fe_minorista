@@ -6,5 +6,6 @@ public record CreateCompanyCommand(
         Integer identificationTypeCode,
         String identificationNumber,
         String verificationDigit,
-        String email) {
+        String email,
+        CompanyTaxProfileCommand taxProfile) {
 }

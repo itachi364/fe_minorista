@@ -3448,9 +3448,34 @@ Context7 evidence:
 - Consulta: `accounting-service` expone snapshots agregados por `companyId/sourceType/sourceId`; la SPA usa esa consulta para mostrar el detalle despues de recargar.
 - Seguridad: perfiles y documentos se resuelven en backend; la UI nunca envia decisiones, tarifas, retenciones ni neto durante la confirmacion.
 - Plantilla contable: compras, gastos y activos reconocen el neto pagable en `2205` y las obligaciones de retefuente, reteIVA y reteICA en `2365`, `2367` y `2368`. La migracion `V014` completa solo las plantillas basicas preexistentes y conserva reglas empresariales personalizadas.
+- Onboarding fiscal: el formulario empresarial controla datos generales y perfil fiscal como estados coordinados. `POST/PUT companies` recibe `taxProfile`, valida el regimen y persiste empresa/perfil en una transaccion local de `tenant-service`; seleccionar una fila carga el perfil por el ID editado y no por la empresa activa.
 
 #### Context7 evidence TASK-298
 - Library/tool: Spring Framework 6.2.
   - Topic consulted: rollback declarativo y limites de transacciones sobre llamadas HTTP.
   - Relevant finding: por defecto una `RuntimeException` revierte la transaccion local, pero el contexto transaccional no se propaga a servicios remotos.
   - Decision impact: gastos usan una transaccion local unica; compras combinan rollback local con operacion contable remota idempotente por documento.
+- Library/tool: React.
+  - Topic consulted: estado controlado y reinicio al cambiar la entidad editada.
+  - Relevant finding: el estado editable debe pertenecer al formulario y reiniciarse de forma explicita al cambiar el identificador del registro.
+  - Decision impact: los estados general y fiscal se hidratan juntos al seleccionar una empresa y se limpian juntos al iniciar una nueva.
+
+### Catalogo fiscal controlado y soportes de exencion TASK-300
+
+- La SPA recibe DIVIPOLA, CIIU, regimenes, responsabilidades y conceptos desde `catalog-service`; los selectores opcionales conservan un valor vacio explicito y nunca eligen silenciosamente el primer registro.
+- Las condiciones CIIU, regimen y responsabilidad representan una coincidencia por regla, aunque el perfil del tercero pueda contener multiples CIIU y responsabilidades.
+- El tercero especifico se obtiene de los terceros activos de la empresa seleccionada. Su UUID viaja como valor interno, pero la interfaz muestra nombre y documento.
+- Una exencion particular usa el flujo existente `POST /api/v1/companies/{companyId}/files`, con categoria `FISCAL_RULE_EVIDENCE`. `tenant-service` valida PDF y 5 MB, persiste metadata/hash y entrega una referencia interna protegida.
+- `accounting-service` conserva `evidenceReference` como referencia interna estable para mantener compatibilidad del contrato y los snapshots; no recibe contenido binario ni conoce storage fisico.
+- Las reglas globales no aceptan tercero ni archivo empresarial. Las reglas empresariales requieren empresa activa, y el frontend limpia tercero/evidencia al cambiar a alcance global o a una decision distinta de `EXEMPT`.
+- El indicador `requiresCompanyVatResponsible` se expone en UI para hacer configurable una condicion que el dominio ya soporta.
+
+#### Context7 evidence TASK-300
+- Library/tool: React.
+  - Topic consulted: selects controlados y estados dependientes con opcion vacia.
+  - Relevant finding: un `select` controlado debe recibir `value` y actualizar ese estado sincronamente en `onChange`.
+  - Decision impact: los filtros fiscales opcionales conservan `''` como ausencia explicita y limpian estados incompatibles mediante handlers controlados.
+- Library/tool: Spring Boot.
+  - Topic consulted: carga multipart y limites `spring.servlet.multipart.*`.
+  - Relevant finding: Spring Boot usa el soporte multipart Servlet y permite limitar tamano por archivo y request desde configuracion.
+  - Decision impact: se reutiliza el endpoint multipart empresarial y la validacion de dominio de 5 MB, sin agregar otra dependencia de upload.

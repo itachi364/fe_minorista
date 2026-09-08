@@ -377,6 +377,16 @@ nav {
   grid-template-columns: repeat(2, minmax(190px, 1fr));
 }
 
+.searchable-select-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.searchable-select-field label {
+  min-width: 0;
+}
+
 .panel-header,
 .button-row,
 .status-row {
@@ -416,6 +426,14 @@ nav {
   justify-content: space-between;
   gap: 10px;
   padding-top: 8px;
+}
+
+.company-tax-section {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #dfe6ec;
 }
 
 h1,

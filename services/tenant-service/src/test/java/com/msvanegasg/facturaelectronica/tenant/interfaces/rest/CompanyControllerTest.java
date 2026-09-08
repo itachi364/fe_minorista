@@ -149,7 +149,22 @@ class CompanyControllerTest {
                   "identificationTypeCode": 31,
                   "identificationNumber": "900123456",
                   "verificationDigit": "7",
-                  "email": "admin@example.com"
+                  "email": "admin@example.com",
+                  "taxProfile": {
+                    "companySize": "MICRO",
+                    "financialReportingGroup": "GRUPO_3",
+                    "taxRegime": "ORDINARIO",
+                    "rutResponsibilities": ["O-13"],
+                    "vatResponsible": true,
+                    "withholdingAgent": true,
+                    "vatWithholdingAgent": false,
+                    "icaWithholdingAgent": false,
+                    "largeTaxpayer": false,
+                    "selfWithholding": false,
+                    "simpleRegime": false,
+                    "icaMunicipalityCode": "11001",
+                    "ciiuCodes": ["4711"]
+                  }
                 }
                 """;
     }

@@ -7351,6 +7351,26 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
   - Migraciones: `tenant V007`, `inventory V008`, `accounting V012`, `accounting V013` y `accounting V014` aplicadas en Docker local.
   - Verificacion: `tenant-service` 42 pruebas, `inventory-service` 54 pruebas, `accounting-service` 91 pruebas y `bff-service` 38 pruebas sin fallos; frontend 45 pruebas y build Vite exitoso. Despliegue local saludable en `http://localhost:5173` con SPA, BFF y servicios afectados respondiendo `200`.
 
+- [x] TASK-299: Integrar perfil fiscal en el formulario empresarial ROOT
+  - Estado: DONE.
+  - Requisitos: RF-317.
+  - Acceptance criteria: AC-441, AC-442, AC-443, AC-444.
+  - Entregables: contrato empresarial compuesto, persistencia transaccional, formulario fiscal visible sin empresa activa, carga por empresa editada y resultados de retencion no editables.
+  - Servicios: `tenant-service`, BFF sin cambio de ruta y SPA.
+  - Pruebas: servicio/aplicacion REST de tenant, payload e hidratacion frontend, suite completa afectada y build Vite.
+  - Resultado: el formulario ROOT crea y actualiza empresa y perfil fiscal como una unidad, permite cargar el perfil de la empresa seleccionada y conserva las retenciones calculadas como resultados de solo lectura.
+  - Verificacion: `tenant-service` 43 pruebas y frontend 46 pruebas sin fallos; build Vite exitoso. Despliegue local saludable con `tenant-service`, BFF y frontend, y comprobacion del formulario fiscal servido en `http://localhost:5173`.
+
+- [x] TASK-300: Controlar condiciones del catalogo fiscal y cargar soportes PDF
+  - Estado: DONE.
+  - Requisitos: RF-318, RF-319, RF-320.
+  - Acceptance criteria: AC-445 a AC-451.
+  - Entregables: selectores de catalogo opcionales, tercero empresarial controlado, evidencia PDF privada, alcance empresa/global protegido e indicador de responsable IVA.
+  - Servicios: `catalog-service`, `tenant-service`, BFF sin cambio de ruta, `accounting-service` con contrato compatible y SPA.
+  - Pruebas: migracion/catalogos, validacion de archivo, payload y limpieza del formulario, aislamiento empresarial, suites afectadas y build Vite.
+  - Resultado: DIVIPOLA, CIIU, regimen, responsabilidad, concepto y tercero usan selecciones controladas; la exencion particular carga un PDF privado, conserva referencia empresarial y permite abrirlo mediante descarga autenticada.
+  - Verificacion: reactor Maven exitoso con `tenant-service` 45 pruebas y `accounting-service` 93 pruebas sin fallos; `catalog-service` aplico Flyway V012. Frontend 50 pruebas sin fallos, build Vite exitoso y `git diff --check` sin errores. Reinicio de contenedores pendiente de confirmacion separada.
+
 Context7 evidence:
 
 - Library/tool: React.

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { DataTable } from '../../components/DataTable.jsx';
-import { CheckField, Field, FormPanel, SelectField } from '../../components/forms.jsx';
+import { MunicipalityFields } from '../../components/MunicipalityFields.jsx';
+import { CheckField, Field, FormPanel, SearchableSelectField, SelectField } from '../../components/forms.jsx';
 
 const option = (value, label = value) => ({ value, label });
 const operationOptions = [option('PURCHASE', 'Compra'), option('EXPENSE', 'Gasto'), option('PAYMENT', 'Pago'), option('PAYROLL', 'Nomina'), option('RECEIPT', 'Ingreso / recaudo')];
@@ -8,9 +9,32 @@ const typeOptions = ['RETEFUENTE', 'RETEIVA', 'RETEICA', 'AUTORETENCION'].map((v
 const decisionOptions = [option('APPLIED', 'Aplicar'), option('EXEMPT', 'Exento'), option('NOT_APPLIED', 'Excluir'), option('BLOCKED', 'Bloquear')];
 const baseOptions = [option('TAXABLE_BASE', 'Base gravable'), option('VAT_AMOUNT', 'Valor del IVA'), option('COMPANY_INCOME', 'Ingreso propio')];
 
-export function FiscalCatalogPanel({ parameters, rules, isRoot, onLoad, onSave, onDeactivate, busy }) {
+export function FiscalCatalogPanel({ parameters, rules, isRoot, activeCompanyId, locations = [], ciiuOptions = [],
+  taxRegimeOptions = [], responsibilityOptions = [], fiscalConceptOptions = [], thirdParties = [], onLoad, onSave,
+  onDeactivate, onOpenEvidence = () => {}, busy }) {
   const [form, setForm] = useState(emptyForm);
   const change = (name, value) => setForm((current) => ({ ...current, [name]: value }));
+  const thirdPartyOptions = thirdParties.filter((item) => item.active !== false).map((item) => ({
+    value: item.id,
+    label: [item.businessName || item.fullName || item.tradeName, item.identificationNumber]
+      .filter(Boolean).join(' - '),
+  }));
+
+  function changeDecision(value) {
+    setForm((current) => value === 'EXEMPT'
+      ? { ...current, decision: value }
+      : { ...current, decision: value, targetThirdPartyId: '', evidenceFile: null });
+  }
+
+  function changeTargetThirdParty(value) {
+    setForm((current) => ({ ...current, targetThirdPartyId: value, evidenceFile: value ? current.evidenceFile : null }));
+  }
+
+  function changeGlobalRule(value) {
+    setForm((current) => value
+      ? { ...current, globalRule: true, targetThirdPartyId: '', evidenceFile: null }
+      : { ...current, globalRule: false });
+  }
 
   async function submit() {
     const result = await onSave({
@@ -26,8 +50,8 @@ export function FiscalCatalogPanel({ parameters, rules, isRoot, onLoad, onSave, 
       requiredThirdPartyTaxRegime: form.requiredThirdPartyTaxRegime || null,
       requiredThirdPartyResponsibility: form.requiredThirdPartyResponsibility || null,
       targetThirdPartyId: form.targetThirdPartyId || null,
-      evidenceReference: form.evidenceReference || null,
-    }, isRoot && form.globalRule);
+      evidenceReference: null,
+    }, isRoot && form.globalRule, form.evidenceFile);
     if (result) setForm(emptyForm());
   }
 
@@ -40,25 +64,29 @@ export function FiscalCatalogPanel({ parameters, rules, isRoot, onLoad, onSave, 
       { searchText: item.legalReference, content: <a href={item.sourceUrl} target="_blank" rel="noreferrer">{item.legalReference}</a> },
     ])} rowKey={(row) => row[2]} />
 
-    <FormPanel title="Nueva version de regla fiscal" submitLabel="Publicar regla" onSubmit={submit} busy={busy}>
+    <FormPanel title="Nueva version de regla fiscal" submitLabel="Publicar regla" onSubmit={submit} busy={busy || (!activeCompanyId && !form.globalRule)}>
       <div className="form-grid three">
         <Field label="Version" value={form.ruleSetVersion} onChange={(value) => change('ruleSetVersion', value)} />
         <SelectField label="Operacion" value={form.operationType} onChange={(value) => change('operationType', value)} options={operationOptions} />
-        <Field label="Concepto" value={form.conceptCode} onChange={(value) => change('conceptCode', value)} />
+        <SelectField label="Concepto" value={form.conceptCode} onChange={(value) => change('conceptCode', value)} options={fiscalConceptOptions} placeholder="Cualquier concepto" />
         <SelectField label="Tipo de retencion" value={form.withholdingType} onChange={(value) => change('withholdingType', value)} options={typeOptions} />
-        <SelectField label="Decision" value={form.decision} onChange={(value) => change('decision', value)} options={decisionOptions} />
+        <SelectField label="Decision" value={form.decision} onChange={changeDecision} options={decisionOptions} />
         <Field label="Tarifa decimal" value={form.rate} onChange={(value) => change('rate', value)} type="number" min="0" step="0.000001" />
         <SelectField label="Unidad del umbral" value={form.thresholdUnit} onChange={(value) => change('thresholdUnit', value)} options={[option('UVT'), option('COP')]} />
         <Field label="Valor del umbral" value={form.thresholdValue} onChange={(value) => change('thresholdValue', value)} type="number" min="0" step="0.000001" />
         <SelectField label="Comparacion" value={form.thresholdOperator} onChange={(value) => change('thresholdOperator', value)} options={[option('GTE', 'Mayor o igual'), option('GT', 'Mayor que')]} />
         <SelectField label="Base de calculo" value={form.calculationBase} onChange={(value) => change('calculationBase', value)} options={baseOptions} />
         <SelectField label="Tratamiento" value={form.thresholdTreatment} onChange={(value) => change('thresholdTreatment', value)} options={[option('FULL_AMOUNT', 'Valor total'), option('EXCESS', 'Solo excedente')]} />
-        <Field label="Municipio DIVIPOLA" value={form.municipalityCode} onChange={(value) => change('municipalityCode', value)} />
-        <Field label="Codigo CIIU" value={form.ciiuCode} onChange={(value) => change('ciiuCode', value)} />
-        <Field label="Regimen requerido" value={form.requiredThirdPartyTaxRegime} onChange={(value) => change('requiredThirdPartyTaxRegime', value)} />
-        <Field label="Responsabilidad requerida" value={form.requiredThirdPartyResponsibility} onChange={(value) => change('requiredThirdPartyResponsibility', value)} />
-        <Field label="Tercero exento (UUID)" value={form.targetThirdPartyId} onChange={(value) => change('targetThirdPartyId', value)} />
-        <Field label="Soporte de exencion" value={form.evidenceReference} onChange={(value) => change('evidenceReference', value)} />
+        <MunicipalityFields municipalityCode={form.municipalityCode} onChange={(value) => change('municipalityCode', value)} locations={locations} optional municipalityLabel="Municipio DIVIPOLA" />
+        <SearchableSelectField label="Codigo CIIU" value={form.ciiuCode} onChange={(value) => change('ciiuCode', value)} options={ciiuOptions} placeholder="Cualquier CIIU" searchPlaceholder="Buscar codigo o actividad" />
+        <SelectField label="Regimen requerido" value={form.requiredThirdPartyTaxRegime} onChange={(value) => change('requiredThirdPartyTaxRegime', value)} options={taxRegimeOptions} placeholder="Cualquier regimen" />
+        <SelectField label="Responsabilidad requerida" value={form.requiredThirdPartyResponsibility} onChange={(value) => change('requiredThirdPartyResponsibility', value)} options={responsibilityOptions} placeholder="Cualquier responsabilidad" />
+        <SearchableSelectField label="Tercero exento" value={form.targetThirdPartyId} onChange={changeTargetThirdParty} options={thirdPartyOptions} disabled={form.globalRule || form.decision !== 'EXEMPT' || !activeCompanyId} placeholder="Sin tercero especifico" searchPlaceholder="Buscar por nombre o documento" />
+        {form.decision === 'EXEMPT' && form.targetThirdPartyId && !form.globalRule && <label>
+          Soporte de exencion (PDF)
+          <input accept="application/pdf,.pdf" key={form.evidenceFile?.name || 'fiscal-evidence-empty'} onChange={(event) => change('evidenceFile', event.target.files?.[0] || null)} required type="file" />
+          {form.evidenceFile && <span className="field-note">{form.evidenceFile.name}</span>}
+        </label>}
         <Field label="Vigente desde" value={form.validFrom} onChange={(value) => change('validFrom', value)} type="date" />
         <Field label="Vigente hasta" value={form.validTo} onChange={(value) => change('validTo', value)} type="date" />
         <Field label="Prioridad" value={form.priority} onChange={(value) => change('priority', value)} type="number" />
@@ -68,13 +96,14 @@ export function FiscalCatalogPanel({ parameters, rules, isRoot, onLoad, onSave, 
       </div>
       <div className="check-grid">
         <CheckField label="Empresa es agente retenedor" checked={form.requiresCompanyWithholdingAgent} onChange={(value) => change('requiresCompanyWithholdingAgent', value)} />
+        <CheckField label="Empresa es responsable de IVA" checked={form.requiresCompanyVatResponsible} onChange={(value) => change('requiresCompanyVatResponsible', value)} />
         <CheckField label="Empresa es agente de ReteIVA" checked={form.requiresCompanyVatWithholdingAgent} onChange={(value) => change('requiresCompanyVatWithholdingAgent', value)} />
         <CheckField label="Empresa es agente de ReteICA" checked={form.requiresCompanyIcaWithholdingAgent} onChange={(value) => change('requiresCompanyIcaWithholdingAgent', value)} />
-        {isRoot && <CheckField label="Regla nacional global" checked={form.globalRule} onChange={(value) => change('globalRule', value)} />}
+        {isRoot && <CheckField label="Regla nacional global" checked={form.globalRule} onChange={changeGlobalRule} />}
       </div>
     </FormPanel>
 
-    <DataTable title="Reglas fiscales" description="Las versiones publicadas se conservan; una correccion crea otra version o inactiva la anterior." columns={['Tipo', 'Concepto', 'Tarifa', 'Umbral', 'Alcance', 'Vigencia', 'Decision', 'Acciones']} rows={rules.map((rule) => [
+    <DataTable title="Reglas fiscales" description="Las versiones publicadas se conservan; una correccion crea otra version o inactiva la anterior." columns={['Tipo', 'Concepto', 'Tarifa', 'Umbral', 'Alcance', 'Vigencia', 'Decision', 'Soporte', 'Acciones']} rows={rules.map((rule) => [
       rule.withholdingType,
       rule.conceptCode || 'ANY',
       `${(Number(rule.rate) * 100).toLocaleString('es-CO')}%`,
@@ -82,6 +111,9 @@ export function FiscalCatalogPanel({ parameters, rules, isRoot, onLoad, onSave, 
       rule.companyId ? (rule.municipalityCode ? `Municipio ${rule.municipalityCode}` : 'Empresa') : 'Nacional',
       `${rule.validFrom} / ${rule.validTo || 'abierta'}`,
       rule.active ? rule.decision : 'INACTIVA',
+      rule.evidenceReference
+        ? { searchText: 'PDF', content: <button className="secondary" disabled={busy} onClick={() => onOpenEvidence(rule.evidenceReference)} type="button">Ver PDF</button> }
+        : '',
       { searchText: rule.active ? 'activa' : 'inactiva', content: rule.active && (rule.companyId || isRoot)
         ? <button className="secondary danger-soft" disabled={busy} onClick={() => onDeactivate(rule)} type="button">Inactivar</button>
         : '' },
@@ -97,7 +129,7 @@ function emptyForm() {
     thresholdTreatment: 'FULL_AMOUNT', decision: 'APPLIED', requiresCompanyWithholdingAgent: false,
     requiresCompanyVatResponsible: false, requiresCompanyVatWithholdingAgent: false,
     requiresCompanyIcaWithholdingAgent: true, requiredThirdPartyTaxRegime: '', requiredThirdPartyResponsibility: '',
-    targetThirdPartyId: '', evidenceReference: '',
+    targetThirdPartyId: '', evidenceFile: null,
     municipalityCode: '', ciiuCode: '', validFrom: '2026-01-01', validTo: '', priority: '100', specificity: '20',
     legalReference: '', sourceUrl: '', published: true, globalRule: false,
   };

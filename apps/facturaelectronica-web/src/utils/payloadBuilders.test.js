@@ -1,11 +1,36 @@
 import { describe, expect, test } from 'vitest';
 import {
+  buildCompanyPayload,
   buildExpensePayload,
   buildPurchasePayload,
   buildThirdPartyPayload,
 } from './payloadBuilders.js';
 
 describe('fiscal form payloads', () => {
+  test('requires and nests the company tax profile', () => {
+    const company = {
+      legalName: 'Empresa Demo SAS',
+      identificationTypeCode: 31,
+      identificationNumber: '900123456',
+      email: 'admin@example.com',
+    };
+    const taxProfile = {
+      companySize: 'MICRO',
+      financialReportingGroup: 'GRUPO_3',
+      taxRegime: 'RESPONSABLE_IVA',
+      rutResponsibilities: ['O-13'],
+      ciiuCodes: ['4711'],
+      withholdingAgent: true,
+    };
+
+    expect(buildCompanyPayload(company, taxProfile)).toMatchObject({
+      identificationNumber: '900123456',
+      taxProfile,
+    });
+    expect(() => buildCompanyPayload(company, { ...taxProfile, taxRegime: '' }))
+      .toThrow('Selecciona el regimen tributario de la empresa.');
+  });
+
   test('keeps multiple CIIU activities for a juridical supplier', () => {
     const payload = buildThirdPartyPayload({
       thirdPartyType: 'SUPPLIER',

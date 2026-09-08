@@ -24,12 +24,20 @@ export function asPretty(value) {
   return JSON.stringify(value, null, 2);
 }
 
-export function buildCompanyPayload(form) {
+export function buildCompanyPayload(form, taxProfile) {
+  if (!taxProfile?.taxRegime) {
+    throw new Error('Selecciona el regimen tributario de la empresa.');
+  }
   const nitDocument = isNit(form.identificationTypeCode);
   return compactObject({
     ...form,
     identificationNumber: nitDocument ? onlyDigits(form.identificationNumber) : form.identificationNumber,
     verificationDigit: nitDocument ? calculateNitVerificationDigit(form.identificationNumber) : '',
+    taxProfile: {
+      ...taxProfile,
+      rutResponsibilities: Array.isArray(taxProfile?.rutResponsibilities) ? taxProfile.rutResponsibilities : [],
+      ciiuCodes: Array.isArray(taxProfile?.ciiuCodes) ? taxProfile.ciiuCodes : [],
+    },
   });
 }
 

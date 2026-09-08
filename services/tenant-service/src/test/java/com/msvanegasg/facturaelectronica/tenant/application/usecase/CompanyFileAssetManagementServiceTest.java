@@ -58,6 +58,36 @@ class CompanyFileAssetManagementServiceTest {
     }
 
     @Test
+    void storesFiscalRuleEvidenceAsPdfUnderDedicatedPrefix() {
+        companies.save(company());
+
+        CompanyFileAssetResult result = service.upload(COMPANY_ID, new CompanyFileAssetCommand(
+                CompanyFileCategory.FISCAL_RULE_EVIDENCE,
+                "certificado exencion.pdf",
+                "application/pdf",
+                "%PDF-1.7 support".getBytes(StandardCharsets.UTF_8),
+                USER_ID));
+
+        assertThat(result.category()).isEqualTo(CompanyFileCategory.FISCAL_RULE_EVIDENCE);
+        assertThat(storage.objects)
+                .containsKey(COMPANY_ID + "/soportes-fiscales/" + ASSET_ID + "-certificado_exencion.pdf");
+    }
+
+    @Test
+    void rejectsFiscalRuleEvidenceWithoutPdfSignature() {
+        companies.save(company());
+
+        assertThatThrownBy(() -> service.upload(COMPANY_ID, new CompanyFileAssetCommand(
+                CompanyFileCategory.FISCAL_RULE_EVIDENCE,
+                "certificado.pdf",
+                "application/pdf",
+                "not a pdf".getBytes(StandardCharsets.UTF_8),
+                USER_ID)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Solo se permite PDF");
+    }
+
+    @Test
     void createsSignedTemporaryDownloadLinkForLocalStorage() {
         companies.save(company());
         service.upload(COMPANY_ID, new CompanyFileAssetCommand(

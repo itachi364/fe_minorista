@@ -120,11 +120,22 @@ public class FiscalCatalogManagementService implements ManageFiscalCatalogUseCas
         if (command.rate().signum() < 0 || command.thresholdValue().signum() < 0) {
             throw new IllegalArgumentException("rate and thresholdValue cannot be negative");
         }
+        boolean hasEvidence = command.evidenceReference() != null && !command.evidenceReference().isBlank();
+        if (command.companyId() == null && (command.targetThirdPartyId() != null || hasEvidence)) {
+            throw new IllegalArgumentException("a global rule cannot reference a company third party or evidence");
+        }
         if (command.targetThirdPartyId() != null
                 && (command.decision() != com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingDecision.EXEMPT
-                        || command.evidenceReference() == null || command.evidenceReference().isBlank())) {
+                        || !hasEvidence)) {
             throw new IllegalArgumentException(
                     "a third-party exemption requires EXEMPT decision and evidenceReference");
+        }
+        if (command.targetThirdPartyId() == null && hasEvidence) {
+            throw new IllegalArgumentException("evidenceReference requires a targetThirdPartyId");
+        }
+        if (hasEvidence && !command.evidenceReference().startsWith(
+                "/api/v1/companies/" + command.companyId() + "/files/")) {
+            throw new IllegalArgumentException("evidenceReference must belong to the rule company");
         }
     }
 

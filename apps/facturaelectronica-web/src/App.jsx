@@ -42,7 +42,6 @@ import { CatalogAdminPanel } from './features/catalogs/CatalogAdminPanel.jsx';
 import { AdminModal } from './features/company/AdminModal.jsx';
 import { CompanyBrandingModal, CompanyBrandingPanel } from './features/company/CompanyBrandingPanel.jsx';
 import { CompanyForm } from './features/company/CompanyForm.jsx';
-import { CompanyTaxProfilePanel } from './features/company/CompanyTaxProfilePanel.jsx';
 import { CompanySessionPanel } from './features/company/CompanySessionPanel.jsx';
 import { IssuerForm } from './features/company/IssuerForm.jsx';
 import { DianConfigurationPanel } from './features/dian/DianConfigurationPanel.jsx';
@@ -119,7 +118,6 @@ export default function App() {
   const [companyBrandingForm, setCompanyBrandingForm] = useState(createCompanyBrandingForm);
   const [companyBranding, setCompanyBranding] = useState(null);
   const [companyTaxProfileForm, setCompanyTaxProfileForm] = useState(createCompanyTaxProfileForm);
-  const [companyTaxProfile, setCompanyTaxProfile] = useState(null);
   const [brandingEditorForm, setBrandingEditorForm] = useState(createCompanyBrandingForm);
   const [brandingEditor, setBrandingEditor] = useState(null);
   const [brandingModalOpen, setBrandingModalOpen] = useState(false);
@@ -352,8 +350,7 @@ export default function App() {
   }, [session, token, activeCompanyId]);
 
   useEffect(() => {
-    if (!session || !activeCompanyId || import.meta.env.MODE === 'test') {
-      setCompanyTaxProfile(null);
+    if (!session || isRoot || !activeCompanyId || import.meta.env.MODE === 'test') {
       setCompanyTaxProfileForm(createCompanyTaxProfileForm());
       return undefined;
     }
@@ -361,20 +358,18 @@ export default function App() {
     requestJson(`/api/v1/companies/${activeCompanyId}/tax-profile`, context)
       .then((profile) => {
         if (!ignore) {
-          setCompanyTaxProfile(profile);
           setCompanyTaxProfileForm(toCompanyTaxProfileForm(profile));
         }
       })
       .catch(() => {
         if (!ignore) {
-          setCompanyTaxProfile(null);
           setCompanyTaxProfileForm(createCompanyTaxProfileForm());
         }
       });
     return () => {
       ignore = true;
     };
-  }, [session, activeCompanyId, context]);
+  }, [session, isRoot, activeCompanyId, context]);
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -721,18 +716,38 @@ export default function App() {
   }
 
   async function loadFiscalCatalog() {
-    const [parameters, rules] = await Promise.all([
+    const [parameters, rules, suppliers] = await Promise.all([
       requestJson('/api/v1/fiscal-catalog/parameters', context),
       requestJson('/api/v1/fiscal-catalog/rules?active=true', context),
+      activeCompanyId ? requestJson('/api/v1/suppliers?active=true', context) : Promise.resolve([]),
     ]);
     setFiscalParameters(parameters || []);
     setFiscalRules(rules || []);
+    setSupplierList(normalizeListResponse(suppliers));
     return rules || [];
   }
 
-  async function saveFiscalRule(payload, globalRule) {
+  async function saveFiscalRule(payload, globalRule, evidenceFile) {
+    if (!globalRule && !activeCompanyId) {
+      throw new Error('Selecciona una empresa activa para publicar una regla empresarial.');
+    }
+    if (globalRule && (payload.targetThirdPartyId || evidenceFile)) {
+      throw new Error('Una regla nacional global no puede tener tercero ni soporte empresarial.');
+    }
+    if (payload.targetThirdPartyId && (!evidenceFile || payload.decision !== 'EXEMPT')) {
+      throw new Error('La exencion de un tercero requiere decision Exento y un soporte PDF.');
+    }
+    let evidenceReference = null;
+    if (evidenceFile) {
+      const asset = await uploadCompanyFileAsset('FISCAL_RULE_EVIDENCE', evidenceFile);
+      evidenceReference = asset?.url || null;
+    }
     const requestContext = globalRule ? { token, userId: session?.userId } : context;
-    const result = await requestJson('/api/v1/fiscal-catalog/rules', { ...requestContext, method: 'POST', body: payload });
+    const result = await requestJson('/api/v1/fiscal-catalog/rules', {
+      ...requestContext,
+      method: 'POST',
+      body: { ...payload, evidenceReference },
+    });
     await loadFiscalCatalog();
     return result;
   }
@@ -741,6 +756,15 @@ export default function App() {
     const requestContext = rule.companyId ? context : { token, userId: session?.userId };
     const result = await requestJson(`/api/v1/fiscal-catalog/rules/${rule.id}/deactivate`, { ...requestContext, method: 'PUT' });
     await loadFiscalCatalog();
+    return result;
+  }
+
+  async function openFiscalRuleEvidence(evidenceReference) {
+    if (!evidenceReference) {
+      throw new Error('La regla fiscal no tiene un soporte disponible.');
+    }
+    const result = await requestDownload(evidenceReference, context);
+    openBlob(result.blob);
     return result;
   }
 
@@ -883,7 +907,6 @@ export default function App() {
     setEditingCompanyId('');
     setCompanyBranding(null);
     setCompanyBrandingForm(createCompanyBrandingForm());
-    setCompanyTaxProfile(null);
     setCompanyTaxProfileForm(createCompanyTaxProfileForm());
     setBrandingEditor(null);
     setBrandingEditorForm(createCompanyBrandingForm());
@@ -981,7 +1004,7 @@ export default function App() {
   async function createCompany() {
     const created = await requestJson('/api/v1/companies', {
       method: 'POST',
-      body: buildCompanyPayload(companyForm),
+      body: buildCompanyPayload(companyForm, companyTaxProfileForm),
       token,
       userId: session?.userId,
       idempotencyKey: createIdempotencyKey('company'),
@@ -990,6 +1013,7 @@ export default function App() {
       setRootCompanies((current) => [created, ...current.filter((company) => company.id !== created.id)]);
       setActiveCompanyId(created.id);
       setCompanyForm(createCompanyForm());
+      setCompanyTaxProfileForm(createCompanyTaxProfileForm());
       setEditingCompanyId('');
       setLicenseForm((current) => ({ ...current, companyId: created.id }));
       setManagedLicense(null);
@@ -1004,7 +1028,7 @@ export default function App() {
     requireTargetCompany(targetCompanyId);
     const updated = await requestJson(`/api/v1/companies/${targetCompanyId}`, {
       method: 'PUT',
-      body: buildCompanyPayload(companyForm),
+      body: buildCompanyPayload(companyForm, companyTaxProfileForm),
       ...context,
       companyId: targetCompanyId,
       idempotencyKey: createIdempotencyKey('company-update'),
@@ -1050,13 +1074,28 @@ export default function App() {
   function startNewCompany() {
     setEditingCompanyId('');
     setCompanyForm(createCompanyForm());
+    setCompanyTaxProfileForm(createCompanyTaxProfileForm());
   }
 
-  function editCompanyFromTable(company) {
+  async function editCompanyFromTable(company) {
     const companyId = company?.id || company?.companyId || '';
     requireTargetCompany(companyId);
+    let profile = null;
+    try {
+      profile = await requestJson(`/api/v1/companies/${companyId}/tax-profile`, {
+        token,
+        companyId,
+        userId: session?.userId,
+      });
+    } catch (error) {
+      if (error.status !== 404) {
+        throw error;
+      }
+    }
     setEditingCompanyId(companyId);
     hydrateCompanyForm(company);
+    setCompanyTaxProfileForm(toCompanyTaxProfileForm(profile));
+    return profile;
   }
 
   async function toggleCompanyActiveFromTable(company) {
@@ -1120,18 +1159,6 @@ export default function App() {
         accentColor: result?.accentColor || '',
       });
     }
-    return result;
-  }
-
-  async function saveCompanyTaxProfile() {
-    requireCompany();
-    const result = await requestJson(`/api/v1/companies/${activeCompanyId}/tax-profile`, {
-      ...context,
-      method: 'PUT',
-      body: companyTaxProfileForm,
-    });
-    setCompanyTaxProfile(result);
-    setCompanyTaxProfileForm(toCompanyTaxProfileForm(result));
     return result;
   }
 
@@ -2825,20 +2852,21 @@ export default function App() {
                 editingCompanyId={editingCompanyId}
                 isRoot={isRoot}
                 onSubmit={() => execute(isRoot && editingCompanyId ? updateCompany : isRoot ? createCompany : updateCompany)}
-                onEditCompany={editCompanyFromTable}
+                onEditCompany={(company) => execute(() => editCompanyFromTable(company), { silentNullSuccess: true, silentSuccess: true })}
                 onToggleCompanyActive={(company) => execute(() => toggleCompanyActiveFromTable(company))}
                 onOpenAdminModal={openAdminModalForCompany}
                 onOpenBrandingModal={(company) => execute(() => openBrandingModalForCompany(company), { silentNullSuccess: true })}
                 onNew={startNewCompany}
                 busy={busy}
                 documentTypeOptions={runtimeCatalogs.dianDocumentTypes}
+                taxProfileForm={companyTaxProfileForm}
+                setTaxProfileForm={setCompanyTaxProfileForm}
+                taxRegimeOptions={runtimeCatalogs.taxRegimeOptions}
+                responsibilityOptions={runtimeCatalogs.taxResponsibilityOptions}
+                ciiuOptions={runtimeCatalogs.ciiuOptions}
+                locations={runtimeCatalogs.locations}
               />
               {!isRoot && <CompanyBrandingPanel form={companyBrandingForm} setForm={setCompanyBrandingForm} branding={companyBranding} onSave={() => execute(saveCompanyBranding)} onUploadAsset={(purpose, file) => execute(() => uploadCompanyBrandingAsset(purpose, file))} busy={busy} disabled={!activeCompanyId || !canUse(['COMPANY_SETTINGS_MANAGE'])} />}
-              {activeCompanyId && <CompanyTaxProfilePanel form={companyTaxProfileForm} setForm={setCompanyTaxProfileForm}
-                profile={companyTaxProfile} onSave={() => execute(saveCompanyTaxProfile, { successMessage: 'Perfil fiscal guardado correctamente.' })}
-                busy={busy} disabled={!canUse(['COMPANY_SETTINGS_MANAGE']) && !isRoot}
-                taxRegimeOptions={runtimeCatalogs.taxRegimeOptions} responsibilityOptions={runtimeCatalogs.taxResponsibilityOptions}
-                ciiuOptions={runtimeCatalogs.ciiuOptions} locations={runtimeCatalogs.locations} />}
             </>
           )}
           {currentStep === 'Puesta en marcha' && (
@@ -2904,9 +2932,14 @@ export default function App() {
           )}
           {currentStep === 'Catalogo fiscal' && (
             <FiscalCatalogPanel parameters={fiscalParameters} rules={fiscalRules} isRoot={isRoot}
+              activeCompanyId={activeCompanyId} locations={runtimeCatalogs.locations}
+              ciiuOptions={runtimeCatalogs.ciiuOptions} taxRegimeOptions={runtimeCatalogs.taxRegimeOptions}
+              responsibilityOptions={runtimeCatalogs.taxResponsibilityOptions}
+              fiscalConceptOptions={runtimeCatalogs.fiscalConceptOptions} thirdParties={supplierList}
               onLoad={() => execute(loadFiscalCatalog, { successMessage: 'Catalogo fiscal actualizado.' })}
-              onSave={(payload, globalRule) => execute(() => saveFiscalRule(payload, globalRule), { successMessage: 'Regla fiscal publicada correctamente.' })}
+              onSave={(payload, globalRule, evidenceFile) => execute(() => saveFiscalRule(payload, globalRule, evidenceFile), { successMessage: 'Regla fiscal publicada correctamente.' })}
               onDeactivate={(rule) => execute(() => deactivateFiscalRule(rule), { successMessage: 'Regla fiscal inactivada correctamente.' })}
+              onOpenEvidence={(evidenceReference) => execute(() => openFiscalRuleEvidence(evidenceReference), { silentSuccess: true })}
               busy={busy || (!activeCompanyId && !isRoot) || !canUse(stepPermissionRules['Catalogo fiscal'])} />
           )}
           {currentStep === 'DIAN' && (

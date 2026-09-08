@@ -55,6 +55,23 @@ export function SelectField({ label, value, onChange, options, disabled = false,
   </label>;
 }
 
+export function SearchableSelectField({ label, value, onChange, options, disabled = false,
+  placeholder = 'Selecciona una opcion', searchPlaceholder = 'Buscar' }) {
+  const [search, setSearch] = useState('');
+  const selected = options.find((item) => String(item.value) === String(value));
+  const filtered = options.filter((item) => matchesOption(item, search));
+  const visibleOptions = selected && !filtered.some((item) => String(item.value) === String(selected.value))
+    ? [selected, ...filtered]
+    : filtered;
+  return <div className="searchable-select-field">
+    <label>
+      {`${label}: buscar`}
+      <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={searchPlaceholder} type="search" disabled={disabled} />
+    </label>
+    <SelectField label={label} value={value} onChange={onChange} options={visibleOptions} disabled={disabled} placeholder={placeholder} />
+  </div>;
+}
+
 export function MultiSelectField({ label, value, onChange, options, disabledValues = [] }) {
   const selectedValues = Array.isArray(value) ? value : [];
   return <label>

@@ -92,6 +92,10 @@ const TEST_RUNTIME_CATALOGS = {
     { value: '4711', label: '4711 - Comercio al por menor' },
     { value: '6201', label: '6201 - Desarrollo de sistemas informaticos' },
   ],
+  fiscalConceptOptions: [
+    { value: 'ANY', label: 'Cualquier concepto' },
+    { value: 'SERVICE_GENERAL_DECLARANT', label: 'Servicio general de declarante' },
+  ],
   paymentMethodOptions: [
     { value: 'CASH', label: 'Efectivo' },
     { value: 'VIRTUAL_WALLET', label: 'Billetera virtual' },
@@ -210,6 +214,117 @@ test('root can deactivate a national fiscal rule', () => {
 
   fireEvent.click(screen.getByRole('button', { name: 'Inactivar' }));
   expect(onDeactivate).toHaveBeenCalledWith(expect.objectContaining({ id: 'rule-global', companyId: null }));
+});
+
+test('fiscal catalog exposes a protected evidence link for a published exemption', () => {
+  const evidenceReference = `/api/v1/companies/${COMPANY_ID}/files/asset-1?hash=sha256`;
+  const onOpenEvidence = vi.fn();
+  render(<FiscalCatalogPanel
+    parameters={[]}
+    rules={[{
+      id: 'rule-exempt', companyId: COMPANY_ID, withholdingType: 'RETEFUENTE', conceptCode: 'ANY',
+      rate: 0, thresholdValue: 0, thresholdUnit: 'COP', validFrom: '2026-01-01', validTo: null,
+      active: true, decision: 'EXEMPT', evidenceReference,
+    }]}
+    activeCompanyId={COMPANY_ID}
+    onLoad={vi.fn()}
+    onSave={vi.fn()}
+    onDeactivate={vi.fn()}
+    onOpenEvidence={onOpenEvidence}
+    busy={false}
+  />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Ver PDF' }));
+  expect(onOpenEvidence).toHaveBeenCalledWith(evidenceReference);
+});
+
+test('fiscal rule form uses controlled catalogs and requires a PDF for a specific exemption', async () => {
+  const onSave = vi.fn().mockResolvedValue({ id: 'rule-1' });
+  const evidence = new File(['%PDF-1.7 support'], 'exencion.pdf', { type: 'application/pdf' });
+  render(<FiscalCatalogPanel
+    parameters={[]}
+    rules={[]}
+    isRoot
+    activeCompanyId={COMPANY_ID}
+    locations={TEST_RUNTIME_CATALOGS.locations}
+    ciiuOptions={TEST_RUNTIME_CATALOGS.ciiuOptions}
+    taxRegimeOptions={TEST_RUNTIME_CATALOGS.taxRegimeOptions}
+    responsibilityOptions={TEST_RUNTIME_CATALOGS.taxResponsibilityOptions}
+    fiscalConceptOptions={TEST_RUNTIME_CATALOGS.fiscalConceptOptions}
+    thirdParties={[{ id: 'supplier-1', businessName: 'Proveedor SAS', identificationNumber: '900765432', active: true }]}
+    onLoad={vi.fn()}
+    onSave={onSave}
+    onDeactivate={vi.fn()}
+    busy={false}
+  />);
+
+  fireEvent.change(screen.getByLabelText('Concepto'), { target: { value: 'SERVICE_GENERAL_DECLARANT' } });
+  fireEvent.change(screen.getByLabelText('Decision'), { target: { value: 'EXEMPT' } });
+  fireEvent.change(screen.getByLabelText('Departamento'), { target: { value: '11' } });
+  fireEvent.change(screen.getByLabelText('Codigo CIIU'), { target: { value: '6201' } });
+  fireEvent.change(screen.getByLabelText('Regimen requerido'), { target: { value: 'RESPONSABLE_IVA' } });
+  fireEvent.change(screen.getByLabelText('Responsabilidad requerida'), { target: { value: 'O-13' } });
+  fireEvent.change(screen.getByLabelText('Tercero exento'), { target: { value: 'supplier-1' } });
+  fireEvent.change(screen.getByLabelText('Soporte de exencion (PDF)'), { target: { files: [evidence] } });
+  fireEvent.click(screen.getByLabelText('Empresa es responsable de IVA'));
+  fireEvent.submit(screen.getByRole('button', { name: 'Publicar regla' }).closest('form'));
+
+  await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+    conceptCode: 'SERVICE_GENERAL_DECLARANT',
+    municipalityCode: '11001',
+    ciiuCode: '6201',
+    requiredThirdPartyTaxRegime: 'RESPONSABLE_IVA',
+    requiredThirdPartyResponsibility: 'O-13',
+    targetThirdPartyId: 'supplier-1',
+    requiresCompanyVatResponsible: true,
+    evidenceReference: null,
+  }), false, evidence);
+});
+
+test('global fiscal rule clears company third party and evidence', async () => {
+  const onSave = vi.fn().mockResolvedValue({ id: 'rule-global' });
+  render(<FiscalCatalogPanel
+    parameters={[]}
+    rules={[]}
+    isRoot
+    activeCompanyId={COMPANY_ID}
+    fiscalConceptOptions={TEST_RUNTIME_CATALOGS.fiscalConceptOptions}
+    thirdParties={[{ id: 'supplier-1', businessName: 'Proveedor SAS', active: true }]}
+    onLoad={vi.fn()}
+    onSave={onSave}
+    onDeactivate={vi.fn()}
+    busy={false}
+  />);
+
+  fireEvent.change(screen.getByLabelText('Decision'), { target: { value: 'EXEMPT' } });
+  fireEvent.change(screen.getByLabelText('Tercero exento'), { target: { value: 'supplier-1' } });
+  fireEvent.click(screen.getByLabelText('Regla nacional global'));
+
+  expect(screen.getByLabelText('Tercero exento')).toBeDisabled();
+  expect(screen.queryByLabelText('Soporte de exencion (PDF)')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Publicar regla' }));
+
+  await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ targetThirdPartyId: null }), true, null);
+});
+
+test('root needs an active company unless the fiscal rule is global', () => {
+  render(<FiscalCatalogPanel
+    parameters={[]}
+    rules={[]}
+    isRoot
+    activeCompanyId=""
+    fiscalConceptOptions={TEST_RUNTIME_CATALOGS.fiscalConceptOptions}
+    onLoad={vi.fn()}
+    onSave={vi.fn()}
+    onDeactivate={vi.fn()}
+    busy={false}
+  />);
+
+  expect(screen.getByRole('button', { name: 'Publicar regla' })).toBeDisabled();
+  fireEvent.click(screen.getByLabelText('Regla nacional global'));
+  expect(screen.getByRole('button', { name: 'Publicar regla' })).toBeEnabled();
 });
 
 test('accounting configuration shows usage and protects used accounts and rules', () => {
@@ -480,6 +595,7 @@ test('company owner updates active company without create company action', async
 
   expect(screen.queryByRole('button', { name: 'Crear empresa' })).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Razon social'), { target: { value: 'Empresa Actualizada SAS' } });
+  fireEvent.change(screen.getByLabelText('Regimen tributario'), { target: { value: 'RESPONSABLE_IVA' } });
   fireEvent.click(screen.getByRole('button', { name: 'Actualizar empresa' }));
 
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
@@ -489,6 +605,7 @@ test('company owner updates active company without create company action', async
   }));
   expect(JSON.parse(fetchMock.mock.calls[5][1].body)).toMatchObject({
     legalName: 'Empresa Actualizada SAS',
+    taxProfile: { taxRegime: 'RESPONSABLE_IVA' },
   });
 });
 
@@ -529,6 +646,22 @@ test('login with missing company license shows license configuration message', a
 
 test('root login shows global panel without company or license validation', async () => {
   const existingCompany = { id: COMPANY_ID, legalName: 'Empresa Demo SAS', tradeName: 'Tienda Demo', identificationTypeCode: 31, identificationNumber: '900123456', verificationDigit: '7', email: 'admin@example.com', status: 'ACTIVE' };
+  const taxProfile = {
+    companyId: COMPANY_ID,
+    companySize: 'MICRO',
+    financialReportingGroup: 'GRUPO_3',
+    taxRegime: 'RESPONSABLE_IVA',
+    rutResponsibilities: ['O-13'],
+    vatResponsible: true,
+    withholdingAgent: true,
+    vatWithholdingAgent: false,
+    icaWithholdingAgent: false,
+    largeTaxpayer: false,
+    selfWithholding: false,
+    simpleRegime: false,
+    icaMunicipalityCode: '11001',
+    ciiuCodes: ['4711'],
+  };
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(jsonResponse({
       ...LOGIN_RESPONSE,
@@ -536,7 +669,8 @@ test('root login shows global panel without company or license validation', asyn
       fullName: 'Root Platform User',
       globalRoles: ['ROOT'],
     }))
-    .mockResolvedValueOnce(jsonResponse([existingCompany]));
+    .mockResolvedValueOnce(jsonResponse([existingCompany]))
+    .mockResolvedValueOnce(jsonResponse(taxProfile));
   vi.stubGlobal('fetch', fetchMock);
 
   render(<App />);
@@ -550,18 +684,29 @@ test('root login shows global panel without company or license validation', asyn
   expect(screen.getByLabelText('Razon social')).toHaveValue('');
   expect(screen.getByRole('button', { name: 'Ventas' })).toBeInTheDocument();
   expect(screen.getByText('Empresas registradas')).toBeInTheDocument();
+  expect(screen.getByText('Perfil fiscal y retenciones')).toBeInTheDocument();
+  expect(screen.getByLabelText('Regimen tributario')).toBeInTheDocument();
+  expect(screen.getByLabelText('Agente de retencion')).not.toBeChecked();
+  expect(screen.getByLabelText('Agente de ReteIVA')).not.toBeChecked();
+  expect(screen.getByLabelText('Agente de ReteICA')).not.toBeChecked();
+  expect(screen.getByLabelText('Autorretenedor')).not.toBeChecked();
   expect(screen.getAllByText('Empresa Demo SAS (900123456)').length).toBeGreaterThan(0);
   expect(screen.getByRole('button', { name: 'Crear empresa' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Actualizar' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Crear administrador' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Crear marca empresarial' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Actualizar' }));
-  expect(screen.getByLabelText('Razon social')).toHaveValue('Empresa Demo SAS');
+  await waitFor(() => expect(screen.getByLabelText('Razon social')).toHaveValue('Empresa Demo SAS'));
+  expect(screen.getByLabelText('Regimen tributario')).toHaveValue('RESPONSABLE_IVA');
+  expect(screen.getByLabelText('Agente de retencion')).toBeChecked();
   expect(screen.getByRole('button', { name: 'Actualizar empresa' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Usuarios' })).toBeInTheDocument();
-  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(fetchMock).toHaveBeenCalledTimes(3);
   expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/companies', expect.objectContaining({
     headers: expect.objectContaining({ Authorization: 'Bearer token-1' }),
+  }));
+  expect(fetchMock).toHaveBeenNthCalledWith(3, `/api/v1/companies/${COMPANY_ID}/tax-profile`, expect.objectContaining({
+    headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
   }));
 });
 
@@ -710,6 +855,17 @@ test('root creates company and initial administrator', async () => {
     headers: expect.objectContaining({ Authorization: 'Bearer token-1' }),
     body: expect.stringContaining('"identificationTypeCode":31'),
   }));
+  expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toMatchObject({
+    taxProfile: {
+      companySize: 'MICRO',
+      financialReportingGroup: 'GRUPO_3',
+      taxRegime: 'RESPONSABLE_IVA',
+      withholdingAgent: false,
+      vatWithholdingAgent: false,
+      icaWithholdingAgent: false,
+      selfWithholding: false,
+    },
+  });
   expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/v1/users', expect.objectContaining({
     method: 'POST',
     body: JSON.stringify({
@@ -1479,6 +1635,7 @@ function fillCompanyForm() {
   fireEvent.change(screen.getByLabelText('Tipo de identificacion'), { target: { value: '31' } });
   fireEvent.change(screen.getByLabelText('Numero de identificacion'), { target: { value: '900123456' } });
   fireEvent.change(screen.getByLabelText('Correo administrativo'), { target: { value: 'admin@example.com' } });
+  fireEvent.change(screen.getByLabelText('Regimen tributario'), { target: { value: 'RESPONSABLE_IVA' } });
 }
 
 function fillInitialAdminForm() {

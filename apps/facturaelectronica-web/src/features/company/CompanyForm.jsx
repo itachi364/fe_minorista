@@ -2,6 +2,7 @@ import { DataTable } from '../../components/DataTable.jsx';
 import { Field, FormPanel, SelectField } from '../../components/forms.jsx';
 import { companyLabel } from '../../utils/company.js';
 import { calculateNitVerificationDigit, isNit, onlyDigits } from '../../utils/nit.js';
+import { CompanyTaxProfileFields } from './CompanyTaxProfilePanel.jsx';
 
 export function CompanyForm({
   form,
@@ -19,6 +20,12 @@ export function CompanyForm({
   onNew,
   busy,
   documentTypeOptions = [],
+  taxProfileForm,
+  setTaxProfileForm,
+  taxRegimeOptions = [],
+  responsibilityOptions = [],
+  ciiuOptions = [],
+  locations = [],
 }) {
   const nitDocument = isNit(form.identificationTypeCode);
   const verificationDigit = nitDocument ? calculateNitVerificationDigit(form.identificationNumber) : '';
@@ -53,6 +60,17 @@ export function CompanyForm({
         <Field label="Digito de verificacion" value={verificationDigit} onChange={() => {}} readOnly />
         <Field label="Correo administrativo" value={form.email} onChange={(value) => setForm({ ...form, email: value })} type="email" />
       </div>
+      <section className="company-tax-section">
+        <header className="subsection-header">
+          <div>
+            <h2>Perfil fiscal y retenciones</h2>
+            <p className="hint">La clasificacion registrada debe coincidir con el RUT y la orientacion contable de la empresa.</p>
+          </div>
+        </header>
+        <CompanyTaxProfileFields form={taxProfileForm} setForm={setTaxProfileForm}
+          taxRegimeOptions={taxRegimeOptions} responsibilityOptions={responsibilityOptions}
+          ciiuOptions={ciiuOptions} locations={locations} />
+      </section>
     </FormPanel>
     {isRoot && (
       <DataTable

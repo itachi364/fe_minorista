@@ -489,3 +489,17 @@
 - AC-438: Dada una compra o gasto confirmado, cuando el usuario abra su detalle fiscal despues de recargar la SPA, entonces ve importes, decisiones y evidencia normativa del calculo guardado.
 - AC-439: Dado un cliente que intente enviar retenciones calculadas o modificar el neto, cuando confirme, entonces el backend ignora esos valores y recalcula desde datos persistidos.
 - AC-440: Dado un documento con `subtotal + taxTotal != total`, proveedor ausente o inactivo, cuando se calcule o confirme, entonces recibe error funcional y no se crean efectos financieros.
+- AC-441: Dado ROOT sin empresa activa, cuando abra el formulario de empresa, entonces ve regimen, responsabilidades RUT, CIIU y los indicadores de IVA, retefuente, reteIVA, reteICA, gran contribuyente y autorretencion.
+- AC-442: Dado ROOT creando una empresa, cuando guarde datos generales y un regimen valido, entonces empresa y perfil fiscal se persisten en una unica transaccion; si el perfil es invalido no queda una empresa parcial.
+- AC-443: Dado ROOT editando una empresa distinta de la activa, cuando pulse `Actualizar`, entonces se carga exclusivamente el perfil fiscal de esa empresa y el envio actualiza ambos agregados sin mezclar estados.
+- AC-444: Dada una compra o gasto, cuando se presenten retenciones, entonces sus valores son resultados de solo lectura calculados por el backend y no campos editables del documento.
+
+## Catalogo fiscal controlado y soportes de exencion
+
+- AC-445: Dado el formulario de regla fiscal, cuando se capture una condicion por municipio, CIIU, regimen, responsabilidad o concepto, entonces el valor se selecciona desde el catalogo vigente y puede dejarse sin restriccion sin seleccionar implicitamente el primer item.
+- AC-446: Dada una regla empresarial, cuando se seleccione un tercero especifico, entonces el selector solo muestra terceros activos de la empresa activa y envia su UUID sin exponerlo como dato editable.
+- AC-447: Dada una exencion dirigida a un tercero, cuando se publique, entonces exige un PDF de maximo 5 MB, valida extension, MIME, firma PDF y contenido inseguro, y conserva una referencia privada al archivo empresarial.
+- AC-448: Dado un archivo de soporte fiscal, cuando se almacene o descargue, entonces queda aislado por empresa, registra nombre, tamano, hash, usuario y fecha, y no expone bucket, key ni URL publica permanente.
+- AC-449: Dado ROOT sin empresa activa, cuando la regla no sea nacional global, entonces no puede publicarla; una regla nacional global limpia y rechaza tercero y soporte empresarial.
+- AC-450: Dado que el usuario cambie la decision desde `EXEMPT` o retire el tercero especifico, entonces el formulario limpia el archivo seleccionado y no envia una evidencia incompatible.
+- AC-451: Dada una regla que exige que la empresa sea responsable de IVA, cuando se publique, entonces el formulario envia `requiresCompanyVatResponsible=true` y el motor la filtra contra el perfil fiscal empresarial.

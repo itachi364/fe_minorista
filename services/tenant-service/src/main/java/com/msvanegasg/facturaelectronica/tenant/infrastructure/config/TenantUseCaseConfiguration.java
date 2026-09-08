@@ -32,9 +32,10 @@ public class TenantUseCaseConfiguration {
     @Bean
     ManageCompanyUseCase manageCompanyUseCase(
             CompanyRepositoryPort companyRepository,
+            CompanyTaxProfileRepositoryPort taxProfileRepository,
             IdGeneratorPort idGenerator,
             ClockPort clock) {
-        return new CompanyManagementService(companyRepository, idGenerator, clock);
+        return new CompanyManagementService(companyRepository, taxProfileRepository, idGenerator, clock);
     }
 
     @Bean

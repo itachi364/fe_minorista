@@ -1064,7 +1064,7 @@ Tabla objetivo para metadata de archivos empresariales y evidencias documentales
 |---|---|---:|---|
 | id | uuid | Si | Identificador del archivo. |
 | company_id | uuid | Si | Empresa propietaria. |
-| category | varchar(60) | Si | Categoria tecnica: `INVOICE`, `LOGO`, `BACKGROUND`, `PURCHASE_EVIDENCE`, `EXPENSE_EVIDENCE` u `OTHER`. |
+| category | varchar(60) | Si | Categoria tecnica: `INVOICE`, `LOGO`, `BACKGROUND`, `PURCHASE_EVIDENCE`, `EXPENSE_EVIDENCE`, `FISCAL_RULE_EVIDENCE` u `OTHER`. |
 | storage_key | varchar(700) | Si | Referencia privada del objeto; no se expone como URL publica permanente. |
 | original_filename | varchar(220) | Si | Nombre original informado por el cliente. |
 | content_type | varchar(120) | Si | MIME validado. |
