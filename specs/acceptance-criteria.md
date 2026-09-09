@@ -477,7 +477,7 @@
 - AC-429: Dado un tercero historico con `ciiu_code`, cuando se aplique la migracion, entonces ese codigo queda disponible en `ciiuCodes` sin perdida y la respuesta mantiene temporalmente `ciiuCode` como actividad principal compatible.
 - AC-430: Dada una regla fiscal condicionada por CIIU, cuando cualquiera de los codigos del tercero coincide, entonces la regla es candidata; si ninguno coincide, no aplica.
 - AC-431: Dada una compra o gasto de contado, cuando se edite el formulario, entonces no aparece fecha limite de pago y el payload la envia nula; al elegir credito aparece `Fecha limite de pago` y el backend conserva su validacion obligatoria.
-- AC-432: Dado un usuario autorizado, cuando abra `Configuracion`, entonces encuentra `Catalogos` con la clasificacion CIIU oficial y `Catalogo fiscal` como opcion hermana.
+- AC-432: Dado un usuario autorizado, cuando abra `Configuracion`, entonces encuentra `Catalogos` con la clasificacion CIIU oficial y `Reglas fiscales` como opcion hermana.
 
 ## Integracion operativa del motor fiscal
 
@@ -503,3 +503,13 @@
 - AC-449: Dado ROOT sin empresa activa, cuando la regla no sea nacional global, entonces no puede publicarla; una regla nacional global limpia y rechaza tercero y soporte empresarial.
 - AC-450: Dado que el usuario cambie la decision desde `EXEMPT` o retire el tercero especifico, entonces el formulario limpia el archivo seleccionado y no envia una evidencia incompatible.
 - AC-451: Dada una regla que exige que la empresa sea responsable de IVA, cuando se publique, entonces el formulario envia `requiresCompanyVatResponsible=true` y el motor la filtra contra el perfil fiscal empresarial.
+
+## Permisos y experiencia de configuracion fiscal
+
+- AC-452: Dado un selector fiscal con busqueda, cuando el usuario lo abre, entonces la busqueda aparece dentro del desplegable y permite filtrar y seleccionar con mouse o teclado sin renderizar otro campo externo.
+- AC-453: Dada una empresa activa con proveedores activos, cuando un usuario autorizado abre `Reglas fiscales`, entonces `Tercero exento` permite encontrarlos por nombre o documento; si la carga falla o no hay resultados muestra un estado controlado.
+- AC-454: Dado un usuario sin `FISCAL_SETTINGS_MANAGE`, cuando consulta o intenta mutar configuracion fiscal, entonces la SPA oculta o bloquea las opciones y el BFF rechaza la operacion, aunque el usuario tenga `ACCOUNTING_MANAGE` o un nombre de rol administrativo.
+- AC-455: Dado un rol personalizado con `FISCAL_SETTINGS_MANAGE`, cuando opera sobre su empresa activa, entonces puede administrar perfil y reglas fiscales, soportes, emisor, politica, resoluciones y conexion DIAN, pero no emitir documentos sin `FISCAL_DOCUMENTS_ISSUE`.
+- AC-456: Dado el administrador inicial creado por ROOT, cuando se materializa su rol OWNER, entonces recibe todos los permisos empresariales vigentes; una migracion agrega `FISCAL_SETTINGS_MANAGE` a roles OWNER existentes y nunca agrega permisos globales.
+- AC-457: Dado un OWNER con `COMPANY_SETTINGS_MANAGE`, cuando actualiza datos generales de su empresa activa, entonces el BFF permite la operacion; si intenta actualizar otra empresa, la autorizacion por contexto la rechaza.
+- AC-458: Dado el menu lateral, cuando se renderiza la configuracion, entonces muestra `Reglas fiscales` y `Configuracion contable` dentro del grupo `Configuracion`, sin mostrar el nombre anterior `Catalogo fiscal`.

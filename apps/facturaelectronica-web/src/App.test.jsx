@@ -22,14 +22,23 @@ const COMPANY_ACCESS = [{
   roles: ['OWNER'],
   permissions: [
     'COMPANY_SETTINGS_MANAGE',
+    'COMPANY_CATALOGS_MANAGE',
+    'FISCAL_SETTINGS_MANAGE',
+    'OPERATIONAL_PIN_MANAGE',
     'COMPANY_USERS_MANAGE',
     'COMPANY_ROLES_MANAGE',
     'SALES_CREATE',
+    'SALES_CANCEL',
     'FISCAL_DOCUMENTS_ISSUE',
     'INVENTORY_VIEW',
     'INVENTORY_MANAGE',
+    'PURCHASES_MANAGE',
     'REPORTS_VIEW',
     'ACCOUNTING_VIEW',
+    'ACCOUNTING_MANAGE',
+    'PAYROLL_VIEW',
+    'PAYROLL_MANAGE',
+    'AUDIT_VIEW',
   ],
 }];
 const REPORT_ONLY_ACCESS = [{ companyId: COMPANY_ID, roles: ['REPORT_VIEWER'], permissions: ['REPORTS_VIEW'] }];
@@ -259,12 +268,20 @@ test('fiscal rule form uses controlled catalogs and requires a PDF for a specifi
   />);
 
   fireEvent.change(screen.getByLabelText('Concepto'), { target: { value: 'SERVICE_GENERAL_DECLARANT' } });
-  fireEvent.change(screen.getByLabelText('Decision'), { target: { value: 'EXEMPT' } });
+  expect(screen.queryByLabelText('Codigo CIIU: buscar')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Tercero exento: buscar')).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Departamento'), { target: { value: '11' } });
-  fireEvent.change(screen.getByLabelText('Codigo CIIU'), { target: { value: '6201' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Codigo CIIU' }));
+  fireEvent.change(screen.getByRole('combobox', { name: 'Buscar Codigo CIIU' }), { target: { value: 'sistemas' } });
+  fireEvent.click(screen.getByRole('option', { name: '6201 - Desarrollo de sistemas informaticos' }));
   fireEvent.change(screen.getByLabelText('Regimen requerido'), { target: { value: 'RESPONSABLE_IVA' } });
   fireEvent.change(screen.getByLabelText('Responsabilidad requerida'), { target: { value: 'O-13' } });
-  fireEvent.change(screen.getByLabelText('Tercero exento'), { target: { value: 'supplier-1' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Tercero exento' }));
+  const supplierSearch = screen.getByRole('combobox', { name: 'Buscar Tercero exento' });
+  fireEvent.change(supplierSearch, { target: { value: '900765432' } });
+  fireEvent.keyDown(supplierSearch, { key: 'ArrowDown' });
+  fireEvent.keyDown(supplierSearch, { key: 'Enter' });
+  expect(screen.getByLabelText('Decision')).toHaveValue('EXEMPT');
   fireEvent.change(screen.getByLabelText('Soporte de exencion (PDF)'), { target: { files: [evidence] } });
   fireEvent.click(screen.getByLabelText('Empresa es responsable de IVA'));
   fireEvent.submit(screen.getByRole('button', { name: 'Publicar regla' }).closest('form'));
@@ -298,7 +315,8 @@ test('global fiscal rule clears company third party and evidence', async () => {
   />);
 
   fireEvent.change(screen.getByLabelText('Decision'), { target: { value: 'EXEMPT' } });
-  fireEvent.change(screen.getByLabelText('Tercero exento'), { target: { value: 'supplier-1' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Tercero exento' }));
+  fireEvent.click(screen.getByRole('option', { name: 'Proveedor SAS' }));
   fireEvent.click(screen.getByLabelText('Regla nacional global'));
 
   expect(screen.getByLabelText('Tercero exento')).toBeDisabled();
@@ -1137,11 +1155,11 @@ test('clears product form after successful item creation', async () => {
   expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/v1/products?active=true', expect.objectContaining({
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
+  await waitFor(() => expect(screen.getByText('Cafe r')).toBeInTheDocument());
   expect(screen.getByLabelText('SKU')).toHaveValue('');
   expect(screen.getByLabelText('Codigo de barras')).toHaveValue('');
   expect(screen.getByLabelText('Nombre')).toHaveValue('');
   expect(screen.getByLabelText('Precio final')).toHaveValue(null);
-  expect(screen.getByText('Cafe r')).toBeInTheDocument();
 });
 
 test('clears issuer and resolution forms after successful fiscal save', async () => {
@@ -1250,7 +1268,7 @@ test('manages operational PIN from configuration menu', async () => {
     body: JSON.stringify({ pin: '123456' }),
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
-  expect(screen.getByLabelText('PIN de 6 digitos')).toHaveValue('');
+  await waitFor(() => expect(screen.getByLabelText('PIN de 6 digitos')).toHaveValue(''));
   expect(screen.getByText('Configurado')).toBeInTheDocument();
 });
 

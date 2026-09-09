@@ -250,7 +250,11 @@ Flyway crea y evoluciona las tablas al iniciar el servicio. Los catalogos funcio
 
 El catalogo fiscal de `accounting-service` versiona UVT, conceptos, bases, tarifas, exenciones y fuentes normativas. Las reglas nacionales se actualizan mediante nuevas migraciones; ReteICA se configura por municipio y vigencia. Una operacion que requiera una regla territorial ausente queda bloqueada para evitar retenciones o asientos con tarifas asumidas.
 
-ROOT registra en el mismo formulario de empresa el regimen, responsabilidades RUT, CIIU y calidades de responsable de IVA, agente retenedor, agente de ReteIVA/ReteICA, gran contribuyente y autorretenedor. Estos datos se guardan transaccionalmente con la empresa y deben corresponder al RUT y a la orientacion del contador.
+ROOT y los usuarios autorizados registran en el mismo formulario de empresa el regimen, responsabilidades RUT, CIIU y calidades de responsable de IVA, agente retenedor, agente de ReteIVA/ReteICA, gran contribuyente y autorretenedor. Estos datos se guardan para la empresa activa y deben corresponder al RUT y a la orientacion del contador.
+
+La administracion tributaria se encuentra en `Configuracion > Reglas fiscales` y requiere `FISCAL_SETTINGS_MANAGE`. El permiso tambien habilita el perfil fiscal de empresa, emisor, politica, resoluciones y conexion DIAN, pero no autoriza la emision de documentos, que conserva `FISCAL_DOCUMENTS_ISSUE`. El rol `OWNER` inicial recibe ambos permisos y puede delegar el permiso fiscal desde la administracion de roles.
+
+Los campos CIIU y tercero exento usan un unico selector con busqueda interna. Al seleccionar un tercero, la regla cambia a `Exento` y exige cargar su soporte PDF; las opciones se limitan a proveedores activos de la empresa seleccionada.
 
 El catalogo general `CIIU` contiene las clases DANE CIIU Rev. 4 A.C. actualizacion 2022 adoptadas por la DIAN para el RUT y los procesos fiscales. Los terceros juridicos y proveedores pueden seleccionar varias actividades; los clientes exclusivamente naturales no requieren CIIU. El campo historico `ciiuCode` se conserva temporalmente como alias de compatibilidad mientras `ciiuCodes` es la fuente canonica. La CIIU Rev. 5 publicada por DANE en 2026 no se usa fiscalmente hasta que la DIAN formalice su adopcion.
 
@@ -258,8 +262,8 @@ En compras y gastos, `Fecha limite de pago` solo aparece para operaciones a cred
 
 ### Prueba del motor fiscal desde la aplicacion
 
-1. En `Configuracion contable`, usa `Completar plantilla basica` si la empresa aun no tiene sus cuentas y reglas iniciales.
-2. En `Empresa y configuracion`, guarda el perfil fiscal de la empresa: regimen, responsabilidades RUT, condiciones de agente, municipio ICA y CIIU.
+1. En `Configuracion > Configuracion contable`, usa `Completar plantilla basica` si la empresa aun no tiene sus cuentas y reglas iniciales.
+2. En `Configuracion > Empresa`, guarda el perfil fiscal de la empresa: regimen, responsabilidades RUT, condiciones de agente, municipio ICA y CIIU.
 3. En `Clientes y proveedores`, registra un proveedor con regimen tributario, responsabilidades, municipio y uno o varios CIIU.
 4. En `Compras` o `Gastos`, crea un documento indicando proveedor, concepto fiscal, subtotal e IVA. El total se calcula automaticamente.
 5. En la tabla de pendientes, usa `Calcular` para ver base, tarifa, valor, decision, regla y razon sin confirmar el documento.

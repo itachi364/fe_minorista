@@ -62,7 +62,7 @@ import { ReadinessPanel } from './features/readiness/ReadinessPanel.jsx';
 import { SaleForm } from './features/sales/SaleForm.jsx';
 import { SalesRegistryPanel } from './features/sales/SalesRegistryPanel.jsx';
 import { ThirdPartyForm } from './features/thirdparties/ThirdPartyForm.jsx';
-import { companyScopedPermissions, hasAnyPermission, hasAnyRole, stepPermissionRules } from './utils/authorization.js';
+import { companyScopedPermissions, hasAnyPermission, stepPermissionRules } from './utils/authorization.js';
 import { buildIssuerFromCompany } from './utils/company.js';
 import {
   buildCompanyAdminPayload,
@@ -162,6 +162,8 @@ export default function App() {
   const [operationalListFilters, setOperationalListFilters] = useState(createOperationalListFilters);
   const [thirdPartyList, setThirdPartyList] = useState([]);
   const [supplierList, setSupplierList] = useState([]);
+  const [fiscalSuppliersLoading, setFiscalSuppliersLoading] = useState(false);
+  const [fiscalSuppliersError, setFiscalSuppliersError] = useState('');
   const [customerList, setCustomerList] = useState([]);
   const [productList, setProductList] = useState([]);
   const [purchaseForm, setPurchaseForm] = useState(createPurchaseForm);
@@ -222,13 +224,14 @@ export default function App() {
   const brandingTargetCompany = rootCompanies.find((company) => company.id === brandingTargetCompanyId || company.companyId === brandingTargetCompanyId);
   const companyMunicipalityCode = activeCompany?.municipalityCode || issuerForm.municipalityCode;
   const isRoot = session?.globalRoles?.includes('ROOT') || false;
-  const isCompanyAdmin = hasAnyRole(activeAccess, ['OWNER', 'ADMIN']);
-  const canUse = (permissions) => isRoot || isCompanyAdmin || hasAnyPermission(activeAccess, permissions);
+  const canUse = (permissions) => isRoot || hasAnyPermission(activeAccess, permissions);
   const canManageUsers = canUse(stepPermissionRules.Usuarios);
   const canManageRoles = canUse(stepPermissionRules.Roles);
   const canManageCatalogs = canUse(stepPermissionRules.Catalogos);
+  const canManageCompanySettings = canUse(['COMPANY_SETTINGS_MANAGE']);
+  const canManageFiscalSettings = canUse(['FISCAL_SETTINGS_MANAGE']);
   const canManageOperationalPin = canUse(stepPermissionRules['PIN operacional']);
-  const canViewAudit = isRoot || isCompanyAdmin || hasAnyPermission(activeAccess, stepPermissionRules.Logs);
+  const canViewAudit = isRoot || hasAnyPermission(activeAccess, stepPermissionRules.Logs);
   const licensedModules = new Set(license?.enabledModules || []);
   const licenseAllowsStep = (step) => {
     if (isRoot || step === 'Licencias') {
@@ -237,7 +240,7 @@ export default function App() {
     const moduleCode = stepLicenseModules[step];
     return !moduleCode || licensedModules.has(moduleCode);
   };
-  const visibleSteps = steps.filter((step) => licenseAllowsStep(step) && (isRoot || isCompanyAdmin || hasAnyPermission(activeAccess, stepPermissionRules[step] || [])));
+  const visibleSteps = steps.filter((step) => licenseAllowsStep(step) && canUse(stepPermissionRules[step] || []));
   const currentStep = visibleSteps.includes(selectedStep) ? selectedStep : visibleSteps[0] || 'Ventas';
   const visibleNavigationGroups = navigationGroups
     .map((group) => ({ ...group, items: group.items.filter((item) => visibleSteps.includes(item)) }))
@@ -256,8 +259,8 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (currentStep !== 'Catalogo fiscal' || (!activeCompanyId && !isRoot)
-        || !canUse(stepPermissionRules['Catalogo fiscal'])) return;
+    if (currentStep !== 'Reglas fiscales' || (!activeCompanyId && !isRoot)
+        || !canUse(stepPermissionRules['Reglas fiscales'])) return;
     const key = `fiscal-catalog|${activeCompanyId || 'root'}`;
     if (autoFiscalCatalogLoadKeyRef.current === key) return;
     autoFiscalCatalogLoadKeyRef.current = key;
@@ -716,15 +719,25 @@ export default function App() {
   }
 
   async function loadFiscalCatalog() {
-    const [parameters, rules, suppliers] = await Promise.all([
+    setFiscalSuppliersLoading(Boolean(activeCompanyId));
+    setFiscalSuppliersError('');
+    const [parametersResult, rulesResult, suppliersResult] = await Promise.allSettled([
       requestJson('/api/v1/fiscal-catalog/parameters', context),
       requestJson('/api/v1/fiscal-catalog/rules?active=true', context),
       activeCompanyId ? requestJson('/api/v1/suppliers?active=true', context) : Promise.resolve([]),
     ]);
-    setFiscalParameters(parameters || []);
-    setFiscalRules(rules || []);
-    setSupplierList(normalizeListResponse(suppliers));
-    return rules || [];
+    setFiscalSuppliersLoading(false);
+    if (suppliersResult.status === 'fulfilled') {
+      setSupplierList(normalizeListResponse(suppliersResult.value));
+    } else {
+      setSupplierList([]);
+      setFiscalSuppliersError('No fue posible cargar los proveedores activos.');
+    }
+    if (parametersResult.status === 'rejected') throw parametersResult.reason;
+    if (rulesResult.status === 'rejected') throw rulesResult.reason;
+    setFiscalParameters(parametersResult.value || []);
+    setFiscalRules(rulesResult.value || []);
+    return rulesResult.value || [];
   }
 
   async function saveFiscalRule(payload, globalRule, evidenceFile) {
@@ -934,6 +947,8 @@ export default function App() {
     setSelectedCustomer(null);
     setThirdPartyList([]);
     setSupplierList([]);
+    setFiscalSuppliersLoading(false);
+    setFiscalSuppliersError('');
     setCustomerList([]);
     setProductForm(createProductForm());
     setEditingProductId('');
@@ -1026,6 +1041,17 @@ export default function App() {
   async function updateCompany() {
     const targetCompanyId = isRoot ? editingCompanyId : activeCompanyId;
     requireTargetCompany(targetCompanyId);
+    if (!isRoot && !canManageCompanySettings && canManageFiscalSettings) {
+      const profile = await requestJson(`/api/v1/companies/${targetCompanyId}/tax-profile`, {
+        method: 'PUT',
+        body: companyTaxProfileForm,
+        ...context,
+        companyId: targetCompanyId,
+        idempotencyKey: createIdempotencyKey('company-tax-profile-update'),
+      });
+      setCompanyTaxProfileForm(toCompanyTaxProfileForm(profile));
+      return profile;
+    }
     const updated = await requestJson(`/api/v1/companies/${targetCompanyId}`, {
       method: 'PUT',
       body: buildCompanyPayload(companyForm, companyTaxProfileForm),
@@ -2756,6 +2782,8 @@ export default function App() {
     setReceivablePaymentForm(createReceivablePaymentForm());
     setAccountsReceivableList([]);
     setSupplierList([]);
+    setFiscalSuppliersLoading(false);
+    setFiscalSuppliersError('');
     setCustomerList([]);
     setSaleDocumentOverrideForm(createSaleDocumentOverrideForm());
     setSaleDocumentOverride(null);
@@ -2865,6 +2893,8 @@ export default function App() {
                 responsibilityOptions={runtimeCatalogs.taxResponsibilityOptions}
                 ciiuOptions={runtimeCatalogs.ciiuOptions}
                 locations={runtimeCatalogs.locations}
+                canManageCompanySettings={canManageCompanySettings}
+                canManageFiscalSettings={canManageFiscalSettings}
               />
               {!isRoot && <CompanyBrandingPanel form={companyBrandingForm} setForm={setCompanyBrandingForm} branding={companyBranding} onSave={() => execute(saveCompanyBranding)} onUploadAsset={(purpose, file) => execute(() => uploadCompanyBrandingAsset(purpose, file))} busy={busy} disabled={!activeCompanyId || !canUse(['COMPANY_SETTINGS_MANAGE'])} />}
             </>
@@ -2930,17 +2960,18 @@ export default function App() {
               </div>
             </>
           )}
-          {currentStep === 'Catalogo fiscal' && (
+          {currentStep === 'Reglas fiscales' && (
             <FiscalCatalogPanel parameters={fiscalParameters} rules={fiscalRules} isRoot={isRoot}
               activeCompanyId={activeCompanyId} locations={runtimeCatalogs.locations}
               ciiuOptions={runtimeCatalogs.ciiuOptions} taxRegimeOptions={runtimeCatalogs.taxRegimeOptions}
               responsibilityOptions={runtimeCatalogs.taxResponsibilityOptions}
               fiscalConceptOptions={runtimeCatalogs.fiscalConceptOptions} thirdParties={supplierList}
-              onLoad={() => execute(loadFiscalCatalog, { successMessage: 'Catalogo fiscal actualizado.' })}
+              thirdPartiesLoading={fiscalSuppliersLoading} thirdPartiesError={fiscalSuppliersError}
+              onLoad={() => execute(loadFiscalCatalog, { successMessage: 'Reglas fiscales actualizadas.' })}
               onSave={(payload, globalRule, evidenceFile) => execute(() => saveFiscalRule(payload, globalRule, evidenceFile), { successMessage: 'Regla fiscal publicada correctamente.' })}
               onDeactivate={(rule) => execute(() => deactivateFiscalRule(rule), { successMessage: 'Regla fiscal inactivada correctamente.' })}
               onOpenEvidence={(evidenceReference) => execute(() => openFiscalRuleEvidence(evidenceReference), { silentSuccess: true })}
-              busy={busy || (!activeCompanyId && !isRoot) || !canUse(stepPermissionRules['Catalogo fiscal'])} />
+              busy={busy || (!activeCompanyId && !isRoot) || !canUse(stepPermissionRules['Reglas fiscales'])} />
           )}
           {currentStep === 'DIAN' && (
             <DianConfigurationPanel form={dianConfigurationForm} setForm={setDianConfigurationForm} configuration={dianConfiguration} onSave={() => execute(saveDianConfiguration, { successMessage: 'Configuracion DIAN guardada correctamente.' })} onTest={() => execute(testDianConfiguration, { successMessage: 'Prueba de conexion DIAN finalizada.' })} onActivate={() => execute(activateDianConfiguration, { successMessage: 'Configuracion DIAN activada.' })} onDeactivate={() => execute(deactivateDianConfiguration, { successMessage: 'Configuracion DIAN inactivada.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.DIAN)} />

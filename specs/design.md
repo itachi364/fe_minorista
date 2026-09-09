@@ -2960,7 +2960,7 @@ Context7 evidence:
 ### TASK-222 - Crear modulo visible de configuracion contable
 - Estado: Implementado.
 - Fase: Fase 28: Configuracion contable empresarial.
-- Decision de diseno: La configuracion contable deja de vivir como accion secundaria en Reportes y pasa a un modulo propio bajo Contabilidad.
+- Decision de diseno: La configuracion contable deja de vivir como accion secundaria en Reportes y pasa a un modulo propio; TASK-301 lo ubica finalmente bajo `Configuracion`.
 - Componentes/capas: La SPA agrega `AccountingConfigurationPanel`, navega con `Configuracion contable`, consulta `GET /api/v1/accounts`, `GET /api/v1/accounting-rules` e inicializa con `POST /api/v1/accounting-setup/basic`.
 - Seguridad/licencia: El acceso se controla por licencia `ACCOUNTING` y permisos `ACCOUNTING_VIEW`/`ACCOUNTING_MANAGE`, manteniendo backend como fuente real de autorizacion.
 - Relacion con ventas: El cierre de venta depende de que la empresa tenga regla contable `SALE_CONFIRMED` activa; el usuario puede resolverlo desde este modulo.
@@ -3479,3 +3479,20 @@ Context7 evidence:
   - Topic consulted: carga multipart y limites `spring.servlet.multipart.*`.
   - Relevant finding: Spring Boot usa el soporte multipart Servlet y permite limitar tamano por archivo y request desde configuracion.
   - Decision impact: se reutiliza el endpoint multipart empresarial y la validacion de dominio de 5 MB, sin agregar otra dependencia de upload.
+
+### Permiso fiscal delegable y combobox integrado TASK-301
+
+- Autorizacion: `identity-service` incorpora `FISCAL_SETTINGS_MANAGE` con alcance `COMPANY`. El BFF lo exige para rutas de configuracion fiscal y mantiene `FISCAL_DOCUMENTS_ISSUE` separado para emision.
+- Perfil empresarial: `PUT /companies/{companyId}` requiere `COMPANY_SETTINGS_MANAGE`; `PUT /companies/{companyId}/tax-profile` acepta `FISCAL_SETTINGS_MANAGE` o `COMPANY_SETTINGS_MANAGE`. En ambos casos el BFF valida que `X-Company-Id` coincida con la empresa del recurso.
+- OWNER: la materializacion dinamica incluye todos los permisos empresariales. La migracion del catalogo de permisos agrega el permiso a roles OWNER persistidos para evitar diferencias entre empresas nuevas y existentes.
+- Frontend: la autorizacion se basa en permisos efectivos, no en el nombre `ADMIN`. `Reglas fiscales`, DIAN, emisor, politica, resoluciones y perfil fiscal consumen el permiso fiscal; acciones generales de empresa conservan el permiso de configuracion empresarial.
+- Combobox: un componente controlado mantiene consulta, apertura, opcion activa y valor seleccionado. La caja de busqueda vive en el panel desplegable, soporta flechas, Enter, Escape y click fuera, y conserva una opcion vacia explicita.
+- Terceros: la carga de proveedores se desacopla de parametros/reglas para que un fallo sea visible y no vacie silenciosamente todo el panel. Las opciones se normalizan por `id`, nombres y documento dentro de la empresa activa.
+- Navegacion: `Configuracion contable` se mueve a `Configuracion`; `Catalogo fiscal` se renombra `Reglas fiscales`. Ambos conservan el modulo de licencia `ACCOUNTING`.
+
+#### Context7 evidence TASK-301
+
+- Library/tool: React.
+  - Topic consulted: inputs controlados, estado compartido y filtrado de listas.
+  - Relevant finding: el valor de un input controlado debe actualizarse sincronamente y el estado de consulta debe residir en el componente que filtra las opciones.
+  - Decision impact: el combobox usa estado React local sincronico para busqueda/apertura y recibe `value`/`onChange` como fuente autoritativa de seleccion.

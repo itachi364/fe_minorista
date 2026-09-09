@@ -182,6 +182,8 @@ class IdentityManagementServiceTest {
         assertThat(ownerRole.description()).isEqualTo("Administrador propietario de la empresa");
         assertThat(ownerRole.systemSeed()).isTrue();
         assertThat(ownerRole.permissionCodes()).containsAll(RoleCode.OWNER.permissions());
+        assertThat(ownerRole.permissionCodes()).contains(PermissionCode.COMPANY_SETTINGS_MANAGE,
+                PermissionCode.FISCAL_SETTINGS_MANAGE);
         assertThat(ownerRole.permissionCodes()).allMatch(PermissionCode::companyScoped);
         assertThat(companyRoles.findActiveAssignedRoles(COMPANY_ID, owner.id())).containsExactly(ownerRole);
     }

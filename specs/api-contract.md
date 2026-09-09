@@ -3864,13 +3864,15 @@ POST /api/v1/fiscal-catalog/rules
 PUT /api/v1/fiscal-catalog/rules/{ruleId}/deactivate
 ```
 
-Una regla incluye `thresholdUnit` (`COP`, `UVT`), `thresholdValue`, `thresholdOperator` (`GT`, `GTE`), `calculationBase` (`TAXABLE_BASE`, `VAT_AMOUNT`, `COMPANY_INCOME`), `thresholdTreatment` (`FULL_AMOUNT`, `EXCESS`), `decision`, `rate`, `legalReference`, `sourceUrl`, `validFrom`, `validTo`, `priority` y condiciones fiscales. Las mutaciones globales son exclusivas de ROOT; las empresariales requieren `X-Company-Id` y permiso contable.
+Una regla incluye `thresholdUnit` (`COP`, `UVT`), `thresholdValue`, `thresholdOperator` (`GT`, `GTE`), `calculationBase` (`TAXABLE_BASE`, `VAT_AMOUNT`, `COMPANY_INCOME`), `thresholdTreatment` (`FULL_AMOUNT`, `EXCESS`), `decision`, `rate`, `legalReference`, `sourceUrl`, `validFrom`, `validTo`, `priority` y condiciones fiscales. Las mutaciones globales son exclusivas de ROOT; las empresariales requieren `X-Company-Id` y `FISCAL_SETTINGS_MANAGE`. `ACCOUNTING_MANAGE` no concede por si solo administracion de reglas fiscales.
 
 La SPA obtiene `conceptCode`, `ciiuCode`, `requiredThirdPartyTaxRegime`, `requiredThirdPartyResponsibility` y `municipalityCode` desde los catalogos `FISCAL_CONCEPT`, `CIIU`, `TAX_REGIME`, `TAX_RESPONSIBILITY` y DIVIPOLA. Un valor nulo significa que la regla no restringe esa dimension.
 
 Una exencion dirigida a `targetThirdPartyId` exige `decision=EXEMPT`. Antes de publicar, la SPA carga un unico PDF mediante `POST /api/v1/companies/{companyId}/files` con `category=FISCAL_RULE_EVIDENCE` y envia en `evidenceReference` la referencia interna retornada. El backend exige que esa referencia comience por `/api/v1/companies/{companyId}/files/`. Las reglas globales rechazan `targetThirdPartyId` y `evidenceReference`.
 
 Para abrir el soporte, la SPA no navega directamente a la referencia: solicita el binario por el cliente autenticado incluyendo `X-Company-Id`, valida permisos en el BFF y crea un blob temporal solo en el navegador.
+
+`FISCAL_SETTINGS_MANAGE` tambien habilita la configuracion empresarial de DIAN, emisor, politica, resoluciones y `PUT /api/v1/companies/{companyId}/tax-profile`. La emision conserva la exigencia independiente de `FISCAL_DOCUMENTS_ISSUE`. `PUT /api/v1/companies/{companyId}` requiere `COMPANY_SETTINGS_MANAGE` y coincidencia entre el recurso y `X-Company-Id`.
 
 El resultado de calculo agrega `ruleId`, `parameterVersion`, `legalReference` y `sourceUrl`. Si ReteICA es obligatoria pero no hay regla municipal publicada, el item usa `decision=BLOCKED`; el consumidor no puede confirmar la operacion.
 

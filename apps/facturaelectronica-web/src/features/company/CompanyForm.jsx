@@ -26,6 +26,8 @@ export function CompanyForm({
   responsibilityOptions = [],
   ciiuOptions = [],
   locations = [],
+  canManageCompanySettings = false,
+  canManageFiscalSettings = false,
 }) {
   const nitDocument = isNit(form.identificationTypeCode);
   const verificationDigit = nitDocument ? calculateNitVerificationDigit(form.identificationNumber) : '';
@@ -45,7 +47,7 @@ export function CompanyForm({
   const canUpdateActiveCompany = Boolean(activeCompanyId);
 
   return <div className="stack">
-    <FormPanel title="Empresa contratante" submitLabel={submitLabel} onSubmit={onSubmit} busy={busy || (!isRoot && !canUpdateActiveCompany)}>
+    <FormPanel title="Empresa contratante" submitLabel={submitLabel} onSubmit={onSubmit} busy={busy || (!isRoot && (!canUpdateActiveCompany || (!canManageCompanySettings && !canManageFiscalSettings)))}>
       {isRoot && (
         <div className="button-row company-actions">
           <button className="secondary" disabled={busy} onClick={onNew} type="button">Nueva empresa</button>
@@ -53,12 +55,12 @@ export function CompanyForm({
         </div>
       )}
       <div className="form-grid">
-        <Field label="Razon social" value={form.legalName} onChange={(value) => setForm({ ...form, legalName: value })} />
-        <Field label="Nombre comercial" value={form.tradeName} onChange={(value) => setForm({ ...form, tradeName: value })} />
-        <SelectField label="Tipo de identificacion" value={form.identificationTypeCode} onChange={updateIdentificationType} options={documentTypeOptions} />
-        <Field label="Numero de identificacion" value={form.identificationNumber} onChange={updateIdentificationNumber} />
+        <Field label="Razon social" value={form.legalName} onChange={(value) => setForm({ ...form, legalName: value })} disabled={!isRoot && !canManageCompanySettings} />
+        <Field label="Nombre comercial" value={form.tradeName} onChange={(value) => setForm({ ...form, tradeName: value })} disabled={!isRoot && !canManageCompanySettings} />
+        <SelectField label="Tipo de identificacion" value={form.identificationTypeCode} onChange={updateIdentificationType} options={documentTypeOptions} disabled={!isRoot && !canManageCompanySettings} />
+        <Field label="Numero de identificacion" value={form.identificationNumber} onChange={updateIdentificationNumber} disabled={!isRoot && !canManageCompanySettings} />
         <Field label="Digito de verificacion" value={verificationDigit} onChange={() => {}} readOnly />
-        <Field label="Correo administrativo" value={form.email} onChange={(value) => setForm({ ...form, email: value })} type="email" />
+        <Field label="Correo administrativo" value={form.email} onChange={(value) => setForm({ ...form, email: value })} type="email" disabled={!isRoot && !canManageCompanySettings} />
       </div>
       <section className="company-tax-section">
         <header className="subsection-header">
@@ -69,7 +71,7 @@ export function CompanyForm({
         </header>
         <CompanyTaxProfileFields form={taxProfileForm} setForm={setTaxProfileForm}
           taxRegimeOptions={taxRegimeOptions} responsibilityOptions={responsibilityOptions}
-          ciiuOptions={ciiuOptions} locations={locations} />
+          ciiuOptions={ciiuOptions} locations={locations} disabled={!isRoot && !canManageFiscalSettings && !canManageCompanySettings} />
       </section>
     </FormPanel>
     {isRoot && (

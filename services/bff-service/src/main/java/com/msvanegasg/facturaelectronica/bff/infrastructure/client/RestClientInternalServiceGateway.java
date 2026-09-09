@@ -32,7 +32,8 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
             "x-correlation-id", "cache-control", "x-report-presigned-ttl-seconds");
     private static final Set<String> MUTATING_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
     private static final Map<TargetService, AccessRule> ACCESS_RULES = Map.of(
-            TargetService.CATALOG, new AccessRule(Set.of("COMPANY_CATALOGS_MANAGE", "COMPANY_SETTINGS_MANAGE"),
+            TargetService.CATALOG, new AccessRule(Set.of("COMPANY_CATALOGS_MANAGE", "COMPANY_SETTINGS_MANAGE",
+                    "FISCAL_SETTINGS_MANAGE"),
                     Set.of("COMPANY_CATALOGS_MANAGE", "COMPANY_SETTINGS_MANAGE")),
             TargetService.ACCOUNTING, new AccessRule(Set.of("ACCOUNTING_VIEW", "ACCOUNTING_MANAGE", "REPORTS_VIEW"),
                     Set.of("ACCOUNTING_MANAGE")),
@@ -125,6 +126,7 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         if (companyId == null) {
             throw new BffAccessDeniedException("X-Company-Id is required");
         }
+        ensureRequestCompanyMatches(request, companyId);
         Set<String> requiredPermissions = MUTATING_METHODS.contains(request.method().name()) ? rule.writePermissions()
                 : rule.readPermissions();
         Set<String> actualPermissions = effectivePermissions(companyId, userId);
@@ -143,17 +145,33 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         if (request.targetService() == TargetService.INVENTORY) {
             return inventoryAccessRule(request.uri());
         }
+        if (request.targetService() == TargetService.ACCOUNTING
+                && matchesAny(normalizeApiPath(request.uri().getPath()), "fiscal-catalog")) {
+            return fiscalSettingsAccessRule();
+        }
+        if (request.targetService() == TargetService.DIAN_PROVIDER
+                && normalizeApiPath(request.uri().getPath()).startsWith("dian-configuration/companies/")) {
+            return fiscalSettingsAccessRule();
+        }
         return ACCESS_RULES.get(request.targetService());
     }
 
     private static AccessRule tenantAccessRule(URI uri) {
         String normalized = normalizeApiPath(uri.getPath());
-        if (normalized.matches("companies/[^/]+/(branding|tax-profile)(/.*)?")) {
+        if (normalized.matches("companies/[^/]+/branding(/.*)?")) {
             return new AccessRule(Set.of("COMPANY_SETTINGS_MANAGE"), Set.of("COMPANY_SETTINGS_MANAGE"));
         }
+        if (normalized.matches("companies/[^/]+/tax-profile(/.*)?")) {
+            return new AccessRule(Set.of("FISCAL_SETTINGS_MANAGE", "COMPANY_SETTINGS_MANAGE"),
+                    Set.of("FISCAL_SETTINGS_MANAGE", "COMPANY_SETTINGS_MANAGE"));
+        }
         if (normalized.matches("companies/[^/]+/files(/.*)?")) {
-            return new AccessRule(Set.of("COMPANY_SETTINGS_MANAGE", "PURCHASES_MANAGE", "ACCOUNTING_MANAGE"),
-                    Set.of("COMPANY_SETTINGS_MANAGE", "PURCHASES_MANAGE", "ACCOUNTING_MANAGE"));
+            return new AccessRule(Set.of("COMPANY_SETTINGS_MANAGE", "PURCHASES_MANAGE", "ACCOUNTING_MANAGE",
+                    "FISCAL_SETTINGS_MANAGE"), Set.of("COMPANY_SETTINGS_MANAGE", "PURCHASES_MANAGE",
+                            "ACCOUNTING_MANAGE", "FISCAL_SETTINGS_MANAGE"));
+        }
+        if (normalized.matches("companies/[^/]+")) {
+            return new AccessRule(Set.of("COMPANY_SETTINGS_MANAGE"), Set.of("COMPANY_SETTINGS_MANAGE"));
         }
         return null;
     }
@@ -177,8 +195,7 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
                     Set.of("SALES_CREATE"));
         }
         if (matchesAny(normalized, "fiscal-policy")) {
-            return new AccessRule(Set.of("FISCAL_DOCUMENTS_ISSUE", "COMPANY_SETTINGS_MANAGE"),
-                    Set.of("FISCAL_DOCUMENTS_ISSUE", "COMPANY_SETTINGS_MANAGE"));
+            return fiscalSettingsAccessRule();
         }
         if (normalized.matches("electronic-pos/[^/]+/adjustment-notes(/.*)?")) {
             return fiscalDocumentAccessRule();
@@ -192,8 +209,7 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
                     Set.of("SALES_CREATE", "FISCAL_DOCUMENTS_ISSUE"));
         }
         if (matchesAny(normalized, "issuers", "numbering-resolutions")) {
-            return new AccessRule(Set.of("FISCAL_DOCUMENTS_ISSUE", "COMPANY_SETTINGS_MANAGE"),
-                    Set.of("FISCAL_DOCUMENTS_ISSUE", "COMPANY_SETTINGS_MANAGE"));
+            return fiscalSettingsAccessRule();
         }
         if (matchesAny(normalized, "credit-notes", "debit-notes")) {
             return fiscalDocumentAccessRule();
@@ -203,6 +219,31 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
 
     private static AccessRule fiscalDocumentAccessRule() {
         return new AccessRule(Set.of("FISCAL_DOCUMENTS_ISSUE"), Set.of("FISCAL_DOCUMENTS_ISSUE"));
+    }
+
+    private static AccessRule fiscalSettingsAccessRule() {
+        return new AccessRule(Set.of("FISCAL_SETTINGS_MANAGE"), Set.of("FISCAL_SETTINGS_MANAGE"));
+    }
+
+    private static void ensureRequestCompanyMatches(ProxyRequest request, UUID companyId) {
+        String normalized = normalizeApiPath(request.uri().getPath());
+        String prefix = switch (request.targetService()) {
+            case TENANT -> "companies/";
+            case DIAN_PROVIDER -> "dian-configuration/companies/";
+            default -> null;
+        };
+        if (prefix == null) {
+            return;
+        }
+        if (!normalized.startsWith(prefix)) {
+            return;
+        }
+        String remainder = normalized.substring(prefix.length());
+        String pathValue = remainder.contains("/") ? remainder.substring(0, remainder.indexOf('/')) : remainder;
+        UUID pathCompanyId = parseUuid(pathValue);
+        if (pathCompanyId != null && !pathCompanyId.equals(companyId)) {
+            throw new BffAccessDeniedException("company path does not match X-Company-Id");
+        }
     }
 
     private boolean isRoot(String authorization) {

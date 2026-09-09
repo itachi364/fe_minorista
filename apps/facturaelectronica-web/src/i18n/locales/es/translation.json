@@ -55,8 +55,12 @@
       "description": "Permite crear usuarios y administrar accesos de la empresa."
     },
     "FISCAL_DOCUMENTS_ISSUE": {
-      "label": "Gestionar documentos fiscales avanzados",
-      "description": "Permite administrar emisor, resoluciones, notas, ajustes y reenvios fiscales."
+      "label": "Emitir documentos fiscales",
+      "description": "Permite emitir documentos electronicos, notas, ajustes y reenvios fiscales."
+    },
+    "FISCAL_SETTINGS_MANAGE": {
+      "label": "Administrar configuracion y reglas fiscales",
+      "description": "Permite configurar el perfil tributario, DIAN, emisor, resoluciones y reglas fiscales de la empresa."
     },
     "GLOBAL_LICENSES_MANAGE": {
       "label": "Gestionar licencias globales",

@@ -36,6 +36,7 @@ class RestClientInternalServiceGatewayTest {
     private HttpServer inventoryServer;
     private HttpServer auditServer;
     private HttpServer catalogServer;
+    private HttpServer accountingServer;
 
     @AfterEach
     void tearDown() {
@@ -59,6 +60,9 @@ class RestClientInternalServiceGatewayTest {
         }
         if (catalogServer != null) {
             catalogServer.stop(0);
+        }
+        if (accountingServer != null) {
+            accountingServer.stop(0);
         }
     }
 
@@ -110,6 +114,93 @@ class RestClientInternalServiceGatewayTest {
                 URI.create("/api/v1/issuers"), headers(), "{}".getBytes(StandardCharsets.UTF_8))))
                 .isInstanceOf(BffAccessDeniedException.class);
         assertThat(billingHandler.requestBody).isNull();
+    }
+
+    @Test
+    void allowsFiscalConfigurationWhenUserHasFiscalSettingsPermission() throws IOException {
+        startIdentityServer("[\"FISCAL_SETTINGS_MANAGE\"]");
+        CapturingHandler billingHandler = startBillingServer("/api/v1/fiscal-policy");
+        RestClientInternalServiceGateway gateway = gateway();
+
+        ProxyResponse response = gateway.exchange(new ProxyRequest(TargetService.BILLING, HttpMethod.PUT,
+                URI.create("/api/v1/fiscal-policy"), headers(), "{}".getBytes(StandardCharsets.UTF_8)));
+
+        assertThat(response.status()).isEqualTo(HttpStatus.CREATED);
+        assertThat(billingHandler.requestPath).isEqualTo("/api/v1/fiscal-policy");
+    }
+
+    @Test
+    void fiscalSettingsPermissionDoesNotAuthorizeDianDocumentSubmission() throws IOException {
+        startIdentityServer("[\"FISCAL_SETTINGS_MANAGE\"]");
+        RestClientInternalServiceGateway gateway = gateway();
+
+        assertThatThrownBy(() -> gateway.exchange(new ProxyRequest(TargetService.DIAN_PROVIDER, HttpMethod.POST,
+                URI.create("/api/v1/provider/electronic-invoices"), headers(), "{}".getBytes(StandardCharsets.UTF_8))))
+                .isInstanceOf(BffAccessDeniedException.class);
+    }
+
+    @Test
+    void rejectsDianConfigurationWhenPathDoesNotMatchCompanyHeader() throws IOException {
+        startIdentityServer("[\"FISCAL_SETTINGS_MANAGE\"]");
+        String otherCompanyId = "99999999-9999-9999-9999-999999999999";
+        RestClientInternalServiceGateway gateway = gateway();
+
+        assertThatThrownBy(() -> gateway.exchange(new ProxyRequest(TargetService.DIAN_PROVIDER, HttpMethod.PUT,
+                URI.create("/api/v1/dian-configuration/companies/" + otherCompanyId), headers(),
+                "{}".getBytes(StandardCharsets.UTF_8))))
+                .isInstanceOf(BffAccessDeniedException.class);
+    }
+
+    @Test
+    void fiscalRulesRequireDedicatedFiscalSettingsPermission() throws IOException {
+        startIdentityServer("[\"ACCOUNTING_MANAGE\"]");
+        CapturingHandler accountingHandler = startAccountingServer("/api/v1/fiscal-catalog/rules");
+        RestClientInternalServiceGateway gateway = gateway();
+
+        assertThatThrownBy(() -> gateway.exchange(new ProxyRequest(TargetService.ACCOUNTING, HttpMethod.POST,
+                URI.create("/api/v1/fiscal-catalog/rules"), headers(), "{}".getBytes(StandardCharsets.UTF_8))))
+                .isInstanceOf(BffAccessDeniedException.class);
+        assertThat(accountingHandler.requestBody).isNull();
+    }
+
+    @Test
+    void allowsFiscalRulesWhenUserHasFiscalSettingsPermission() throws IOException {
+        startIdentityServer("[\"FISCAL_SETTINGS_MANAGE\"]");
+        CapturingHandler accountingHandler = startAccountingServer("/api/v1/fiscal-catalog/rules");
+        RestClientInternalServiceGateway gateway = gateway();
+
+        ProxyResponse response = gateway.exchange(new ProxyRequest(TargetService.ACCOUNTING, HttpMethod.POST,
+                URI.create("/api/v1/fiscal-catalog/rules"), headers(), "{}".getBytes(StandardCharsets.UTF_8)));
+
+        assertThat(response.status()).isEqualTo(HttpStatus.CREATED);
+        assertThat(accountingHandler.requestPath).isEqualTo("/api/v1/fiscal-catalog/rules");
+    }
+
+    @Test
+    void allowsCompanyTaxProfileWithFiscalSettingsPermission() throws IOException {
+        startIdentityServer("[\"FISCAL_SETTINGS_MANAGE\"]");
+        String path = "/api/v1/companies/" + COMPANY_ID + "/tax-profile";
+        CapturingHandler tenantHandler = startTenantServer(path);
+        RestClientInternalServiceGateway gateway = gateway();
+
+        ProxyResponse response = gateway.exchange(new ProxyRequest(TargetService.TENANT, HttpMethod.PUT,
+                URI.create(path), headers(), "{}".getBytes(StandardCharsets.UTF_8)));
+
+        assertThat(response.status()).isEqualTo(HttpStatus.CREATED);
+        assertThat(tenantHandler.requestPath).isEqualTo(path);
+    }
+
+    @Test
+    void rejectsTenantMutationWhenPathDoesNotMatchCompanyHeader() throws IOException {
+        startIdentityServer("[\"COMPANY_SETTINGS_MANAGE\"]");
+        String otherCompanyId = "99999999-9999-9999-9999-999999999999";
+        CapturingHandler tenantHandler = startTenantServer("/api/v1/companies/" + otherCompanyId);
+        RestClientInternalServiceGateway gateway = gateway();
+
+        assertThatThrownBy(() -> gateway.exchange(new ProxyRequest(TargetService.TENANT, HttpMethod.PUT,
+                URI.create("/api/v1/companies/" + otherCompanyId), headers(), "{}".getBytes(StandardCharsets.UTF_8))))
+                .isInstanceOf(BffAccessDeniedException.class);
+        assertThat(tenantHandler.requestBody).isNull();
     }
 
     @Test
@@ -207,8 +298,9 @@ class RestClientInternalServiceGatewayTest {
         String inventoryUrl = serverUrl(inventoryServer, "http://inventory");
         String auditUrl = serverUrl(auditServer, "http://audit");
         String catalogUrl = serverUrl(catalogServer, "http://catalog");
+        String accountingUrl = serverUrl(accountingServer, "http://accounting");
         BffProperties properties = new BffProperties(tenantUrl, identityUrl, catalogUrl, "http://thirdparty",
-                inventoryUrl, billingUrl, "http://accounting", payrollUrl, "http://reporting", "http://dian",
+                inventoryUrl, billingUrl, accountingUrl, payrollUrl, "http://reporting", "http://dian",
                 auditUrl);
         return new RestClientInternalServiceGateway(RestClient.builder(), properties, new ObjectMapper());
     }
@@ -301,6 +393,14 @@ class RestClientInternalServiceGatewayTest {
         CapturingHandler handler = new CapturingHandler();
         catalogServer.createContext(path, handler::handle);
         catalogServer.start();
+        return handler;
+    }
+
+    private CapturingHandler startAccountingServer(String path) throws IOException {
+        accountingServer = HttpServer.create(new InetSocketAddress(0), 0);
+        CapturingHandler handler = new CapturingHandler();
+        accountingServer.createContext(path, handler::handle);
+        accountingServer.start();
         return handler;
     }
 

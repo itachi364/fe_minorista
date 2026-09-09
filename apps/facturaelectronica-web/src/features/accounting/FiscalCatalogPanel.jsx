@@ -11,12 +11,12 @@ const baseOptions = [option('TAXABLE_BASE', 'Base gravable'), option('VAT_AMOUNT
 
 export function FiscalCatalogPanel({ parameters, rules, isRoot, activeCompanyId, locations = [], ciiuOptions = [],
   taxRegimeOptions = [], responsibilityOptions = [], fiscalConceptOptions = [], thirdParties = [], onLoad, onSave,
-  onDeactivate, onOpenEvidence = () => {}, busy }) {
+  onDeactivate, onOpenEvidence = () => {}, thirdPartiesLoading = false, thirdPartiesError = '', busy }) {
   const [form, setForm] = useState(emptyForm);
   const change = (name, value) => setForm((current) => ({ ...current, [name]: value }));
   const thirdPartyOptions = thirdParties.filter((item) => item.active !== false).map((item) => ({
     value: item.id,
-    label: [item.businessName || item.fullName || item.tradeName, item.identificationNumber]
+    label: [item.businessName || item.fullName || item.tradeName || item.legalName, item.identificationNumber]
       .filter(Boolean).join(' - '),
   }));
 
@@ -27,7 +27,12 @@ export function FiscalCatalogPanel({ parameters, rules, isRoot, activeCompanyId,
   }
 
   function changeTargetThirdParty(value) {
-    setForm((current) => ({ ...current, targetThirdPartyId: value, evidenceFile: value ? current.evidenceFile : null }));
+    setForm((current) => ({
+      ...current,
+      decision: value ? 'EXEMPT' : current.decision,
+      targetThirdPartyId: value,
+      evidenceFile: value ? current.evidenceFile : null,
+    }));
   }
 
   function changeGlobalRule(value) {
@@ -81,7 +86,7 @@ export function FiscalCatalogPanel({ parameters, rules, isRoot, activeCompanyId,
         <SearchableSelectField label="Codigo CIIU" value={form.ciiuCode} onChange={(value) => change('ciiuCode', value)} options={ciiuOptions} placeholder="Cualquier CIIU" searchPlaceholder="Buscar codigo o actividad" />
         <SelectField label="Regimen requerido" value={form.requiredThirdPartyTaxRegime} onChange={(value) => change('requiredThirdPartyTaxRegime', value)} options={taxRegimeOptions} placeholder="Cualquier regimen" />
         <SelectField label="Responsabilidad requerida" value={form.requiredThirdPartyResponsibility} onChange={(value) => change('requiredThirdPartyResponsibility', value)} options={responsibilityOptions} placeholder="Cualquier responsabilidad" />
-        <SearchableSelectField label="Tercero exento" value={form.targetThirdPartyId} onChange={changeTargetThirdParty} options={thirdPartyOptions} disabled={form.globalRule || form.decision !== 'EXEMPT' || !activeCompanyId} placeholder="Sin tercero especifico" searchPlaceholder="Buscar por nombre o documento" />
+        <SearchableSelectField label="Tercero exento" value={form.targetThirdPartyId} onChange={changeTargetThirdParty} options={thirdPartyOptions} disabled={form.globalRule || !activeCompanyId || thirdPartiesLoading || Boolean(thirdPartiesError)} placeholder={thirdPartiesLoading ? 'Cargando proveedores...' : thirdPartiesError ? 'No fue posible cargar proveedores' : thirdPartyOptions.length === 0 ? 'No hay proveedores activos' : 'Sin tercero especifico'} searchPlaceholder="Buscar por nombre o documento" />
         {form.decision === 'EXEMPT' && form.targetThirdPartyId && !form.globalRule && <label>
           Soporte de exencion (PDF)
           <input accept="application/pdf,.pdf" key={form.evidenceFile?.name || 'fiscal-evidence-empty'} onChange={(event) => change('evidenceFile', event.target.files?.[0] || null)} required type="file" />
@@ -118,7 +123,7 @@ export function FiscalCatalogPanel({ parameters, rules, isRoot, activeCompanyId,
         ? <button className="secondary danger-soft" disabled={busy} onClick={() => onDeactivate(rule)} type="button">Inactivar</button>
         : '' },
     ])} rowKey={(row, index) => `${row[0]}-${row[1]}-${row[5]}-${index}`} pageSize={15} />
-    <button className="secondary" disabled={busy} onClick={onLoad} type="button">Actualizar catalogo</button>
+    <button className="secondary" disabled={busy} onClick={onLoad} type="button">Actualizar reglas</button>
   </>;
 }
 

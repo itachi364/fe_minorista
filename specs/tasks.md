@@ -5915,7 +5915,7 @@ Nota de orden: esta fase agrupa bugs detectados durante QA en distintos momentos
   - Estado: DONE
   - Requisitos: RF-201, RF-202.
   - Acceptance criteria:
-    - AC-277: La SPA muestra `Configuracion contable` dentro de `Contabilidad`.
+    - AC-277: La SPA muestra `Configuracion contable` como modulo independiente; su ubicacion vigente bajo `Configuracion` se valida en AC-458.
     - AC-278: El modulo permite inicializar contabilidad basica por empresa mediante `POST /api/v1/accounting-setup/basic`.
     - AC-279: El modulo lista plan de cuentas y reglas contables existentes por empresa.
     - AC-280: El acceso depende de licencia `ACCOUNTING` y permisos `ACCOUNTING_VIEW` o `ACCOUNTING_MANAGE`.
@@ -7405,3 +7405,12 @@ Context7 evidence:
   - Topic consulted: JAX-WS SOAP client from WSDL and WS-Security X.509 certificate configuration.
   - Relevant finding: CXF permite crear clientes JAX-WS desde WSDL y configurar WS-Security mediante propiedades de firma, callback handler y soporte WSS4J para tokens X.509.
   - Decision impact: TASK-273 define el transporte DIAN real como adaptador SOAP WCF y TASK-275 exige certificado `.p12/.pfx` gestionado como secreto de empresa.
+
+- [x] TASK-301: Delegar configuracion fiscal y compactar selectores con busqueda
+  - Estado: DONE.
+  - Requisitos: RF-321 a RF-326.
+  - Acceptance criteria: AC-452 a AC-458.
+  - Entregables: `FISCAL_SETTINGS_MANAGE`, backfill OWNER, autorizacion BFF por empresa, combobox integrado, proveedor exento funcional y navegacion reorganizada.
+  - Servicios: `identity-service`, `tenant-service` mediante contrato existente, BFF y SPA.
+  - Pruebas: permisos y delegacion OWNER, rutas BFF, carga/seleccion de tercero, teclado del combobox, navegacion, suites Maven, Vitest y build Vite.
+  - Validacion: 220 pruebas Maven en los modulos involucrados, 52 pruebas Vitest y build Vite aprobados el 2026-09-08; la inspeccion visual automatizada quedo pendiente por indisponibilidad del navegador integrado del entorno.

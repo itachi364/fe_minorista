@@ -488,6 +488,7 @@ Reglas de persistencia:
 - `company_role_permission.permission_code` solo puede contener permisos `COMPANY`; la restriccion actual que evita `GLOBAL_%` se mantiene.
 - `company_user_role_assignment` debe asignar el rol `OWNER` materializado al administrador inicial de forma idempotente.
 - La membresia legacy `identity.company_membership.roles=["OWNER"]` se conserva temporalmente por compatibilidad hasta que se retire la ruta legacy completa.
+- `FISCAL_SETTINGS_MANAGE` se registra en `identity.permission_catalog` con alcance `COMPANY`; la migracion inserta su relacion en `company_role_permission` para todos los roles empresariales `OWNER` existentes, sin modificar roles personalizados ni agregar permisos globales.
 
 ## Configuracion Fiscal Activa
 

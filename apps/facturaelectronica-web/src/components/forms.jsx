@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { asPretty } from '../utils/payloadBuilders.js';
 
 export function FormPanel({ title, submitLabel, onSubmit, busy, children }) {
@@ -57,18 +57,81 @@ export function SelectField({ label, value, onChange, options, disabled = false,
 
 export function SearchableSelectField({ label, value, onChange, options, disabled = false,
   placeholder = 'Selecciona una opcion', searchPlaceholder = 'Buscar' }) {
+  const labelId = useId();
+  const listboxId = useId();
+  const containerRef = useRef(null);
+  const searchRef = useRef(null);
+  const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const selected = options.find((item) => String(item.value) === String(value));
-  const filtered = options.filter((item) => matchesOption(item, search));
-  const visibleOptions = selected && !filtered.some((item) => String(item.value) === String(selected.value))
-    ? [selected, ...filtered]
-    : filtered;
-  return <div className="searchable-select-field">
-    <label>
-      {`${label}: buscar`}
-      <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={searchPlaceholder} type="search" disabled={disabled} />
-    </label>
-    <SelectField label={label} value={value} onChange={onChange} options={visibleOptions} disabled={disabled} placeholder={placeholder} />
+  const [activeIndex, setActiveIndex] = useState(0);
+  const normalizedOptions = options.map((item) => (typeof item === 'object' ? item : { value: item, label: item }));
+  const selected = normalizedOptions.find((item) => String(item.value) === String(value));
+  const filtered = normalizedOptions.filter((item) => matchesOption(item, search));
+  const visibleOptions = [{ value: '', label: placeholder }, ...filtered];
+
+  useEffect(() => {
+    function closeOnOutsideClick(event) {
+      if (!containerRef.current?.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', closeOnOutsideClick);
+    return () => document.removeEventListener('mousedown', closeOnOutsideClick);
+  }, []);
+
+  function openList() {
+    if (disabled) return;
+    setSearch('');
+    setActiveIndex(0);
+    setOpen(true);
+  }
+
+  function selectOption(nextValue) {
+    onChange(nextValue);
+    setOpen(false);
+    setSearch('');
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === 'Escape') {
+      setOpen(false);
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      setActiveIndex((current) => Math.max(0, Math.min(visibleOptions.length - 1, current + direction)));
+      return;
+    }
+    if (event.key === 'Enter' && visibleOptions[activeIndex]) {
+      event.preventDefault();
+      selectOption(visibleOptions[activeIndex].value);
+    }
+  }
+
+  return <div className="combobox-field" ref={containerRef}>
+    <span className="combobox-label" id={labelId}>{label}</span>
+    <button aria-expanded={open} aria-haspopup="listbox" aria-labelledby={labelId} className="combobox-trigger" disabled={disabled} onClick={() => open ? setOpen(false) : openList()} onKeyDown={(event) => {
+      if (!open && ['ArrowDown', 'ArrowUp'].includes(event.key)) {
+        event.preventDefault();
+        openList();
+      }
+    }} type="button">
+      <span className={selected ? '' : 'combobox-placeholder'}>{selected?.label || placeholder}</span>
+      <span aria-hidden="true" className="combobox-chevron" />
+    </button>
+    {open && <div className="combobox-popover">
+      <input aria-controls={listboxId} aria-label={`Buscar ${label}`} autoFocus onChange={(event) => {
+        setSearch(event.target.value);
+        setActiveIndex(0);
+      }} onKeyDown={handleKeyDown} placeholder={searchPlaceholder} ref={searchRef} role="combobox" type="search" value={search} />
+      <div className="combobox-options" id={listboxId} role="listbox">
+        {visibleOptions.map((item, index) => <button aria-selected={String(item.value) === String(value)} className={index === activeIndex ? 'combobox-option active' : 'combobox-option'} key={item.value || '__empty'} onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setActiveIndex(index)} onClick={() => selectOption(item.value)} role="option" type="button">
+          {item.label}
+        </button>)}
+        {filtered.length === 0 && search && <span className="combobox-empty">Sin resultados</span>}
+      </div>
+    </div>}
   </div>;
 }
 
@@ -132,7 +195,7 @@ export function DualListField({ label, value, onChange, options, exclusiveValues
     <div className="dual-list-grid">
       <label>
         Disponibles
-        {searchable && <input aria-label={`${label}: buscar disponibles`} value={availableSearch} onChange={(event) => setAvailableSearch(event.target.value)} placeholder="Buscar por codigo o actividad" type="search" />}
+        {searchable && <input aria-label={`${label}: buscar disponibles`} value={availableSearch} onChange={(event) => setAvailableSearch(event.target.value)} placeholder="Buscar por codigo o actividad" type="search" disabled={disabled} />}
         <select multiple size={6} value={availableSelection} onChange={(event) => setAvailableSelection(valuesFromSelect(event))} disabled={disabled}>
           {availableOptions.map((option) => (
             <option key={option.value} value={option.value}>{option.label}</option>
@@ -145,7 +208,7 @@ export function DualListField({ label, value, onChange, options, exclusiveValues
       </div>
       <label>
         Seleccionadas
-        {searchable && <input aria-label={`${label}: buscar seleccionadas`} value={selectedSearch} onChange={(event) => setSelectedSearch(event.target.value)} placeholder="Buscar seleccionadas" type="search" />}
+        {searchable && <input aria-label={`${label}: buscar seleccionadas`} value={selectedSearch} onChange={(event) => setSelectedSearch(event.target.value)} placeholder="Buscar seleccionadas" type="search" disabled={disabled} />}
         <select multiple size={6} value={selectedSelection} onChange={(event) => setSelectedSelection(valuesFromSelect(event))} disabled={disabled}>
           {selectedOptions.map((option) => (
             <option key={option.value} value={option.value}>{option.label}</option>
