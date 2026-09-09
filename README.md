@@ -87,11 +87,13 @@ La integracion DIAN real se configura por empresa mediante referencias seguras a
 
 La licencia combina modulos de navegacion con funcionalidades verificables por backend:
 
-- `POS`: operacion comercial basica, clientes, productos, inventario, ventas POS, facturacion electronica, configuracion y documentos fiscales basicos, reportes basicos, catalogos, logs, usuarios y PIN operacional. No incluye proveedores, contabilidad avanzada, compras, gastos, deudores, nomina, reglas fiscales avanzadas ni reportes asincronos.
+- `POS`: operacion comercial basica, clientes, productos, inventario, ventas POS, facturacion electronica, configuracion y documentos fiscales basicos, reportes basicos, catalogos, logs, usuarios y PIN operacional. La plataforma completa automaticamente la plantilla contable minima al cerrar la primera venta si hace falta, sin exponer contabilidad avanzada. No incluye proveedores, compras, gastos, deudores, nomina, reglas fiscales avanzadas ni reportes asincronos.
 - `FULL`: todos los modulos y funcionalidades operativas estandar de la plataforma.
 - `CUSTOM`: seleccion granular de modulos, funcionalidades y servicios comerciales como reglas, reportes, flujos e integraciones personalizadas.
 
 El contrato de licencia expone `enabledModules` y `enabledFeatures`. La migracion `tenant/V008__add_license_features.sql` convierte planes anteriores a `POS`, `FULL` o `CUSTOM` y deriva funcionalidades para conservar el acceso contratado existente.
+
+En el panel ROOT de licencias, seleccionar una empresa carga automaticamente su licencia y consumo comercial. Si no existe licencia, el formulario se limpia y queda listo para crearla sin reutilizar datos de otra empresa.
 
 ## Ejecucion Con Docker Compose
 

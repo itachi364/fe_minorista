@@ -7423,3 +7423,21 @@ Context7 evidence:
   - Servicios: `tenant-service`, consumidores de licencia, BFF y SPA.
   - Pruebas: dominio, persistencia, REST, autorizacion server-side, presets y renderizado frontend, Maven, Vitest y build Vite.
   - Validacion: migracion Flyway V008 aplicada en PostgreSQL; 208 pruebas Maven aprobadas en `platform-eventing`, `tenant-service`, `identity-service`, `billing-service` y BFF; 53 pruebas Vitest y build Vite aprobados el 2026-09-09. La inspeccion visual automatizada no pudo ejecutarse porque el navegador integrado rechazo la conexion del entorno.
+
+- [x] TASK-303: Automatizar configuracion contable basica para ventas POS
+  - Estado: DONE.
+  - Requisitos: RF-337 a RF-339.
+  - Acceptance criteria: AC-469 a AC-472.
+  - Entregables: `planCode` en validacion de licencia, deteccion POS en billing, inicializacion contable idempotente y revalidacion previa a efectos de venta.
+  - Servicios: `tenant-service`, `billing-service` y contrato existente de `accounting-service`.
+  - Pruebas: contrato REST tenant, politica de licencia billing, caso de uso de venta y adaptador HTTP contable.
+  - Validacion: 223 pruebas Maven aprobadas en `platform-eventing`, `tenant-service`, `billing-service` y `accounting-service`; 14 pruebas focalizadas de contrato/licencia tenant aprobadas despues del ajuste final el 2026-09-09.
+
+- [x] TASK-304: Cargar automaticamente la licencia al seleccionar empresa
+  - Estado: DONE.
+  - Requisitos: RF-340 a RF-342.
+  - Acceptance criteria: AC-473 a AC-476.
+  - Entregables: reinicio seguro del formulario, consulta automatica de licencia y uso, hidratacion completa y descarte de respuestas obsoletas.
+  - Componentes: SPA ROOT y contratos HTTP existentes, sin cambios de backend ni base de datos.
+  - Pruebas: Vitest para empresa con licencia, empresa sin licencia, payload posterior y presets comerciales.
+  - Validacion: 55 pruebas Vitest y build Vite de produccion aprobados el 2026-09-09.

@@ -6,7 +6,7 @@ import com.msvanegasg.facturaelectronica.billing.domain.model.Sale;
 
 public interface AccountingEntryPort {
 
-    default void ensureSalePostingConfigured(UUID companyId) {
+    default void ensureSalePostingConfigured(UUID companyId, boolean initializeIfMissing) {
         // Default no-op for isolated tests and local adapters that do not require an external accounting check.
     }
 

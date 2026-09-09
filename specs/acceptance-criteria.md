@@ -526,3 +526,17 @@
 - AC-466: Dada una licencia preexistente al aplicar la migracion, cuando se consulta, entonces conserva acceso equivalente mediante un `planCode`, `enabledModules` y `enabledFeatures` normalizados.
 - AC-467: Dado un usuario empresarial con permisos RBAC pero sin capacidad licenciada, cuando intenta operar, entonces prevalece el bloqueo de licencia; ROOT conserva sus funciones administrativas globales.
 - AC-468: Dada la respuesta de licencia, cuando la SPA construye navegacion y controles, entonces deriva visibilidad desde `enabledFeatures` sin duplicar estado local mutable.
+
+## Contabilidad basica automatica para POS
+
+- AC-469: Dada una empresa con licencia `POS` y sin regla activa `SALE_CONFIRMED`, cuando confirma su primera venta, entonces la plataforma inicializa la plantilla contable basica, vuelve a validar la regla y permite continuar sin intervencion manual.
+- AC-470: Dada una empresa POS cuya configuracion contable basica ya existe, cuando confirma una venta, entonces no se vuelve a inicializar ni se reemplazan sus reglas activas.
+- AC-471: Dada una licencia `FULL` o `CUSTOM` sin configuracion contable, cuando intenta confirmar una venta, entonces conserva el error funcional de configuracion requerida y no recibe una plantilla automatica.
+- AC-472: Dado un fallo del servicio contable o una inicializacion que no produce `SALE_CONFIRMED`, cuando se confirma una venta POS, entonces no se asigna numeracion, no se invoca DIAN, no se descuenta inventario, no se registra asiento y la venta permanece sin confirmar.
+
+## Carga automatica de licencia ROOT
+
+- AC-473: Dado ROOT en `Licencias`, cuando selecciona una empresa con licencia configurada, entonces el formulario completa automaticamente plan, vigencia, limites, modulos y funcionalidades.
+- AC-474: Dada una licencia cargada automaticamente, cuando termina la consulta, entonces el resumen muestra su estado y el consumo comercial corresponde a la misma empresa.
+- AC-475: Dado que ROOT cambia a una empresa sin licencia, cuando el backend responde `404`, entonces se limpian licencia, uso y selecciones anteriores, se conservan valores iniciales para crearla y no se muestra un error tecnico.
+- AC-476: Dadas dos selecciones consecutivas, cuando la respuesta de la primera llega despues, entonces no puede sobrescribir el formulario ni el uso de la empresa seleccionada actualmente.

@@ -68,10 +68,30 @@ class AccountingEntryHttpAdapterTest {
                 new BillingProperties("http://inventory", "http://provider", baseUrl, "http://audit",
                         "http://tenant", "http://identity", "ACCEPTED"));
 
-        adapter.ensureSalePostingConfigured(UUID.fromString("11111111-1111-1111-1111-111111111111"));
+        adapter.ensureSalePostingConfigured(UUID.fromString("11111111-1111-1111-1111-111111111111"), false);
 
         assertThat(handler.companyId).isEqualTo("11111111-1111-1111-1111-111111111111");
         assertThat(handler.query).contains("eventType=SALE_CONFIRMED").contains("active=true");
+    }
+
+    @Test
+    void initializesAndRevalidatesBasicAccountingForPosWhenRuleIsMissing() throws IOException {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        CapturingHandler handler = new CapturingHandler();
+        handler.rulesBody = "[]";
+        server.createContext("/api/v1/accounting-rules", handler::handleRules);
+        server.createContext("/api/v1/accounting-setup/basic", handler::handleSetup);
+        server.start();
+        String baseUrl = "http://localhost:" + server.getAddress().getPort();
+        AccountingEntryHttpAdapter adapter = new AccountingEntryHttpAdapter(
+                new BillingProperties("http://inventory", "http://provider", baseUrl, "http://audit",
+                        "http://tenant", "http://identity", "ACCEPTED"));
+
+        adapter.ensureSalePostingConfigured(UUID.fromString("11111111-1111-1111-1111-111111111111"), true);
+
+        assertThat(handler.setupCalls).isEqualTo(1);
+        assertThat(handler.ruleQueries).isEqualTo(2);
+        assertThat(handler.companyId).isEqualTo("11111111-1111-1111-1111-111111111111");
     }
 
     @Test
@@ -87,9 +107,32 @@ class AccountingEntryHttpAdapterTest {
                         "http://tenant", "http://identity", "ACCEPTED"));
 
         assertThatThrownBy(() -> adapter.ensureSalePostingConfigured(
-                UUID.fromString("11111111-1111-1111-1111-111111111111")))
+                UUID.fromString("11111111-1111-1111-1111-111111111111"), false))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("configuracion contable basica");
+    }
+
+    @Test
+    void rejectsPosSaleWhenInitializationDoesNotCreateSaleRule() throws IOException {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        CapturingHandler handler = new CapturingHandler();
+        handler.rulesBody = "[]";
+        handler.completeSetup = false;
+        server.createContext("/api/v1/accounting-rules", handler::handleRules);
+        server.createContext("/api/v1/accounting-setup/basic", handler::handleSetup);
+        server.start();
+        String baseUrl = "http://localhost:" + server.getAddress().getPort();
+        AccountingEntryHttpAdapter adapter = new AccountingEntryHttpAdapter(
+                new BillingProperties("http://inventory", "http://provider", baseUrl, "http://audit",
+                        "http://tenant", "http://identity", "ACCEPTED"));
+
+        assertThatThrownBy(() -> adapter.ensureSalePostingConfigured(
+                UUID.fromString("11111111-1111-1111-1111-111111111111"), true))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("configuracion contable basica");
+
+        assertThat(handler.setupCalls).isEqualTo(1);
+        assertThat(handler.ruleQueries).isEqualTo(2);
     }
 
     private static Sale confirmedSale() {
@@ -116,6 +159,9 @@ class AccountingEntryHttpAdapterTest {
         private String requestBody;
         private String query;
         private String rulesBody = "[{\"id\":\"99999999-9999-9999-9999-999999999999\",\"eventType\":\"SALE_CONFIRMED\",\"active\":true}]";
+        private int ruleQueries;
+        private int setupCalls;
+        private boolean completeSetup = true;
 
         private void handle(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
             companyId = exchange.getRequestHeaders().getFirst("X-Company-Id");
@@ -127,12 +173,23 @@ class AccountingEntryHttpAdapterTest {
         }
 
         private void handleRules(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
+            ruleQueries++;
             companyId = exchange.getRequestHeaders().getFirst("X-Company-Id");
             query = exchange.getRequestURI().getRawQuery();
             byte[] response = rulesBody.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, response.length);
             exchange.getResponseBody().write(response);
+            exchange.close();
+        }
+
+        private void handleSetup(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
+            setupCalls++;
+            companyId = exchange.getRequestHeaders().getFirst("X-Company-Id");
+            if (completeSetup) {
+                rulesBody = "[{\"id\":\"99999999-9999-9999-9999-999999999999\",\"eventType\":\"SALE_CONFIRMED\",\"active\":true}]";
+            }
+            exchange.sendResponseHeaders(201, -1);
             exchange.close();
         }
     }

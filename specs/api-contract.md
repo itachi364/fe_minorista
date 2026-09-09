@@ -2055,6 +2055,7 @@ Estado TASK-058 licencia consumidores:
   "feature": "ELECTRONIC_BILLING",
   "allowed": false,
   "status": "SUSPENDED",
+  "planCode": "POS",
   "reasonCode": "LICENSE_SUSPENDED",
   "message": "La licencia de la empresa esta suspendida."
 }
@@ -2538,6 +2539,7 @@ La UI debe mostrar departamento y municipio por nombre usando codigos DANE/DIVIP
   "module": "BILLING",
   "allowed": true,
   "status": "ACTIVE",
+  "planCode": "POS",
   "maxUsers": 10,
   "maxMonthlyDocuments": 1000,
   "reasonCode": "LICENSE_ACTIVE",
@@ -2549,6 +2551,7 @@ Reglas:
 
 - `module` es opcional para compatibilidad; si se envia, debe estar dentro de `enabledModules`.
 - TASK-302 agrega `enabledFeatures` a requests/responses y el query opcional `feature` a `/license/validation`. Si se envia, debe estar licenciado ademas del modulo. Los presets `POS` y `FULL` se normalizan en backend; solo `CUSTOM` acepta seleccion explicita.
+- TASK-303 agrega `planCode` a la validacion como campo aditivo. `billing-service` lo usa para permitir que solamente `POS` inicialice automaticamente la plantilla contable basica antes de la primera venta.
 - Si la empresa no tiene licencia, el backend responde `404 RESOURCE_NOT_FOUND` con mensaje funcional y la SPA lo traduce a `Licencia no configurada`.
 - ROOT puede crear o actualizar licencias. Usuarios empresariales no administran la licencia comercial de su empresa en esta fase.
 - La licencia define modulos contratados; RBAC define permisos por usuario dentro de esos modulos.

@@ -618,3 +618,9 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-334: La autorizacion de licencia debe validarse en backend por capacidad para impedir acceso directo por URL o API; ocultar controles en la SPA no constituye autorizacion.
 - RF-335: Las licencias existentes deben migrarse sin perdida: `POS` al preset POS vigente, `FULL` al conjunto estandar completo y otros planes al modo `CUSTOM` derivando capacidades compatibles desde sus modulos existentes.
 - RF-336: `Licencias` debe continuar siendo una funcion administrativa exclusiva de ROOT y no una capacidad empresarial concedida por el plan `FULL`.
+- RF-337: Al confirmar una venta bajo una licencia `POS`, el sistema debe garantizar automaticamente la configuracion contable basica necesaria sin exigir acceso del negocio a pantallas contables avanzadas.
+- RF-338: Si una empresa POS no tiene una regla activa `SALE_CONFIRMED`, `billing-service` debe solicitar la inicializacion idempotente de la plantilla basica y volver a validar la regla antes de numerar, afectar inventario, confirmar o contabilizar la venta.
+- RF-339: La inicializacion contable automatica no debe aplicarse a licencias `FULL` o `CUSTOM`; cualquier fallo de validacion o inicializacion debe mantener la venta en borrador y sin efectos parciales.
+- RF-340: En el modulo ROOT de licencias, seleccionar una empresa debe consultar automaticamente su licencia configurada y completar todos los campos editables sin exigir la accion manual `Cargar licencia`.
+- RF-341: Si la empresa seleccionada no tiene licencia, el formulario debe quedar limpio, conservar solamente la empresa seleccionada y permitir crear una nueva licencia sin mostrar datos de otra empresa.
+- RF-342: La carga automatica debe consultar tambien el uso comercial y descartar respuestas tardias pertenecientes a una seleccion anterior.

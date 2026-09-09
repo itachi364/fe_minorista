@@ -9,6 +9,10 @@ public interface LicenseValidationPort {
 
     void ensureAllowed(UUID companyId, LicenseAction action);
 
+    default boolean allowsAutomaticAccountingSetup(UUID companyId) {
+        return false;
+    }
+
     default LicensePolicy policy(UUID companyId, LicenseAction action) {
         ensureAllowed(companyId, action);
         return LicensePolicy.unlimited();

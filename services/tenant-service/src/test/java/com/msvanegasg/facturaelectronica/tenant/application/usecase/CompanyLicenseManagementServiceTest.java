@@ -76,13 +76,14 @@ class CompanyLicenseManagementServiceTest {
 
     @Test
     void allowsBusinessActionWhenLicenseIsActiveAndCurrent() {
-        service.save(COMPANY_ID, command("SMALL_BUSINESS", LocalDate.parse("2027-05-19")));
+        service.save(COMPANY_ID, command("POS", LocalDate.parse("2027-05-19")));
 
         CompanyLicenseValidationResult result = service.validate(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT,
                 LicenseModule.BILLING, LicenseFeature.POS_SALES);
 
         assertThat(result.allowed()).isTrue();
         assertThat(result.status()).isEqualTo(CompanyLicenseStatus.ACTIVE);
+        assertThat(result.planCode()).isEqualTo("POS");
         assertThat(result.reasonCode()).isEqualTo("LICENSE_ACTIVE");
     }
 

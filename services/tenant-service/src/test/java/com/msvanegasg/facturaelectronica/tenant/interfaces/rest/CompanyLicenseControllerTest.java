@@ -84,7 +84,7 @@ class CompanyLicenseControllerTest {
                 eq(LicenseModule.BILLING), eq(LicenseFeature.ELECTRONIC_BILLING)))
                 .thenReturn(new CompanyLicenseValidationResult(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT,
                         LicenseModule.BILLING, LicenseFeature.ELECTRONIC_BILLING, false,
-                        CompanyLicenseStatus.SUSPENDED, 5, 1000, "LICENSE_SUSPENDED",
+                        CompanyLicenseStatus.SUSPENDED, "POS", 5, 1000, "LICENSE_SUSPENDED",
                         "La licencia de la empresa esta suspendida."));
 
         mockMvc.perform(get("/api/v1/companies/{companyId}/license/validation", COMPANY_ID)
@@ -94,6 +94,7 @@ class CompanyLicenseControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.module").value("BILLING"))
                 .andExpect(jsonPath("$.allowed").value(false))
+                .andExpect(jsonPath("$.planCode").value("POS"))
                 .andExpect(jsonPath("$.maxUsers").value(5))
                 .andExpect(jsonPath("$.maxMonthlyDocuments").value(1000))
                 .andExpect(jsonPath("$.reasonCode").value("LICENSE_SUSPENDED"));

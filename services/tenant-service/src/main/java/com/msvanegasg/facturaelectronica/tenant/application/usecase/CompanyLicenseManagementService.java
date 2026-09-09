@@ -89,6 +89,7 @@ public class CompanyLicenseManagementService implements ManageCompanyLicenseUseC
                 feature,
                 allowed,
                 effectiveStatus,
+                license.planCode(),
                 license.maxUsers(),
                 license.maxMonthlyDocuments(),
                 reasonCode(effectiveStatus, module, feature, allowed),

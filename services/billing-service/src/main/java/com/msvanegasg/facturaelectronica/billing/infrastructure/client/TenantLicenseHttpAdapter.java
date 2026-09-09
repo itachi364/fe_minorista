@@ -27,6 +27,11 @@ public class TenantLicenseHttpAdapter implements LicenseValidationPort {
     }
 
     @Override
+    public boolean allowsAutomaticAccountingSetup(UUID companyId) {
+        return policy(companyId, LicenseAction.CREATE_TRANSACTION).isPos();
+    }
+
+    @Override
     public LicensePolicy policy(UUID companyId, LicenseAction action) {
         try {
             LicenseValidationResponse response = restClient.get()
@@ -43,7 +48,7 @@ public class TenantLicenseHttpAdapter implements LicenseValidationPort {
             if (!response.allowed()) {
                 throw new LicenseBlockedException(response.message());
             }
-            return new LicensePolicy(response.maxUsers(), response.maxMonthlyDocuments());
+            return new LicensePolicy(response.planCode(), response.maxUsers(), response.maxMonthlyDocuments());
         } catch (RestClientException exception) {
             throw new LicenseBlockedException("No fue posible validar la licencia de la empresa.");
         }
@@ -54,7 +59,7 @@ public class TenantLicenseHttpAdapter implements LicenseValidationPort {
     }
 
     record LicenseValidationResponse(UUID companyId, LicenseAction action, String module, String feature,
-            boolean allowed, String status, Integer maxUsers, Integer maxMonthlyDocuments, String reasonCode,
-            String message) {
+            boolean allowed, String status, String planCode, Integer maxUsers, Integer maxMonthlyDocuments,
+            String reasonCode, String message) {
     }
 }

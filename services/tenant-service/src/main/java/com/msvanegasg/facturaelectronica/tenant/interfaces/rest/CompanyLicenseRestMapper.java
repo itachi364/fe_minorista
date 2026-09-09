@@ -47,6 +47,7 @@ public final class CompanyLicenseRestMapper {
                 result.feature(),
                 result.allowed(),
                 result.status(),
+                result.planCode(),
                 result.maxUsers(),
                 result.maxMonthlyDocuments(),
                 result.reasonCode(),

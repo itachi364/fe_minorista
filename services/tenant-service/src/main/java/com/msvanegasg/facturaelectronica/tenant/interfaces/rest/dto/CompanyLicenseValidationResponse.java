@@ -14,6 +14,7 @@ public record CompanyLicenseValidationResponse(
         LicenseFeature feature,
         boolean allowed,
         CompanyLicenseStatus status,
+        String planCode,
         Integer maxUsers,
         Integer maxMonthlyDocuments,
         String reasonCode,

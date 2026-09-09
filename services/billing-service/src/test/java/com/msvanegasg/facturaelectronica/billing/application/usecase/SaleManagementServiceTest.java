@@ -333,6 +333,7 @@ class SaleManagementServiceTest {
     void confirmsNonFiscalSaleWithoutDianResolutionOrProvider() {
         SaleManagementService service = service();
         when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
+        when(licenseValidationPort.allowsAutomaticAccountingSetup(COMPANY_ID)).thenReturn(true);
         when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
         when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.empty());
         when(idGenerator.newId()).thenReturn(SALE_EVENT_ID, AUDIT_EVENT_ID);
@@ -348,6 +349,7 @@ class SaleManagementServiceTest {
         verify(licenseValidationPort, never()).policy(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT);
         verify(assignFiscalNumberUseCase, never()).assign(any());
         verify(providerPort, never()).submit(any(), any(), any(), any());
+        verify(accountingEntryPort).ensureSalePostingConfigured(COMPANY_ID, true);
         verify(inventoryMovementPort).applySaleOut(any(), org.mockito.ArgumentMatchers.eq("sale-1"));
         verify(accountingEntryPort).postSale(any(), org.mockito.ArgumentMatchers.eq("sale-1"));
     }
@@ -466,7 +468,7 @@ class SaleManagementServiceTest {
         when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.of(electronicInvoicePolicy()));
         when(clock.now()).thenReturn(NOW);
         doThrow(new IllegalStateException("Debes inicializar la configuracion contable basica antes de cerrar ventas."))
-                .when(accountingEntryPort).ensureSalePostingConfigured(COMPANY_ID);
+                .when(accountingEntryPort).ensureSalePostingConfigured(COMPANY_ID, false);
 
         assertThatThrownBy(() -> service.confirm(COMPANY_ID, SALE_ID, "confirm-without-accounting"))
                 .isInstanceOf(IllegalStateException.class)

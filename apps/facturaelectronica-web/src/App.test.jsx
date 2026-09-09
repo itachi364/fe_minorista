@@ -768,7 +768,13 @@ test('root assigns configurable company license', async () => {
       globalRoles: ['ROOT'],
     }))
     .mockResolvedValueOnce(jsonResponse([createdCompany]))
-    .mockResolvedValueOnce(jsonResponse(savedLicense));
+    .mockResolvedValueOnce(errorResponse(404, {
+      status: 404,
+      code: 'RESOURCE_NOT_FOUND',
+      message: `No existe licencia configurada para la empresa ${COMPANY_ID}.`,
+    }))
+    .mockResolvedValueOnce(jsonResponse(savedLicense))
+    .mockResolvedValueOnce(jsonResponse({ companyId: COMPANY_ID, activeUsers: 1, monthlyDocuments: 0 }));
   vi.stubGlobal('fetch', fetchMock);
 
   render(<App />);
@@ -777,20 +783,124 @@ test('root assigns configurable company license', async () => {
 
   fireEvent.click(screen.getByRole('button', { name: 'Licencias' }));
   fireEvent.change(screen.getByLabelText('Empresa contratante'), { target: { value: COMPANY_ID } });
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
   fireEvent.click(screen.getByLabelText('Empresa y configuracion'));
   fireEvent.click(screen.getByLabelText('Ventas y facturacion electronica'));
   fireEvent.click(screen.getByLabelText('Usuarios, roles y permisos'));
   fireEvent.click(screen.getByRole('button', { name: 'Guardar licencia' }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-  expect(fetchMock).toHaveBeenNthCalledWith(3, `/api/v1/companies/${COMPANY_ID}/license`, expect.objectContaining({
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
+  expect(fetchMock).toHaveBeenNthCalledWith(4, `/api/v1/companies/${COMPANY_ID}/license`, expect.objectContaining({
     method: 'POST',
     headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
   }));
-  expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toMatchObject({
+  expect(JSON.parse(fetchMock.mock.calls[3][1].body)).toMatchObject({
     planCode: 'CUSTOM',
     enabledModules: ['COMPANY', 'BILLING', 'USERS'],
   });
+});
+
+test('root selection automatically hydrates the active company license and usage', async () => {
+  const company = { ...ACTIVE_COMPANY };
+  const activeLicense = {
+    ...ACTIVE_LICENSE,
+    planCode: 'POS',
+    validFrom: '2026-09-01',
+    validTo: '2027-09-01',
+    maxUsers: 5,
+    maxMonthlyDocuments: 500,
+    enabledModules: ['COMPANY', 'THIRDPARTY', 'INVENTORY', 'BILLING', 'REPORTS', 'CATALOGS', 'AUDIT', 'USERS'],
+    enabledFeatures: ['COMPANY_BASIC', 'CUSTOMERS', 'PRODUCTS_SERVICES', 'INVENTORY_BASIC', 'POS_SALES'],
+  };
+  const usage = { companyId: COMPANY_ID, activeUsers: 2, maxUsers: 5, monthlyDocuments: 37, maxMonthlyDocuments: 500 };
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(jsonResponse({
+      ...LOGIN_RESPONSE,
+      email: 'root@example.com',
+      fullName: 'Root Platform User',
+      globalRoles: ['ROOT'],
+    }))
+    .mockResolvedValueOnce(jsonResponse([company]))
+    .mockResolvedValueOnce(jsonResponse(activeLicense))
+    .mockResolvedValueOnce(jsonResponse(usage));
+  vi.stubGlobal('fetch', fetchMock);
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByText('Panel global')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Licencias' }));
+  fireEvent.change(screen.getByLabelText('Empresa contratante'), { target: { value: COMPANY_ID } });
+
+  await waitFor(() => expect(screen.getByLabelText('Tipo de licencia')).toHaveValue('POS'));
+  expect(screen.getByLabelText('Fecha inicio')).toHaveValue('2026-09-01');
+  expect(screen.getByLabelText('Fecha vencimiento')).toHaveValue('2027-09-01');
+  expect(screen.getByLabelText('Maximo usuarios')).toHaveValue(5);
+  expect(screen.getByLabelText('Maximo documentos mensuales')).toHaveValue(500);
+  expect(screen.getByLabelText('Empresa y configuracion')).toBeChecked();
+  expect(screen.getByLabelText('Ventas POS')).toBeChecked();
+  expect(screen.getByRole('button', { name: 'Licencia cargada' })).toBeDisabled();
+  expect(screen.getByText('2 / 5')).toBeInTheDocument();
+  expect(screen.getByText('37 / 500')).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenNthCalledWith(3, `/api/v1/companies/${COMPANY_ID}/license`, expect.objectContaining({
+    headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
+  }));
+  expect(fetchMock).toHaveBeenNthCalledWith(4, `/api/v1/platform/licenses/usage?companyId=${COMPANY_ID}`, expect.objectContaining({
+    headers: expect.objectContaining({ Authorization: 'Bearer token-1' }),
+  }));
+});
+
+test('root selection clears the previous license when the next company has no license', async () => {
+  const companyWithoutLicenseId = '33333333-3333-3333-3333-333333333333';
+  const companies = [
+    { ...ACTIVE_COMPANY },
+    { ...ACTIVE_COMPANY, id: companyWithoutLicenseId, legalName: 'Empresa Nueva SAS', identificationNumber: '901000222' },
+  ];
+  const activeLicense = {
+    ...ACTIVE_LICENSE,
+    planCode: 'POS',
+    maxUsers: 5,
+    maxMonthlyDocuments: 500,
+    enabledModules: ['COMPANY', 'BILLING'],
+    enabledFeatures: ['COMPANY_BASIC', 'POS_SALES'],
+  };
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(jsonResponse({
+      ...LOGIN_RESPONSE,
+      email: 'root@example.com',
+      fullName: 'Root Platform User',
+      globalRoles: ['ROOT'],
+    }))
+    .mockResolvedValueOnce(jsonResponse(companies))
+    .mockResolvedValueOnce(jsonResponse(activeLicense))
+    .mockResolvedValueOnce(jsonResponse({ companyId: COMPANY_ID, activeUsers: 2, maxUsers: 5, monthlyDocuments: 37, maxMonthlyDocuments: 500 }))
+    .mockResolvedValueOnce(errorResponse(404, {
+      status: 404,
+      code: 'RESOURCE_NOT_FOUND',
+      message: `No existe licencia configurada para la empresa ${companyWithoutLicenseId}.`,
+    }));
+  vi.stubGlobal('fetch', fetchMock);
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+  await waitFor(() => expect(screen.getByText('Panel global')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Licencias' }));
+  fireEvent.change(screen.getByLabelText('Empresa contratante'), { target: { value: COMPANY_ID } });
+  await waitFor(() => expect(screen.getByLabelText('Tipo de licencia')).toHaveValue('POS'));
+  expect(screen.getByText('2 / 5')).toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText('Empresa contratante'), { target: { value: companyWithoutLicenseId } });
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
+  expect(screen.getByLabelText('Tipo de licencia')).toHaveValue('CUSTOM');
+  expect(screen.getByLabelText('Maximo usuarios')).toHaveValue(null);
+  expect(screen.getByLabelText('Maximo documentos mensuales')).toHaveValue(null);
+  expect(screen.getByLabelText('Empresa y configuracion')).not.toBeChecked();
+  expect(screen.getByRole('button', { name: 'Cargar licencia' })).toBeEnabled();
+  expect(screen.getByText('Sin configurar', { selector: '.license-summary p' })).toBeInTheDocument();
+  expect(screen.getAllByText('Sin consultar').length).toBeGreaterThanOrEqual(2);
+  expect(screen.queryByText('2 / 5')).not.toBeInTheDocument();
 });
 
 test('root license plan presets select modules and remove basic option', async () => {
@@ -809,7 +919,13 @@ test('root license plan presets select modules and remove basic option', async (
       globalRoles: ['ROOT'],
     }))
     .mockResolvedValueOnce(jsonResponse([createdCompany]))
-    .mockResolvedValueOnce(jsonResponse(savedLicense));
+    .mockResolvedValueOnce(errorResponse(404, {
+      status: 404,
+      code: 'RESOURCE_NOT_FOUND',
+      message: `No existe licencia configurada para la empresa ${COMPANY_ID}.`,
+    }))
+    .mockResolvedValueOnce(jsonResponse(savedLicense))
+    .mockResolvedValueOnce(jsonResponse({ companyId: COMPANY_ID, activeUsers: 1, monthlyDocuments: 0 }));
   vi.stubGlobal('fetch', fetchMock);
 
   render(<App />);
@@ -818,6 +934,7 @@ test('root license plan presets select modules and remove basic option', async (
 
   fireEvent.click(screen.getByRole('button', { name: 'Licencias' }));
   fireEvent.change(screen.getByLabelText('Empresa contratante'), { target: { value: COMPANY_ID } });
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
   expect(screen.queryByRole('option', { name: 'Basico' })).not.toBeInTheDocument();
 
   fireEvent.change(screen.getByLabelText('Tipo de licencia'), { target: { value: 'POS' } });
@@ -846,13 +963,13 @@ test('root license plan presets select modules and remove basic option', async (
 
   fireEvent.click(screen.getByRole('button', { name: 'Guardar licencia' }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-  expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toMatchObject({
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
+  expect(JSON.parse(fetchMock.mock.calls[3][1].body)).toMatchObject({
     planCode: 'FULL',
     enabledModules: ['COMPANY', 'THIRDPARTY', 'INVENTORY', 'BILLING', 'ACCOUNTING', 'PAYROLL', 'REPORTS', 'CATALOGS', 'AUDIT', 'USERS'],
   });
-  expect(JSON.parse(fetchMock.mock.calls[2][1].body).enabledFeatures).toContain('FISCAL_RULES_ADVANCED');
-  expect(JSON.parse(fetchMock.mock.calls[2][1].body).enabledFeatures).toContain('REPORTS_ASYNC');
+  expect(JSON.parse(fetchMock.mock.calls[3][1].body).enabledFeatures).toContain('FISCAL_RULES_ADVANCED');
+  expect(JSON.parse(fetchMock.mock.calls[3][1].body).enabledFeatures).toContain('REPORTS_ASYNC');
 });
 
 test('root creates company and initial administrator', async () => {

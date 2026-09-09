@@ -3517,3 +3517,36 @@ Context7 evidence:
   - Topic consulted: backend authorization rules.
   - Relevant finding: las reglas de acceso deben interceptar la solicitud en backend mediante reglas explicitas; la visibilidad del cliente no reemplaza autorizacion.
   - Decision impact: `tenant-service` expone validacion autoritativa por feature y los consumidores envian la capacidad requerida.
+
+### Contabilidad basica automatica para POS TASK-303
+
+- Orquestacion: `billing-service` consulta el plan comercial mediante el contrato de validacion de licencia antes de validar la preparacion contable de una venta.
+- Inicializacion: si el plan es `POS` y no existe una regla activa `SALE_CONFIRMED`, el adaptador contable invoca `POST /api/v1/accounting-setup/basic` y vuelve a consultar la regla antes de continuar.
+- Idempotencia: se reutiliza `BasicAccountingSetupService`, que conserva cuentas y reglas activas existentes y completa solamente faltantes. Una empresa ya configurada no genera la llamada de inicializacion.
+- Alcance: `FULL` y `CUSTOM` mantienen el bloqueo explicito cuando falta configuracion. La capacidad interna `ACCOUNTING_CORE` no concede acceso a pantallas de contabilidad avanzada.
+- Consistencia: la validacion e inicializacion ocurren antes de numeracion fiscal, proveedor DIAN, persistencia de confirmacion, inventario y asiento; cualquier fallo mantiene la venta sin efectos parciales.
+- Contrato: `CompanyLicenseValidationResponse` agrega `planCode` como campo aditivo para que los consumidores apliquen comportamiento comercial sin inferirlo desde modulos.
+- Pruebas: contrato tenant, propagacion del plan, seleccion POS en el caso de uso, inicializacion HTTP, segunda validacion y bloqueo para planes no POS.
+
+#### Context7 evidence TASK-303
+
+- Library/tool: Spring Framework.
+  - Topic consulted: cliente HTTP sincronico `RestClient`, manejo de errores y limites transaccionales entre servicios.
+  - Relevant finding: `RestClient` soporta composicion fluida de GET/POST y manejo explicito de respuestas; las transacciones de base de datos permanecen locales a cada servicio.
+  - Decision impact: `billing-service` orquesta una inicializacion idempotente por HTTP y solo continua despues de revalidar, sin simular una transaccion distribuida.
+
+### Carga automatica de licencia ROOT TASK-304
+
+- Flujo: el cambio de `Empresa contratante` reinicia inmediatamente el formulario con valores nuevos y consulta `GET /api/v1/companies/{companyId}/license`.
+- Hidratacion: una licencia existente actualiza `managedLicense` y todos los campos controlados; posteriormente se consulta `/api/v1/platform/licenses/usage` para la misma empresa.
+- Ausencia: `404 RESOURCE_NOT_FOUND` de licencia es un estado esperado de alta nueva, por lo que mantiene el formulario limpio y no presenta un error global.
+- Concurrencia: cada seleccion incrementa una version local; licencia o uso solo actualizan estado si su version coincide con la seleccion vigente.
+- Compatibilidad: `Cargar licencia` permanece como reintento manual y se deshabilita cuando la licencia de la empresa actual ya esta cargada.
+- Pruebas: hidratacion automatica de campos, presets y consumo; alta desde empresa sin licencia; rutas y headers por empresa.
+
+#### Context7 evidence TASK-304
+
+- Library/tool: React.
+  - Topic consulted: formularios controlados, carga dependiente de una seleccion y descarte de respuestas asincronas obsoletas.
+  - Relevant finding: React recomienda que el estado controlado sea la fuente autoritativa y que la limpieza de una carga asincrona impida que respuestas anteriores modifiquen la seleccion vigente.
+  - Decision impact: el formulario se reinicia al seleccionar y usa una version de solicitud para aceptar solamente la respuesta mas reciente.

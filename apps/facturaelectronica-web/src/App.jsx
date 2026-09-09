@@ -115,6 +115,7 @@ export default function App() {
   const [licenseForm, setLicenseForm] = useState(createLicenseForm);
   const [managedLicense, setManagedLicense] = useState(null);
   const [licenseUsage, setLicenseUsage] = useState(null);
+  const licenseSelectionRequestRef = useRef(0);
   const [runtimeCatalogs, setRuntimeCatalogs] = useState(() => globalThis.__FACTURA_RUNTIME_CATALOGS__ || emptyRuntimeCatalogs);
   const [lastActivityAt, setLastActivityAt] = useState(storedSnapshot?.lastActivityAt || Date.now());
   const lastActivityRef = useRef(lastActivityAt);
@@ -929,6 +930,7 @@ export default function App() {
     setCompanyAccesses([]);
     setActiveCompanyId('');
     setLicense(null);
+    licenseSelectionRequestRef.current += 1;
     setLicenseForm(createLicenseForm());
     setEditingCompanyId('');
     setCompanyBranding(null);
@@ -1251,19 +1253,43 @@ export default function App() {
     return '';
   }
 
-  function selectLicenseCompany(companyId) {
-    setLicenseForm((current) => ({ ...current, companyId }));
+  async function selectLicenseCompany(companyId) {
+    const requestVersion = licenseSelectionRequestRef.current + 1;
+    licenseSelectionRequestRef.current = requestVersion;
+    setLicenseForm({ ...createLicenseForm(), companyId });
     setManagedLicense(null);
     setLicenseUsage(null);
+    if (!companyId) {
+      return null;
+    }
+    try {
+      const result = await requestJson(`/api/v1/companies/${companyId}/license`, { token, companyId });
+      if (requestVersion !== licenseSelectionRequestRef.current) {
+        return null;
+      }
+      setManagedLicense(result);
+      hydrateLicenseForm(result, companyId);
+      const usageResult = await requestJson(`/api/v1/platform/licenses/usage${buildQuery({ companyId })}`, { token });
+      if (requestVersion !== licenseSelectionRequestRef.current) {
+        return null;
+      }
+      setLicenseUsage(usageResult);
+      return result;
+    } catch (error) {
+      if (requestVersion !== licenseSelectionRequestRef.current || isLicenseNotConfiguredError(error)) {
+        return null;
+      }
+      throw error;
+    }
   }
 
-  function hydrateLicenseForm(licenseResult) {
+  function hydrateLicenseForm(licenseResult, fallbackCompanyId = licenseForm.companyId) {
     if (!licenseResult) {
       return;
     }
     const planCode = normalizeLicensePlanCode(licenseResult.planCode);
     setLicenseForm({
-      companyId: licenseResult.companyId || licenseForm.companyId,
+      companyId: licenseResult.companyId || fallbackCompanyId,
       planCode,
       validFrom: licenseResult.validFrom || '',
       validTo: licenseResult.validTo || '',
@@ -2926,7 +2952,7 @@ export default function App() {
             />
           )}
           {currentStep === 'Licencias' && (
-            <LicenseAdminPanel form={licenseForm} setForm={setLicenseForm} companies={rootCompanies} license={managedLicense} usage={licenseUsage} onCompanyChange={selectLicenseCompany} onLoad={() => execute(loadManagedLicense)} onSave={() => execute(saveManagedLicense)} onActivate={() => execute(activateManagedLicense)} onSuspend={() => execute(suspendManagedLicense)} busy={busy || !isRoot} />
+            <LicenseAdminPanel form={licenseForm} setForm={setLicenseForm} companies={rootCompanies} license={managedLicense} usage={licenseUsage} onCompanyChange={(companyId) => execute(() => selectLicenseCompany(companyId), { silentRunning: true, silentSuccess: true, silentNullSuccess: true })} onLoad={() => execute(loadManagedLicense)} onSave={() => execute(saveManagedLicense)} onActivate={() => execute(activateManagedLicense)} onSuspend={() => execute(suspendManagedLicense)} busy={busy || !isRoot} />
           )}
           {currentStep === 'Terceros' && (
             <ThirdPartyForm form={thirdPartyForm} setForm={setThirdPartyForm} companyMunicipalityCode={companyMunicipalityCode} onSubmit={() => execute(createThirdParty)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Terceros)} documentTypeOptionsSource={runtimeCatalogs.dianDocumentTypes} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} taxRegimeOptionsSource={runtimeCatalogs.taxRegimeOptions} ciiuOptionsSource={runtimeCatalogs.ciiuOptions} thirdPartyRoleCatalog={runtimeCatalogs.thirdPartyRoleCatalog.filter((option) => canUseLicenseFeature('SUPPLIERS') || option.value === 'CUSTOMER')} personTypeCatalog={runtimeCatalogs.personTypeCatalog} locations={runtimeCatalogs.locations} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} thirdParties={thirdPartyList} />

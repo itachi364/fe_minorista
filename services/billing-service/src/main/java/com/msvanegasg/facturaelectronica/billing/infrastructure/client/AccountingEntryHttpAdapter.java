@@ -37,16 +37,13 @@ public class AccountingEntryHttpAdapter implements AccountingEntryPort {
     }
 
     @Override
-    public void ensureSalePostingConfigured(UUID companyId) {
+    public void ensureSalePostingConfigured(UUID companyId, boolean initializeIfMissing) {
         try {
-            List<Map<String, Object>> activeRules = restClient.get()
-                    .uri(uriBuilder -> uriBuilder.path("/api/v1/accounting-rules")
-                            .queryParam("eventType", SALE_CONFIRMED_EVENT)
-                            .queryParam("active", true)
-                            .build())
-                    .header("X-Company-Id", companyId.toString())
-                    .retrieve()
-                    .body(ACCOUNTING_RULE_LIST_TYPE);
+            List<Map<String, Object>> activeRules = findActiveSaleRules(companyId);
+            if ((activeRules == null || activeRules.isEmpty()) && initializeIfMissing) {
+                initializeBasicSetup(companyId);
+                activeRules = findActiveSaleRules(companyId);
+            }
             if (activeRules == null || activeRules.isEmpty()) {
                 throw new IllegalStateException(ACCOUNTING_SETUP_REQUIRED_MESSAGE);
             }
@@ -55,6 +52,25 @@ public class AccountingEntryHttpAdapter implements AccountingEntryPort {
         } catch (RestClientException exception) {
             throw new IllegalStateException(ACCOUNTING_SETUP_UNAVAILABLE_MESSAGE, exception);
         }
+    }
+
+    private List<Map<String, Object>> findActiveSaleRules(UUID companyId) {
+        return restClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/accounting-rules")
+                        .queryParam("eventType", SALE_CONFIRMED_EVENT)
+                        .queryParam("active", true)
+                        .build())
+                .header("X-Company-Id", companyId.toString())
+                .retrieve()
+                .body(ACCOUNTING_RULE_LIST_TYPE);
+    }
+
+    private void initializeBasicSetup(UUID companyId) {
+        restClient.post()
+                .uri("/api/v1/accounting-setup/basic")
+                .header("X-Company-Id", companyId.toString())
+                .retrieve()
+                .toBodilessEntity();
     }
 
     @Override

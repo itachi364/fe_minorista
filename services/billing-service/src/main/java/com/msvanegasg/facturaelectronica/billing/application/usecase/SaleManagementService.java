@@ -206,7 +206,8 @@ public class SaleManagementService implements ManageSaleUseCase {
         sale.lines().forEach(line -> ensureAvailable(sale.companyId(), line));
         Instant now = clock.now();
         ElectronicDocumentType documentType = resolveSaleDocumentType(sale);
-        accountingEntryPort.ensureSalePostingConfigured(companyId);
+        accountingEntryPort.ensureSalePostingConfigured(companyId,
+                licenseValidationPort.allowsAutomaticAccountingSetup(companyId));
         if (documentType == ElectronicDocumentType.NON_FISCAL_SALE) {
             Sale confirmed = saleRepository.save(sale.confirmWithoutElectronicDocument(now));
             Sale completed = applyPostConfirmationEffects(confirmed);
