@@ -3653,3 +3653,138 @@ La tabla expresa precedencia, no una lista cerrada de codigos. Las responsabilid
   - Topic consulted: `MultipartAutoConfiguration`, `MultipartProperties` y desactivacion del procesamiento multipart.
   - Relevant finding: el soporte multipart servlet se habilita por defecto mediante `spring.servlet.multipart.enabled=true`; sus limites y resolucion pertenecen a la auto-configuracion del servicio receptor.
   - Decision impact: el BFF configura `spring.servlet.multipart.enabled=false` para no consumir el stream antes del reenvio, mientras el tenant conserva sus limites de 5 MB/6 MB.
+
+## Culminacion del motor fiscal colombiano (TASK-308 a TASK-315)
+
+### Alcance normativo y limite de responsabilidad
+
+El motor debe determinar, calcular, explicar, contabilizar y conservar retenciones asociadas a compras, gastos, pagos e ingresos. No reemplaza la revision profesional del contador ni declara automaticamente ante la DIAN o una entidad territorial. La publicacion de una regla exige fuente oficial, vigencia verificable, pruebas y trazabilidad del usuario aprobador.
+
+Las fuentes se separan por finalidad:
+
+- El Estatuto Tributario y el DUR 1625 de 2016 sustentan retencion en la fuente, ReteIVA, autorretencion, obligaciones de declarar, consignar y certificar.
+- Cada estatuto, acuerdo, decreto o resolucion municipal sustenta ICA y ReteICA en su jurisdiccion. El domicilio del proveedor no sustituye el lugar donde se realiza la actividad gravada.
+- El Decreto 2420 de 2015 y sus anexos definen los marcos de informacion financiera por grupos NIIF. No determinan por si mismos tarifas tributarias.
+- El Decreto 2650 de 1993 puede ofrecer una semilla familiar de cuentas, pero no se trata como plan universal impuesto por NIIF. Cada empresa conserva su plan y mapea cuentas a conceptos fiscales y de presentacion.
+
+### Riesgo temporal prioritario
+
+El catalogo existente contiene umbrales y tarifas introducidos por los articulos 2 a 8 del Decreto 572 de 2025. La DIAN informo la suspension provisional de esos articulos con efectos desde el 8 de mayo de 2026 y el retorno temporal a las reglas anteriores, incluidos umbrales de 4 UVT para servicios y 92 UVT para compras agropecuarias. Antes de activar o reactivar esas reglas debe existir evidencia oficial de la ejecutoria y de la fecha exacta de efectos de cualquier decision posterior.
+
+Hasta culminar `TASK-309`, esos datos se consideran catalogo en revision y no una base legal validada para produccion. Ninguna migracion debe inferir silenciosamente que una norma publicada continua vigente.
+
+### Linea base auditada
+
+- Compras y gastos ya invocan el motor al confirmar, conservan snapshots y generan cuenta por pagar/asiento por el neto.
+- El modelo actual soporta perfiles de empresa/tercero, conceptos, umbrales COP/UVT, bases generales, prioridad, exenciones y las cuentas de plantilla `2365`, `2367` y `2368`.
+- El catalogo activo es parcial: existen reglas iniciales de retefuente y ReteIVA para compra/gasto y autorretencion de ingresos, pero no una matriz nacional exhaustiva ni reglas ReteICA municipales publicadas.
+- El calculo actual recibe un concepto/base por documento y debe evolucionar a lineas heterogeneas y acumulaciones.
+- La responsabilidad `O-49` debe incorporarse al reconocimiento autoritativo de no responsable de IVA; no basta la equivalencia historica `R-99-PN`.
+- La territorialidad vigente aproxima municipio con el domicilio del tercero y debe reemplazarse por lugar de realizacion de la actividad.
+- La autorretencion del proveedor no esta modelada por impuesto, concepto y alcance. No debe implementarse como un interruptor global.
+
+### Modelo temporal de fuentes y reglas
+
+1. `legal_source` identifica la fuente oficial y los articulos aplicables.
+2. `legal_source_event` conserva publicacion, entrada en vigor, suspension, reactivacion y derogatoria con fecha de efectos y evidencia.
+3. `fiscal_rule_set` agrupa reglas coherentes por impuesto, jurisdiccion y version.
+4. El evaluador resuelve el estado juridico para la fecha de causacion o pago, no para la fecha en que se ejecuta el proceso.
+5. Cada resultado guarda reglas, parametros, perfiles y evento normativo usados. Los historicos nunca se recalculan al cambiar el catalogo.
+
+Las migraciones Flyway versionadas son aditivas e inmutables. Las migraciones ya aplicadas no se editan; una correccion normativa cierra vigencias o agrega eventos y versiones. Las migraciones repetibles quedan limitadas a vistas o proyecciones recreables, nunca a la historia juridica.
+
+### Flujo de evaluacion
+
+1. Validar empresa, tercero, documento, fecha de causacion, fecha de pago cuando corresponda, moneda y lineas.
+2. Resolver fuentes y reglas efectivas para la fecha fiscal del hecho economico.
+3. Obtener el perfil temporal del pagador: responsabilidades RUT, regimen, calidades de retencion y designaciones territoriales.
+4. Obtener el perfil temporal del beneficiario: identidad, residencia, declarante, regimen, responsabilidades, calidad de autorretenedor por alcance, municipio, CIIU y soportes.
+5. Clasificar cada linea por concepto, impuesto, base y territorialidad.
+6. Aplicar acumulaciones legales por beneficiario, concepto, contrato y periodo cuando correspondan.
+7. Evaluar exclusiones y exenciones antes de umbral y tarifa, respetando prioridad y especificidad.
+8. Producir por linea `APPLIED`, `NOT_APPLIED`, `EXEMPT` o `BLOCKED`, con explicacion y fuente.
+9. Al confirmar, persistir atomica e idempotentemente snapshots, acumulados, cuentas por pagar, asiento y outbox.
+
+### Matrices fiscales
+
+#### Retencion en la fuente a titulo de renta
+
+- La empresa compradora solo practica retencion cuando tiene la calidad legal aplicable para el concepto y fecha.
+- El tercero se evalua por naturaleza, residencia, condicion de declarante, regimen, responsabilidades y concepto real del pago.
+- Los conceptos nacionales deben cubrir al menos compras, servicios, honorarios, comisiones, arrendamientos, rendimientos, pagos laborales y demas conceptos incorporados con fuente oficial.
+- Los limites se expresan con operador explicito `GT` o `GTE`; la base puede ser el valor total, gravable, AIU, pago bruto, exceso o tramo, segun la norma.
+- La calidad de autorretenedor del proveedor no constituye una exclusion universal. Solo aplica cuando la fuente y el alcance de la autorretencion disponen el tratamiento correspondiente.
+
+#### ReteIVA
+
+- Requiere que el comprador tenga la calidad de agente de retencion de IVA para la operacion.
+- La base es el IVA generado, no el subtotal. La tarifa general parametrizable es el porcentaje legal vigente del IVA, con reglas especiales como servicios gravados prestados desde el exterior.
+- Deben modelarse expresamente responsable/no responsable, agente frente a agente, cuantias minimas, operaciones excluidas y excepciones vigentes.
+- `O-49` y las demas responsabilidades oficiales se interpretan desde el catalogo versionado; no se sustituyen por booleanos manipulables en el cliente.
+
+#### ReteICA
+
+- Es territorial. La operacion debe informar municipio DIVIPOLA de realizacion, actividad CIIU y regla de territorialidad.
+- El domicilio del proveedor solo puede ser una pista de captura, nunca la decision automatica del lugar de imposicion.
+- El nucleo soporta paquetes municipales independientes y versionados. No se promete cobertura nacional sin fuente y validacion individual de cada municipio.
+- Si la empresa esta obligada a practicar ReteICA y falta una regla territorial verificable, el resultado es `BLOCKED` y no se generan efectos parciales.
+
+#### Autorretencion y SIMPLE
+
+- La autorretencion se calcula sobre ingresos propios en el flujo correspondiente, separada de la retencion practicada a proveedores.
+- Deben coexistir calidades y alcances: autorretenedor general, autorretencion especial y reglas particulares. Una marca no elimina automaticamente toda retencion de terceros.
+- SIMPLE se evalua por impuesto y operacion. Como regla general no esta sujeto ni obligado a practicar retencion a titulo de renta, pero esto no elimina automaticamente ReteIVA, ReteICA, retenciones laborales ni reglas especiales.
+
+### Contabilidad, NIIF y conciliacion
+
+- La empresa selecciona su grupo de informacion financiera y politicas contables; ese dato gobierna reconocimiento, medicion, presentacion y revelacion, no las tarifas fiscales.
+- El catalogo de conceptos fiscales se mapea al plan de cuentas propio de cada empresa. Las cuentas `2205`, `2365`, `2367` y `2368` permanecen como plantilla configurable, no como mandato NIIF universal.
+- Cada asiento conserva vinculo al documento, calculo fiscal y snapshot. El neto pagable debe reconciliar valor bruto, impuestos, retenciones, anticipos y ajustes.
+- Las diferencias entre base contable y fiscal se registran en una conciliacion explicable; no se resuelven alterando silenciosamente el asiento original.
+
+### Cierres, certificados y reversos
+
+- El sistema consolida por periodo, tipo de retencion, concepto, tercero y jurisdiccion para soportar conciliacion con el Formulario 350 y formularios territoriales.
+- Los certificados incluyen beneficiario, conceptos, bases, tarifas, valores, periodo, agente retenedor y trazabilidad de correcciones.
+- Una anulacion genera reverso enlazado y actualiza acumulados mediante movimientos compensatorios. Nunca elimina snapshots confirmados.
+- Generar reportes o archivos de trabajo no equivale a presentar ni pagar una declaracion.
+
+### Seguridad, publicacion y operacion
+
+- ROOT administra fuentes nacionales y paquetes territoriales globales. `FISCAL_SETTINGS_MANAGE` administra configuracion empresarial sin poder alterar historia normativa global.
+- Publicar, suspender o reactivar exige version, justificacion, fuente oficial HTTPS, usuario, fecha y auditoria.
+- La falta de dato determinante produce `BLOCKED`; el frontend no puede forzar una decision ni enviar perfiles autoritativos alternos.
+- Se monitorean calculos bloqueados, reglas proximas a vencer, paquetes sin revision, fallos de persistencia y discrepancias de cierre, sin exponer datos tributarios sensibles en logs.
+
+### Estrategia de entrega
+
+1. Corregir vigencia temporal del catalogo y modelar eventos juridicos.
+2. Completar perfiles temporales, calculo por linea, bases y acumulaciones.
+3. Publicar matriz nacional verificada de retefuente y ReteIVA.
+4. Implementar plataforma de paquetes ReteICA y aprobar municipios iniciales individualmente.
+5. Completar mapeo contable, conciliacion, reversos, certificados y cierres.
+6. Exponer administracion, simulacion y explicacion en frontend con pruebas E2E.
+
+### Estrategia de pruebas
+
+- Tablas de decision por impuesto con limites exactos, un peso por debajo y por encima.
+- Viaje temporal antes, durante y despues de suspension, reactivacion o derogatoria.
+- Documentos mixtos por linea, acumulaciones, pagos parciales, anticipos y notas reversoras.
+- Combinaciones pagador/beneficiario para SIMPLE, gran contribuyente, responsables de IVA, agentes y autorretenedores.
+- Territorialidad con municipio de operacion distinto al domicilio y ausencia de paquete.
+- Atomicidad e idempotencia frente a reintentos y fallos entre servicios.
+- Reconciliacion de snapshots, asientos, cuentas por pagar, certificados y resumen de periodo.
+
+### Evidencia normativa y tecnica TASK-308
+
+- [Estatuto Tributario](https://www.funcionpublica.gov.co/eva/gestornormativo/norma_pdf.php?i=6533), articulos 375, 376, 381 y 382: deber de practicar, consignar y certificar retenciones.
+- [Decreto 1625 de 2016](https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=83233): compilacion reglamentaria tributaria y reglas aplicables por concepto y sujeto.
+- [Decreto 572 de 2025](https://normograma.dian.gov.co/dian/compilacion/docs/decreto_0572_2025.htm) y [Comunicado DIAN 070 de 2026](https://www.dian.gov.co/Prensa/Paginas/NG-Comunicado-de-Prensa-070-2026.aspx): cambios de bases/tarifas y suspension provisional de sus articulos 2 a 8 desde el 8 de mayo de 2026.
+- [Concepto DIAN 4198 de 2026](https://normograma.dian.gov.co/dian/compilacion/docs/oficio_dian_4198_2026.htm) sobre articulo 911 del Estatuto Tributario: tratamiento de retencion a titulo de renta para contribuyentes SIMPLE y necesidad de analizar otros impuestos.
+- [Ley 1819 de 2016, articulo 343](https://www.secretariasenado.gov.co/senado/basedoc/ley_1819_2016_pr007.html): territorialidad del ICA segun lugar de realizacion de la actividad.
+- [Decreto 2420 de 2015](https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=76745), compilado y actualizado: marcos tecnicos de informacion financiera de grupos 1, 2 y 3.
+- [Oficio Supersociedades 220-209712 de 2018](https://www.supersociedades.gov.co/documents/107391/159040/OFICIO%20220-209712%20DE%202018): efectos de convergencia NIIF sobre el PUC del Decreto 2650 de 1993 y uso de planes propios.
+- Library/tool: Flyway.
+  - Topic consulted: migraciones versionadas, checksums y migraciones repetibles.
+  - Relevant finding: las migraciones versionadas se aplican una vez y se validan por checksum; las repetibles se reejecutan al cambiar y se recomiendan para objetos recreables.
+  - Decision impact: la historia normativa usa migraciones versionadas aditivas; las repetibles se reservan para vistas y validaciones derivadas.

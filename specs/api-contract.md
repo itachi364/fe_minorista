@@ -3970,3 +3970,93 @@ Reglas:
 `POST /api/v1/third-parties` y sus respuestas usan `ciiuCodes: string[]`. Durante la transicion aceptan y responden tambien `ciiuCode`; si solo llega el campo historico se incorpora a la coleccion y la respuesta singular representa la primera actividad ordenada. Para un cliente exclusivamente natural ambos valores se normalizan a vacio/nulo.
 
 El snapshot `thirdPartyProfile` del calculo fiscal usa `ciiuCodes`; el motor considera satisfecha una condicion cuando el codigo de la regla pertenece a esa coleccion.
+
+## Contratos objetivo del motor fiscal completo
+
+### Fuentes normativas
+
+```http
+GET /api/v1/fiscal-legal-sources?taxType=RETEFUENTE&date=2026-09-09
+GET /api/v1/fiscal-legal-sources/{sourceId}/timeline
+POST /api/v1/fiscal-legal-sources
+POST /api/v1/fiscal-legal-sources/{sourceId}/events
+```
+
+Crear una fuente o registrar eventos `SUSPENDED`, `REACTIVATED` y `REPEALED` es exclusivo de ROOT y requiere URL oficial HTTPS, referencia, fecha de efectos y justificacion. El API no permite editar eventos historicos.
+
+### Simulacion por lineas
+
+```http
+POST /api/v1/fiscal-calculations/withholdings/preview
+X-Company-Id: {companyId}
+Idempotency-Key: {uuid}
+```
+
+```json
+{
+  "operationType": "PURCHASE",
+  "thirdPartyId": "uuid",
+  "causationDate": "2026-09-09",
+  "paymentDate": null,
+  "operationMunicipalityCode": "11001",
+  "currency": "COP",
+  "lines": [
+    {
+      "lineId": "uuid",
+      "fiscalConceptCode": "SERVICE_GENERAL",
+      "ciiuCode": "6201",
+      "taxableAmount": 1000000,
+      "vatAmount": 190000,
+      "aiuAmount": 0,
+      "contractReference": null
+    }
+  ]
+}
+```
+
+El cliente no envia perfiles fiscales autoritativos ni estados juridicos. El backend los resuelve por empresa, tercero y fecha. La respuesta contiene resultados por linea y totales, con `decision`, `reasonCode`, `reason`, `ruleId`, `ruleSetVersion`, `legalSource`, `legalEvent`, base, umbral, tarifa, acumulado previo y valor.
+
+Cuando falta una condicion determinante, el resultado usa `BLOCKED` y `missingData`; nunca asume tarifa cero. `preview` no persiste efectos contables. La confirmacion del documento recalcula y compara el hash de entradas antes de persistir.
+
+### Explicacion e historico
+
+```http
+GET /api/v1/fiscal-calculations/withholdings/snapshots/{snapshotId}
+GET /api/v1/fiscal-calculations/withholdings/snapshots/{snapshotId}/explanation
+POST /api/v1/fiscal-calculations/withholdings/snapshots/{snapshotId}/reverse
+```
+
+La explicacion incluye perfiles versionados, reglas candidatas descartadas, regla aplicada, fuente efectiva y operaciones aritmeticas. El reverso exige permiso contable/fiscal, motivo e idempotency key.
+
+### Periodos y certificados
+
+```http
+GET /api/v1/fiscal-periods/2026-09/withholdings?taxType=RETEFUENTE
+POST /api/v1/fiscal-periods/2026-09/reconcile
+POST /api/v1/withholding-certificates
+GET /api/v1/withholding-certificates/{certificateId}/file
+```
+
+Los resumenes soportan conciliacion y preparacion del Formulario 350 o formatos territoriales, pero la respuesta debe indicar `filingStatus=NOT_FILED_BY_PLATFORM` mientras no exista una integracion aprobada de presentacion y pago.
+
+### Paquetes territoriales
+
+```http
+POST /api/v1/fiscal-rule-packages/municipalities/validate
+POST /api/v1/fiscal-rule-packages/municipalities
+POST /api/v1/fiscal-rule-packages/{packageId}/publish
+```
+
+La importacion valida municipio DIVIPOLA, fuente oficial, vigencia, conceptos, CIIU, tarifas, umbrales, solapamientos y pruebas de frontera. Es atomica: un error impide publicar el paquete completo.
+
+### Errores funcionales nuevos
+
+- `FISCAL_LEGAL_SOURCE_NOT_EFFECTIVE`: la fuente no esta vigente para la fecha.
+- `FISCAL_RULESET_NOT_VERIFIED`: el paquete no fue revisado/publicado.
+- `FISCAL_REQUIRED_DATA_MISSING`: faltan datos determinantes del pagador, beneficiario o linea.
+- `FISCAL_TERRITORIAL_RULE_MISSING`: no existe paquete municipal verificable.
+- `FISCAL_RULE_AMBIGUOUS`: dos reglas incompatibles tienen igual precedencia.
+- `FISCAL_ACCUMULATION_CONFLICT`: concurrencia al actualizar acumulados; la operacion puede reintentarse con la misma llave.
+- `FISCAL_SNAPSHOT_CHANGED`: la confirmacion no coincide con la vista previa.
+
+Ningun error expone consultas, stack traces, archivos RUT ni condiciones sensibles completas.

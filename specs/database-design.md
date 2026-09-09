@@ -940,3 +940,82 @@ Tabla: `thirdparty.third_party_ciiu`.
 - `tenant V011` reemplaza `ck_company_file_asset_category` para admitir `RUT_EVIDENCE` y `FISCAL_RULE_EVIDENCE` ademas de las categorias existentes.
 - `catalog V013` agrega de forma idempotente las responsabilidades RUT `O-07`, `O-48`, `O-49`, `O-52`, `O-53` y `O-59` requeridas por clasificacion y retenciones.
 - Los booleanos nacionales persistidos en `tenant.company_tax_profile` se mantienen por compatibilidad y consultas, pero sus valores se calculan desde `rut_responsibilities` al escribir el agregado.
+
+## Persistencia objetivo para culminar el motor fiscal
+
+### Fuentes y eventos juridicos
+
+Tabla `accounting.legal_source`:
+
+- `id`, `authority`, `source_type`, `source_number`, `title`, `applicable_articles`, `official_url`, `publication_date`, `jurisdiction_type`, `jurisdiction_code`, `content_hash`, `created_at`.
+
+Tabla `accounting.legal_source_event`:
+
+- `id`, `legal_source_id`, `event_type`, `decision_reference`, `effective_from`, `effective_to`, `official_url`, `notes`, `recorded_by`, `recorded_at`.
+- `event_type`: `PUBLISHED`, `EFFECTIVE`, `SUSPENDED`, `REACTIVATED`, `REPEALED`.
+- No se actualiza ni elimina un evento aplicado: una novedad juridica genera otro evento.
+
+Tabla `accounting.fiscal_rule_set`:
+
+- `id`, `code`, `version`, `tax_type`, `jurisdiction_type`, `jurisdiction_code`, `legal_source_id`, `valid_from`, `valid_to`, `status`, `approved_by`, `approved_at`.
+- `status`: `DRAFT`, `VERIFIED`, `ACTIVE`, `SUSPENDED`, `RETIRED`.
+- Un paquete solo puede estar `ACTIVE` cuando su fuente resulta efectiva para la fecha y jurisdiccion.
+
+### Extension de reglas
+
+`accounting.withholding_rule` debe incorporar:
+
+- `causation_moment`: `PAYMENT`, `ACCRUAL` o `PAYMENT_OR_ACCRUAL_FIRST`.
+- `aggregation_scope`: `DOCUMENT`, `BENEFICIARY_DAY`, `BENEFICIARY_MONTH`, `CONTRACT`, `TAX_PERIOD`.
+- `calculation_base`: `TAXABLE_AMOUNT`, `VAT_AMOUNT`, `AIU`, `GROSS_PAYMENT`, `COMPANY_INCOME`, `EXCESS` o `BRACKETED`.
+- condiciones tipadas de pagador y beneficiario: residencia, naturaleza, declarante, regimen, responsabilidades y alcance de autorretencion.
+- `territoriality_strategy`, `operation_municipality_code`, `economic_activity_code` y moneda/unidad de umbral.
+- `legal_source_id`, `rule_set_id`, `valid_from`, `valid_to`, `priority`, `specificity` y estado.
+
+Las condiciones JSON existentes deben migrar gradualmente a campos/enumeraciones validados. No se permite ejecutar expresiones arbitrarias almacenadas en base de datos.
+
+### Lineas, acumulaciones y snapshots
+
+Tabla `accounting.withholding_accumulation`:
+
+- `company_id`, `third_party_id`, `tax_type`, `concept_code`, `contract_reference`, `period_start`, `period_end`, `taxable_accumulated`, `withheld_accumulated`, `version`.
+- Clave unica segun el alcance de agregacion y bloqueo optimista para concurrencia.
+
+Tabla `accounting.withholding_calculation_line_snapshot`:
+
+- `calculation_snapshot_id`, `source_line_id`, `concept_code`, `ciiu_code`, `operation_municipality_code`, `base_type`, `base_amount`, `threshold_amount`, `rate`, `amount`, `decision`, `reason_code`, `rule_id`, `legal_source_event_id`, `payer_profile_version`, `payee_profile_version`.
+
+`accounting.withholding_calculation_snapshot` agrega `causation_date`, `payment_date`, `currency`, `rule_set_version`, `legal_state`, `input_hash`, `calculation_hash` y `reversed_by`.
+
+Tabla `accounting.withholding_reversal`:
+
+- `id`, `original_snapshot_id`, `source_type`, `source_id`, `reason`, `reversed_by`, `reversed_at`.
+- Unico por snapshot original; genera movimientos negativos, no borrado.
+
+### Periodos y certificados
+
+Tabla `accounting.fiscal_period_summary`:
+
+- `company_id`, `period`, `tax_type`, `jurisdiction_code`, `concept_code`, `base_amount`, `withheld_amount`, `paid_amount`, `status`, `generated_at`.
+
+Tablas `accounting.withholding_certificate` y `accounting.withholding_certificate_line`:
+
+- Cabecera por empresa, beneficiario, periodo, tipo de retencion, version, estado, fecha de emision y documento reemplazado.
+- Lineas con concepto, base, tarifa, valor y referencias a snapshots.
+
+### Plan contable y NIIF
+
+Tabla `accounting.account_presentation_mapping`:
+
+- `company_id`, `account_id`, `financial_reporting_group`, `statement_section`, `presentation_concept`, `valid_from`, `valid_to`.
+
+El plan de cuentas sigue siendo propiedad de la empresa. Las plantillas con codigos del PUC historico se identifican con `template_origin=CO_PUC_1993_REFERENCE` y son editables antes de uso. El grupo NIIF no activa ni desactiva retenciones.
+
+### Integridad y migraciones
+
+- Indices por vigencia, impuesto, jurisdiccion, concepto, pagador y beneficiario.
+- Exclusiones de solapamiento para versiones activas equivalentes cuando PostgreSQL lo permita; validacion de dominio obligatoria en todos los casos.
+- Restricciones para tarifa, base y fechas; referencias de empresa y tercero siempre aisladas por tenant.
+- Confirmacion fiscal, acumulados y asientos locales comparten transaccion; efectos remotos usan Outbox e idempotency key.
+- Las migraciones posteriores a las actuales son nuevas y aditivas. No se modifican `V009`, `V010` ni otras migraciones aplicadas.
+- La correccion del Decreto 572 debe registrar suspension y cerrar efectividad mediante una nueva migracion, sin borrar reglas ni snapshots historicos.

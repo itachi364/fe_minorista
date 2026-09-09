@@ -1304,3 +1304,89 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 |---|---|---:|---|
 | third_party_id | uuid | Si | Tercero propietario de la actividad economica. |
 | ciiu_code | varchar(10) | Si | Codigo oficial CIIU seleccionado. |
+
+## Diccionario objetivo del motor fiscal completo
+
+### Enumeraciones
+
+| Enumeracion | Valores | Uso |
+|---|---|---|
+| `LEGAL_SOURCE_EVENT_TYPE` | `PUBLISHED`, `EFFECTIVE`, `SUSPENDED`, `REACTIVATED`, `REPEALED` | Historia juridica de una fuente. |
+| `FISCAL_RULE_SET_STATUS` | `DRAFT`, `VERIFIED`, `ACTIVE`, `SUSPENDED`, `RETIRED` | Ciclo de publicacion de paquetes. |
+| `CAUSATION_MOMENT` | `PAYMENT`, `ACCRUAL`, `PAYMENT_OR_ACCRUAL_FIRST` | Momento que determina la retencion. |
+| `AGGREGATION_SCOPE` | `DOCUMENT`, `BENEFICIARY_DAY`, `BENEFICIARY_MONTH`, `CONTRACT`, `TAX_PERIOD` | Ambito para completar umbrales. |
+| `FISCAL_BASE_TYPE` | `TAXABLE_AMOUNT`, `VAT_AMOUNT`, `AIU`, `GROSS_PAYMENT`, `COMPANY_INCOME`, `EXCESS`, `BRACKETED` | Base matematica de calculo. |
+| `TERRITORIALITY_STRATEGY` | `NATIONAL`, `PLACE_OF_ACTIVITY`, `SPECIAL_RULE` | Regla para resolver jurisdiccion. |
+| `FISCAL_DECISION` | `APPLIED`, `NOT_APPLIED`, `EXEMPT`, `BLOCKED` | Resultado auditable por linea. |
+
+### `accounting.legal_source`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador inmutable. |
+| authority | varchar(160) | Si | Autoridad emisora. |
+| source_type | varchar(40) | Si | Ley, decreto, resolucion, sentencia, concepto u otro tipo aprobado. |
+| source_number | varchar(80) | Si | Numero oficial. |
+| applicable_articles | varchar(500) | No | Articulos que sustentan el paquete. |
+| official_url | varchar(1000) | Si | URL HTTPS oficial. |
+| publication_date | date | Si | Fecha de publicacion. |
+| jurisdiction_type | varchar(30) | Si | Nacional, distrital o municipal. |
+| jurisdiction_code | varchar(20) | No | DIVIPOLA cuando es territorial. |
+| content_hash | varchar(128) | No | Huella del documento verificado. |
+
+### `accounting.legal_source_event`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| id | uuid | Si | Identificador del evento. |
+| legal_source_id | uuid | Si | Fuente afectada. |
+| event_type | varchar(30) | Si | Valor de `LEGAL_SOURCE_EVENT_TYPE`. |
+| decision_reference | varchar(250) | Si | Acto o providencia que sustenta el evento. |
+| effective_from | date | Si | Inicio de efectos juridicos. |
+| effective_to | date | No | Fin de efectos cuando se conoce. |
+| official_url | varchar(1000) | Si | Evidencia oficial del evento. |
+| recorded_by | uuid | Si | Usuario ROOT responsable. |
+
+### `accounting.withholding_accumulation`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| company_id | uuid | Si | Empresa pagadora. |
+| third_party_id | uuid | Si | Beneficiario acumulado. |
+| tax_type | varchar(30) | Si | Tipo de retencion. |
+| concept_code | varchar(80) | Si | Concepto acumulado. |
+| contract_reference | varchar(120) | No | Contrato cuando define el alcance. |
+| period_start | date | Si | Inicio del alcance temporal. |
+| period_end | date | Si | Fin del alcance temporal. |
+| taxable_accumulated | numeric(19,2) | Si | Base acumulada confirmada. |
+| withheld_accumulated | numeric(19,2) | Si | Retencion acumulada confirmada. |
+| version | bigint | Si | Control de concurrencia. |
+
+### `accounting.withholding_calculation_line_snapshot`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| calculation_snapshot_id | uuid | Si | Cabecera del calculo confirmado. |
+| source_line_id | uuid | Si | Linea del documento. |
+| operation_municipality_code | varchar(20) | No | Lugar real de la actividad para reglas territoriales. |
+| base_type | varchar(40) | Si | Base fiscal usada. |
+| base_amount | numeric(19,2) | Si | Valor sujeto a evaluacion. |
+| threshold_amount | numeric(19,2) | No | Umbral convertido para la fecha. |
+| rate | numeric(12,8) | Si | Tarifa decimal aplicada. |
+| amount | numeric(19,2) | Si | Retencion de la linea. |
+| decision | varchar(30) | Si | Valor de `FISCAL_DECISION`. |
+| reason_code | varchar(80) | Si | Explicacion estable y traducible. |
+| rule_id | uuid | No | Regla aplicada; nulo si el calculo quedo bloqueado antes de resolverla. |
+| legal_source_event_id | uuid | No | Estado juridico determinante. |
+
+### `accounting.account_presentation_mapping`
+
+| Campo | Tipo | Requerido | Descripcion |
+|---|---|---:|---|
+| company_id | uuid | Si | Empresa propietaria del plan. |
+| account_id | uuid | Si | Cuenta contable empresarial. |
+| financial_reporting_group | varchar(20) | Si | Grupo de informacion financiera aplicable. |
+| statement_section | varchar(80) | Si | Estado y seccion de presentacion. |
+| presentation_concept | varchar(120) | Si | Concepto de reporte asociado. |
+| valid_from | date | Si | Inicio del mapeo. |
+| valid_to | date | No | Fin del mapeo. |

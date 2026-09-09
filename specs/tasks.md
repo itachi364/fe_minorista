@@ -7472,3 +7472,67 @@ Context7 evidence:
   - Alcance: desactivar resolucion multipart en BFF, conservar cuerpo y boundary, probar, desplegar y validar con un PDF RUT real.
   - Componente: `bff-service`.
   - Validacion: 50 pruebas Maven del BFF sin fallos; despliegue Docker saludable; carga del PDF RUT real de 573173 bytes a traves del BFF respondio `201`. Los tres archivos y registros creados durante el diagnostico fueron retirados por ID.
+
+- [x] TASK-308: Documentar culminacion del motor fiscal colombiano
+  - Estado: DONE; documentacion completada el 2026-09-09, sin generar codigo.
+  - Requisitos: RF-362 a RF-386.
+  - Acceptance criteria: AC-501 a AC-526.
+  - Alcance: fuentes y eventos juridicos, matrices por impuesto, temporalidad, territorialidad, NIIF/PUC, datos, contratos, persistencia, seguridad, pruebas y fases de entrega.
+  - Evidencia: Estatuto Tributario, DUR 1625, Decreto 572 de 2025, comunicaciones DIAN de 2026, Ley 1819 de 2016, Decreto 2420 de 2015, doctrina oficial DIAN/Supersociedades y documentacion Flyway.
+  - Riesgo abierto: la fecha de cualquier reactivacion posterior de los articulos 2 a 8 del Decreto 572 de 2025 debe confirmarse con providencia o comunicacion oficial antes de publicar reglas.
+
+- [ ] TASK-309: Corregir vigencia temporal y eventos juridicos del catalogo fiscal
+  - Estado: PENDING; requiere aprobacion independiente antes de codigo.
+  - Requisitos: RF-362 a RF-364, RF-376, RF-383 a RF-385.
+  - Acceptance criteria: AC-501 a AC-504, AC-516, AC-524, AC-526.
+  - Componentes previstos: `accounting-service`, migraciones aditivas, BFF y panel ROOT.
+  - Entregables: fuentes/eventos inmutables, resolucion por fecha, suspension del paquete afectado por Decreto 572, auditoria y advertencias.
+  - Pruebas: viaje temporal, fuentes suspendidas, snapshots historicos, permisos y migraciones en base limpia/actualizada.
+
+- [ ] TASK-310: Completar perfiles fiscales temporales y modelo de reglas
+  - Estado: PENDING.
+  - Requisitos: RF-365, RF-366, RF-368, RF-373 a RF-375.
+  - Acceptance criteria: AC-505 a AC-507, AC-510, AC-515, AC-516.
+  - Componentes previstos: `tenant-service`, `thirdparty-service`, `accounting-service`, BFF y SPA.
+  - Entregables: calidad temporal de pagador/beneficiario, residencia, declarante, alcance de autorretencion, causacion, bases tipadas, precedencia y soportes.
+  - Pruebas: matrices de perfiles, contradicciones, vigencias, SIMPLE por impuesto y autorretenedor por alcance.
+
+- [ ] TASK-311: Implementar calculo nacional por linea y acumulaciones
+  - Estado: PENDING.
+  - Requisitos: RF-367 a RF-371, RF-374 a RF-376, RF-382.
+  - Acceptance criteria: AC-508 a AC-512, AC-515, AC-516, AC-523.
+  - Componentes previstos: `accounting-service`, consumidores de compras/gastos/pagos, BFF y SPA.
+  - Entregables: matriz nacional verificada de retefuente y ReteIVA, documentos mixtos, acumulados, explicacion e idempotencia.
+  - Pruebas: fronteras `GT/GTE`, bases IVA/AIU/total, agregaciones, pagos parciales, concurrencia y atomicidad.
+
+- [ ] TASK-312: Implementar plataforma ReteICA y paquetes municipales iniciales
+  - Estado: PENDING.
+  - Requisitos: RF-372, RF-376, RF-384, RF-386.
+  - Acceptance criteria: AC-513, AC-514, AC-525.
+  - Componentes previstos: `accounting-service`, catalogos DIVIPOLA/CIIU, BFF y SPA.
+  - Entregables: territorialidad por lugar de actividad, formato de importacion, validacion/publicacion atomica y primeros municipios aprobados por alcance.
+  - Pruebas: domicilio distinto al lugar de operacion, ausencia de paquete, solapamientos, tarifas y vigencias por municipio.
+
+- [ ] TASK-313: Completar integracion contable y conciliacion NIIF/fiscal
+  - Estado: PENDING.
+  - Requisitos: RF-379 a RF-382.
+  - Acceptance criteria: AC-520 a AC-523.
+  - Componentes previstos: `accounting-service`, `tenant-service`, BFF y SPA.
+  - Entregables: plan propio, plantilla PUC rotulada, mapeo de presentacion, conciliacion contable/fiscal y transacciones atomicas.
+  - Pruebas: empresas con planes diferentes, grupos 1/2/3, redondeo, neto pagable y fallos distribuidos.
+
+- [ ] TASK-314: Implementar reversos, cierres y certificados de retencion
+  - Estado: PENDING.
+  - Requisitos: RF-377, RF-378, RF-381, RF-382.
+  - Acceptance criteria: AC-517 a AC-519, AC-523.
+  - Componentes previstos: `accounting-service`, reportes, almacenamiento privado, notificaciones, BFF y SPA.
+  - Entregables: reversos inmutables, resumen mensual, conciliacion Formulario 350/territorial, certificados versionados y descarga segura.
+  - Pruebas: anulaciones, reemplazos, conciliacion, autorizacion, reintentos y trazabilidad.
+
+- [ ] TASK-315: Completar experiencia fiscal, observabilidad y pruebas E2E
+  - Estado: PENDING.
+  - Requisitos: RF-376, RF-383 a RF-386.
+  - Acceptance criteria: AC-516, AC-524 a AC-526.
+  - Componentes previstos: SPA, BFF, servicios fiscales, auditoria y observabilidad.
+  - Entregables: vista previa por linea, explicacion, estados bloqueados, administracion de fuentes/paquetes, alertas de vigencia y flujos frontend completos.
+  - Pruebas: permisos ROOT/OWNER/rol delegado, aislamiento empresarial, E2E compra/gasto/pago, accesibilidad y alertas operativas.

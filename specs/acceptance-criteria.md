@@ -567,3 +567,32 @@
 - AC-498: Dado un PDF real de RUT o soporte fiscal permitido, cuando se carga dentro de los limites, entonces la restriccion de persistencia admite su categoria; un archivo renombrado sin firma PDF continua siendo rechazado.
 - AC-499: Dada la pantalla de reglas fiscales, cuando se definen requisitos de una regla, entonces los textos indican que se evalua la empresa activa y no el tercero; las condiciones del tercero permanecen en sus campos propios.
 - AC-500: Dado un PDF RUT valido menor de 5 MB enviado por la SPA, cuando atraviesa el BFF, entonces el tenant recibe exactamente el cuerpo multipart y su boundary y responde `201` sin corrupcion del archivo.
+
+## Culminacion del motor fiscal colombiano
+
+- AC-501: Dadas dos versiones normativas con periodos distintos, cuando se calculan operaciones en cada fecha, entonces cada una usa exclusivamente la version efectiva y conserva su fuente en el snapshot.
+- AC-502: Dada una norma suspendida judicialmente, cuando la fecha de operacion cae dentro de la suspension, entonces ninguna regla dependiente de sus articulos se selecciona aunque figure publicada en base de datos.
+- AC-503: Dado el Decreto 572 de 2025 y una fecha posterior al 8 de mayo de 2026 sin reactivacion oficial registrada, cuando se intenta publicar o aplicar sus articulos 2 a 8, entonces el sistema lo bloquea como vigencia no verificada.
+- AC-504: Dado un cambio normativo posterior, cuando se consulta un documento confirmado anteriormente, entonces importes, motivos y version permanecen iguales.
+- AC-505: Dada una empresa que no es agente del tipo evaluado, cuando registra una compra, entonces el motor no aplica esa retencion y explica la calidad faltante.
+- AC-506: Dado un proveedor SIMPLE, cuando se evalua una compra, entonces cada impuesto aplica su propia regla y la exclusion de renta no elimina automaticamente ReteIVA, ICA u obligaciones laborales.
+- AC-507: Dado un proveedor autorretenedor, cuando se evalua retefuente, entonces solo se omite la retencion del comprador si una regla vigente demuestra que la designacion cubre ese impuesto y concepto.
+- AC-508: Dado un documento con lineas de compra general, servicio y honorarios, cuando se calcula, entonces cada linea obtiene concepto, base, tarifa y decision propios y los totales coinciden con su suma.
+- AC-509: Dadas operaciones cuya norma exige acumulacion diaria con el mismo proveedor, cuando se registra una nueva operacion, entonces el umbral usa las operaciones validas del dia sin duplicar reintentos ni incluir anulaciones.
+- AC-510: Dada una base exactamente igual al umbral, cuando la regla usa `GT` o `GTE`, entonces el resultado respeta el operador normativo y cubre ambos limites con pruebas.
+- AC-511: Dado IVA cero, proveedor no responsable o concepto excluido, cuando se evalua ReteIVA, entonces no se aplica y se informa la causal concreta; si hay IVA y comprador agente se evalua la regla vigente.
+- AC-512: Dada una operacion entre agentes de ReteIVA o con proveedor exterior, cuando se calcula, entonces se usa la excepcion o tarifa especial que corresponda y no la tarifa general por defecto.
+- AC-513: Dada una operacion sujeta a ICA, cuando se informa el lugar real de realizacion, entonces se selecciona el paquete de ese municipio aunque difiera del domicilio del proveedor.
+- AC-514: Dado un municipio sin paquete vigente, cuando se confirma una operacion que exige ReteICA, entonces queda pendiente y no se crean snapshots, asiento ni cuenta por pagar parciales.
+- AC-515: Dadas dos reglas aplicables del mismo tipo, cuando una representa exencion documentada y vigente, entonces prevalece de forma deterministica; al vencer vuelve a evaluarse la regla general.
+- AC-516: Dado un dato fiscal obligatorio ausente o contradictorio, cuando se calcula, entonces el resultado es `BLOCKED` e identifica exactamente el dato, fuente o catalogo faltante.
+- AC-517: Dada una nota credito o anulacion, cuando afecta una retencion confirmada, entonces se crea un reverso enlazado, se ajustan acumulados y auxiliares y el snapshot original no cambia.
+- AC-518: Dado el cierre mensual, cuando se genera el auxiliar nacional, entonces sus bases y valores concilian con los snapshots por concepto y casillas del Formulario 350 sin marcar la declaracion como presentada.
+- AC-519: Dado un proveedor con retenciones practicadas, cuando se genera su certificado, entonces incluye periodo, identidades, pagos, conceptos y cuantias trazables a los documentos fuente.
+- AC-520: Dada una empresa Grupo 1, 2 o 3, cuando configura contabilidad, entonces el sistema conserva marco, vigencia y politicas sin cambiar tarifas fiscales por el grupo NIIF.
+- AC-521: Dada una empresa con plan propio, cuando contabiliza una retencion, entonces utiliza su mapeo aprobado; la ausencia de una cuenta requerida bloquea el asiento sin imponer automaticamente un codigo PUC historico.
+- AC-522: Dada una plantilla basada en PUC, cuando se activa, entonces identifica sus codigos como referencia configurable y mantiene un mapeo separado a rubros de estados financieros.
+- AC-523: Dado un fallo despues del calculo fiscal durante una confirmacion distribuida, cuando termina la operacion, entonces el documento no aparece confirmado con efectos faltantes y el reintento es idempotente.
+- AC-524: Dado un usuario empresarial, cuando intenta publicar una regla nacional o cambiar el estado juridico de una fuente, entonces recibe `403`; ROOT deja auditoria de cualquier publicacion, suspension o reactivacion.
+- AC-525: Dado un paquete municipal importado, cuando se valida antes de publicar, entonces todos sus municipios, CIIU, tarifas, vigencias y fuentes existen en catalogos controlados y las filas invalidas se rechazan sin publicacion parcial.
+- AC-526: Dada una version normativa proxima a vencer o sin revision vigente, cuando un usuario fiscal abre el panel, entonces recibe una advertencia sin que el sistema cambie reglas silenciosamente.
