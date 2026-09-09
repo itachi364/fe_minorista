@@ -97,6 +97,10 @@ En el panel ROOT de licencias, seleccionar una empresa carga automaticamente su 
 
 La clasificacion de obligacion de facturar esta especificada para calcularse en backend durante la creacion de empresa por ROOT. El RUT se conserva como evidencia privada, los datos se capturan desde catalogos y un cuestionario complementario, y el resultado no es editable. Solo `NOT_OBLIGATED_VERIFIED` permite venta interna no fiscal; codigos de no responsable de IVA o consumo no bastan por si solos. La implementacion corresponde a `TASK-305` y no requiere OCR en su primera version.
 
+Los estados nacionales de retencion del perfil empresarial se derivan de las responsabilidades RUT y se muestran como solo lectura. La designacion de ReteICA sigue siendo municipal y explicita. Las excepciones especiales declaradas requieren revision antes de permitir una venta no fiscal (`TASK-306`).
+
+El BFF reenvia cargas multipart sin interpretar sus partes; la validacion y almacenamiento de RUT, soportes y certificados corresponde al microservicio propietario (`TASK-307`).
+
 El set reproducible para validar esta clasificacion desde el panel ROOT se encuentra en `specs/test-data/invoicing-obligation-frontend.md`.
 
 ## Ejecucion Con Docker Compose

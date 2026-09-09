@@ -122,7 +122,8 @@ class CompanyManagementServiceTest {
     }
 
     private static CompanyTaxProfileCommand taxProfile(String taxRegime, boolean withholdingAgent) {
-        return new CompanyTaxProfileCommand("MICRO", "GRUPO_3", taxRegime, Set.of("O-13"), true,
+        return new CompanyTaxProfileCommand("MICRO", "GRUPO_3", taxRegime,
+                "SIMPLE".equals(taxRegime) ? Set.of("O-47") : Set.of("O-07", "O-13"), true,
                 withholdingAgent, false, false, false, false, "SIMPLE".equals(taxRegime), "11001",
                 Set.of("4711"), UUID.fromString("99999999-9999-9999-9999-999999999999"));
     }

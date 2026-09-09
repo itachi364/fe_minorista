@@ -3623,3 +3623,33 @@ La tabla expresa precedencia, no una lista cerrada de codigos. Las responsabilid
   - Topic consulted: extraccion de texto en PDF digital y limitaciones ante documentos basados en imagen.
   - Relevant finding: PDFBox extrae posiciones/texto cuando existe una capa textual; documentos con glifos no interpretables o solo imagen requieren una solucion OCR separada.
   - Decision impact: la primera version almacena el RUT y usa captura controlada por ROOT; una futura extraccion de texto sera asistencia de contraste y OCR quedara fuera del camino sincrono de alta.
+
+### Derivacion de condiciones fiscales RUT TASK-306
+
+- `CompanyTaxProfile` normaliza las responsabilidades y deriva en dominio los indicadores nacionales. Los booleanos heredados permanecen en el contrato por compatibilidad, pero no son fuente de verdad.
+- Mapeo: `07` agente de retencion en renta; `13` gran contribuyente; `15` o `59` autorretenedor; `23` agente de retencion de IVA; `47` SIMPLE; `48` responsable de IVA.
+- ReteICA no se deriva del RUT nacional: se captura como designacion municipal explicita y conserva el municipio DIVIPOLA.
+- Las combinaciones `48 + 49` y `R-99-PN + otra responsabilidad` se rechazan en dominio antes de persistir.
+- La SPA recalcula la vista derivada al cambiar regimen o responsabilidades y presenta esos estados como informacion de solo lectura. Las condiciones de reglas se rotulan como requisitos sobre la empresa activa.
+- Las excepciones especiales declaradas quedan en revision hasta disponer de evidencia y validacion especificas; una seleccion de formulario nunca acredita por si sola una excepcion.
+- `tenant V011` corrige la restriccion de categorias de archivos y `catalog V013` incorpora las responsabilidades faltantes sin alterar migraciones ya ejecutadas.
+
+#### Context7 evidence TASK-306
+
+- Library/tool: Spring Boot / Jakarta Validation.
+  - Topic consulted: validacion de solicitudes y reglas de dominio en servicios Spring.
+  - Relevant finding: la validacion estructural del transporte no sustituye invariantes de dominio que deben aplicarse con independencia del cliente.
+  - Decision impact: la derivacion y las contradicciones se resuelven en `CompanyTaxProfile`, no solamente en React.
+
+### Proxy multipart transparente TASK-307
+
+- El BFF no es propietario de archivos ni interpreta sus partes. Su controlador captura el cuerpo como `byte[]` y el gateway conserva `Content-Type`, incluido el boundary generado por el navegador.
+- Se deshabilita `spring.servlet.multipart.enabled` exclusivamente en `bff-service`; `tenant-service` y `dian-provider-service` mantienen el resolver para validar los archivos que administran.
+- La regresion se cubre comprobando ausencia del bean `multipartResolver` en el contexto BFF y equivalencia de bytes/cabecera en el request entregado al caso de uso proxy.
+
+#### Context7 evidence TASK-307
+
+- Library/tool: Spring Boot 3.5.
+  - Topic consulted: `MultipartAutoConfiguration`, `MultipartProperties` y desactivacion del procesamiento multipart.
+  - Relevant finding: el soporte multipart servlet se habilita por defecto mediante `spring.servlet.multipart.enabled=true`; sus limites y resolucion pertenecen a la auto-configuracion del servicio receptor.
+  - Decision impact: el BFF configura `spring.servlet.multipart.enabled=false` para no consumir el stream antes del reenvio, mientras el tenant conserva sus limites de 5 MB/6 MB.

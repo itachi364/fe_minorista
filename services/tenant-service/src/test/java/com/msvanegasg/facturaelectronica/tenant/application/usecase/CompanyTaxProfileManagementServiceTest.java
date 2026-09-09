@@ -30,24 +30,35 @@ class CompanyTaxProfileManagementServiceTest {
     @Test
     void persistsAndReadsNormalizedFiscalProfileWithMultipleCiiuCodes() {
         var result = service.update(COMPANY_ID, new CompanyTaxProfileCommand("micro", "grupo_3", "ordinario",
-                Set.of("o-13", "O-23"), true, true, true, true, true, false, false, "11001",
+                Set.of("o-07", "o-13", "O-23", "O-48", "O-59"), false, false, false, true, false, false, false, "11001",
                 Set.of("6201", "4711"), USER_ID));
 
         assertThat(result.taxRegime()).isEqualTo("ORDINARIO");
-        assertThat(result.rutResponsibilities()).containsExactlyInAnyOrder("O-13", "O-23");
+        assertThat(result.rutResponsibilities()).containsExactlyInAnyOrder("O-07", "O-13", "O-23", "O-48", "O-59");
         assertThat(result.ciiuCodes()).containsExactlyInAnyOrder("6201", "4711");
         assertThat(result.icaMunicipalityCode()).isEqualTo("11001");
+        assertThat(result).extracting("vatResponsible", "withholdingAgent", "vatWithholdingAgent",
+                "icaWithholdingAgent", "largeTaxpayer", "selfWithholding")
+                .containsExactly(true, true, true, true, true, true);
         assertThat(service.findByCompanyId(COMPANY_ID)).isEqualTo(result);
     }
 
     @Test
-    void rejectsSimpleFlagForNonSimpleRegime() {
+    void ignoresClientSimpleFlagAndDerivesItFromRegime() {
         CompanyTaxProfileCommand command = new CompanyTaxProfileCommand("MICRO", "GRUPO_3", "ORDINARIO",
                 Set.of(), false, false, false, false, false, false, true, null, Set.of(), USER_ID);
 
+        assertThat(service.update(COMPANY_ID, command).simpleRegime()).isFalse();
+    }
+
+    @Test
+    void rejectsContradictoryRutResponsibilities() {
+        CompanyTaxProfileCommand command = new CompanyTaxProfileCommand("MICRO", "GRUPO_3", "ORDINARIO",
+                Set.of("O-48", "O-49"), false, false, false, false, false, false, false, null, Set.of(), USER_ID);
+
         assertThatThrownBy(() -> service.update(COMPANY_ID, command))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("SIMPLE");
+                .hasMessageContaining("48 and 49");
     }
 
     private static final class InMemoryProfileRepository implements CompanyTaxProfileRepositoryPort {

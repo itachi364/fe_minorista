@@ -7455,3 +7455,20 @@ Context7 evidence:
   - Entregables: captura ROOT con soporte RUT PDF, motor backend versionado, snapshots por empresa, bloqueo fail-closed de venta no fiscal, opciones cerradas para excepciones, BFF, SPA y comprobante interno rotulado.
   - Validacion: tenant 61 pruebas, billing 82 pruebas, BFF 48 pruebas, SPA 56 pruebas y build Vite de produccion.
   - Fuentes: Estatuto Tributario, Decreto 1625 de 2016/Decreto 358 de 2020, Resolucion DIAN 227 de 2025 y Resolucion DIAN 238 de 2025.
+
+- [x] TASK-306: Derivar condiciones fiscales de empresa desde el RUT
+  - Estado: DONE; validado el 2026-09-09.
+  - Requisitos: RF-356 a RF-360.
+  - Acceptance criteria: AC-494 a AC-499.
+  - Alcance: catalogo RUT completo, indicadores nacionales autoritativos, ReteICA municipal explicita, contradicciones, excepciones fail-closed, categorias de evidencia y rotulos frontend.
+  - Componentes: `tenant-service`, `catalog-service` y SPA.
+  - Pruebas: dominio de perfil fiscal, motor de obligacion, payload/vista frontend, migraciones Flyway, suites Maven, Vitest y build Vite.
+  - Validacion: `tenant-service` 62 pruebas, `catalog-service` 9 pruebas y SPA 58 pruebas sin fallos; build Vite aprobado, `git diff --check` limpio, migraciones `tenant V011` / `catalog V013` aplicadas y despliegue Docker saludable. Una carga HTTP real de `RUT_EVIDENCE` respondio `201`; el artefacto temporal fue retirado despues de la prueba.
+
+- [x] TASK-307: Corregir reenvio multipart del BFF
+  - Estado: DONE.
+  - Requisito: RF-361.
+  - Acceptance criteria: AC-500.
+  - Alcance: desactivar resolucion multipart en BFF, conservar cuerpo y boundary, probar, desplegar y validar con un PDF RUT real.
+  - Componente: `bff-service`.
+  - Validacion: 50 pruebas Maven del BFF sin fallos; despliegue Docker saludable; carga del PDF RUT real de 573173 bytes a traves del BFF respondio `201`. Los tres archivos y registros creados durante el diagnostico fueron retirados por ID.

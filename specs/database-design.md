@@ -934,3 +934,9 @@ Tabla: `thirdparty.third_party_ciiu`.
 - `third_party_id` referencia `thirdparty.third_party(id)` con borrado en cascada.
 - La migracion copia todo `third_party.ciiu_code` no vacio; la columna historica se conserva temporalmente como actividad principal compatible.
 - Los clientes exclusivamente naturales no conservan filas CIIU; proveedores naturales y terceros juridicos pueden tener varias.
+
+### Endurecimiento de perfil RUT TASK-306
+
+- `tenant V011` reemplaza `ck_company_file_asset_category` para admitir `RUT_EVIDENCE` y `FISCAL_RULE_EVIDENCE` ademas de las categorias existentes.
+- `catalog V013` agrega de forma idempotente las responsabilidades RUT `O-07`, `O-48`, `O-49`, `O-52`, `O-53` y `O-59` requeridas por clasificacion y retenciones.
+- Los booleanos nacionales persistidos en `tenant.company_tax_profile` se mantienen por compatibilidad y consultas, pero sus valores se calculan desde `rut_responsibilities` al escribir el agregado.

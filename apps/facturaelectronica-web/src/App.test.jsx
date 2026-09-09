@@ -307,7 +307,7 @@ test('fiscal rule form uses controlled catalogs and requires a PDF for a specifi
   fireEvent.keyDown(supplierSearch, { key: 'Enter' });
   expect(screen.getByLabelText('Decision')).toHaveValue('EXEMPT');
   fireEvent.change(screen.getByLabelText('Soporte de exencion (PDF)'), { target: { files: [evidence] } });
-  fireEvent.click(screen.getByLabelText('Empresa es responsable de IVA'));
+  fireEvent.click(screen.getByLabelText('Requiere que la empresa activa sea responsable de IVA'));
   fireEvent.submit(screen.getByRole('button', { name: 'Publicar regla' }).closest('form'));
 
   await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
@@ -717,12 +717,12 @@ test('root login shows global panel without company or license validation', asyn
     companySize: 'MICRO',
     financialReportingGroup: 'GRUPO_3',
     taxRegime: 'RESPONSABLE_IVA',
-    rutResponsibilities: ['O-13'],
+    rutResponsibilities: ['O-07', 'O-13', 'O-48'],
     vatResponsible: true,
     withholdingAgent: true,
     vatWithholdingAgent: false,
     icaWithholdingAgent: false,
-    largeTaxpayer: false,
+    largeTaxpayer: true,
     selfWithholding: false,
     simpleRegime: false,
     icaMunicipalityCode: '11001',
@@ -753,10 +753,10 @@ test('root login shows global panel without company or license validation', asyn
   expect(screen.getByText('Empresas registradas')).toBeInTheDocument();
   expect(screen.getByText('Perfil fiscal y retenciones')).toBeInTheDocument();
   expect(screen.getByLabelText('Regimen tributario')).toBeInTheDocument();
-  expect(screen.getByLabelText('Agente de retencion')).not.toBeChecked();
-  expect(screen.getByLabelText('Agente de ReteIVA')).not.toBeChecked();
-  expect(screen.getByLabelText('Agente de ReteICA')).not.toBeChecked();
-  expect(screen.getByLabelText('Autorretenedor')).not.toBeChecked();
+  expect(screen.getByLabelText('Detectado del RUT: agente de retencion')).not.toBeChecked();
+  expect(screen.getByLabelText('Detectado del RUT: agente de ReteIVA')).not.toBeChecked();
+  expect(screen.getByLabelText('Designada como agente de ReteICA por el municipio')).not.toBeChecked();
+  expect(screen.getByLabelText('Detectado del RUT: autorretenedor')).not.toBeChecked();
   expect(screen.getAllByText('Empresa Demo SAS (900123456)').length).toBeGreaterThan(0);
   expect(screen.getByRole('button', { name: 'Crear empresa' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Actualizar' })).toBeInTheDocument();
@@ -765,7 +765,7 @@ test('root login shows global panel without company or license validation', asyn
   fireEvent.click(screen.getByRole('button', { name: 'Actualizar' }));
   await waitFor(() => expect(screen.getByLabelText('Razon social')).toHaveValue('Empresa Demo SAS'));
   expect(screen.getByLabelText('Regimen tributario')).toHaveValue('RESPONSABLE_IVA');
-  expect(screen.getByLabelText('Agente de retencion')).toBeChecked();
+  expect(screen.getByLabelText('Detectado del RUT: agente de retencion')).toBeChecked();
   expect(screen.getByRole('button', { name: 'Actualizar empresa' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Usuarios' })).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(4);

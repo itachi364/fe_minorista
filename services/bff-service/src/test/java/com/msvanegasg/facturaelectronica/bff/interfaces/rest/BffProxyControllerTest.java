@@ -121,6 +121,37 @@ class BffProxyControllerTest {
     }
 
     @Test
+    void preservesMultipartBoundaryAndRawBody() throws Exception {
+        HttpHeaders responseHeaders = new HttpHeaders();
+        responseHeaders.setContentType(MediaType.APPLICATION_JSON);
+        when(proxyUseCase.proxy(any())).thenReturn(new ProxyResponse(HttpStatus.CREATED, responseHeaders,
+                "{\"id\":\"asset-1\"}".getBytes(StandardCharsets.UTF_8)));
+        String boundary = "nexofiscal-boundary";
+        byte[] multipartBody = ("--" + boundary + "\r\n"
+                + "Content-Disposition: form-data; name=\"category\"\r\n\r\n"
+                + "RUT_EVIDENCE\r\n"
+                + "--" + boundary + "\r\n"
+                + "Content-Disposition: form-data; name=\"file\"; filename=\"rut.pdf\"\r\n"
+                + "Content-Type: application/pdf\r\n\r\n"
+                + "%PDF-1.7 test\r\n"
+                + "--" + boundary + "--\r\n").getBytes(StandardCharsets.ISO_8859_1);
+
+        mockMvc.perform(post("/api/v1/companies/11111111-1111-1111-1111-111111111111/files")
+                .header("Authorization", "Bearer token")
+                .header("X-Company-Id", "11111111-1111-1111-1111-111111111111")
+                .header("X-User-Id", "22222222-2222-2222-2222-222222222222")
+                .contentType("multipart/form-data; boundary=" + boundary)
+                .content(multipartBody))
+                .andExpect(status().isCreated());
+
+        org.mockito.Mockito.verify(proxyUseCase).proxy(requestCaptor.capture());
+        ProxyRequest proxied = requestCaptor.getValue();
+        assertThat(proxied.headers().getFirst(HttpHeaders.CONTENT_TYPE))
+                .isEqualTo("multipart/form-data; boundary=" + boundary);
+        assertThat(proxied.body()).isEqualTo(multipartBody);
+    }
+
+    @Test
     void rejectsCriticalCookieMutationWhenMfaIsMissing() throws Exception {
         UUID userId = UUID.fromString("22222222-2222-2222-2222-222222222222");
         String sessionId = sessionStore.createSession(new BffUserSession(userId, "subject", "root@example.com",

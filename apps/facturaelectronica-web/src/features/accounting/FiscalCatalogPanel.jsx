@@ -100,10 +100,10 @@ export function FiscalCatalogPanel({ parameters, rules, isRoot, activeCompanyId,
         <Field label="URL oficial HTTPS" value={form.sourceUrl} onChange={(value) => change('sourceUrl', value)} type="url" />
       </div>
       <div className="check-grid">
-        <CheckField label="Empresa es agente retenedor" checked={form.requiresCompanyWithholdingAgent} onChange={(value) => change('requiresCompanyWithholdingAgent', value)} />
-        <CheckField label="Empresa es responsable de IVA" checked={form.requiresCompanyVatResponsible} onChange={(value) => change('requiresCompanyVatResponsible', value)} />
-        <CheckField label="Empresa es agente de ReteIVA" checked={form.requiresCompanyVatWithholdingAgent} onChange={(value) => change('requiresCompanyVatWithholdingAgent', value)} />
-        <CheckField label="Empresa es agente de ReteICA" checked={form.requiresCompanyIcaWithholdingAgent} onChange={(value) => change('requiresCompanyIcaWithholdingAgent', value)} />
+        <CheckField label="Requiere que la empresa activa sea agente retenedor" checked={form.requiresCompanyWithholdingAgent} onChange={(value) => change('requiresCompanyWithholdingAgent', value)} />
+        <CheckField label="Requiere que la empresa activa sea responsable de IVA" checked={form.requiresCompanyVatResponsible} onChange={(value) => change('requiresCompanyVatResponsible', value)} />
+        <CheckField label="Requiere que la empresa activa sea agente de ReteIVA" checked={form.requiresCompanyVatWithholdingAgent} onChange={(value) => change('requiresCompanyVatWithholdingAgent', value)} />
+        <CheckField label="Requiere que la empresa activa sea agente de ReteICA" checked={form.requiresCompanyIcaWithholdingAgent} onChange={(value) => change('requiresCompanyIcaWithholdingAgent', value)} />
         {isRoot && <CheckField label="Regla nacional global" checked={form.globalRule} onChange={changeGlobalRule} />}
       </div>
     </FormPanel>

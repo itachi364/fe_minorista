@@ -53,14 +53,22 @@ describe('fiscal form payloads', () => {
       companySize: 'MICRO',
       financialReportingGroup: 'GRUPO_3',
       taxRegime: 'RESPONSABLE_IVA',
-      rutResponsibilities: ['O-13'],
+      rutResponsibilities: ['O-07', 'O-13'],
       ciiuCodes: ['4711'],
       withholdingAgent: true,
     };
 
     expect(buildCompanyPayload(company, taxProfile)).toMatchObject({
       identificationNumber: '900123456',
-      taxProfile,
+      taxProfile: {
+        ...taxProfile,
+        vatResponsible: false,
+        withholdingAgent: true,
+        vatWithholdingAgent: false,
+        largeTaxpayer: true,
+        selfWithholding: false,
+        simpleRegime: false,
+      },
     });
     expect(() => buildCompanyPayload(company, { ...taxProfile, taxRegime: '' }))
       .toThrow('Selecciona el regimen tributario de la empresa.');

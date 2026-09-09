@@ -98,11 +98,12 @@ class InvoicingObligationEngineTest {
     }
 
     @Test
-    void scopedSpecialExceptionCanVerifyLegalEntity() {
+    void scopedSpecialExceptionRequiresDedicatedVerification() {
         var base = input("JURIDICAL", "ORDINARIO", Set.of("53"));
         var exception = copy(base, null, "PUBLIC_URBAN_TRANSPORT", false);
-        assertThat(engine.evaluate(exception, UVT_2026).status())
-                .isEqualTo(InvoicingObligationStatus.NOT_OBLIGATED_VERIFIED);
+        var decision = engine.evaluate(exception, UVT_2026);
+        assertThat(decision.status()).isEqualTo(InvoicingObligationStatus.REVIEW_REQUIRED);
+        assertThat(decision.decisionCode()).isEqualTo("SPECIAL_EXCEPTION_REQUIRES_VERIFICATION");
     }
 
     @Test

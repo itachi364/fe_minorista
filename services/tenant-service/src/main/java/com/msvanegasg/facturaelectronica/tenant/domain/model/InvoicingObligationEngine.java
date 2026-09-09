@@ -39,7 +39,8 @@ public final class InvoicingObligationEngine {
         }
         if ("JURIDICAL".equals(normalize(input.personType()))) {
             if (hasSpecialException(input)) {
-                return notObligated("SPECIAL_EXCEPTION_VERIFIED", "SPECIAL_EXCEPTION", input.specialExceptionType());
+                return review("SPECIAL_EXCEPTION_REQUIRES_VERIFICATION", "SPECIAL_EXCEPTION",
+                        input.specialExceptionType());
             }
             return obligated("JURIDICAL_SELLER", "LEGAL_ENTITY_SELLS_GOODS_OR_SERVICES");
         }
@@ -66,7 +67,8 @@ public final class InvoicingObligationEngine {
             return obligated("EXCLUDED_OPERATIONS_THRESHOLD_EXCEEDED", "INCOME_AT_OR_ABOVE_3500_UVT");
         }
         if (hasSpecialException(input)) {
-            return notObligated("SPECIAL_EXCEPTION_VERIFIED", "SPECIAL_EXCEPTION", input.specialExceptionType());
+            return review("SPECIAL_EXCEPTION_REQUIRES_VERIFICATION", "SPECIAL_EXCEPTION",
+                    input.specialExceptionType());
         }
         return obligated("GENERAL_SELLER", "NO_VERIFIED_EXCEPTION");
     }

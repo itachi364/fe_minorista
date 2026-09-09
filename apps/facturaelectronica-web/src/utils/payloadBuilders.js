@@ -1,6 +1,7 @@
 import { calculateNitVerificationDigit, isNit, onlyDigits } from './nit.js';
 import { isSimpleNaturalCustomer, normalizeThirdPartyForm } from './thirdPartyRules.js';
 import { calculateTaxIncludedAmounts } from './taxCalculations.js';
+import { deriveNationalTaxFlags } from './companyTaxProfileRules.js';
 
 function toNumber(value) {
   if (value === '' || value === null || value === undefined) {
@@ -37,6 +38,7 @@ export function buildCompanyPayload(form, taxProfile) {
       ...taxProfile,
       rutResponsibilities: Array.isArray(taxProfile?.rutResponsibilities) ? taxProfile.rutResponsibilities : [],
       ciiuCodes: Array.isArray(taxProfile?.ciiuCodes) ? taxProfile.ciiuCodes : [],
+      ...deriveNationalTaxFlags(taxProfile?.rutResponsibilities, taxProfile?.taxRegime),
     },
   });
 }

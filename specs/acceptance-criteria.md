@@ -560,3 +560,10 @@
 - AC-491: Dado el comprobante interno de una venta no fiscal, cuando se imprime, entonces muestra `NO ES FACTURA DE VENTA NI DOCUMENTO EQUIVALENTE` y `NO VALIDO COMO SOPORTE FISCAL` de forma visible.
 - AC-492: Dada una clasificacion no obligada, cuando se consulta readiness, entonces emisor y resolucion aparecen `NOT_APPLICABLE`; para los demas estados conservan el bloqueo correspondiente.
 - AC-493: Dado que ingresos u otra condicion operacional cruza un umbral vigente, cuando el sistema reevalua, entonces registra `TRANSITION_TO_OBLIGATED`, bloquea nuevas ventas no fiscales y no modifica documentos historicos.
+- AC-494: Dadas responsabilidades RUT `O-07`, `O-13`, `O-15`, `O-23`, `O-47`, `O-48` u `O-59`, cuando se guarda el perfil, entonces backend deriva los indicadores nacionales correspondientes e ignora booleanos enviados en contradiccion.
+- AC-495: Dada una designacion municipal de ReteICA, cuando se guarda el perfil, entonces se conserva como el unico indicador editable separado de las responsabilidades nacionales y la interfaz explica su alcance municipal.
+- AC-496: Dadas responsabilidades `O-48` y `O-49`, o `R-99-PN` junto con otra responsabilidad, cuando se intenta guardar, entonces backend rechaza el perfil sin persistirlo.
+- AC-497: Dada una excepcion especial seleccionada sin verificacion dedicada, cuando se clasifica la obligacion, entonces el resultado es `REVIEW_REQUIRED` y no habilita `NON_FISCAL_SALE`.
+- AC-498: Dado un PDF real de RUT o soporte fiscal permitido, cuando se carga dentro de los limites, entonces la restriccion de persistencia admite su categoria; un archivo renombrado sin firma PDF continua siendo rechazado.
+- AC-499: Dada la pantalla de reglas fiscales, cuando se definen requisitos de una regla, entonces los textos indican que se evalua la empresa activa y no el tercero; las condiciones del tercero permanecen en sus campos propios.
+- AC-500: Dado un PDF RUT valido menor de 5 MB enviado por la SPA, cuando atraviesa el BFF, entonces el tenant recibe exactamente el cuerpo multipart y su boundary y responde `201` sin corrupcion del archivo.

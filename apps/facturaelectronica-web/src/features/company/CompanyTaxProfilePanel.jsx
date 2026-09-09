@@ -1,5 +1,6 @@
 import { CheckField, DualListField, FormPanel, SelectField } from '../../components/forms.jsx';
 import { MunicipalityFields } from '../../components/MunicipalityFields.jsx';
+import { deriveNationalTaxFlags } from '../../utils/companyTaxProfileRules.js';
 
 const companySizeOptions = [
   { value: 'MICRO', label: 'Microempresa' },
@@ -27,7 +28,12 @@ export function CompanyTaxProfilePanel({ form, setForm, onSave, busy, disabled, 
 export function CompanyTaxProfileFields({ form, setForm, taxRegimeOptions = [], responsibilityOptions = [],
   ciiuOptions = [], locations = [], disabled = false }) {
   const change = (name, value) => setForm({ ...form, [name]: value });
-  const changeRegime = (value) => setForm({ ...form, taxRegime: value, simpleRegime: value === 'SIMPLE' });
+  const changeRegime = (value) => setForm({ ...form, taxRegime: value, ...deriveNationalTaxFlags(form.rutResponsibilities, value) });
+  const changeResponsibilities = (value) => setForm({
+    ...form,
+    rutResponsibilities: value,
+    ...deriveNationalTaxFlags(value, form.taxRegime),
+  });
 
   return (
     <>
@@ -36,17 +42,17 @@ export function CompanyTaxProfileFields({ form, setForm, taxRegimeOptions = [], 
         <SelectField label="Grupo de informacion financiera" value={form.financialReportingGroup} onChange={(value) => change('financialReportingGroup', value)} options={reportingGroupOptions} disabled={disabled} />
         <SelectField label="Regimen tributario" value={form.taxRegime} onChange={changeRegime} options={taxRegimeOptions} disabled={disabled} />
         <MunicipalityFields municipalityCode={form.icaMunicipalityCode} onChange={(value) => change('icaMunicipalityCode', value)} locations={locations} disabled={disabled} />
-        <DualListField label="Responsabilidades RUT" value={form.rutResponsibilities} onChange={(value) => change('rutResponsibilities', value)} options={responsibilityOptions} disabled={disabled} />
+        <DualListField label="Responsabilidades RUT" value={form.rutResponsibilities} onChange={changeResponsibilities} options={responsibilityOptions} disabled={disabled} />
         <DualListField label="Actividades economicas CIIU" value={form.ciiuCodes} onChange={(value) => change('ciiuCodes', value)} options={ciiuOptions} searchable disabled={disabled} />
       </div>
       <div className="check-grid">
-        <CheckField label="Responsable de IVA" checked={form.vatResponsible} onChange={(value) => change('vatResponsible', value)} disabled={disabled} />
-        <CheckField label="Agente de retencion" checked={form.withholdingAgent} onChange={(value) => change('withholdingAgent', value)} disabled={disabled} />
-        <CheckField label="Agente de ReteIVA" checked={form.vatWithholdingAgent} onChange={(value) => change('vatWithholdingAgent', value)} disabled={disabled} />
-        <CheckField label="Agente de ReteICA" checked={form.icaWithholdingAgent} onChange={(value) => change('icaWithholdingAgent', value)} disabled={disabled} />
-        <CheckField label="Gran contribuyente" checked={form.largeTaxpayer} onChange={(value) => change('largeTaxpayer', value)} disabled={disabled} />
-        <CheckField label="Autorretenedor" checked={form.selfWithholding} onChange={(value) => change('selfWithholding', value)} disabled={disabled} />
-        <CheckField label="Regimen SIMPLE" checked={form.simpleRegime} onChange={(value) => setForm({ ...form, simpleRegime: value, taxRegime: value ? 'SIMPLE' : form.taxRegime })} disabled={disabled} />
+        <CheckField label="Detectado del RUT: responsable de IVA" checked={form.vatResponsible} onChange={() => {}} disabled />
+        <CheckField label="Detectado del RUT: agente de retencion" checked={form.withholdingAgent} onChange={() => {}} disabled />
+        <CheckField label="Detectado del RUT: agente de ReteIVA" checked={form.vatWithholdingAgent} onChange={() => {}} disabled />
+        <CheckField label="Designada como agente de ReteICA por el municipio" checked={form.icaWithholdingAgent} onChange={(value) => change('icaWithholdingAgent', value)} disabled={disabled} />
+        <CheckField label="Detectado del RUT: gran contribuyente" checked={form.largeTaxpayer} onChange={() => {}} disabled />
+        <CheckField label="Detectado del RUT: autorretenedor" checked={form.selfWithholding} onChange={() => {}} disabled />
+        <CheckField label="Detectado del regimen: SIMPLE" checked={form.simpleRegime} onChange={() => {}} disabled />
       </div>
     </>
   );
