@@ -33,6 +33,7 @@ public class TenantLicenseHttpAdapter implements LicenseValidationPort {
                     .uri(uriBuilder -> uriBuilder.path("/api/v1/companies/{companyId}/license/validation")
                             .queryParam("action", action.name())
                             .queryParam("module", "BILLING")
+                            .queryParam("feature", featureFor(action))
                             .build(companyId))
                     .retrieve()
                     .body(LicenseValidationResponse.class);
@@ -48,7 +49,12 @@ public class TenantLicenseHttpAdapter implements LicenseValidationPort {
         }
     }
 
-    record LicenseValidationResponse(UUID companyId, LicenseAction action, String module, boolean allowed, String status,
-            Integer maxUsers, Integer maxMonthlyDocuments, String reasonCode, String message) {
+    private static String featureFor(LicenseAction action) {
+        return action == LicenseAction.ISSUE_FISCAL_DOCUMENT ? "ELECTRONIC_BILLING" : "POS_SALES";
+    }
+
+    record LicenseValidationResponse(UUID companyId, LicenseAction action, String module, String feature,
+            boolean allowed, String status, Integer maxUsers, Integer maxMonthlyDocuments, String reasonCode,
+            String message) {
     }
 }

@@ -513,3 +513,16 @@
 - AC-456: Dado el administrador inicial creado por ROOT, cuando se materializa su rol OWNER, entonces recibe todos los permisos empresariales vigentes; una migracion agrega `FISCAL_SETTINGS_MANAGE` a roles OWNER existentes y nunca agrega permisos globales.
 - AC-457: Dado un OWNER con `COMPANY_SETTINGS_MANAGE`, cuando actualiza datos generales de su empresa activa, entonces el BFF permite la operacion; si intenta actualizar otra empresa, la autorizacion por contexto la rechaza.
 - AC-458: Dado el menu lateral, cuando se renderiza la configuracion, entonces muestra `Reglas fiscales` y `Configuracion contable` dentro del grupo `Configuracion`, sin mostrar el nombre anterior `Catalogo fiscal`.
+
+## Licencias por capacidades
+
+- AC-459: Dado ROOT administrando una licencia, cuando selecciona `POS y facturacion`, entonces backend y SPA establecen exactamente los modulos y capacidades basicas aprobados y bloquean su edicion manual.
+- AC-460: Dada una empresa POS, cuando inicia sesion, entonces puede vender, administrar clientes/productos, emitir documentos configurados y usar reportes sincronicos, pero no ve contabilidad avanzada, proveedores, compras, gastos, deudores, nomina, reglas fiscales avanzadas ni jobs de reporte.
+- AC-461: Dada una licencia POS, cuando se intenta invocar directamente una capacidad avanzada, entonces el backend responde licencia no incluida sin ejecutar efectos de negocio.
+- AC-462: Dado ROOT seleccionando `Completo`, cuando guarda la licencia, entonces se habilitan todos los modulos y capacidades estandar implementados y los checks del preset permanecen bloqueados.
+- AC-463: Dado ROOT seleccionando `Personalizable`, cuando edita la licencia, entonces puede activar o desactivar modulos y capacidades compatibles y el backend rechaza combinaciones incoherentes.
+- AC-464: Dada una venta POS con licencia POS, cuando se confirma, entonces la contabilizacion automatica interna permanece disponible aunque las pantallas contables avanzadas no esten licenciadas.
+- AC-465: Dado un reporte con licencia POS, cuando se consulta o exporta de forma sincrona funciona; cuando se solicita un job asincrono, el backend lo bloquea por falta de `REPORTS_ASYNC`.
+- AC-466: Dada una licencia preexistente al aplicar la migracion, cuando se consulta, entonces conserva acceso equivalente mediante un `planCode`, `enabledModules` y `enabledFeatures` normalizados.
+- AC-467: Dado un usuario empresarial con permisos RBAC pero sin capacidad licenciada, cuando intenta operar, entonces prevalece el bloqueo de licencia; ROOT conserva sus funciones administrativas globales.
+- AC-468: Dada la respuesta de licencia, cuando la SPA construye navegacion y controles, entonces deriva visibilidad desde `enabledFeatures` sin duplicar estado local mutable.

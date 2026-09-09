@@ -3496,3 +3496,24 @@ Context7 evidence:
   - Topic consulted: inputs controlados, estado compartido y filtrado de listas.
   - Relevant finding: el valor de un input controlado debe actualizarse sincronamente y el estado de consulta debe residir en el componente que filtra las opciones.
   - Decision impact: el combobox usa estado React local sincronico para busqueda/apertura y recibe `value`/`onChange` como fuente autoritativa de seleccion.
+
+### Licencias comerciales por capacidades TASK-302
+
+- Modelo: `enabledModules` conserva agrupacion y navegacion; `enabledFeatures` distingue capacidades basicas, avanzadas y comerciales. `LicensePlanPolicy` normaliza presets y valida selecciones `CUSTOM`.
+- Preset POS: modulos `COMPANY`, `THIRDPARTY`, `INVENTORY`, `BILLING`, `REPORTS`, `CATALOGS`, `AUDIT` y `USERS`; agrega `ACCOUNTING_CORE` como dependencia interna sin habilitar pantallas contables.
+- Preset FULL: todos los modulos actuales y capacidades estandar implementadas. `Licencias` sigue fuera del entitlement empresarial porque es administracion ROOT.
+- CUSTOM: admite modulos/capacidades compatibles y marcadores comerciales; una capacidad operativa requiere su modulo, salvo dependencias internas declaradas.
+- Enforcement: `tenant-service` valida modulo y capacidad; la SPA deriva navegacion y controles desde la respuesta. Los consumidores backend envian la capacidad requerida para operaciones criticas.
+- Migracion: agrega `enabled_features text[]`; normaliza planes historicos y deriva capacidades conservadoras desde `enabled_modules`, sin borrar columnas ni registros.
+- Seguridad: licencia y RBAC son controles acumulativos. ROOT conserva administracion global sin licencia empresarial.
+- Pruebas: dominio de presets/compatibilidad, persistencia, REST, consumidores server-side, presets frontend, navegacion y reportes asincronos.
+
+#### Context7 evidence TASK-302
+- Library/tool: React.
+  - Topic consulted: conditional rendering and derived UI state.
+  - Relevant finding: React recomienda calcular datos derivados durante render en lugar de duplicarlos mediante estado y efectos.
+  - Decision impact: visibilidad y capacidades se derivan directamente de `license.enabledFeatures` y presets puros.
+- Library/tool: Spring Boot 3.5.
+  - Topic consulted: backend authorization rules.
+  - Relevant finding: las reglas de acceso deben interceptar la solicitud en backend mediante reglas explicitas; la visibilidad del cliente no reemplaza autorizacion.
+  - Decision impact: `tenant-service` expone validacion autoritativa por feature y los consumidores envian la capacidad requerida.

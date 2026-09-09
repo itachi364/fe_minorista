@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyLicense;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyLicenseStatus;
+import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseFeature;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseModule;
 import com.msvanegasg.facturaelectronica.tenant.infrastructure.persistence.entity.CompanyLicenseJpaEntity;
 import com.msvanegasg.facturaelectronica.tenant.infrastructure.persistence.repository.CompanyLicenseJpaRepository;
@@ -42,6 +43,8 @@ class CompanyLicensePersistenceAdapterTest {
         assertThat(saved.companyId()).isEqualTo(COMPANY_ID);
         assertThat(saved.status()).isEqualTo(CompanyLicenseStatus.ACTIVE);
         assertThat(saved.enabledModules()).containsExactlyInAnyOrder(LicenseModule.COMPANY, LicenseModule.BILLING);
+        assertThat(saved.enabledFeatures()).containsExactlyInAnyOrder(LicenseFeature.COMPANY_BASIC,
+                LicenseFeature.POS_SALES);
     }
 
     @Test
@@ -55,17 +58,20 @@ class CompanyLicensePersistenceAdapterTest {
         assertThat(result.orElseThrow().planCode()).isEqualTo("SMALL_BUSINESS");
         assertThat(result.orElseThrow().enabledModules()).containsExactlyInAnyOrder(LicenseModule.COMPANY,
                 LicenseModule.BILLING);
+        assertThat(result.orElseThrow().enabledFeatures()).containsExactlyInAnyOrder(LicenseFeature.COMPANY_BASIC,
+                LicenseFeature.POS_SALES);
     }
 
     private static CompanyLicense license() {
         return new CompanyLicense(LICENSE_ID, COMPANY_ID, "SMALL_BUSINESS", CompanyLicenseStatus.ACTIVE,
                 LocalDate.parse("2026-05-01"), LocalDate.parse("2027-05-01"), 5, 1000,
-                Set.of(LicenseModule.COMPANY, LicenseModule.BILLING), NOW, NOW);
+                Set.of(LicenseModule.COMPANY, LicenseModule.BILLING),
+                Set.of(LicenseFeature.COMPANY_BASIC, LicenseFeature.POS_SALES), NOW, NOW);
     }
 
     private static CompanyLicenseJpaEntity entity() {
         return new CompanyLicenseJpaEntity(LICENSE_ID, COMPANY_ID, "SMALL_BUSINESS", CompanyLicenseStatus.ACTIVE,
                 LocalDate.parse("2026-05-01"), LocalDate.parse("2027-05-01"), 5, 1000,
-                new String[] { "COMPANY", "BILLING" }, NOW, NOW);
+                new String[] { "COMPANY", "BILLING" }, new String[] { "COMPANY_BASIC", "POS_SALES" }, NOW, NOW);
     }
 }

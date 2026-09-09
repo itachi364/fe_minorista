@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyLicenseUseCase;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseAction;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseModule;
+import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseFeature;
 import com.msvanegasg.facturaelectronica.tenant.interfaces.rest.dto.CompanyLicenseRequest;
 import com.msvanegasg.facturaelectronica.tenant.interfaces.rest.dto.CompanyLicenseResponse;
 import com.msvanegasg.facturaelectronica.tenant.interfaces.rest.dto.CompanyLicenseValidationResponse;
@@ -58,7 +59,9 @@ public class CompanyLicenseController {
     @GetMapping("/validation")
     public CompanyLicenseValidationResponse validate(@PathVariable UUID companyId,
             @RequestParam LicenseAction action,
-            @RequestParam(required = false) LicenseModule module) {
-        return CompanyLicenseRestMapper.toResponse(manageCompanyLicenseUseCase.validate(companyId, action, module));
+            @RequestParam(required = false) LicenseModule module,
+            @RequestParam(required = false) LicenseFeature feature) {
+        return CompanyLicenseRestMapper.toResponse(manageCompanyLicenseUseCase.validate(companyId, action, module,
+                feature));
     }
 }

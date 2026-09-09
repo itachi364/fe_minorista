@@ -2001,12 +2001,12 @@ Reglas:
 - `GET /api/v1/companies/{companyId}/license`
 - `PUT /api/v1/companies/{companyId}/license/suspend`
 - `PUT /api/v1/companies/{companyId}/license/activate`
-- `GET /api/v1/companies/{companyId}/license/validation?action=ISSUE_FISCAL_DOCUMENT`
+- `GET /api/v1/companies/{companyId}/license/validation?action=ISSUE_FISCAL_DOCUMENT&module=BILLING&feature=ELECTRONIC_BILLING`
 
 Acciones iniciales de validacion: `CREATE_TRANSACTION`, `ISSUE_FISCAL_DOCUMENT`, `CREATE_USER`.
 Los servicios consumidores deben evaluar este contrato antes de comandos de negocio que creen usuarios, transacciones o documentos fiscales.
 Si `allowed=false`, el servicio consumidor debe bloquear el comando con error estructurado usando `reasonCode` y `message`.
-Las consultas, exportaciones y acciones administrativas de recuperacion no requieren validacion de licencia en esta fase.
+Las capacidades avanzadas de consulta o exportacion, como jobs asincronos, tambien requieren validacion por `feature` en el BFF.
 Estado TASK-058 licencia consumidores:
 
 - `billing-service` valida licencia contra `tenant-service` antes de crear una venta nueva (`CREATE_TRANSACTION`) y antes de confirmar/emision fiscal (`ISSUE_FISCAL_DOCUMENT`).
@@ -2018,7 +2018,7 @@ Estado TASK-058 licencia consumidores:
 
 ```json
 {
-  "planCode": "SMALL_BUSINESS",
+  "planCode": "POS",
   "validFrom": "2026-05-01",
   "validTo": "2027-05-01",
   "maxUsers": 5,
@@ -2032,12 +2032,14 @@ Estado TASK-058 licencia consumidores:
 {
   "id": "uuid",
   "companyId": "uuid",
-  "planCode": "SMALL_BUSINESS",
+  "planCode": "POS",
   "status": "ACTIVE",
   "validFrom": "2026-05-01",
   "validTo": "2027-05-01",
   "maxUsers": 5,
   "maxMonthlyDocuments": 1000,
+  "enabledModules": ["COMPANY", "THIRDPARTY", "INVENTORY", "BILLING", "REPORTS", "CATALOGS", "AUDIT", "USERS"],
+  "enabledFeatures": ["COMPANY_BASIC", "BRANDING_BASIC", "CUSTOMERS", "PRODUCTS_SERVICES", "INVENTORY_BASIC", "POS_SALES", "ELECTRONIC_BILLING", "SALES_REGISTRY", "FISCAL_SETTINGS_BASIC", "FISCAL_DOCUMENTS_BASIC", "REPORTS_BASIC", "CATALOGS_OPERATING", "AUDIT_BASIC", "USERS_BASIC", "OPERATIONAL_PIN", "ACCOUNTING_CORE"],
   "createdAt": "2026-05-19T10:00:00Z",
   "updatedAt": "2026-05-19T10:00:00Z"
 }
@@ -2049,6 +2051,8 @@ Estado TASK-058 licencia consumidores:
 {
   "companyId": "uuid",
   "action": "ISSUE_FISCAL_DOCUMENT",
+  "module": "BILLING",
+  "feature": "ELECTRONIC_BILLING",
   "allowed": false,
   "status": "SUSPENDED",
   "reasonCode": "LICENSE_SUSPENDED",
@@ -2544,6 +2548,7 @@ La UI debe mostrar departamento y municipio por nombre usando codigos DANE/DIVIP
 Reglas:
 
 - `module` es opcional para compatibilidad; si se envia, debe estar dentro de `enabledModules`.
+- TASK-302 agrega `enabledFeatures` a requests/responses y el query opcional `feature` a `/license/validation`. Si se envia, debe estar licenciado ademas del modulo. Los presets `POS` y `FULL` se normalizan en backend; solo `CUSTOM` acepta seleccion explicita.
 - Si la empresa no tiene licencia, el backend responde `404 RESOURCE_NOT_FOUND` con mensaje funcional y la SPA lo traduce a `Licencia no configurada`.
 - ROOT puede crear o actualizar licencias. Usuarios empresariales no administran la licencia comercial de su empresa en esta fase.
 - La licencia define modulos contratados; RBAC define permisos por usuario dentro de esos modulos.
@@ -2666,7 +2671,9 @@ GET /api/v1/platform/licenses/usage?companyId={companyId}
   "activeUsers": 3,
   "maxUsers": 10,
   "monthlyDocuments": 25,
-  "maxMonthlyDocuments": 1000
+  "maxMonthlyDocuments": 1000,
+  "enabledModules": ["COMPANY", "THIRDPARTY", "INVENTORY", "BILLING", "REPORTS", "CATALOGS", "AUDIT", "USERS"],
+  "enabledFeatures": ["COMPANY_BASIC", "BRANDING_BASIC", "CUSTOMERS", "PRODUCTS_SERVICES", "INVENTORY_BASIC", "POS_SALES", "ELECTRONIC_BILLING", "SALES_REGISTRY", "FISCAL_SETTINGS_BASIC", "FISCAL_DOCUMENTS_BASIC", "REPORTS_BASIC", "CATALOGS_OPERATING", "AUDIT_BASIC", "USERS_BASIC", "OPERATIONAL_PIN", "ACCOUNTING_CORE"]
 }
 ```
 

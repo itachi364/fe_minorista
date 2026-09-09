@@ -3,7 +3,6 @@ package com.msvanegasg.facturaelectronica.tenant.domain.model;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -17,6 +16,7 @@ public record CompanyLicense(
         Integer maxUsers,
         Integer maxMonthlyDocuments,
         Set<LicenseModule> enabledModules,
+        Set<LicenseFeature> enabledFeatures,
         Instant createdAt,
         Instant updatedAt) {
 
@@ -29,6 +29,7 @@ public record CompanyLicense(
             Integer maxUsers,
             Integer maxMonthlyDocuments,
             Set<LicenseModule> enabledModules,
+            Set<LicenseFeature> enabledFeatures,
             Instant now) {
         validateRequired(id, "id");
         validateRequired(companyId, "companyId");
@@ -36,18 +37,19 @@ public record CompanyLicense(
         validateDateRange(validFrom, validTo);
         validateLimit(maxUsers, "maxUsers");
         validateLimit(maxMonthlyDocuments, "maxMonthlyDocuments");
-        Set<LicenseModule> normalizedModules = normalizeModules(enabledModules);
+        LicensePlanPolicy.Selection selection = LicensePlanPolicy.normalize(planCode, enabledModules, enabledFeatures);
         validateRequired(now, "now");
         return new CompanyLicense(
                 id,
                 companyId,
-                planCode.trim(),
+                selection.planCode(),
                 CompanyLicenseStatus.ACTIVE,
                 validFrom,
                 validTo,
                 maxUsers,
                 maxMonthlyDocuments,
-                normalizedModules,
+                selection.modules(),
+                selection.features(),
                 now,
                 now);
     }
@@ -59,27 +61,28 @@ public record CompanyLicense(
             Integer maxUsers,
             Integer maxMonthlyDocuments,
             Set<LicenseModule> enabledModules,
+            Set<LicenseFeature> enabledFeatures,
             Instant now) {
         validateText(planCode, "planCode");
         validateDateRange(validFrom, validTo);
         validateLimit(maxUsers, "maxUsers");
         validateLimit(maxMonthlyDocuments, "maxMonthlyDocuments");
-        Set<LicenseModule> normalizedModules = normalizeModules(enabledModules);
+        LicensePlanPolicy.Selection selection = LicensePlanPolicy.normalize(planCode, enabledModules, enabledFeatures);
         validateRequired(now, "now");
-        return new CompanyLicense(id, companyId, planCode.trim(), status, validFrom, validTo, maxUsers,
-                maxMonthlyDocuments, normalizedModules, createdAt, now);
+        return new CompanyLicense(id, companyId, selection.planCode(), status, validFrom, validTo, maxUsers,
+                maxMonthlyDocuments, selection.modules(), selection.features(), createdAt, now);
     }
 
     public CompanyLicense activate(Instant now) {
         validateRequired(now, "now");
         return new CompanyLicense(id, companyId, planCode, CompanyLicenseStatus.ACTIVE, validFrom, validTo, maxUsers,
-                maxMonthlyDocuments, enabledModules, createdAt, now);
+                maxMonthlyDocuments, enabledModules, enabledFeatures, createdAt, now);
     }
 
     public CompanyLicense suspend(Instant now) {
         validateRequired(now, "now");
         return new CompanyLicense(id, companyId, planCode, CompanyLicenseStatus.SUSPENDED, validFrom, validTo, maxUsers,
-                maxMonthlyDocuments, enabledModules, createdAt, now);
+                maxMonthlyDocuments, enabledModules, enabledFeatures, createdAt, now);
     }
 
     public CompanyLicenseStatus effectiveStatus(LocalDate today) {
@@ -96,13 +99,24 @@ public record CompanyLicense(
     }
 
     public boolean allows(LicenseAction action, LicenseModule module, LocalDate today) {
+        return allows(action, module, null, today);
+    }
+
+    public boolean allows(LicenseAction action, LicenseModule module, LicenseFeature feature, LocalDate today) {
         validateRequired(action, "action");
-        return allows(action, today) && (module == null || enabledModules().contains(module));
+        return allows(action, today)
+                && (module == null || enabledModules().contains(module))
+                && (feature == null || enabledFeatures().contains(feature));
     }
 
     @Override
     public Set<LicenseModule> enabledModules() {
         return enabledModules == null ? Set.of() : Collections.unmodifiableSet(enabledModules);
+    }
+
+    @Override
+    public Set<LicenseFeature> enabledFeatures() {
+        return enabledFeatures == null ? Set.of() : Collections.unmodifiableSet(enabledFeatures);
     }
 
     private static void validateText(String value, String field) {
@@ -131,12 +145,4 @@ public record CompanyLicense(
         }
     }
 
-    private static Set<LicenseModule> normalizeModules(Set<LicenseModule> enabledModules) {
-        if (enabledModules == null || enabledModules.isEmpty()) {
-            return Set.of();
-        }
-        EnumSet<LicenseModule> normalized = EnumSet.noneOf(LicenseModule.class);
-        normalized.addAll(enabledModules);
-        return Set.copyOf(normalized);
-    }
 }

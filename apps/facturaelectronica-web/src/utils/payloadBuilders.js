@@ -57,6 +57,7 @@ export function buildLicensePayload(form) {
     maxUsers: toNumber(form.maxUsers),
     maxMonthlyDocuments: toNumber(form.maxMonthlyDocuments),
     enabledModules: Array.isArray(form.enabledModules) ? form.enabledModules : [],
+    enabledFeatures: Array.isArray(form.enabledFeatures) ? form.enabledFeatures : [],
   });
 }
 

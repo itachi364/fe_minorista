@@ -1776,6 +1776,40 @@ pre {
   display: grid;
   gap: 0.5rem;
 }
+
+.license-entitlements {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.license-module-group,
+.license-commercial-options {
+  border: 1px solid #cad5df;
+  border-radius: 6px;
+  margin: 0;
+  min-width: 0;
+  padding: 10px 12px 12px;
+}
+
+.license-module-group legend,
+.license-commercial-options legend {
+  color: #1f3040;
+  font-size: 13px;
+  font-weight: 750;
+  padding: 0 5px;
+}
+
+.license-feature-list {
+  display: grid;
+  gap: 7px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.license-commercial-options {
+  margin-top: 12px;
+}
 @media (max-width: 1180px) {
   .app-header-panel,
   .form-grid,
@@ -1807,7 +1841,12 @@ pre {
   .finance-kpis,
   .accounting-row,
   .movement-row,
-  .line-row {
+    .line-row {
+    grid-template-columns: 1fr;
+  }
+
+  .license-entitlements,
+  .license-feature-list {
     grid-template-columns: 1fr;
   }
 

@@ -150,11 +150,12 @@ Tabla existente:
 Campos principales:
 
 - `company_id`: empresa contratante.
-- `plan_code`: nombre comercial o plantilla base (`BASIC`, `POS`, `FULL`, `CUSTOM`).
+- `plan_code`: plan comercial normalizado (`POS`, `FULL`, `CUSTOM`).
 - `status`: `ACTIVE`, `SUSPENDED`, `EXPIRED`, `CANCELLED`.
 - `valid_from`, `valid_to`: vigencia comercial.
 - `max_users`, `max_monthly_documents`: limites opcionales.
 - `enabled_modules`: arreglo de codigos tecnicos de modulos contratados.
+- `enabled_features`: arreglo de capacidades licenciadas. TASK-302 normaliza planes historicos a `POS`, `FULL` o `CUSTOM`; `enabled_modules` se conserva para compatibilidad y agrupacion.
 
 Reglas:
 

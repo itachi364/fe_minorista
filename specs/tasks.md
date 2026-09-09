@@ -7414,3 +7414,12 @@ Context7 evidence:
   - Servicios: `identity-service`, `tenant-service` mediante contrato existente, BFF y SPA.
   - Pruebas: permisos y delegacion OWNER, rutas BFF, carga/seleccion de tercero, teclado del combobox, navegacion, suites Maven, Vitest y build Vite.
   - Validacion: 220 pruebas Maven en los modulos involucrados, 52 pruebas Vitest y build Vite aprobados el 2026-09-08; la inspeccion visual automatizada quedo pendiente por indisponibilidad del navegador integrado del entorno.
+
+- [x] TASK-302: Implementar licencias POS, completa y personalizable por capacidades
+  - Estado: DONE.
+  - Requisitos: RF-327 a RF-336.
+  - Acceptance criteria: AC-459 a AC-468.
+  - Entregables: catalogo `LicenseFeature`, presets autoritativos, migracion compatible, contrato de validacion granular, UI ROOT jerarquica y restricciones de capacidades avanzadas.
+  - Servicios: `tenant-service`, consumidores de licencia, BFF y SPA.
+  - Pruebas: dominio, persistencia, REST, autorizacion server-side, presets y renderizado frontend, Maven, Vitest y build Vite.
+  - Validacion: migracion Flyway V008 aplicada en PostgreSQL; 208 pruebas Maven aprobadas en `platform-eventing`, `tenant-service`, `identity-service`, `billing-service` y BFF; 53 pruebas Vitest y build Vite aprobados el 2026-09-09. La inspeccion visual automatizada no pudo ejecutarse porque el navegador integrado rechazo la conexion del entorno.

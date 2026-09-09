@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.Set;
 
 import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseModule;
+import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseFeature;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -15,5 +16,6 @@ public record CompanyLicenseRequest(
         @NotNull LocalDate validTo,
         @Positive Integer maxUsers,
         @Positive Integer maxMonthlyDocuments,
-        Set<LicenseModule> enabledModules) {
+        Set<LicenseModule> enabledModules,
+        Set<LicenseFeature> enabledFeatures) {
 }

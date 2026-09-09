@@ -8,6 +8,7 @@ import java.util.UUID;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyLicense;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyLicenseStatus;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseModule;
+import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseFeature;
 
 public record CompanyLicenseResult(
         UUID id,
@@ -19,6 +20,7 @@ public record CompanyLicenseResult(
         Integer maxUsers,
         Integer maxMonthlyDocuments,
         Set<LicenseModule> enabledModules,
+        Set<LicenseFeature> enabledFeatures,
         Instant createdAt,
         Instant updatedAt) {
 
@@ -33,6 +35,7 @@ public record CompanyLicenseResult(
                 license.maxUsers(),
                 license.maxMonthlyDocuments(),
                 license.enabledModules(),
+                license.enabledFeatures(),
                 license.createdAt(),
                 license.updatedAt());
     }

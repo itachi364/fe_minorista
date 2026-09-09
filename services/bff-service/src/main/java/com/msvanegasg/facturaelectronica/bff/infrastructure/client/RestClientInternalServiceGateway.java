@@ -39,6 +39,8 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
                     Set.of("ACCOUNTING_MANAGE")),
             TargetService.INVENTORY, new AccessRule(Set.of("INVENTORY_VIEW", "INVENTORY_MANAGE", "SALES_CREATE"),
                     Set.of("INVENTORY_MANAGE")),
+            TargetService.THIRDPARTY, new AccessRule(Set.of("COMPANY_SETTINGS_MANAGE", "SALES_CREATE",
+                    "PURCHASES_MANAGE", "ACCOUNTING_MANAGE"), Set.of("COMPANY_SETTINGS_MANAGE")),
             TargetService.PAYROLL, new AccessRule(Set.of("PAYROLL_VIEW", "PAYROLL_MANAGE"), Set.of("PAYROLL_MANAGE")),
             TargetService.REPORTING, new AccessRule(Set.of("REPORTS_VIEW"), Set.of("REPORTS_VIEW")),
             TargetService.DIAN_PROVIDER, new AccessRule(Set.of("COMPANY_SETTINGS_MANAGE", "FISCAL_DOCUMENTS_ISSUE"),
@@ -132,6 +134,89 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         Set<String> actualPermissions = effectivePermissions(companyId, userId);
         if (actualPermissions.stream().noneMatch(requiredPermissions::contains)) {
             throw new BffAccessDeniedException("insufficient permissions");
+        }
+        ensureLicensed(companyId, licenseFeatureFor(request));
+    }
+
+    private void ensureLicensed(UUID companyId, String feature) {
+        if (feature == null) {
+            return;
+        }
+        try {
+            LicenseValidationResponse response = clients.get(TargetService.TENANT)
+                    .get()
+                    .uri(uriBuilder -> uriBuilder.path("/api/v1/companies/{companyId}/license/validation")
+                            .queryParam("action", "CREATE_TRANSACTION")
+                            .queryParam("feature", feature)
+                            .build(companyId))
+                    .retrieve()
+                    .body(LicenseValidationResponse.class);
+            if (response == null || !response.allowed()) {
+                throw new BffAccessDeniedException(
+                        response == null ? "license could not be resolved" : response.message());
+            }
+        } catch (BffAccessDeniedException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new BffAccessDeniedException("license could not be resolved");
+        }
+    }
+
+    private String licenseFeatureFor(ProxyRequest request) {
+        String path = normalizeApiPath(request.uri().getPath());
+        if (request.targetService() == TargetService.PAYROLL) {
+            return "PAYROLL";
+        }
+        if (request.targetService() == TargetService.REPORTING && matchesAny(path, "reports/export-jobs")) {
+            return "REPORTS_ASYNC";
+        }
+        if (request.targetService() == TargetService.INVENTORY && matchesAny(path, "purchases")) {
+            return "PURCHASES";
+        }
+        if (request.targetService() == TargetService.THIRDPARTY) {
+            if (matchesAny(path, "suppliers")) {
+                return "SUPPLIERS";
+            }
+            if (matchesAny(path, "customers")) {
+                return "CUSTOMERS";
+            }
+            if (MUTATING_METHODS.contains(request.method().name()) && containsSupplierRole(request.body())) {
+                return "SUPPLIERS";
+            }
+            return "CUSTOMERS";
+        }
+        if (request.targetService() == TargetService.ACCOUNTING) {
+            if (matchesAny(path, "fiscal-catalog", "fiscal-calculations")) {
+                return "FISCAL_RULES_ADVANCED";
+            }
+            if (matchesAny(path, "expenses", "reports/expenses")) {
+                return "EXPENSES";
+            }
+            if (matchesAny(path, "accounts-receivable", "reports/accounts-receivable")) {
+                return "RECEIVABLES";
+            }
+            return "ACCOUNTING_ADVANCED";
+        }
+        return null;
+    }
+
+    private boolean containsSupplierRole(byte[] body) {
+        if (body == null || body.length == 0) {
+            return false;
+        }
+        try {
+            JsonNode roles = objectMapper.readTree(body).path("roles");
+            if (!roles.isArray()) {
+                return false;
+            }
+            for (JsonNode role : roles) {
+                if ("SUPPLIER".equalsIgnoreCase(role.asText())) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (IOException exception) {
+            return false;
         }
     }
 
@@ -422,5 +507,8 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
     }
 
     private record CompanyAccessResponse(UUID companyId, List<String> roles, Set<String> permissions) {
+    }
+
+    private record LicenseValidationResponse(boolean allowed, String message) {
     }
 }

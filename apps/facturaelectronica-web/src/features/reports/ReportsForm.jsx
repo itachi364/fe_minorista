@@ -22,6 +22,7 @@ export function ReportsForm({
   onCreateExportJob,
   onLoadExportJobs,
   onDownloadExportJob,
+  canUseAsyncReports = true,
   busy,
 }) {
   const selectedReport = definitions.find((report) => report.code === form.reportCode);
@@ -58,7 +59,7 @@ export function ReportsForm({
             options={(selectedReport?.chartTypes || ['TABLE']).map((chartType) => ({ value: chartType, label: chartLabels[chartType] || chartType }))}
             disabled={busy || !selectedReport}
           />
-          <SelectField
+          {canUseAsyncReports && <SelectField
             label="Formato avanzado"
             value={form.exportFormat || 'XLS'}
             onChange={(exportFormat) => setForm({ ...form, exportFormat })}
@@ -67,13 +68,13 @@ export function ReportsForm({
               { value: 'CSV', label: 'CSV' },
             ]}
             disabled={busy || !selectedReport}
-          />
-          <CheckField
+          />}
+          {canUseAsyncReports && <CheckField
             label="Notificar por correo cuando este listo"
             checked={Boolean(form.notifyByEmail)}
             onChange={(notifyByEmail) => setForm({ ...form, notifyByEmail })}
             disabled={busy || !selectedReport}
-          />
+          />}
         </div>
         {selectedReport && <p className="hint">{selectedReport.description}</p>}
         <div className="form-grid compact">
@@ -109,7 +110,7 @@ export function ReportsForm({
       rowKey={(row, index) => `report-row-${row.join('|') || index}`}
     />}
 
-    <DataTable
+    {canUseAsyncReports && <DataTable
       title="Reportes avanzados"
       titleLevel={2}
       description="Usa esta cola para reportes pesados. Cuando el estado sea Listo puedes generar el enlace temporal de descarga."
@@ -130,12 +131,12 @@ export function ReportsForm({
       sectionClassName="report-table-panel"
       rowKey={(row, index) => `${row[0]}-${row[3]}-${index}`}
       pageSize={5}
-    />
+    />}
 
-    <footer className="panel-footer">
+    {canUseAsyncReports && <footer className="panel-footer">
       <button className="secondary" disabled={busy} onClick={onLoadExportJobs} type="button">Actualizar trabajos</button>
       <button className="primary" disabled={busy || !selectedReport} onClick={onCreateExportJob} type="button">Generar en segundo plano</button>
-    </footer>
+    </footer>}
   </section>;
 }
 

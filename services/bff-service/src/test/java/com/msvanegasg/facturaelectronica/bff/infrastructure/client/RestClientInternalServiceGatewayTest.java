@@ -37,6 +37,8 @@ class RestClientInternalServiceGatewayTest {
     private HttpServer auditServer;
     private HttpServer catalogServer;
     private HttpServer accountingServer;
+    private HttpServer reportingServer;
+    private HttpServer thirdpartyServer;
 
     @AfterEach
     void tearDown() {
@@ -64,11 +66,18 @@ class RestClientInternalServiceGatewayTest {
         if (accountingServer != null) {
             accountingServer.stop(0);
         }
+        if (reportingServer != null) {
+            reportingServer.stop(0);
+        }
+        if (thirdpartyServer != null) {
+            thirdpartyServer.stop(0);
+        }
     }
 
     @Test
     void allowsPayrollMutationWhenUserHasManagePermission() throws IOException {
         startIdentityServer("[\"PAYROLL_MANAGE\"]");
+        startLicenseServer(true);
         CapturingHandler payrollHandler = startPayrollServer();
         RestClientInternalServiceGateway gateway = gateway();
 
@@ -166,6 +175,7 @@ class RestClientInternalServiceGatewayTest {
     @Test
     void allowsFiscalRulesWhenUserHasFiscalSettingsPermission() throws IOException {
         startIdentityServer("[\"FISCAL_SETTINGS_MANAGE\"]");
+        startLicenseServer(true);
         CapturingHandler accountingHandler = startAccountingServer("/api/v1/fiscal-catalog/rules");
         RestClientInternalServiceGateway gateway = gateway();
 
@@ -206,6 +216,7 @@ class RestClientInternalServiceGatewayTest {
     @Test
     void allowsPurchaseMutationWhenUserHasPurchasesManagePermission() throws IOException {
         startIdentityServer("[\"PURCHASES_MANAGE\"]");
+        startLicenseServer(true);
         CapturingHandler inventoryHandler = startInventoryServer("/api/v1/purchases");
         RestClientInternalServiceGateway gateway = gateway();
 
@@ -214,6 +225,34 @@ class RestClientInternalServiceGatewayTest {
 
         assertThat(response.status()).isEqualTo(HttpStatus.CREATED);
         assertThat(inventoryHandler.requestBody).contains("1000");
+    }
+
+    @Test
+    void rejectsAsyncReportWhenLicenseDoesNotIncludeFeature() throws IOException {
+        startIdentityServer("[\"REPORTS_VIEW\"]");
+        startLicenseServer(false);
+        CapturingHandler reportingHandler = startReportingServer("/api/v1/reports/export-jobs");
+        RestClientInternalServiceGateway gateway = gateway();
+
+        assertThatThrownBy(() -> gateway.exchange(new ProxyRequest(TargetService.REPORTING, HttpMethod.POST,
+                URI.create("/api/v1/reports/export-jobs"), headers(), "{}".getBytes(StandardCharsets.UTF_8))))
+                .isInstanceOf(BffAccessDeniedException.class)
+                .hasMessageContaining("licencia");
+        assertThat(reportingHandler.requestBody).isNull();
+    }
+
+    @Test
+    void rejectsSupplierCreationWhenLicenseOnlyIncludesCustomers() throws IOException {
+        startIdentityServer("[\"COMPANY_SETTINGS_MANAGE\"]");
+        startLicenseServer(false);
+        CapturingHandler thirdpartyHandler = startThirdpartyServer("/api/v1/third-parties");
+        RestClientInternalServiceGateway gateway = gateway();
+
+        assertThatThrownBy(() -> gateway.exchange(new ProxyRequest(TargetService.THIRDPARTY, HttpMethod.POST,
+                URI.create("/api/v1/third-parties"), headers(),
+                "{\"roles\":[\"SUPPLIER\"]}".getBytes(StandardCharsets.UTF_8))))
+                .isInstanceOf(BffAccessDeniedException.class);
+        assertThat(thirdpartyHandler.requestBody).isNull();
     }
 
     @Test
@@ -299,8 +338,10 @@ class RestClientInternalServiceGatewayTest {
         String auditUrl = serverUrl(auditServer, "http://audit");
         String catalogUrl = serverUrl(catalogServer, "http://catalog");
         String accountingUrl = serverUrl(accountingServer, "http://accounting");
-        BffProperties properties = new BffProperties(tenantUrl, identityUrl, catalogUrl, "http://thirdparty",
-                inventoryUrl, billingUrl, accountingUrl, payrollUrl, "http://reporting", "http://dian",
+        String reportingUrl = serverUrl(reportingServer, "http://reporting");
+        String thirdpartyUrl = serverUrl(thirdpartyServer, "http://thirdparty");
+        BffProperties properties = new BffProperties(tenantUrl, identityUrl, catalogUrl, thirdpartyUrl,
+                inventoryUrl, billingUrl, accountingUrl, payrollUrl, reportingUrl, "http://dian",
                 auditUrl);
         return new RestClientInternalServiceGateway(RestClient.builder(), properties, new ObjectMapper());
     }
@@ -364,6 +405,19 @@ class RestClientInternalServiceGatewayTest {
         return handler;
     }
 
+    private void startLicenseServer(boolean allowed) throws IOException {
+        tenantServer = HttpServer.create(new InetSocketAddress(0), 0);
+        tenantServer.createContext("/api/v1/companies/" + COMPANY_ID + "/license/validation", exchange -> {
+            byte[] body = ("{\"allowed\":" + allowed + ",\"message\":\"Funcionalidad no incluida en la licencia.\"}")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        tenantServer.start();
+    }
+
     private CapturingHandler startBillingServer(String path) throws IOException {
         billingServer = HttpServer.create(new InetSocketAddress(0), 0);
         CapturingHandler handler = new CapturingHandler();
@@ -401,6 +455,22 @@ class RestClientInternalServiceGatewayTest {
         CapturingHandler handler = new CapturingHandler();
         accountingServer.createContext(path, handler::handle);
         accountingServer.start();
+        return handler;
+    }
+
+    private CapturingHandler startReportingServer(String path) throws IOException {
+        reportingServer = HttpServer.create(new InetSocketAddress(0), 0);
+        CapturingHandler handler = new CapturingHandler();
+        reportingServer.createContext(path, handler::handle);
+        reportingServer.start();
+        return handler;
+    }
+
+    private CapturingHandler startThirdpartyServer(String path) throws IOException {
+        thirdpartyServer = HttpServer.create(new InetSocketAddress(0), 0);
+        CapturingHandler handler = new CapturingHandler();
+        thirdpartyServer.createContext(path, handler::handle);
+        thirdpartyServer.start();
         return handler;
     }
 

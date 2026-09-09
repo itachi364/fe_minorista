@@ -586,6 +586,30 @@ test('renders normalized sales by product report without technical columns', () 
   expect(screen.queryByText('Electronic Document / Id')).not.toBeInTheDocument();
 });
 
+test('basic reports hide asynchronous export controls', () => {
+  render(<ReportsForm
+    definitions={[{ code: 'SALES', category: 'Ventas', label: 'Ventas', filters: [], chartTypes: ['TABLE'] }]}
+    options={{}}
+    form={{ reportCode: 'SALES', chartType: 'TABLE', filters: {} }}
+    setForm={vi.fn()}
+    data={null}
+    jobs={[]}
+    onReportChange={vi.fn()}
+    onLoadDefinitions={vi.fn()}
+    onSubmit={vi.fn()}
+    onExport={vi.fn()}
+    onCreateExportJob={vi.fn()}
+    onLoadExportJobs={vi.fn()}
+    onDownloadExportJob={vi.fn()}
+    canUseAsyncReports={false}
+    busy={false}
+  />);
+
+  expect(screen.getByRole('button', { name: 'Generar reporte' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Generar en segundo plano' })).not.toBeInTheDocument();
+  expect(screen.queryByText('Reportes avanzados')).not.toBeInTheDocument();
+});
+
 test('sales user can access POS without fiscal advanced permission', async () => {
   mockLoginFlow(ACTIVE_LICENSE, SALES_ONLY_ACCESS);
 
@@ -799,20 +823,25 @@ test('root license plan presets select modules and remove basic option', async (
   fireEvent.change(screen.getByLabelText('Tipo de licencia'), { target: { value: 'POS' } });
   expect(screen.getByLabelText('Empresa y configuracion')).toBeChecked();
   expect(screen.getByLabelText('Clientes y proveedores')).toBeChecked();
+  expect(screen.getByLabelText('Clientes')).toBeChecked();
+  expect(screen.getByLabelText('Proveedores')).not.toBeChecked();
   expect(screen.getByLabelText('Inventario')).toBeChecked();
   expect(screen.getByLabelText('Ventas y facturacion electronica')).toBeChecked();
-  expect(screen.getByLabelText('Contabilidad')).toBeChecked();
+  expect(screen.getByLabelText('Contabilidad')).not.toBeChecked();
   expect(screen.getByLabelText('Reportes')).toBeChecked();
+  expect(screen.getByLabelText('Reportes basicos')).toBeChecked();
+  expect(screen.getByLabelText('Reportes avanzados asincronos')).not.toBeChecked();
   expect(screen.getByLabelText('Usuarios, roles y permisos')).toBeChecked();
   expect(screen.getByLabelText('Nomina')).not.toBeChecked();
-  expect(screen.getByLabelText('Catalogos')).not.toBeChecked();
-  expect(screen.getByLabelText('Logs y auditoria')).not.toBeChecked();
+  expect(screen.getByLabelText('Catalogos')).toBeChecked();
+  expect(screen.getByLabelText('Logs y auditoria')).toBeChecked();
   expect(screen.getByLabelText('Nomina')).toBeDisabled();
 
   fireEvent.change(screen.getByLabelText('Tipo de licencia'), { target: { value: 'FULL' } });
   expect(screen.getByLabelText('Nomina')).toBeChecked();
   expect(screen.getByLabelText('Catalogos')).toBeChecked();
   expect(screen.getByLabelText('Logs y auditoria')).toBeChecked();
+  expect(screen.getByLabelText('Reportes avanzados asincronos')).toBeChecked();
   expect(screen.getByLabelText('Usuarios, roles y permisos')).toBeDisabled();
 
   fireEvent.click(screen.getByRole('button', { name: 'Guardar licencia' }));
@@ -822,6 +851,8 @@ test('root license plan presets select modules and remove basic option', async (
     planCode: 'FULL',
     enabledModules: ['COMPANY', 'THIRDPARTY', 'INVENTORY', 'BILLING', 'ACCOUNTING', 'PAYROLL', 'REPORTS', 'CATALOGS', 'AUDIT', 'USERS'],
   });
+  expect(JSON.parse(fetchMock.mock.calls[2][1].body).enabledFeatures).toContain('FISCAL_RULES_ADVANCED');
+  expect(JSON.parse(fetchMock.mock.calls[2][1].body).enabledFeatures).toContain('REPORTS_ASYNC');
 });
 
 test('root creates company and initial administrator', async () => {

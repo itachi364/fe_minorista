@@ -49,6 +49,10 @@ public class CompanyLicenseJpaEntity {
     @Column(name = "enabled_modules", nullable = false, columnDefinition = "text[]")
     private String[] enabledModules = new String[0];
 
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "enabled_features", nullable = false, columnDefinition = "text[]")
+    private String[] enabledFeatures = new String[0];
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -60,7 +64,7 @@ public class CompanyLicenseJpaEntity {
 
     public CompanyLicenseJpaEntity(UUID id, UUID companyId, String planCode, CompanyLicenseStatus status,
             LocalDate validFrom, LocalDate validTo, Integer maxUsers, Integer maxMonthlyDocuments,
-            String[] enabledModules, Instant createdAt, Instant updatedAt) {
+            String[] enabledModules, String[] enabledFeatures, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.companyId = companyId;
         this.planCode = planCode;
@@ -70,6 +74,7 @@ public class CompanyLicenseJpaEntity {
         this.maxUsers = maxUsers;
         this.maxMonthlyDocuments = maxMonthlyDocuments;
         this.enabledModules = enabledModules == null ? new String[0] : enabledModules.clone();
+        this.enabledFeatures = enabledFeatures == null ? new String[0] : enabledFeatures.clone();
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -108,6 +113,10 @@ public class CompanyLicenseJpaEntity {
 
     public String[] getEnabledModules() {
         return enabledModules == null ? new String[0] : enabledModules.clone();
+    }
+
+    public String[] getEnabledFeatures() {
+        return enabledFeatures == null ? new String[0] : enabledFeatures.clone();
     }
 
     public Instant getCreatedAt() {

@@ -27,6 +27,7 @@ import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyLicense;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyLicenseStatus;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyStatus;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseAction;
+import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseFeature;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseModule;
 
 class CompanyLicenseManagementServiceTest {
@@ -58,6 +59,8 @@ class CompanyLicenseManagementServiceTest {
         assertThat(result.status()).isEqualTo(CompanyLicenseStatus.ACTIVE);
         assertThat(result.maxUsers()).isEqualTo(5);
         assertThat(result.enabledModules()).containsExactlyInAnyOrder(LicenseModule.COMPANY, LicenseModule.BILLING);
+        assertThat(result.enabledFeatures()).containsExactlyInAnyOrder(LicenseFeature.COMPANY_BASIC,
+                LicenseFeature.POS_SALES);
     }
 
     @Test
@@ -67,7 +70,7 @@ class CompanyLicenseManagementServiceTest {
         CompanyLicenseResult result = service.save(COMPANY_ID, command("GROWTH", LocalDate.parse("2028-05-19")));
 
         assertThat(result.id()).isEqualTo(LICENSE_ID);
-        assertThat(result.planCode()).isEqualTo("GROWTH");
+        assertThat(result.planCode()).isEqualTo("CUSTOM");
         assertThat(result.validTo()).isEqualTo(LocalDate.parse("2028-05-19"));
     }
 
@@ -76,7 +79,7 @@ class CompanyLicenseManagementServiceTest {
         service.save(COMPANY_ID, command("SMALL_BUSINESS", LocalDate.parse("2027-05-19")));
 
         CompanyLicenseValidationResult result = service.validate(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT,
-                LicenseModule.BILLING);
+                LicenseModule.BILLING, LicenseFeature.POS_SALES);
 
         assertThat(result.allowed()).isTrue();
         assertThat(result.status()).isEqualTo(CompanyLicenseStatus.ACTIVE);
@@ -89,7 +92,7 @@ class CompanyLicenseManagementServiceTest {
         service.suspend(COMPANY_ID);
 
         CompanyLicenseValidationResult result = service.validate(COMPANY_ID, LicenseAction.CREATE_TRANSACTION,
-                LicenseModule.BILLING);
+                LicenseModule.BILLING, LicenseFeature.POS_SALES);
 
         assertThat(result.allowed()).isFalse();
         assertThat(result.status()).isEqualTo(CompanyLicenseStatus.SUSPENDED);
@@ -101,7 +104,7 @@ class CompanyLicenseManagementServiceTest {
         service.save(COMPANY_ID, command("SMALL_BUSINESS", LocalDate.parse("2026-05-18")));
 
         CompanyLicenseValidationResult result = service.validate(COMPANY_ID, LicenseAction.ISSUE_FISCAL_DOCUMENT,
-                LicenseModule.BILLING);
+                LicenseModule.BILLING, LicenseFeature.POS_SALES);
 
         assertThat(result.allowed()).isFalse();
         assertThat(result.status()).isEqualTo(CompanyLicenseStatus.EXPIRED);
@@ -119,7 +122,7 @@ class CompanyLicenseManagementServiceTest {
 
     @Test
     void throwsWhenLicenseDoesNotExist() {
-        assertThatThrownBy(() -> service.validate(COMPANY_ID, LicenseAction.CREATE_USER, LicenseModule.USERS))
+        assertThatThrownBy(() -> service.validate(COMPANY_ID, LicenseAction.CREATE_USER, LicenseModule.USERS, null))
                 .isInstanceOf(CompanyLicenseNotFoundException.class);
     }
 
@@ -128,16 +131,28 @@ class CompanyLicenseManagementServiceTest {
         service.save(COMPANY_ID, command("SMALL_BUSINESS", LocalDate.parse("2027-05-19")));
 
         CompanyLicenseValidationResult result = service.validate(COMPANY_ID, LicenseAction.CREATE_TRANSACTION,
-                LicenseModule.PAYROLL);
+                LicenseModule.PAYROLL, null);
 
         assertThat(result.allowed()).isFalse();
         assertThat(result.status()).isEqualTo(CompanyLicenseStatus.ACTIVE);
         assertThat(result.reasonCode()).isEqualTo("LICENSE_MODULE_NOT_INCLUDED");
     }
 
+    @Test
+    void blocksFeatureThatIsNotIncludedInActiveLicense() {
+        service.save(COMPANY_ID, command("CUSTOM", LocalDate.parse("2027-05-19")));
+
+        CompanyLicenseValidationResult result = service.validate(COMPANY_ID, LicenseAction.CREATE_TRANSACTION,
+                LicenseModule.BILLING, LicenseFeature.REPORTS_ASYNC);
+
+        assertThat(result.allowed()).isFalse();
+        assertThat(result.reasonCode()).isEqualTo("LICENSE_FEATURE_NOT_INCLUDED");
+    }
+
     private static CompanyLicenseCommand command(String planCode, LocalDate validTo) {
         return new CompanyLicenseCommand(planCode, LocalDate.parse("2026-05-01"), validTo, 5, 1000,
-                Set.of(LicenseModule.COMPANY, LicenseModule.BILLING));
+                Set.of(LicenseModule.COMPANY, LicenseModule.BILLING),
+                Set.of(LicenseFeature.COMPANY_BASIC, LicenseFeature.POS_SALES));
     }
 
     private static Company company() {

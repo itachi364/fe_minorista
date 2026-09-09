@@ -2,6 +2,8 @@ import { CheckField, Field, FormPanel, SelectField, StatusBadge } from '../../co
 import { companyLabel } from '../../utils/company.js';
 import {
   canEditLicenseModules,
+  commercialLicenseFeatureOptions,
+  featuresForLicensePlan,
   licenseModuleLabel,
   licenseModuleOptions,
   licensePlanOptions,
@@ -24,6 +26,7 @@ export function LicenseAdminPanel({
 }) {
   const selectedCompany = companies.find((company) => company.id === form.companyId);
   const selectedModules = new Set(form.enabledModules || []);
+  const selectedFeatures = new Set(form.enabledFeatures || []);
   const licenseLoadedForSelectedCompany = Boolean(form.companyId && license?.companyId === form.companyId);
   const manualModuleSelection = canEditLicenseModules(form.planCode);
 
@@ -32,6 +35,7 @@ export function LicenseAdminPanel({
       ...form,
       planCode,
       enabledModules: modulesForLicensePlan(planCode, form.enabledModules),
+      enabledFeatures: featuresForLicensePlan(planCode, form.enabledFeatures, form.enabledModules),
     });
   }
 
@@ -39,10 +43,23 @@ export function LicenseAdminPanel({
     if (!manualModuleSelection) {
       return;
     }
+    const module = licenseModuleOptions.find((item) => item.value === moduleCode);
+    const moduleFeatures = new Set((module?.features || []).map((item) => item.value));
     const nextModules = checked
       ? [...selectedModules, moduleCode]
       : [...selectedModules].filter((current) => current !== moduleCode);
-    setForm({ ...form, enabledModules: nextModules });
+    const nextFeatures = checked
+      ? [...new Set([...selectedFeatures, ...moduleFeatures])]
+      : [...selectedFeatures].filter((current) => !moduleFeatures.has(current));
+    setForm({ ...form, enabledModules: nextModules, enabledFeatures: nextFeatures });
+  }
+
+  function toggleFeature(featureCode, checked) {
+    if (!manualModuleSelection) return;
+    const nextFeatures = checked
+      ? [...selectedFeatures, featureCode]
+      : [...selectedFeatures].filter((current) => current !== featureCode);
+    setForm({ ...form, enabledFeatures: [...new Set(nextFeatures)] });
   }
 
   return (
@@ -62,17 +79,29 @@ export function LicenseAdminPanel({
           <Field label="Maximo usuarios" value={form.maxUsers} onChange={(value) => setForm({ ...form, maxUsers: value })} type="number" />
           <Field label="Maximo documentos mensuales" value={form.maxMonthlyDocuments} onChange={(value) => setForm({ ...form, maxMonthlyDocuments: value })} type="number" />
         </div>
-        <section className="module-license-grid" aria-label="Modulos contratados">
+        <section className="license-entitlements" aria-label="Modulos y funcionalidades contratadas">
           {licenseModuleOptions.map((module) => (
-            <CheckField
-              key={module.value}
-              label={module.label}
-              checked={selectedModules.has(module.value)}
-              onChange={(checked) => toggleModule(module.value, checked)}
-              disabled={busy || !manualModuleSelection}
-            />
+            <fieldset className="license-module-group" key={module.value}>
+              <legend>
+                <CheckField label={module.label} checked={selectedModules.has(module.value)}
+                  onChange={(checked) => toggleModule(module.value, checked)} disabled={busy || !manualModuleSelection} />
+              </legend>
+              <div className="license-feature-list">
+                {module.features.map((item) => <CheckField key={item.value} label={item.label}
+                  checked={selectedFeatures.has(item.value)} onChange={(checked) => toggleFeature(item.value, checked)}
+                  disabled={busy || !manualModuleSelection || !selectedModules.has(module.value)} />)}
+              </div>
+            </fieldset>
           ))}
         </section>
+        {manualModuleSelection && <fieldset className="license-commercial-options">
+          <legend>Servicios y personalizaciones</legend>
+          <div className="license-feature-list">
+            {commercialLicenseFeatureOptions.map((item) => <CheckField key={item.value} label={item.label}
+              checked={selectedFeatures.has(item.value)} onChange={(checked) => toggleFeature(item.value, checked)}
+              disabled={busy || (item.value === 'ACCOUNTANT_PORTAL' && !selectedModules.has('ACCOUNTING'))} />)}
+          </div>
+        </fieldset>}
         <footer className="panel-actions">
           <button className="secondary" disabled={busy || !form.companyId || licenseLoadedForSelectedCompany} onClick={onLoad} type="button">
             {licenseLoadedForSelectedCompany ? 'Licencia cargada' : 'Cargar licencia'}
@@ -94,6 +123,7 @@ export function LicenseAdminPanel({
           <p><b>Vigencia:</b> {license?.validFrom || 'Sin configurar'} - {license?.validTo || 'Sin configurar'}</p>
           <p><b>Plan:</b> {license?.planCode || 'Sin configurar'}</p>
           <p><b>Modulos:</b> {(license?.enabledModules || []).map(licenseModuleLabel).join(', ') || 'Sin modulos contratados'}</p>
+          <p><b>Funcionalidades:</b> {license?.enabledFeatures?.length ?? 0}</p>
           <p><b>Usuarios activos:</b> {quota(usage?.activeUsers, usage?.maxUsers)}</p>
           <p><b>Documentos del mes:</b> {quota(usage?.monthlyDocuments, usage?.maxMonthlyDocuments)}</p>
         </div>

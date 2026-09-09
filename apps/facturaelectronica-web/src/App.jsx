@@ -82,7 +82,13 @@ import {
 import { buildQuery } from './utils/query.js';
 import { emptyRuntimeCatalogs, loadRuntimeCatalogs } from './utils/runtimeCatalogs.js';
 import { clearStoredSession, loadStoredSession, saveStoredSession, SESSION_TIMEOUT_MS } from './utils/sessionStorage.js';
-import { modulesForLicensePlan, normalizeLicensePlanCode, stepLicenseModules } from './data/licenseModules.js';
+import {
+  featuresForLicensePlan,
+  modulesForLicensePlan,
+  normalizeLicensePlanCode,
+  stepLicenseFeatures,
+  stepLicenseModules,
+} from './data/licenseModules.js';
 import { printReceiptWithThermalPrinter } from './utils/thermalPrinter.js';
 
 const PRODUCT_NAME = 'NexoFiscal';
@@ -233,12 +239,19 @@ export default function App() {
   const canManageOperationalPin = canUse(stepPermissionRules['PIN operacional']);
   const canViewAudit = isRoot || hasAnyPermission(activeAccess, stepPermissionRules.Logs);
   const licensedModules = new Set(license?.enabledModules || []);
+  const licensedFeatures = new Set(featuresForLicensePlan(
+    license?.planCode,
+    license?.enabledFeatures || [],
+    license?.enabledModules || [],
+  ));
+  const canUseLicenseFeature = (featureCode) => isRoot || !featureCode || licensedFeatures.has(featureCode);
   const licenseAllowsStep = (step) => {
     if (isRoot || step === 'Licencias') {
       return isRoot;
     }
     const moduleCode = stepLicenseModules[step];
-    return !moduleCode || licensedModules.has(moduleCode);
+    const featureCode = stepLicenseFeatures[step];
+    return (!moduleCode || licensedModules.has(moduleCode)) && canUseLicenseFeature(featureCode);
   };
   const visibleSteps = steps.filter((step) => licenseAllowsStep(step) && canUse(stepPermissionRules[step] || []));
   const currentStep = visibleSteps.includes(selectedStep) ? selectedStep : visibleSteps[0] || 'Ventas';
@@ -1257,6 +1270,11 @@ export default function App() {
       maxUsers: licenseResult.maxUsers ?? '',
       maxMonthlyDocuments: licenseResult.maxMonthlyDocuments ?? '',
       enabledModules: modulesForLicensePlan(planCode, licenseResult.enabledModules || []),
+      enabledFeatures: featuresForLicensePlan(
+        planCode,
+        licenseResult.enabledFeatures || [],
+        licenseResult.enabledModules || [],
+      ),
     });
   }
 
@@ -2911,7 +2929,7 @@ export default function App() {
             <LicenseAdminPanel form={licenseForm} setForm={setLicenseForm} companies={rootCompanies} license={managedLicense} usage={licenseUsage} onCompanyChange={selectLicenseCompany} onLoad={() => execute(loadManagedLicense)} onSave={() => execute(saveManagedLicense)} onActivate={() => execute(activateManagedLicense)} onSuspend={() => execute(suspendManagedLicense)} busy={busy || !isRoot} />
           )}
           {currentStep === 'Terceros' && (
-            <ThirdPartyForm form={thirdPartyForm} setForm={setThirdPartyForm} companyMunicipalityCode={companyMunicipalityCode} onSubmit={() => execute(createThirdParty)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Terceros)} documentTypeOptionsSource={runtimeCatalogs.dianDocumentTypes} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} taxRegimeOptionsSource={runtimeCatalogs.taxRegimeOptions} ciiuOptionsSource={runtimeCatalogs.ciiuOptions} thirdPartyRoleCatalog={runtimeCatalogs.thirdPartyRoleCatalog} personTypeCatalog={runtimeCatalogs.personTypeCatalog} locations={runtimeCatalogs.locations} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} thirdParties={thirdPartyList} />
+            <ThirdPartyForm form={thirdPartyForm} setForm={setThirdPartyForm} companyMunicipalityCode={companyMunicipalityCode} onSubmit={() => execute(createThirdParty)} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Terceros)} documentTypeOptionsSource={runtimeCatalogs.dianDocumentTypes} taxResponsibilityOptionsSource={runtimeCatalogs.taxResponsibilityOptions} taxRegimeOptionsSource={runtimeCatalogs.taxRegimeOptions} ciiuOptionsSource={runtimeCatalogs.ciiuOptions} thirdPartyRoleCatalog={runtimeCatalogs.thirdPartyRoleCatalog.filter((option) => canUseLicenseFeature('SUPPLIERS') || option.value === 'CUSTOMER')} personTypeCatalog={runtimeCatalogs.personTypeCatalog} locations={runtimeCatalogs.locations} listFilters={operationalListFilters} setListFilters={setOperationalListFilters} thirdParties={thirdPartyList} />
           )}
           {currentStep === 'Finanzas' && (
             <FinanceDashboard summary={financeSummary} onRefresh={() => execute(loadFinanceSummary, { successMessage: 'Resumen financiero actualizado.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Finanzas)} />
@@ -2992,7 +3010,7 @@ export default function App() {
             <PayrollPanel settingsForm={payrollSettingsForm} setSettingsForm={setPayrollSettingsForm} workerForm={payrollWorkerForm} setWorkerForm={setPayrollWorkerForm} paymentForm={dailyLaborPaymentForm} setPaymentForm={setDailyLaborPaymentForm} workers={payrollWorkers} payments={dailyLaborPayments} electronicDocuments={electronicPayrollDocuments} documentTypeOptions={runtimeCatalogs.dianDocumentTypes} workerClassificationOptions={runtimeCatalogs.payrollWorkerClassificationOptions} paymentMethodOptions={runtimeCatalogs.paymentMethodOptions} onSaveSettings={() => execute(savePayrollSettings)} onCreateWorker={() => execute(createPayrollWorker)} onCreateDailyPayment={() => execute(createDailyLaborPayment)} onIssueElectronicDocument={(paymentId) => execute(() => issueElectronicPayrollDocument(paymentId))} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Nomina)} />
           )}
           {currentStep === 'Reportes' && (
-            <ReportsForm definitions={reportDefinitions} options={reportOptions} form={reportsForm} setForm={setReportsForm} data={reportsData} jobs={reportJobs} onReportChange={(reportCode) => execute(() => selectReportDefinition(reportCode), { silentNullSuccess: true })} onLoadDefinitions={() => execute(loadReportDefinitions)} onSubmit={() => execute(loadReports)} onExport={(format) => execute(() => exportReport(format), { successMessage: 'Reporte descargado correctamente.' })} onCreateExportJob={() => execute(createReportExportJob, { successMessage: 'Reporte en segundo plano creado correctamente.' })} onLoadExportJobs={() => execute(loadReportJobs, { silentNullSuccess: true })} onDownloadExportJob={(jobId) => execute(() => openReportExportDownload(jobId), { successMessage: 'Enlace de descarga generado correctamente.' })} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Reportes)} />
+            <ReportsForm definitions={reportDefinitions} options={reportOptions} form={reportsForm} setForm={setReportsForm} data={reportsData} jobs={reportJobs} onReportChange={(reportCode) => execute(() => selectReportDefinition(reportCode), { silentNullSuccess: true })} onLoadDefinitions={() => execute(loadReportDefinitions)} onSubmit={() => execute(loadReports)} onExport={(format) => execute(() => exportReport(format), { successMessage: 'Reporte descargado correctamente.' })} onCreateExportJob={() => execute(createReportExportJob, { successMessage: 'Reporte en segundo plano creado correctamente.' })} onLoadExportJobs={() => execute(loadReportJobs, { silentNullSuccess: true })} onDownloadExportJob={(jobId) => execute(() => openReportExportDownload(jobId), { successMessage: 'Enlace de descarga generado correctamente.' })} canUseAsyncReports={canUseLicenseFeature('REPORTS_ASYNC')} busy={busy || !activeCompanyId || !canUse(stepPermissionRules.Reportes)} />
           )}
           {currentStep === 'Catalogos' && (
             <CatalogAdminPanel definitions={catalogDefinitions} selectedCatalogCode={selectedCatalogCode} setSelectedCatalogCode={setSelectedCatalogCode} items={catalogItems} form={catalogItemForm} setForm={setCatalogItemForm} onNew={startNewCatalogItem} onEdit={editCatalogItem} onSave={() => execute(saveCatalogItem)} onToggleActive={(item) => execute(() => toggleCatalogItemActive(item))} busy={busy || !canManageCatalogs} isRoot={isRoot} />

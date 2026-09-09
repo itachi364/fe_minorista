@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.tenant.domain.model.CompanyLicenseStatus;
 import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseModule;
+import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseFeature;
 
 public record CompanyLicenseResponse(
         UUID id,
@@ -18,6 +19,7 @@ public record CompanyLicenseResponse(
         Integer maxUsers,
         Integer maxMonthlyDocuments,
         Set<LicenseModule> enabledModules,
+        Set<LicenseFeature> enabledFeatures,
         Instant createdAt,
         Instant updatedAt) {
 }

@@ -103,6 +103,8 @@ Restricciones:
 | `valid_to` | date | Si | Fecha final de vigencia. |
 | `max_users` | integer | No | Limite de usuarios permitidos por plan. |
 | `max_monthly_documents` | integer | No | Limite mensual de documentos permitidos por plan. |
+| `enabled_modules` | text[] | Si | Modulos contratados para agrupacion y navegacion. |
+| `enabled_features` | text[] | Si | Capacidades licenciadas para autorizacion granular. |
 | `created_at` | timestamptz | Si | Fecha de creacion. |
 | `updated_at` | timestamptz | Si | Fecha de ultima actualizacion. |
 

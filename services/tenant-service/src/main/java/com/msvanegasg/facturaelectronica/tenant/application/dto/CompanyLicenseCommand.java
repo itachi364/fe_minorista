@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.Set;
 
 import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseModule;
+import com.msvanegasg.facturaelectronica.tenant.domain.model.LicenseFeature;
 
 public record CompanyLicenseCommand(
         String planCode,
@@ -11,5 +12,6 @@ public record CompanyLicenseCommand(
         LocalDate validTo,
         Integer maxUsers,
         Integer maxMonthlyDocuments,
-        Set<LicenseModule> enabledModules) {
+        Set<LicenseModule> enabledModules,
+        Set<LicenseFeature> enabledFeatures) {
 }

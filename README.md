@@ -83,6 +83,16 @@ Copy-Item .env.example .env
 
 La integracion DIAN real se configura por empresa mediante referencias seguras a secretos. En local se puede usar el modo mock para validar el flujo completo sin enviar documentos a entidades externas.
 
+## Licencias Comerciales
+
+La licencia combina modulos de navegacion con funcionalidades verificables por backend:
+
+- `POS`: operacion comercial basica, clientes, productos, inventario, ventas POS, facturacion electronica, configuracion y documentos fiscales basicos, reportes basicos, catalogos, logs, usuarios y PIN operacional. No incluye proveedores, contabilidad avanzada, compras, gastos, deudores, nomina, reglas fiscales avanzadas ni reportes asincronos.
+- `FULL`: todos los modulos y funcionalidades operativas estandar de la plataforma.
+- `CUSTOM`: seleccion granular de modulos, funcionalidades y servicios comerciales como reglas, reportes, flujos e integraciones personalizadas.
+
+El contrato de licencia expone `enabledModules` y `enabledFeatures`. La migracion `tenant/V008__add_license_features.sql` convierte planes anteriores a `POS`, `FULL` o `CUSTOM` y deriva funcionalidades para conservar el acceso contratado existente.
+
 ## Ejecucion Con Docker Compose
 
 Levantar todo el entorno local:
