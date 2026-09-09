@@ -7441,3 +7441,17 @@ Context7 evidence:
   - Componentes: SPA ROOT y contratos HTTP existentes, sin cambios de backend ni base de datos.
   - Pruebas: Vitest para empresa con licencia, empresa sin licencia, payload posterior y presets comerciales.
   - Validacion: 55 pruebas Vitest y build Vite de produccion aprobados el 2026-09-09.
+
+- [x] TASK-305: Implementar clasificacion autoritativa de obligacion de facturar
+  - Estado: IMPLEMENTED; validado en backend y SPA el 2026-09-09.
+  - Compatibilidad: endurece `TASK-282` y `RN-084`; no tener DIAN lista deja de ser una condicion suficiente para vender como `NON_FISCAL_SALE`.
+  - Requisitos: RF-343 a RF-355.
+  - Acceptance criteria: AC-477 a AC-493.
+  - Alcance: captura inicial por ROOT, RUT como evidencia sin OCR obligatorio, motor de decision versionado, snapshots, revalidacion de politica/override/venta, comprobante no fiscal y readiness condicional.
+  - Componentes previstos: `tenant-service`, `billing-service`, BFF, SPA, storage empresarial y auditoria.
+  - Persistencia prevista: snapshots inmutables por empresa, responsabilidades/CIIU normalizados y referencias privadas a evidencia.
+  - Pruebas previstas: tabla de decision completa, precedencia, limites UVT, contradicciones, aislamiento empresarial, contratos REST, seguridad backend, impresion y transiciones.
+  - Riesgo normativo: RUT y codigos de responsabilidad no contienen por si solos todas las condiciones; datos externos no integrados requieren evidencia y certificacion periodica.
+  - Entregables: captura ROOT con soporte RUT PDF, motor backend versionado, snapshots por empresa, bloqueo fail-closed de venta no fiscal, opciones cerradas para excepciones, BFF, SPA y comprobante interno rotulado.
+  - Validacion: tenant 61 pruebas, billing 82 pruebas, BFF 48 pruebas, SPA 56 pruebas y build Vite de produccion.
+  - Fuentes: Estatuto Tributario, Decreto 1625 de 2016/Decreto 358 de 2020, Resolucion DIAN 227 de 2025 y Resolucion DIAN 238 de 2025.

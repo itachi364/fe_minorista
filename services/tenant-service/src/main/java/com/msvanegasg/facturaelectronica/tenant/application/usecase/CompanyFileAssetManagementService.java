@@ -136,7 +136,8 @@ public class CompanyFileAssetManagementService implements ManageCompanyFileAsset
 
     private static boolean isPdfOnly(CompanyFileCategory category) {
         return category == CompanyFileCategory.PURCHASE_EVIDENCE || category == CompanyFileCategory.EXPENSE_EVIDENCE
-                || category == CompanyFileCategory.FISCAL_RULE_EVIDENCE || category == CompanyFileCategory.INVOICE;
+                || category == CompanyFileCategory.FISCAL_RULE_EVIDENCE || category == CompanyFileCategory.RUT_EVIDENCE
+                || category == CompanyFileCategory.INVOICE;
     }
 
     private static boolean isPdf(String filename, String contentType, byte[] content) {

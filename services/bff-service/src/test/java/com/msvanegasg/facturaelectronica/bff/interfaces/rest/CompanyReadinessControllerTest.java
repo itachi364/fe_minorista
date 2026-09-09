@@ -39,6 +39,8 @@ class CompanyReadinessControllerTest {
 
     @Test
     void returnsReadyWhenCoreOperationalConfigurationExists() throws Exception {
+        expectGet("http://tenant/api/v1/companies/" + COMPANY_ID + "/invoicing-obligation",
+                "{\"status\":\"OBLIGATED\"}");
         expectGet("http://tenant/api/v1/companies/" + COMPANY_ID + "/license",
                 "{\"status\":\"ACTIVE\"}");
         expectGet("http://billing/api/v1/issuers", "[{\"active\":true}]");
@@ -60,6 +62,8 @@ class CompanyReadinessControllerTest {
 
     @Test
     void returnsBlockedWhenRequiredConfigurationIsMissing() throws Exception {
+        expectGet("http://tenant/api/v1/companies/" + COMPANY_ID + "/invoicing-obligation",
+                "{\"status\":\"REVIEW_REQUIRED\"}");
         expectGet("http://tenant/api/v1/companies/" + COMPANY_ID + "/license",
                 "{\"status\":\"ACTIVE\"}");
         expectGet("http://billing/api/v1/issuers", "[]");
@@ -76,6 +80,27 @@ class CompanyReadinessControllerTest {
                 .andExpect(jsonPath("$.status").value("BLOCKED"))
                 .andExpect(jsonPath("$.items[1].status").value("BLOCKED"))
                 .andExpect(jsonPath("$.items[6].status").value("WARNING"));
+
+        server.verify();
+    }
+
+    @Test
+    void marksIssuerAndResolutionNotApplicableForVerifiedNonFiscalCompany() throws Exception {
+        expectGet("http://tenant/api/v1/companies/" + COMPANY_ID + "/invoicing-obligation",
+                "{\"status\":\"NOT_OBLIGATED_VERIFIED\"}");
+        expectGet("http://tenant/api/v1/companies/" + COMPANY_ID + "/license", "{\"status\":\"ACTIVE\"}");
+        expectGet("http://billing/api/v1/fiscal-policy", "{\"defaultSaleDocumentType\":\"NON_FISCAL_SALE\"}");
+        expectGet("http://accounting/api/v1/accounts?active=true", "[{\"active\":true}]");
+        expectGet("http://accounting/api/v1/accounting-rules?active=true", "[{\"active\":true}]");
+        expectGet("http://inventory/api/v1/products?active=true", "[{\"active\":true}]");
+
+        mockMvc.perform(get("/api/v1/readiness/company")
+                .header("X-Company-Id", COMPANY_ID)
+                .header("Authorization", "Bearer token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("READY"))
+                .andExpect(jsonPath("$.items[1].status").value("NOT_APPLICABLE"))
+                .andExpect(jsonPath("$.items[2].status").value("NOT_APPLICABLE"));
 
         server.verify();
     }

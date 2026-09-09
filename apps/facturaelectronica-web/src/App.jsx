@@ -18,6 +18,7 @@ import {
   createFiscalNoteForm,
   createFiscalPolicyForm,
   createIssuerForm,
+  createInvoicingObligationForm,
   createLicenseForm,
   createLoginForm,
   createManagedUserForm,
@@ -71,6 +72,7 @@ import {
   buildExpensePayload,
   buildFiscalNotePayload,
   buildIssuerPayload,
+  buildInvoicingObligationPayload,
   buildLicensePayload,
   buildProductPayload,
   buildPurchasePayload,
@@ -125,6 +127,8 @@ export default function App() {
   const [companyBrandingForm, setCompanyBrandingForm] = useState(createCompanyBrandingForm);
   const [companyBranding, setCompanyBranding] = useState(null);
   const [companyTaxProfileForm, setCompanyTaxProfileForm] = useState(createCompanyTaxProfileForm);
+  const [invoicingObligationForm, setInvoicingObligationForm] = useState(createInvoicingObligationForm);
+  const [invoicingObligation, setInvoicingObligation] = useState(null);
   const [brandingEditorForm, setBrandingEditorForm] = useState(createCompanyBrandingForm);
   const [brandingEditor, setBrandingEditor] = useState(null);
   const [brandingModalOpen, setBrandingModalOpen] = useState(false);
@@ -824,6 +828,11 @@ export default function App() {
     });
   }
 
+  function hydrateInvoicingObligation(result) {
+    setInvoicingObligation(result || null);
+    setInvoicingObligationForm(toInvoicingObligationForm(result));
+  }
+
   async function login() {
     const rawLoginResult = await requestJson('/api/v1/auth/login', {
       method: 'POST',
@@ -1032,6 +1041,9 @@ export default function App() {
   }
 
   async function createCompany() {
+    if (!invoicingObligationForm.rutFile) {
+      throw new Error('Carga el RUT en PDF para clasificar la obligacion de facturar.');
+    }
     const created = await requestJson('/api/v1/companies', {
       method: 'POST',
       body: buildCompanyPayload(companyForm, companyTaxProfileForm),
@@ -1040,11 +1052,20 @@ export default function App() {
       idempotencyKey: createIdempotencyKey('company'),
     });
     if (isRoot && created?.id) {
+      const rutAsset = await uploadCompanyFileAsset('RUT_EVIDENCE', invoicingObligationForm.rutFile, created.id);
+      const obligation = await requestJson(`/api/v1/companies/${created.id}/invoicing-obligation`, {
+        method: 'PUT',
+        body: buildInvoicingObligationPayload(invoicingObligationForm, companyTaxProfileForm, rutAsset.id),
+        token,
+        userId: session?.userId,
+        companyId: created.id,
+        idempotencyKey: createIdempotencyKey('invoicing-obligation'),
+      });
       setRootCompanies((current) => [created, ...current.filter((company) => company.id !== created.id)]);
       setActiveCompanyId(created.id);
-      setCompanyForm(createCompanyForm());
-      setCompanyTaxProfileForm(createCompanyTaxProfileForm());
-      setEditingCompanyId('');
+      hydrateCompanyForm(created);
+      hydrateInvoicingObligation(obligation);
+      setEditingCompanyId(created.id);
       setLicenseForm((current) => ({ ...current, companyId: created.id }));
       setManagedLicense(null);
       setCompanyAccesses([{ companyId: created.id, roles: ['ROOT'], permissions: ['GLOBAL_COMPANIES_MANAGE'] }]);
@@ -1074,6 +1095,22 @@ export default function App() {
       companyId: targetCompanyId,
       idempotencyKey: createIdempotencyKey('company-update'),
     });
+    let rutAssetId = invoicingObligationForm.rutAssetId;
+    if (isRoot && invoicingObligationForm.rutFile) {
+      const rutAsset = await uploadCompanyFileAsset('RUT_EVIDENCE', invoicingObligationForm.rutFile, targetCompanyId);
+      rutAssetId = rutAsset.id;
+    }
+    if (isRoot) {
+      const obligation = await requestJson(`/api/v1/companies/${targetCompanyId}/invoicing-obligation`, {
+        method: 'PUT',
+        body: buildInvoicingObligationPayload(invoicingObligationForm, companyTaxProfileForm, rutAssetId),
+        token,
+        userId: session?.userId,
+        companyId: targetCompanyId,
+        idempotencyKey: createIdempotencyKey('invoicing-obligation-update'),
+      });
+      hydrateInvoicingObligation(obligation);
+    }
     storeKnownCompany(updated);
     if (!isRoot || editingCompanyId) {
       hydrateCompanyForm(updated);
@@ -1116,14 +1153,28 @@ export default function App() {
     setEditingCompanyId('');
     setCompanyForm(createCompanyForm());
     setCompanyTaxProfileForm(createCompanyTaxProfileForm());
+    setInvoicingObligationForm(createInvoicingObligationForm());
+    setInvoicingObligation(null);
   }
 
   async function editCompanyFromTable(company) {
     const companyId = company?.id || company?.companyId || '';
     requireTargetCompany(companyId);
     let profile = null;
+    let obligation = null;
     try {
       profile = await requestJson(`/api/v1/companies/${companyId}/tax-profile`, {
+        token,
+        companyId,
+        userId: session?.userId,
+      });
+    } catch (error) {
+      if (error.status !== 404) {
+        throw error;
+      }
+    }
+    try {
+      obligation = await requestJson(`/api/v1/companies/${companyId}/invoicing-obligation`, {
         token,
         companyId,
         userId: session?.userId,
@@ -1136,7 +1187,8 @@ export default function App() {
     setEditingCompanyId(companyId);
     hydrateCompanyForm(company);
     setCompanyTaxProfileForm(toCompanyTaxProfileForm(profile));
-    return profile;
+    hydrateInvoicingObligation(obligation);
+    return { profile, obligation };
   }
 
   async function toggleCompanyActiveFromTable(company) {
@@ -2939,6 +2991,9 @@ export default function App() {
                 locations={runtimeCatalogs.locations}
                 canManageCompanySettings={canManageCompanySettings}
                 canManageFiscalSettings={canManageFiscalSettings}
+                obligationForm={invoicingObligationForm}
+                setObligationForm={setInvoicingObligationForm}
+                obligationResult={invoicingObligation}
               />
               {!isRoot && <CompanyBrandingPanel form={companyBrandingForm} setForm={setCompanyBrandingForm} branding={companyBranding} onSave={() => execute(saveCompanyBranding)} onUploadAsset={(purpose, file) => execute(() => uploadCompanyBrandingAsset(purpose, file))} busy={busy} disabled={!activeCompanyId || !canUse(['COMPANY_SETTINGS_MANAGE'])} />}
             </>
@@ -3254,6 +3309,31 @@ function toCompanyTaxProfileForm(profile) {
     ciiuCodes: Array.from(profile.ciiuCodes || []),
     icaMunicipalityCode: profile.icaMunicipalityCode || '',
     taxRegime: profile.taxRegime || '',
+  };
+}
+
+function toInvoicingObligationForm(result) {
+  const defaults = createInvoicingObligationForm();
+  if (!result?.input) {
+    return defaults;
+  }
+  return {
+    ...defaults,
+    ...result.input,
+    rutGeneratedAt: result.input.rutGeneratedAt || '',
+    rutResponsibilityCodes: undefined,
+    ciiuCodes: undefined,
+    economicOperationTypes: Array.from(result.input.economicOperationTypes || []),
+    establishmentCount: String(result.input.establishmentCount ?? ''),
+    previousYearGrossActivityIncome: String(result.input.previousYearGrossActivityIncome ?? ''),
+    currentYearGrossActivityIncome: String(result.input.currentYearGrossActivityIncome ?? ''),
+    previousYearTaxedActivityFinancialOperations: String(result.input.previousYearTaxedActivityFinancialOperations ?? ''),
+    currentYearTaxedActivityFinancialOperations: String(result.input.currentYearTaxedActivityFinancialOperations ?? ''),
+    largestPreviousYearTaxedContract: String(result.input.largestPreviousYearTaxedContract ?? ''),
+    largestCurrentYearTaxedContract: String(result.input.largestCurrentYearTaxedContract ?? ''),
+    largestSameCustomerAggregate: String(result.input.largestSameCustomerAggregate ?? ''),
+    rutAssetId: result.input.rutAssetId || '',
+    rutFile: null,
   };
 }
 

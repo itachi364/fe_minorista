@@ -10,6 +10,7 @@ import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompan
 import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyUseCase;
 import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyBrandingUseCase;
 import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyTaxProfileUseCase;
+import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageInvoicingObligationUseCase;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.BrandingAssetStoragePort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyBrandingRepositoryPort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.in.ManageCompanyFileAssetUseCase;
@@ -20,11 +21,13 @@ import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyLice
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyRepositoryPort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.CompanyTaxProfileRepositoryPort;
 import com.msvanegasg.facturaelectronica.tenant.application.port.out.IdGeneratorPort;
+import com.msvanegasg.facturaelectronica.tenant.application.port.out.InvoicingObligationRepositoryPort;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyFileAssetManagementService;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyBrandingManagementService;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyLicenseManagementService;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyManagementService;
 import com.msvanegasg.facturaelectronica.tenant.application.usecase.CompanyTaxProfileManagementService;
+import com.msvanegasg.facturaelectronica.tenant.application.usecase.InvoicingObligationManagementService;
 
 @Configuration
 public class TenantUseCaseConfiguration {
@@ -75,5 +78,16 @@ public class TenantUseCaseConfiguration {
             @Value("${tenant.files.download-token-secret:local-development-download-token-secret-change-me}") String downloadTokenSecret) {
         return new CompanyFileAssetManagementService(companyRepository, fileAssetRepository, storage, idGenerator,
                 clock, Duration.ofSeconds(downloadTtlSeconds), downloadTokenSecret);
+    }
+
+    @Bean
+    ManageInvoicingObligationUseCase manageInvoicingObligationUseCase(
+            CompanyRepositoryPort companyRepository,
+            CompanyFileAssetRepositoryPort fileAssetRepository,
+            InvoicingObligationRepositoryPort obligationRepository,
+            IdGeneratorPort idGenerator,
+            ClockPort clock) {
+        return new InvoicingObligationManagementService(companyRepository, fileAssetRepository,
+                obligationRepository, idGenerator, clock);
     }
 }

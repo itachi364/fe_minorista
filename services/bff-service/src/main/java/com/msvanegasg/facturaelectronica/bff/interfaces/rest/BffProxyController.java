@@ -111,7 +111,7 @@ public class BffProxyController {
     private static boolean isCriticalPath(String path) {
         String normalized = normalize(path);
         return normalized.equals("companies")
-                || normalized.matches("companies/[^/]+(/(activate|suspend|branding|tax-profile|license).*)?")
+                || normalized.matches("companies/[^/]+(/(activate|suspend|branding|tax-profile|invoicing-obligation|license).*)?")
                 || normalized.startsWith("platform")
                 || normalized.matches("companies/[^/]+/(memberships|users|roles|permissions|operational-pin)(/.*)?")
                 || normalized.startsWith("catalog-definitions")

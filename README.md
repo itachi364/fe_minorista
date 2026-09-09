@@ -95,6 +95,10 @@ El contrato de licencia expone `enabledModules` y `enabledFeatures`. La migracio
 
 En el panel ROOT de licencias, seleccionar una empresa carga automaticamente su licencia y consumo comercial. Si no existe licencia, el formulario se limpia y queda listo para crearla sin reutilizar datos de otra empresa.
 
+La clasificacion de obligacion de facturar esta especificada para calcularse en backend durante la creacion de empresa por ROOT. El RUT se conserva como evidencia privada, los datos se capturan desde catalogos y un cuestionario complementario, y el resultado no es editable. Solo `NOT_OBLIGATED_VERIFIED` permite venta interna no fiscal; codigos de no responsable de IVA o consumo no bastan por si solos. La implementacion corresponde a `TASK-305` y no requiere OCR en su primera version.
+
+El set reproducible para validar esta clasificacion desde el panel ROOT se encuentra en `specs/test-data/invoicing-obligation-frontend.md`.
+
 ## Ejecucion Con Docker Compose
 
 Levantar todo el entorno local:

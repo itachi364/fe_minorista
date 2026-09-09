@@ -69,6 +69,30 @@ const ACTIVE_COMPANY = {
   email: 'admin@example.com',
   status: 'ACTIVE',
 };
+const RUT_ASSET = {
+  id: '99999999-9999-9999-9999-999999999999',
+  companyId: COMPANY_ID,
+  category: 'RUT_EVIDENCE',
+  contentHash: 'test-hash',
+};
+const INVOICING_OBLIGATION = {
+  id: '88888888-8888-8888-8888-888888888888',
+  companyId: COMPANY_ID,
+  version: 1,
+  status: 'OBLIGATED',
+  decisionCode: 'TAX_RESPONSIBILITY',
+  decisionReasons: ['RUT_48'],
+  normativeRuleSetVersion: 'CO-INVOICE-2026-01',
+  input: {
+    personType: 'JURIDICAL',
+    taxRegime: 'RESPONSABLE_IVA',
+    rutGeneratedAt: '2026-09-01',
+    rutResponsibilityCodes: ['48'],
+    ciiuCodes: ['4711'],
+    economicOperationTypes: ['TAXED_GOODS_SALE'],
+    rutAssetId: RUT_ASSET.id,
+  },
+};
 const TEST_RUNTIME_CATALOGS = {
   thirdPartyRoleCatalog: [
     { value: 'CUSTOMER', label: 'Cliente' },
@@ -712,7 +736,8 @@ test('root login shows global panel without company or license validation', asyn
       globalRoles: ['ROOT'],
     }))
     .mockResolvedValueOnce(jsonResponse([existingCompany]))
-    .mockResolvedValueOnce(jsonResponse(taxProfile));
+    .mockResolvedValueOnce(jsonResponse(taxProfile))
+    .mockResolvedValueOnce(jsonResponse(INVOICING_OBLIGATION));
   vi.stubGlobal('fetch', fetchMock);
 
   render(<App />);
@@ -743,13 +768,14 @@ test('root login shows global panel without company or license validation', asyn
   expect(screen.getByLabelText('Agente de retencion')).toBeChecked();
   expect(screen.getByRole('button', { name: 'Actualizar empresa' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Usuarios' })).toBeInTheDocument();
-  expect(fetchMock).toHaveBeenCalledTimes(3);
+  expect(fetchMock).toHaveBeenCalledTimes(4);
   expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/companies', expect.objectContaining({
     headers: expect.objectContaining({ Authorization: 'Bearer token-1' }),
   }));
   expect(fetchMock).toHaveBeenNthCalledWith(3, `/api/v1/companies/${COMPANY_ID}/tax-profile`, expect.objectContaining({
     headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
   }));
+  expect(fetchMock).toHaveBeenNthCalledWith(4, `/api/v1/companies/${COMPANY_ID}/invoicing-obligation`, expect.any(Object));
 });
 
 test('root assigns configurable company license', async () => {
@@ -996,6 +1022,8 @@ test('root creates company and initial administrator', async () => {
     }))
     .mockResolvedValueOnce(jsonResponse([]))
     .mockResolvedValueOnce(jsonResponse(createdCompany))
+    .mockResolvedValueOnce(jsonResponse(RUT_ASSET))
+    .mockResolvedValueOnce(jsonResponse(INVOICING_OBLIGATION))
     .mockResolvedValueOnce(jsonResponse(createdUser))
     .mockResolvedValueOnce(jsonResponse(createdMembership));
   vi.stubGlobal('fetch', fetchMock);
@@ -1015,7 +1043,7 @@ test('root creates company and initial administrator', async () => {
   const adminButtons = screen.getAllByRole('button', { name: 'Crear administrador' });
   fireEvent.click(adminButtons[adminButtons.length - 1]);
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(7));
   expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/v1/companies', expect.objectContaining({
     method: 'POST',
     headers: expect.objectContaining({ Authorization: 'Bearer token-1' }),
@@ -1032,7 +1060,19 @@ test('root creates company and initial administrator', async () => {
       selfWithholding: false,
     },
   });
-  expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/v1/users', expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(4, `/api/v1/companies/${COMPANY_ID}/files`, expect.objectContaining({
+    method: 'POST',
+  }));
+  expect(fetchMock).toHaveBeenNthCalledWith(5, `/api/v1/companies/${COMPANY_ID}/invoicing-obligation`, expect.objectContaining({
+    method: 'PUT',
+  }));
+  expect(JSON.parse(fetchMock.mock.calls[4][1].body)).toMatchObject({
+    personType: 'JURIDICAL',
+    taxRegime: 'RESPONSABLE_IVA',
+    rutGeneratedAt: '2026-09-01',
+    rutAssetId: RUT_ASSET.id,
+  });
+  expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/v1/users', expect.objectContaining({
     method: 'POST',
     body: JSON.stringify({
       email: 'admin.empresa@example.com',
@@ -1040,7 +1080,7 @@ test('root creates company and initial administrator', async () => {
       password: 'AdminDemo#2026!',
     }),
   }));
-  expect(fetchMock).toHaveBeenNthCalledWith(5, `/api/v1/companies/${COMPANY_ID}/memberships`, expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(7, `/api/v1/companies/${COMPANY_ID}/memberships`, expect.objectContaining({
     method: 'POST',
     body: JSON.stringify({ userId: createdUser.id, roles: ['OWNER'] }),
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
@@ -1080,6 +1120,8 @@ test('root manages company roles users and assignments', async () => {
     }))
     .mockResolvedValueOnce(jsonResponse([]))
     .mockResolvedValueOnce(jsonResponse(createdCompany))
+    .mockResolvedValueOnce(jsonResponse(RUT_ASSET))
+    .mockResolvedValueOnce(jsonResponse(INVOICING_OBLIGATION))
     .mockResolvedValueOnce(jsonResponse(permissionCatalog))
     .mockResolvedValueOnce(jsonResponse([]))
     .mockResolvedValueOnce(jsonResponse(createdRole))
@@ -1108,46 +1150,46 @@ test('root manages company roles users and assignments', async () => {
 
   fillCompanyRoleForm();
   fireEvent.click(screen.getByRole('button', { name: 'Crear rol' }));
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(8));
 
   fireEvent.click(screen.getByRole('button', { name: 'Usuarios' }));
   await waitFor(() => expect(screen.getByText('Usuarios disponibles')).toBeInTheDocument());
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(7));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(9));
   fillManagedUserForm();
   fireEvent.click(screen.getByRole('button', { name: 'Crear usuario' }));
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(13));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(15));
 
-  expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/v1/platform/permissions', expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/v1/platform/permissions', expect.objectContaining({
     headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
   }));
-  expect(fetchMock).toHaveBeenNthCalledWith(5, `/api/v1/companies/${COMPANY_ID}/roles`, expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(7, `/api/v1/companies/${COMPANY_ID}/roles`, expect.objectContaining({
     headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
   }));
-  expect(JSON.parse(fetchMock.mock.calls[5][1].body)).toEqual({
+  expect(JSON.parse(fetchMock.mock.calls[7][1].body)).toEqual({
     name: 'VENDEDOR',
     description: 'Puede registrar ventas POS y consultar inventario.',
     permissionCodes: ['SALES_CREATE', 'INVENTORY_VIEW'],
   });
-  expect(fetchMock).toHaveBeenNthCalledWith(7, `/api/v1/companies/${COMPANY_ID}/users`, expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(9, `/api/v1/companies/${COMPANY_ID}/users`, expect.objectContaining({
     headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
   }));
-  expect(JSON.parse(fetchMock.mock.calls[7][1].body)).toEqual({
+  expect(JSON.parse(fetchMock.mock.calls[9][1].body)).toEqual({
     email: 'vendedor@example.com',
     fullName: 'Usuario Vendedor',
     password: 'VendedorDemo#2026!',
   });
-  expect(fetchMock).toHaveBeenNthCalledWith(9, `/api/v1/companies/${COMPANY_ID}/users/${createdUser.id}/role-assignments`, expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(11, `/api/v1/companies/${COMPANY_ID}/users/${createdUser.id}/role-assignments`, expect.objectContaining({
     method: 'POST',
     body: JSON.stringify({ roleIds: [createdRole.id] }),
     headers: expect.objectContaining({ 'X-Company-Id': COMPANY_ID }),
   }));
-  expect(fetchMock).toHaveBeenNthCalledWith(11, '/api/v1/platform/permissions', expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(13, '/api/v1/platform/permissions', expect.objectContaining({
     headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
   }));
-  expect(fetchMock).toHaveBeenNthCalledWith(12, `/api/v1/companies/${COMPANY_ID}/roles`, expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(14, `/api/v1/companies/${COMPANY_ID}/roles`, expect.objectContaining({
     headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
   }));
-  expect(fetchMock).toHaveBeenNthCalledWith(13, `/api/v1/companies/${COMPANY_ID}/users`, expect.objectContaining({
+  expect(fetchMock).toHaveBeenNthCalledWith(15, `/api/v1/companies/${COMPANY_ID}/users`, expect.objectContaining({
     headers: expect.objectContaining({ Authorization: 'Bearer token-1', 'X-Company-Id': COMPANY_ID }),
   }));
 });
@@ -1802,6 +1844,11 @@ function fillCompanyForm() {
   fireEvent.change(screen.getByLabelText('Numero de identificacion'), { target: { value: '900123456' } });
   fireEvent.change(screen.getByLabelText('Correo administrativo'), { target: { value: 'admin@example.com' } });
   fireEvent.change(screen.getByLabelText('Regimen tributario'), { target: { value: 'RESPONSABLE_IVA' } });
+  fireEvent.change(screen.getByLabelText('Tipo de persona'), { target: { value: 'JURIDICAL' } });
+  fireEvent.change(screen.getByLabelText('Fecha de generacion del RUT'), { target: { value: '2026-09-01' } });
+  fireEvent.change(screen.getByLabelText('RUT en PDF'), {
+    target: { files: [new File(['%PDF-1.4 test'], 'rut-test.pdf', { type: 'application/pdf' })] },
+  });
 }
 
 function fillInitialAdminForm() {

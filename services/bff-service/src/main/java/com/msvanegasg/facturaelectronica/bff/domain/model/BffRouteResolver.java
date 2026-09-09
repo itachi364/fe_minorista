@@ -75,6 +75,7 @@ public final class BffRouteResolver {
                 || normalized.matches("companies/[^/]+/(activate|suspend)")
                 || normalized.matches("companies/[^/]+/branding(/.*)?")
                 || normalized.matches("companies/[^/]+/tax-profile(/.*)?")
+                || normalized.matches("companies/[^/]+/invoicing-obligation(/.*)?")
                 || normalized.matches("companies/[^/]+/files(/.*)?")
                 || normalized.matches("companies/[^/]+/license(/.*)?");
     }

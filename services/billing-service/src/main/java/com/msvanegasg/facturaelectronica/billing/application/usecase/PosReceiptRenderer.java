@@ -26,6 +26,12 @@ final class PosReceiptRenderer {
         String cufeCudeLabel = electronicDocument ? "CUFE/CUDE:" : "Referencia interna:";
         String cufeCudeValue = electronicDocument ? sale.electronicDocument().cufeCude() : sale.id().toString();
         String qrLabel = electronicDocument ? "QR:" : "QR interno:";
+        String nonFiscalNotice = electronicDocument ? "" : """
+                  <div class="non-fiscal-notice">
+                    NO ES FACTURA DE VENTA NI DOCUMENTO EQUIVALENTE<br>
+                    NO VALIDO COMO SOPORTE FISCAL
+                  </div>
+                """;
         String qrPayload = qrPayload(sale, number, safeWidth);
         String html = """
                 <!doctype html>
@@ -50,6 +56,7 @@ final class PosReceiptRenderer {
                     .qr { overflow-wrap: anywhere; font-size: 9px; }
                     .qr-code { display: flex; justify-content: center; margin: 6px 0; }
                     .qr-code svg { width: 84px; height: 84px; }
+                    .non-fiscal-notice { border: 2px solid #111; margin: 7px 0; padding: 6px 3px; text-align: center; font-weight: 700; }
                     @media print { button { display: none; } }
                   </style>
                 </head>
@@ -59,6 +66,7 @@ final class PosReceiptRenderer {
                   <p class="center">Venta: %s</p>
                   <p class="center">Documento: %s</p>
                   <p class="center">Fecha: %s</p>
+                  %s
                   <div class="line"></div>
                   <table>
                     <thead><tr><th>Item</th><th class="right">Cant</th><th class="right">Total</th></tr></thead>
@@ -84,7 +92,7 @@ final class PosReceiptRenderer {
                 </body>
                 </html>
                 """.formatted(escape(number), safeWidth, safeWidth, escape(title), sale.id(), escape(number),
-                sale.confirmedAt() == null ? sale.createdAt() : sale.confirmedAt(), lines(sale),
+                sale.confirmedAt() == null ? sale.createdAt() : sale.confirmedAt(), nonFiscalNotice, lines(sale),
                 money(sale.subtotal()), money(sale.taxTotal()), money(sale.total()),
                 escape(cufeCudeLabel), escape(cufeCudeValue), escape(qrLabel), qrSvg(qrPayload, electronicDocument),
                 escape(qrPayload));

@@ -249,6 +249,24 @@ Si el flujo de compra no esta completamente modelado, se debe introducir o compl
 - Las proyecciones event-driven deben poder reconstruirse desde los datos canonicos persistidos.
 - Estado actual: `reporting.reporting_inbox_event` y `reporting.reporting_event_projection` son creadas por `reporting-projection-lambda` si no existen. Antes de produccion se recomienda mover esas estructuras a migraciones Flyway gobernadas por un owner de schema aprobado o documentar formalmente la excepcion operacional.
 
+## Clasificacion de obligacion de facturar TASK-305
+
+Persistencia propuesta en schema `tenant`:
+
+- `company_invoicing_obligation_snapshot`: cabecera versionada, estado derivado, codigo/motivos, datos cuantitativos, version normativa, vigencia y auditoria.
+- `company_invoicing_obligation_responsibility`: responsabilidades RUT normalizadas por snapshot.
+- `company_invoicing_obligation_ciiu`: actividades CIIU normalizadas por snapshot.
+- `company_invoicing_obligation_evidence`: referencias privadas a RUT y soportes, hash, tipo, fecha y revision; no almacena binarios ni rutas publicas.
+
+Restricciones propuestas:
+
+- Un unico snapshot vigente por empresa mediante indice unico parcial.
+- Version creciente unica por empresa.
+- `status`, `decision_code` y `normative_rule_set_version` no nulos.
+- Valores monetarios no negativos y periodos obligatorios cuando sean usados.
+- FK de evidencias a assets de la misma empresa y prohibicion de borrado fisico de snapshots usados por ventas.
+- La migracion inicial no infiere `NOT_OBLIGATED_VERIFIED` para empresas existentes; las deja `REVIEW_REQUIRED` hasta completar revision.
+
 ### Depuracion futura
 
 Ninguna tabla legacy debe eliminarse hasta que:

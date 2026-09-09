@@ -44,6 +44,7 @@ import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalDocu
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryAvailabilityPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryMovementPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.InvoicingObligationPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.LicenseValidationPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.OperationalPinValidationPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.SaleRepositoryPort;
@@ -355,6 +356,22 @@ class SaleManagementServiceTest {
     }
 
     @Test
+    void blocksNonFiscalSaleUnlessCompanyWasVerifiedAsNotObligated() {
+        InvoicingObligationPort obligation = companyId -> false;
+        SaleManagementService service = service(obligation);
+        when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(draftSale()));
+        when(inventoryAvailability.isAvailable(COMPANY_ID, PRODUCT_ID, new BigDecimal("2.00"))).thenReturn(true);
+        when(companyFiscalPolicyRepository.findByCompanyId(COMPANY_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.confirm(COMPANY_ID, SALE_ID, "confirm-1"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("clasificacion vigente");
+
+        verify(saleRepository, never()).save(any());
+        verify(providerPort, never()).submit(any(), any(), any(), any());
+    }
+
+    @Test
     void blocksElectronicSaleWhenDianConfigurationIsNotReady() {
         DianConfigurationReadinessPort readiness = companyId -> false;
         SaleManagementService service = service(readiness);
@@ -528,6 +545,18 @@ class SaleManagementServiceTest {
                 .contains("window.print");
     }
 
+    @Test
+    void rendersRequiredDisclaimerForNonFiscalReceipt() {
+        Sale confirmed = draftSale().confirmWithoutElectronicDocument(NOW);
+        when(saleRepository.findByCompanyIdAndId(COMPANY_ID, SALE_ID)).thenReturn(Optional.of(confirmed));
+
+        var receipt = service().printableReceipt(COMPANY_ID, SALE_ID, 80);
+
+        assertThat(new String(receipt.content(), java.nio.charset.StandardCharsets.UTF_8))
+                .contains("NO ES FACTURA DE VENTA NI DOCUMENTO EQUIVALENTE")
+                .contains("NO VALIDO COMO SOPORTE FISCAL");
+    }
+
     private SaleManagementService service() {
         return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
                 accountingEntryPort, auditEventPort,
@@ -569,6 +598,18 @@ class SaleManagementServiceTest {
                 licenseValidationPort, FiscalDocumentUsagePort.noop(), companyFiscalPolicyRepository,
                 SaleDocumentTypeOverrideRepositoryPort.noop(), OperationalPinValidationPort.allowAll(), readiness,
                 assignFiscalNumberUseCase, eventPublisher, idGenerator, clock);
+    }
+
+    private SaleManagementService service(InvoicingObligationPort invoicingObligation) {
+        return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
+                accountingEntryPort, auditEventPort,
+                companyId -> Optional.of(new com.msvanegasg.facturaelectronica.billing.domain.model.FinalConsumerProfile(
+                        new UUID(0L, 222L), null, "FINAL_CONSUMER", 31, "222222222222", "Consumidor final",
+                        true, "TEST", "TEST", Instant.EPOCH)),
+                licenseValidationPort, FiscalDocumentUsagePort.noop(), companyFiscalPolicyRepository,
+                SaleDocumentTypeOverrideRepositoryPort.noop(), OperationalPinValidationPort.allowAll(),
+                DianConfigurationReadinessPort.alwaysReady(), invoicingObligation, assignFiscalNumberUseCase,
+                eventPublisher, idGenerator, clock);
     }
 
     private SaleManagementService service(SaleDocumentTypeOverrideRepositoryPort overrideRepository,

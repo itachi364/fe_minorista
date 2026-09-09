@@ -3550,3 +3550,76 @@ Context7 evidence:
   - Topic consulted: formularios controlados, carga dependiente de una seleccion y descarte de respuestas asincronas obsoletas.
   - Relevant finding: React recomienda que el estado controlado sea la fuente autoritativa y que la limpieza de una carga asincrona impida que respuestas anteriores modifiquen la seleccion vigente.
   - Decision impact: el formulario se reinicia al seleccionar y usa una version de solicitud para aceptar solamente la respuesta mas reciente.
+
+### Clasificacion de obligacion de facturar TASK-305
+
+La obligacion no se modela como una preferencia. ROOT registra las fuentes durante la creacion de la empresa y un motor backend deriva el resultado mediante reglas versionadas. El cliente solo presenta el estado, los motivos y los datos pendientes.
+
+#### Fuentes y captura inicial
+
+- RUT: tipo de persona, fecha de generacion, regimen, responsabilidades, CIIU, condicion aduanera y numero de establecimientos cuando este disponible.
+- Cuestionario complementario: ingresos del ano anterior y actual por naturaleza, consignaciones o inversiones procedentes de actividad gravada, contratos individuales y acumulados por contratante, explotacion de intangibles, establecimientos y alcance de actividades especiales.
+- Evidencia: RUT PDF privado, hash SHA-256, fecha, version y actor. ROOT transcribe los datos usando catalogos controlados; OCR no es requisito inicial ni acredita autenticidad.
+- Datos dinamicos: ventas acumuladas se obtienen del sistema cuando exista historia; contratos, movimientos externos y demas datos no integrados requieren certificacion periodica y evidencia.
+
+#### Estados derivados
+
+| Estado | Significado | Venta no fiscal |
+|---|---|---|
+| `OBLIGATED` | Existe al menos una causal prevalente de obligacion. | Bloqueada |
+| `NOT_OBLIGATED_VERIFIED` | Todas las condiciones de una excepcion aplicable estan vigentes y acreditadas. | Permitida |
+| `VOLUNTARY_ELECTRONIC` | Un no obligado completo habilitacion voluntaria y adquirio calidad de facturador. | Bloqueada |
+| `REVIEW_REQUIRED` | Faltan datos/evidencias o existen contradicciones. | Bloqueada |
+| `TRANSITION_TO_OBLIGATED` | Una condicion dinamica activo la obligacion y requiere completar habilitacion. | Bloqueada |
+
+#### Precedencia normativa
+
+1. `52 - Facturador electronico`, SIMPLE, responsable de IVA, responsable de INC, tipografia/litografia y combustibles fuerzan obligacion.
+2. Una persona juridica que vende o presta servicios queda obligada salvo excepcion legal de entidad y operacion expresamente acreditada.
+3. Los codigos de no responsable de IVA o consumo son condiciones de entrada, no prueba suficiente de no obligacion.
+4. Persona natural no responsable de IVA requiere todas las condiciones del paragrafo 3 del articulo 437: ingresos de actividad por debajo del umbral, maximo un establecimiento, sin explotacion de intangibles, sin calidad aduanera, contratos bajo el umbral y operaciones financieras dentro del limite, ademas de reglas SIMPLE aplicables.
+5. Persona natural no responsable de INC de restaurantes/bares requiere ingresos del ano anterior inferiores a 3.500 UVT y maximo un establecimiento, sin otra causal prevalente.
+6. Venta exclusiva de bienes excluidos o servicios no gravados requiere exclusividad real e ingresos anterior/actual inferiores a 3.500 UVT.
+7. Bancos, cooperativas financieras, transporte urbano, ingresos laborales/pensionales y servicios digitales desde el exterior son excepciones por sujeto u operacion; no se extienden a ventas distintas.
+8. Ante empate, contradiccion o ausencia de prueba se aplica `REVIEW_REQUIRED`.
+
+#### Matriz inicial de combinaciones
+
+| Tipo/senal verificada | Condiciones complementarias | Resultado base |
+|---|---|---|
+| Cualquier persona con responsabilidad `52` | La evidencia determina si la habilitacion fue obligatoria o voluntaria | `OBLIGATED` o `VOLUNTARY_ELECTRONIC`; nunca no fiscal |
+| Cualquier persona en SIMPLE (`47`) | Ninguna marca contradictoria reduce la obligacion | `OBLIGATED` |
+| Responsable de IVA (`48`) o de INC (`33`) | Ninguna marca contradictoria reduce la obligacion | `OBLIGATED` |
+| Persona juridica que vende bienes o servicios | Sin excepcion especial acreditada para la operacion | `OBLIGATED` |
+| Persona natural no responsable de IVA (`49`) | Cumple todas las condiciones acumulativas del articulo 437 y no existe causal prevalente | `NOT_OBLIGATED_VERIFIED` |
+| Persona natural no responsable de IVA (`49`) | Incumple al menos una condicion acumulativa | `OBLIGATED` |
+| Persona natural de restaurante/bar no responsable de INC (`50`) | Cumple ingresos y establecimiento, sin causal prevalente | `NOT_OBLIGATED_VERIFIED` solo para esa actividad |
+| Sujeto con operaciones exclusivamente excluidas o no gravadas | Exclusividad y umbrales acreditados, sin causal prevalente | `NOT_OBLIGATED_VERIFIED` para ese alcance |
+| Entidad u operacion con excepcion especial | Sujeto, operacion y condiciones acreditados | `NOT_OBLIGATED_VERIFIED` solo para el alcance probado |
+| Cualquier combinacion | Datos faltantes, vencidos, incompatibles con el RUT o sin soporte | `REVIEW_REQUIRED` |
+
+La tabla expresa precedencia, no una lista cerrada de codigos. Las responsabilidades vigentes proceden del catalogo RUT versionado y la regla normativa conserva fecha de vigencia; un codigo nuevo o desconocido no se interpreta como excepcion.
+
+#### Controles de integridad
+
+- El request de alta contiene datos fuente, no `invoicingObligationStatus` aceptable desde cliente.
+- Backend conserva `decisionCode`, motivos, regla/version normativa y snapshot de entradas.
+- Una revision humana puede confirmar evidencia o endurecer a obligado; no puede forzar `NOT_OBLIGATED_VERIFIED` sin satisfacer reglas.
+- Politica fiscal, override y confirmacion validan nuevamente la clasificacion vigente. El PIN no es una excepcion legal.
+- Readiness deriva emisor/resolucion como `NOT_APPLICABLE` solo para `NOT_OBLIGATED_VERIFIED`.
+- La reclasificacion no reescribe ventas historicas y genera auditoria/notificacion.
+
+#### Evidencia normativa
+
+- Decreto 1625 de 2016, articulos 1.6.1.4.2 y 1.6.1.4.3, incorporados por el Decreto 358 de 2020: sujetos obligados, excepciones y efecto de optar voluntariamente por facturar.
+- Estatuto Tributario, articulos 437 paragrafo 3, 512-13, 615, 616-1 y 616-2: condiciones acumulativas, obligacion y excepciones.
+- Resolucion DIAN 227 de 2025: compilacion unica vigente del sistema de facturacion.
+- Resolucion DIAN 238 de 2025: UVT 2026 de COP 52.374.
+- Fuentes oficiales: [Decreto 358 de 2020](https://normograma.dian.gov.co/dian/compilacion/docs/decreto_0358_2020.htm), [preguntas frecuentes DIAN](https://micrositios.dian.gov.co/sistema-de-facturacion-electronica/numeracion-de-facturacion-preguntas-frecuentes/) y [Resolucion 238 de 2025](https://normograma.dian.gov.co/dian/compilacion/docs/resolucion_dian_0238_2025.htm).
+
+#### Context7 evidence TASK-305
+
+- Library/tool: Apache PDFBox.
+  - Topic consulted: extraccion de texto en PDF digital y limitaciones ante documentos basados en imagen.
+  - Relevant finding: PDFBox extrae posiciones/texto cuando existe una capa textual; documentos con glifos no interpretables o solo imagen requieren una solucion OCR separada.
+  - Decision impact: la primera version almacena el RUT y usa captura controlada por ROOT; una futura extraccion de texto sera asistencia de contraste y OCR quedara fuera del camino sincrono de alta.

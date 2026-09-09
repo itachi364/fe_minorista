@@ -250,6 +250,10 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
             return new AccessRule(Set.of("FISCAL_SETTINGS_MANAGE", "COMPANY_SETTINGS_MANAGE"),
                     Set.of("FISCAL_SETTINGS_MANAGE", "COMPANY_SETTINGS_MANAGE"));
         }
+        if (normalized.matches("companies/[^/]+/invoicing-obligation(/.*)?")) {
+            return new AccessRule(Set.of("FISCAL_SETTINGS_MANAGE", "COMPANY_SETTINGS_MANAGE"),
+                    Set.of("FISCAL_SETTINGS_MANAGE", "COMPANY_SETTINGS_MANAGE"));
+        }
         if (normalized.matches("companies/[^/]+/files(/.*)?")) {
             return new AccessRule(Set.of("COMPANY_SETTINGS_MANAGE", "PURCHASES_MANAGE", "ACCOUNTING_MANAGE",
                     "FISCAL_SETTINGS_MANAGE"), Set.of("COMPANY_SETTINGS_MANAGE", "PURCHASES_MANAGE",

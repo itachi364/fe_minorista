@@ -828,3 +828,40 @@ Flujo alterno:
 - Si el proveedor de correo falla, el sistema registra error sanitizado y reintenta segun politica sin revertir el hecho de negocio.
 
 Acceptance criteria: AC-411, AC-417, AC-418, AC-419.
+
+## UC-055: Clasificar obligacion de facturar al crear empresa
+
+Actor: ROOT.
+
+Flujo principal:
+1. ROOT registra los datos generales y fiscales de la empresa mediante catalogos controlados.
+2. ROOT adjunta el RUT PDF como evidencia privada y registra su fecha de generacion.
+3. ROOT completa el cuestionario de condiciones que no pueden obtenerse del RUT.
+4. El backend valida consistencia, consulta la UVT vigente y ejecuta la matriz normativa versionada.
+5. El sistema crea la empresa, guarda un snapshot inmutable y presenta estado, motivos y pendientes.
+6. Si el resultado es `NOT_OBLIGATED_VERIFIED`, se habilita la politica de venta interna no fiscal; en cualquier otro estado permanece bloqueada.
+
+Flujos alternos:
+- Si aparece una causal prevalente, el resultado es `OBLIGATED` aunque existan codigos de no responsable.
+- Si faltan datos, el RUT esta vencido para la politica de revision o existe contradiccion, el resultado es `REVIEW_REQUIRED`.
+- Si el sujeto estaba exceptuado pero opto y completo la habilitacion electronica, el resultado es `VOLUNTARY_ELECTRONIC`.
+- Si la excepcion aplica solo a determinadas operaciones, el sistema conserva su alcance y no la aplica a otras ventas.
+
+Acceptance criteria: AC-477 a AC-488.
+
+## UC-056: Revalidar obligacion antes de una venta no fiscal
+
+Actor: Sistema.
+
+Flujo principal:
+1. El usuario configura, cambia o confirma una venta como `NON_FISCAL_SALE`.
+2. Billing consulta la clasificacion vigente de la misma empresa.
+3. Solo si el estado es `NOT_OBLIGATED_VERIFIED` permite continuar sin emisor, resolucion ni DIAN.
+4. El sistema liquida impuestos internos, registra la venta y genera un comprobante expresamente no fiscal.
+
+Flujos alternos:
+- Si el estado no permite venta no fiscal, el sistema rechaza sin confirmar ni producir efectos parciales.
+- Un PIN valido no modifica el resultado de la clasificacion.
+- Si un umbral operacional fue alcanzado, el sistema registra transicion, bloquea nuevas ventas no fiscales y conserva las historicas.
+
+Acceptance criteria: AC-489 a AC-493.

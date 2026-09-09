@@ -42,14 +42,28 @@ public class CompanyReadinessController {
             @RequestHeader(COMPANY_HEADER) UUID companyId,
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader) {
         List<ReadinessItemResponse> items = new ArrayList<>();
+        boolean nonFiscal = isVerifiedNonFiscal(companyId, authorizationHeader);
         items.add(checkLicense(companyId, authorizationHeader));
-        items.add(checkIssuer(companyId, authorizationHeader));
-        items.add(checkNumberingResolution(companyId, authorizationHeader));
+        items.add(nonFiscal ? notApplicable("FISCAL_ISSUER", "Emisor fiscal")
+                : checkIssuer(companyId, authorizationHeader));
+        items.add(nonFiscal ? notApplicable("NUMBERING_RESOLUTION", "Resolucion fiscal")
+                : checkNumberingResolution(companyId, authorizationHeader));
         items.add(checkFiscalPolicy(companyId, authorizationHeader));
         items.add(checkAccountingAccounts(companyId, authorizationHeader));
         items.add(checkAccountingRules(companyId, authorizationHeader));
         items.add(checkInventory(companyId, authorizationHeader));
         return ResponseEntity.ok(new CompanyReadinessResponse(companyId, status(items), items));
+    }
+
+    private boolean isVerifiedNonFiscal(UUID companyId, String authorizationHeader) {
+        JsonNode payload = get(tenantClient, "/api/v1/companies/" + companyId + "/invoicing-obligation",
+                companyId, authorizationHeader, Map.of());
+        return "NOT_OBLIGATED_VERIFIED".equals(text(payload, "status").toUpperCase(Locale.ROOT));
+    }
+
+    private static ReadinessItemResponse notApplicable(String code, String label) {
+        return item(code, label, "NOT_APPLICABLE",
+                "La clasificacion vigente permite venta interna no fiscal.", "Empresa y configuracion");
     }
 
     private ReadinessItemResponse checkLicense(UUID companyId, String authorizationHeader) {

@@ -40,6 +40,7 @@ import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalDocu
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryAvailabilityPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryMovementPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.InvoicingObligationPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.LicenseValidationPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.OperationalPinValidationPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.SaleRepositoryPort;
@@ -78,6 +79,7 @@ public class SaleManagementService implements ManageSaleUseCase {
     private final SaleDocumentTypeOverrideRepositoryPort saleDocumentTypeOverrideRepository;
     private final OperationalPinValidationPort operationalPinValidationPort;
     private final DianConfigurationReadinessPort dianConfigurationReadiness;
+    private final InvoicingObligationPort invoicingObligation;
     private final AssignFiscalNumberUseCase assignFiscalNumberUseCase;
     private final DomainEventPublisherPort eventPublisher;
     private final IdGeneratorPort idGenerator;
@@ -160,6 +162,25 @@ public class SaleManagementService implements ManageSaleUseCase {
             DianConfigurationReadinessPort dianConfigurationReadiness,
             AssignFiscalNumberUseCase assignFiscalNumberUseCase, DomainEventPublisherPort eventPublisher,
             IdGeneratorPort idGenerator, ClockPort clock) {
+        this(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort, accountingEntryPort,
+                auditEventPort, finalConsumerProfileRepository, licenseValidationPort, fiscalDocumentUsagePort,
+                companyFiscalPolicyRepository, saleDocumentTypeOverrideRepository, operationalPinValidationPort,
+                dianConfigurationReadiness, InvoicingObligationPort.allowAll(), assignFiscalNumberUseCase,
+                eventPublisher, idGenerator, clock);
+    }
+
+    public SaleManagementService(SaleRepositoryPort saleRepository, InventoryAvailabilityPort inventoryAvailability,
+            ElectronicDocumentProviderPort providerPort, InventoryMovementPort inventoryMovementPort,
+            AccountingEntryPort accountingEntryPort, AuditEventPort auditEventPort,
+            FinalConsumerProfileRepositoryPort finalConsumerProfileRepository,
+            LicenseValidationPort licenseValidationPort, FiscalDocumentUsagePort fiscalDocumentUsagePort,
+            CompanyFiscalPolicyRepositoryPort companyFiscalPolicyRepository,
+            SaleDocumentTypeOverrideRepositoryPort saleDocumentTypeOverrideRepository,
+            OperationalPinValidationPort operationalPinValidationPort,
+            DianConfigurationReadinessPort dianConfigurationReadiness,
+            InvoicingObligationPort invoicingObligation,
+            AssignFiscalNumberUseCase assignFiscalNumberUseCase, DomainEventPublisherPort eventPublisher,
+            IdGeneratorPort idGenerator, ClockPort clock) {
         this.saleRepository = Objects.requireNonNull(saleRepository);
         this.inventoryAvailability = Objects.requireNonNull(inventoryAvailability);
         this.providerPort = Objects.requireNonNull(providerPort);
@@ -173,6 +194,7 @@ public class SaleManagementService implements ManageSaleUseCase {
         this.saleDocumentTypeOverrideRepository = Objects.requireNonNull(saleDocumentTypeOverrideRepository);
         this.operationalPinValidationPort = Objects.requireNonNull(operationalPinValidationPort);
         this.dianConfigurationReadiness = Objects.requireNonNull(dianConfigurationReadiness);
+        this.invoicingObligation = Objects.requireNonNull(invoicingObligation);
         this.assignFiscalNumberUseCase = Objects.requireNonNull(assignFiscalNumberUseCase);
         this.eventPublisher = Objects.requireNonNull(eventPublisher);
         this.idGenerator = Objects.requireNonNull(idGenerator);
@@ -209,6 +231,7 @@ public class SaleManagementService implements ManageSaleUseCase {
         accountingEntryPort.ensureSalePostingConfigured(companyId,
                 licenseValidationPort.allowsAutomaticAccountingSetup(companyId));
         if (documentType == ElectronicDocumentType.NON_FISCAL_SALE) {
+            ensureNonFiscalSaleAllowed(companyId);
             Sale confirmed = saleRepository.save(sale.confirmWithoutElectronicDocument(now));
             Sale completed = applyPostConfirmationEffects(confirmed);
             publishConfirmedSaleEvents(completed);
@@ -241,6 +264,9 @@ public class SaleManagementService implements ManageSaleUseCase {
         }
         if (command.documentType() == null || !command.documentType().isSaleDocument()) {
             throw new IllegalArgumentException("El tipo de documento fiscal no es valido para ventas.");
+        }
+        if (command.documentType() == ElectronicDocumentType.NON_FISCAL_SALE) {
+            ensureNonFiscalSaleAllowed(command.companyId());
         }
         CompanyFiscalPolicy policy = companyFiscalPolicyRepository.findByCompanyId(command.companyId())
                 .orElseGet(() -> CompanyFiscalPolicy.defaults(command.companyId()));
@@ -342,6 +368,13 @@ public class SaleManagementService implements ManageSaleUseCase {
         if (!dianConfigurationReadiness.isReadyForElectronicIssuing(companyId)) {
             throw new IllegalStateException(
                     "Debes configurar, probar y activar DIAN real para esta empresa antes de emitir documentos electronicos. Si la empresa no esta obligada a transmitir a DIAN, configura venta interna no fiscal.");
+        }
+    }
+
+    private void ensureNonFiscalSaleAllowed(UUID companyId) {
+        if (!invoicingObligation.allowsNonFiscalSale(companyId)) {
+            throw new IllegalStateException(
+                    "La empresa no tiene una clasificacion vigente que permita venta no fiscal.");
         }
     }
 

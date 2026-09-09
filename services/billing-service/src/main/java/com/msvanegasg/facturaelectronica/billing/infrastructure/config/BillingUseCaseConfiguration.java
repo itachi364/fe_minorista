@@ -23,6 +23,7 @@ import com.msvanegasg.facturaelectronica.billing.application.port.out.FiscalNote
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryAvailabilityPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.InventoryMovementPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.InvoicingObligationPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.LicenseValidationPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.IssuerProfileRepositoryPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.NumberingResolutionRepositoryPort;
@@ -52,12 +53,14 @@ public class BillingUseCaseConfiguration {
             SaleDocumentTypeOverrideRepositoryPort saleDocumentTypeOverrideRepository,
             OperationalPinValidationPort operationalPinValidationPort,
             DianConfigurationReadinessPort dianConfigurationReadiness,
+            InvoicingObligationPort invoicingObligation,
             AssignFiscalNumberUseCase assignFiscalNumberUseCase, DomainEventPublisherPort eventPublisher,
             IdGeneratorPort idGenerator, ClockPort clock) {
         return new SaleManagementService(saleRepository, inventoryAvailability, providerPort, inventoryMovementPort,
                 accountingEntryPort, auditEventPort, finalConsumerProfileRepository, licenseValidationPort,
                 fiscalDocumentUsagePort, companyFiscalPolicyRepository, saleDocumentTypeOverrideRepository,
-                operationalPinValidationPort, dianConfigurationReadiness, assignFiscalNumberUseCase, eventPublisher,
+                operationalPinValidationPort, dianConfigurationReadiness, invoicingObligation,
+                assignFiscalNumberUseCase, eventPublisher,
                 idGenerator, clock);
     }
 
@@ -98,7 +101,8 @@ public class BillingUseCaseConfiguration {
 
     @Bean
     ManageCompanyFiscalPolicyUseCase manageCompanyFiscalPolicyUseCase(
-            CompanyFiscalPolicyRepositoryPort companyFiscalPolicyRepository, ClockPort clock) {
-        return new CompanyFiscalPolicyService(companyFiscalPolicyRepository, clock);
+            CompanyFiscalPolicyRepositoryPort companyFiscalPolicyRepository, ClockPort clock,
+            InvoicingObligationPort invoicingObligation) {
+        return new CompanyFiscalPolicyService(companyFiscalPolicyRepository, clock, invoicingObligation);
     }
 }

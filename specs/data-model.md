@@ -560,6 +560,22 @@ Antes de eliminar tablas publicas legacy se debe construir una matriz de reempla
   - `updated_by`
 - Las tablas fiscales deben incluir estados explicitos.
 - Las tablas de documentos electronicos deben guardar identificadores fiscales: prefijo, numero, CUFE/CUDE, QR, estado proveedor, ambiente y tipo de documento.
+
+## Clasificacion de obligacion de facturar TASK-305
+
+### `CompanyInvoicingObligationSnapshot`
+
+Snapshot inmutable por empresa y version con:
+
+- `id`, `companyId`, `version`, `status`, `decisionCode`, `decisionReasons`.
+- `personType`, `rutGeneratedAt`, `taxRegime`, `rutResponsibilityCodes`, `ciiuCodes`.
+- `customsUser`, `establishmentCount`, `exploitsIntangibles`, `onlyExcludedOrUntaxedOperations`.
+- Valores y periodos para ingresos anterior/actual, ingresos gravados, consignaciones/inversiones y contratos.
+- `specialExceptionType` y `specialExceptionScope` para excepciones de entidad u operacion.
+- `rutAssetId`, `rutSha256`, `evidenceReviewedAt`, `evidenceReviewedBy`.
+- `normativeRuleSetVersion`, `effectiveFrom`, `evaluatedAt`, `createdBy`.
+
+El estado y los motivos son salidas del dominio. No se aceptan como fuente editable. Un snapshot nuevo reemplaza al anterior solamente como version vigente y nunca elimina historia.
 - Los totales monetarios deben usar `numeric(19, 2)` salvo que el anexo tecnico o calculos tributarios exijan mayor precision.
 - Porcentajes deben usar `numeric(7, 4)` o superior.
 - Campos libres de la conexion DIAN deben usar `jsonb`, manteniendo tambien columnas normalizadas para busqueda.

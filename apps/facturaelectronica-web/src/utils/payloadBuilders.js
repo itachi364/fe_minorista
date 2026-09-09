@@ -41,6 +41,32 @@ export function buildCompanyPayload(form, taxProfile) {
   });
 }
 
+export function buildInvoicingObligationPayload(form, taxProfile, rutAssetId = form.rutAssetId) {
+  return compactObject({
+    personType: form.personType,
+    taxRegime: taxProfile.taxRegime,
+    rutGeneratedAt: form.rutGeneratedAt,
+    rutResponsibilityCodes: Array.isArray(taxProfile.rutResponsibilities) ? taxProfile.rutResponsibilities : [],
+    ciiuCodes: Array.isArray(taxProfile.ciiuCodes) ? taxProfile.ciiuCodes : [],
+    economicOperationTypes: Array.isArray(form.economicOperationTypes) ? form.economicOperationTypes : [],
+    customsUser: Boolean(form.customsUser),
+    establishmentCount: toNumber(form.establishmentCount),
+    exploitsIntangibles: Boolean(form.exploitsIntangibles),
+    onlyExcludedOrUntaxedOperations: Boolean(form.onlyExcludedOrUntaxedOperations),
+    previousYearGrossActivityIncome: toNumber(form.previousYearGrossActivityIncome),
+    currentYearGrossActivityIncome: toNumber(form.currentYearGrossActivityIncome),
+    previousYearTaxedActivityFinancialOperations: toNumber(form.previousYearTaxedActivityFinancialOperations),
+    currentYearTaxedActivityFinancialOperations: toNumber(form.currentYearTaxedActivityFinancialOperations),
+    largestPreviousYearTaxedContract: toNumber(form.largestPreviousYearTaxedContract),
+    largestCurrentYearTaxedContract: toNumber(form.largestCurrentYearTaxedContract),
+    largestSameCustomerAggregate: toNumber(form.largestSameCustomerAggregate),
+    voluntaryElectronicInvoicer: Boolean(form.voluntaryElectronicInvoicer),
+    specialExceptionType: form.specialExceptionType,
+    specialExceptionScope: form.specialExceptionScope,
+    rutAssetId,
+  });
+}
+
 export function buildCompanyAdminPayload(form) {
   return compactObject({
     email: form.email,

@@ -8,16 +8,25 @@ import com.msvanegasg.facturaelectronica.billing.application.dto.CompanyFiscalPo
 import com.msvanegasg.facturaelectronica.billing.application.port.in.ManageCompanyFiscalPolicyUseCase;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.ClockPort;
 import com.msvanegasg.facturaelectronica.billing.application.port.out.CompanyFiscalPolicyRepositoryPort;
+import com.msvanegasg.facturaelectronica.billing.application.port.out.InvoicingObligationPort;
 import com.msvanegasg.facturaelectronica.billing.domain.model.CompanyFiscalPolicy;
+import com.msvanegasg.facturaelectronica.billing.domain.model.ElectronicDocumentType;
 
 public class CompanyFiscalPolicyService implements ManageCompanyFiscalPolicyUseCase {
 
     private final CompanyFiscalPolicyRepositoryPort repository;
     private final ClockPort clock;
+    private final InvoicingObligationPort invoicingObligation;
 
     public CompanyFiscalPolicyService(CompanyFiscalPolicyRepositoryPort repository, ClockPort clock) {
+        this(repository, clock, InvoicingObligationPort.allowAll());
+    }
+
+    public CompanyFiscalPolicyService(CompanyFiscalPolicyRepositoryPort repository, ClockPort clock,
+            InvoicingObligationPort invoicingObligation) {
         this.repository = Objects.requireNonNull(repository);
         this.clock = Objects.requireNonNull(clock);
+        this.invoicingObligation = Objects.requireNonNull(invoicingObligation);
     }
 
     @Override
@@ -29,6 +38,11 @@ public class CompanyFiscalPolicyService implements ManageCompanyFiscalPolicyUseC
     @Override
     public CompanyFiscalPolicyResult configure(CompanyFiscalPolicyCommand command) {
         Objects.requireNonNull(command, "command is required");
+        if ((command.defaultSaleDocumentType() == null
+                || command.defaultSaleDocumentType() == ElectronicDocumentType.NON_FISCAL_SALE)
+                && !invoicingObligation.allowsNonFiscalSale(command.companyId())) {
+            throw new IllegalStateException("La empresa no tiene una clasificacion vigente que permita venta no fiscal.");
+        }
         CompanyFiscalPolicy policy = CompanyFiscalPolicy.configure(command.companyId(),
                 command.defaultSaleDocumentType(), command.allowDocumentTypeOverride(),
                 command.requirePinForOverride(), clock.now());

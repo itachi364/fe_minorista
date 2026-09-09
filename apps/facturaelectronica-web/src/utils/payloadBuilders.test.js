@@ -1,10 +1,45 @@
 import { describe, expect, test } from 'vitest';
 import {
   buildCompanyPayload,
+  buildInvoicingObligationPayload,
   buildExpensePayload,
   buildPurchasePayload,
   buildThirdPartyPayload,
 } from './payloadBuilders.js';
+
+test('builds invoicing obligation only from source data', () => {
+  const result = buildInvoicingObligationPayload({
+    personType: 'NATURAL',
+    rutGeneratedAt: '2026-09-01',
+    economicOperationTypes: ['TAXED_GOODS_SALE'],
+    customsUser: false,
+    establishmentCount: '1',
+    exploitsIntangibles: false,
+    onlyExcludedOrUntaxedOperations: false,
+    previousYearGrossActivityIncome: '90000000',
+    currentYearGrossActivityIncome: '45000000',
+    previousYearTaxedActivityFinancialOperations: '80000000',
+    currentYearTaxedActivityFinancialOperations: '40000000',
+    largestPreviousYearTaxedContract: '30000000',
+    largestCurrentYearTaxedContract: '25000000',
+    largestSameCustomerAggregate: '25000000',
+    voluntaryElectronicInvoicer: false,
+    specialExceptionType: '',
+    specialExceptionScope: '',
+    rutAssetId: '',
+  }, { taxRegime: 'ORDINARIO', rutResponsibilities: ['49'], ciiuCodes: ['4711'] }, 'asset-id');
+
+  expect(result).toMatchObject({
+    personType: 'NATURAL',
+    taxRegime: 'ORDINARIO',
+    establishmentCount: 1,
+    previousYearGrossActivityIncome: 90000000,
+    rutResponsibilityCodes: ['49'],
+    ciiuCodes: ['4711'],
+    rutAssetId: 'asset-id',
+  });
+  expect(result.status).toBeUndefined();
+});
 
 describe('fiscal form payloads', () => {
   test('requires and nests the company tax profile', () => {

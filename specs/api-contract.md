@@ -999,7 +999,7 @@ Reglas:
 - Si `buyerIdentificationMode=IDENTIFIED_CUSTOMER`, `customerId` es obligatorio y debe pertenecer a la empresa.
 - Si `buyerIdentificationMode=FINAL_CONSUMER`, `customerId` debe ser nulo; billing resuelve el perfil fiscal desde configuracion persistida.
 - La SPA no envia `saleChannel`; el flujo `Venta POS` usa canal interno `POS`.
-- El canal `POS` no define por si solo el tipo fiscal. El tipo fiscal se resuelve por politica empresarial: por defecto seguro `NON_FISCAL_SALE`; `ELECTRONIC_INVOICE` y `ELECTRONIC_POS` quedan como opciones parametrizables u override autorizado solo con DIAN lista.
+- El canal `POS` no define por si solo el tipo fiscal. El tipo fiscal se resuelve por politica empresarial y clasificacion vigente: `NON_FISCAL_SALE` solo puede ser valor por defecto u override para `NOT_OBLIGATED_VERIFIED`; `ELECTRONIC_INVOICE` y `ELECTRONIC_POS` quedan disponibles solo con DIAN lista.
 - Cuando la politica resuelve `NON_FISCAL_SALE`, `POST /api/v1/sales/{saleId}/confirm` confirma la venta comercial, conserva subtotal/IVA/total, aplica inventario/contabilidad y retorna `electronicDocument=null`, sin CUFE/CUDE, QR DIAN ni envio a `dian-provider-service`.
 - La SPA no envia `unitPrice`, `taxCode` ni `taxRate` como fuente fiscal; billing toma precio e impuesto desde `inventory-service`.
 
@@ -3405,6 +3405,71 @@ Reglas:
 
 - El navegador no recibe bucket, key interna, credenciales ni URL publica permanente.
 - En desarrollo el adaptador puede escribir en volumen/contenedor local; en produccion usa S3 privado/KMS.
+
+## Clasificacion de obligacion de facturar TASK-305
+
+### Crear empresa
+
+`POST /api/v1/companies` extiende el alta ROOT con `invoicingObligationInput`. El request contiene exclusivamente fuentes:
+
+```json
+{
+  "personType": "NATURAL",
+  "taxRegime": "ORDINARIO",
+  "rutGeneratedAt": "2026-09-01",
+  "rutResponsibilityCodes": ["49"],
+  "ciiuCodes": ["4711"],
+  "economicOperationTypes": ["TAXED_GOODS_SALE"],
+  "customsUser": false,
+  "establishmentCount": 1,
+  "exploitsIntangibles": false,
+  "onlyExcludedOrUntaxedOperations": false,
+  "previousYearGrossActivityIncome": 90000000,
+  "currentYearGrossActivityIncome": 45000000,
+  "previousYearTaxedActivityFinancialOperations": 80000000,
+  "currentYearTaxedActivityFinancialOperations": 40000000,
+  "largestPreviousYearTaxedContract": 30000000,
+  "largestCurrentYearTaxedContract": 25000000,
+  "largestSameCustomerAggregate": 25000000,
+  "rutAssetId": "uuid"
+}
+```
+
+No se admite `status`, `decisionCode` ni un booleano equivalente a `notObligated`. Si llegan, deben ignorarse o rechazarse de acuerdo con la politica de deserializacion aprobada.
+
+La respuesta incluye:
+
+```json
+{
+  "companyId": "uuid",
+  "status": "NOT_OBLIGATED_VERIFIED",
+  "decisionCode": "NATURAL_NON_VAT_RESPONSIBLE_ALL_CONDITIONS_MET",
+  "decisionReasons": ["RUT_49", "INCOME_BELOW_3500_UVT", "SINGLE_ESTABLISHMENT"],
+  "normativeRuleSetVersion": "CO-INVOICE-2026-01",
+  "evaluatedAt": "2026-09-09T15:00:00Z"
+}
+```
+
+### Consultar y actualizar
+
+- `GET /api/v1/companies/{companyId}/invoicing-obligation`: estado vigente, razones, datos fuente, pendientes y version.
+- `GET /api/v1/companies/{companyId}/invoicing-obligation/history`: historial paginado de snapshots sin binarios.
+- `PUT /api/v1/companies/{companyId}/invoicing-obligation`: registra nuevas fuentes/evidencias, crea snapshot y recalcula; no edita el snapshot anterior.
+- `POST /api/v1/companies/{companyId}/invoicing-obligation/review`: confirma revision de evidencia con permiso fiscal; no permite forzar resultado no obligado.
+
+Errores funcionales:
+
+- `INVOICING_OBLIGATION_REVIEW_REQUIRED`: faltan datos o evidencia.
+- `NON_FISCAL_SALE_NOT_ALLOWED`: el estado vigente no permite venta no fiscal.
+- `INVOICING_EVIDENCE_MISMATCH`: evidencia, empresa y datos fuente no coinciden.
+- `INVOICING_THRESHOLD_EXCEEDED`: una condicion dinamica activo transicion a obligado.
+
+### Integracion con ventas
+
+- `PUT /api/v1/fiscal-policy` rechaza default `NON_FISCAL_SALE` salvo estado vigente `NOT_OBLIGATED_VERIFIED`.
+- El override de venta aplica la misma validacion antes de guardar, incluso con PIN valido.
+- `POST /api/v1/sales/{saleId}/confirm` vuelve a validar inmediatamente antes de confirmar para evitar condiciones de carrera o politicas antiguas.
+- `GET /api/v1/readiness/company` devuelve `NOT_APPLICABLE` para emisor/resolucion solo cuando el estado vigente es `NOT_OBLIGATED_VERIFIED`.
 - Los prefijos actuales se construyen por empresa y categoria funcional: `{companyId}/{folderName}/{assetId}-{safeFileName}`.
 - Las descargas pasan por BFF/RBAC; en S3 se usa URL prefirmada y en local se usa HMAC con expiracion, hash de contenido y empresa.
 - Las evidencias PDF validan extension, MIME y firma `%PDF`; el scanner local bloquea firmas inseguras conocidas y queda preparado para evolucionar a antimalware productivo.

@@ -540,3 +540,23 @@
 - AC-474: Dada una licencia cargada automaticamente, cuando termina la consulta, entonces el resumen muestra su estado y el consumo comercial corresponde a la misma empresa.
 - AC-475: Dado que ROOT cambia a una empresa sin licencia, cuando el backend responde `404`, entonces se limpian licencia, uso y selecciones anteriores, se conservan valores iniciales para crearla y no se muestra un error tecnico.
 - AC-476: Dadas dos selecciones consecutivas, cuando la respuesta de la primera llega despues, entonces no puede sobrescribir el formulario ni el uso de la empresa seleccionada actualmente.
+
+## Clasificacion de obligacion de facturar
+
+- AC-477: Dado ROOT creando una empresa, cuando completa la configuracion inicial, entonces registra persona, RUT, regimen, responsabilidades, CIIU y cuestionario complementario sin encontrar un selector editable para el resultado de obligacion.
+- AC-478: Dado un RUT con responsabilidad `52`, cuando se clasifica la empresa, entonces el resultado es `OBLIGATED` o `VOLUNTARY_ELECTRONIC` segun la evidencia de habilitacion y `NON_FISCAL_SALE` queda bloqueado.
+- AC-479: Dada una empresa SIMPLE, responsable de IVA o responsable de impuesto nacional al consumo, cuando se clasifica, entonces cualquier marca de no responsable o declaracion manual contradictoria no evita `OBLIGATED`.
+- AC-480: Dada una persona juridica que vende bienes o presta servicios, cuando no existe una excepcion legal por entidad y operacion validada, entonces el resultado es `OBLIGATED` aunque figure como no responsable de IVA.
+- AC-481: Dada una persona natural con responsabilidad `49`, cuando falta una sola condicion del articulo 437 o existe otra causal de obligacion, entonces no obtiene `NOT_OBLIGATED_VERIFIED`.
+- AC-482: Dada una persona natural con responsabilidad `49` y todas las condiciones vigentes del articulo 437 acreditadas, cuando no existe causal prevalente, entonces puede obtener `NOT_OBLIGATED_VERIFIED` con motivos y evidencia.
+- AC-483: Dada una persona natural de restaurante o bar con responsabilidad `50`, cuando sus ingresos del periodo anterior son inferiores a 3.500 UVT, tiene maximo un establecimiento y no existe causal prevalente, entonces la excepcion solo aplica al alcance de esa actividad.
+- AC-484: Dada una persona natural que declara vender exclusivamente bienes excluidos o servicios no gravados, cuando sus ingresos alcanzan 3.500 UVT o aparece una operacion gravada, entonces deja de cumplir la excepcion y se bloquean nuevas ventas no fiscales.
+- AC-485: Dado un banco, cooperativa, transporte publico urbano u otra excepcion especial, cuando tambien realiza operaciones no cubiertas, entonces la clasificacion conserva el alcance por operacion y no habilita una excepcion general.
+- AC-486: Dado un dato requerido ausente, contradictorio, evidencia vencida o RUT no revisado, cuando se calcula la clasificacion, entonces queda `REVIEW_REQUIRED` y no puede configurarse ni confirmarse `NON_FISCAL_SALE`.
+- AC-487: Dado un RUT PDF cargado durante la creacion, cuando se guarda, entonces queda privado, versionado, asociado a la empresa y protegido con hash; no se requiere OCR para completar el alta inicial.
+- AC-488: Dado un usuario que modifica datos fuente, cuando guarda, entonces backend crea un snapshot nuevo, recalcula y conserva el resultado anterior con actor, instante, motivos y version normativa.
+- AC-489: Dada una politica u override hacia `NON_FISCAL_SALE`, cuando la clasificacion vigente no es `NOT_OBLIGATED_VERIFIED`, entonces backend rechaza la solicitud aunque el PIN sea valido o el frontend sea omitido.
+- AC-490: Dada una empresa `NOT_OBLIGATED_VERIFIED`, cuando confirma una venta interna, entonces no exige emisor ni resolucion y no genera documento electronico, CUFE, CUDE o QR DIAN.
+- AC-491: Dado el comprobante interno de una venta no fiscal, cuando se imprime, entonces muestra `NO ES FACTURA DE VENTA NI DOCUMENTO EQUIVALENTE` y `NO VALIDO COMO SOPORTE FISCAL` de forma visible.
+- AC-492: Dada una clasificacion no obligada, cuando se consulta readiness, entonces emisor y resolucion aparecen `NOT_APPLICABLE`; para los demas estados conservan el bloqueo correspondiente.
+- AC-493: Dado que ingresos u otra condicion operacional cruza un umbral vigente, cuando el sistema reevalua, entonces registra `TRANSITION_TO_OBLIGATED`, bloquea nuevas ventas no fiscales y no modifica documentos historicos.

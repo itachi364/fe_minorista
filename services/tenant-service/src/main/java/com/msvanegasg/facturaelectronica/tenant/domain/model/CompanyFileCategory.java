@@ -7,6 +7,7 @@ public enum CompanyFileCategory {
     PURCHASE_EVIDENCE("facturas"),
     EXPENSE_EVIDENCE("gastos"),
     FISCAL_RULE_EVIDENCE("soportes-fiscales"),
+    RUT_EVIDENCE("rut"),
     OTHER("otros");
 
     private final String folderName;

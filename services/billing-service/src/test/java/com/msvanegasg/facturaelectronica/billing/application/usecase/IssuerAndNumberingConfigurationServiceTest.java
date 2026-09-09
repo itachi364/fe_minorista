@@ -102,6 +102,28 @@ class IssuerAndNumberingConfigurationServiceTest {
     }
 
     @Test
+    void rejectsNonFiscalPolicyWhenCompanyIsNotVerifiedAsExempt() {
+        var service = new CompanyFiscalPolicyService(new InMemoryCompanyFiscalPolicyRepository(),
+                () -> java.time.Instant.parse("2026-05-19T10:00:00Z"), companyId -> false);
+
+        assertThatThrownBy(() -> service.configure(new CompanyFiscalPolicyCommand(COMPANY_ID,
+                ElectronicDocumentType.NON_FISCAL_SALE, true, false)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("clasificacion vigente");
+    }
+
+    @Test
+    void electronicPolicyDoesNotRequireNonFiscalExemption() {
+        var service = new CompanyFiscalPolicyService(new InMemoryCompanyFiscalPolicyRepository(),
+                () -> java.time.Instant.parse("2026-05-19T10:00:00Z"), companyId -> false);
+
+        var result = service.configure(new CompanyFiscalPolicyCommand(COMPANY_ID,
+                ElectronicDocumentType.ELECTRONIC_INVOICE, true, false));
+
+        assertThat(result.defaultSaleDocumentType()).isEqualTo(ElectronicDocumentType.ELECTRONIC_INVOICE);
+    }
+
+    @Test
     void rejectsElectronicResolutionWhenDianConfigurationIsNotReady() {
         var service = new CreateNumberingResolutionService(new InMemoryNumberingResolutionRepository(),
                 () -> RESOLUTION_ID, companyId -> false);

@@ -39,6 +39,30 @@ export function createCompanyTaxProfileForm() {
   };
 }
 
+export function createInvoicingObligationForm() {
+  return {
+    personType: '',
+    rutGeneratedAt: '',
+    economicOperationTypes: ['TAXED_GOODS_SALE'],
+    customsUser: false,
+    establishmentCount: '1',
+    exploitsIntangibles: false,
+    onlyExcludedOrUntaxedOperations: false,
+    previousYearGrossActivityIncome: '',
+    currentYearGrossActivityIncome: '',
+    previousYearTaxedActivityFinancialOperations: '',
+    currentYearTaxedActivityFinancialOperations: '',
+    largestPreviousYearTaxedContract: '',
+    largestCurrentYearTaxedContract: '',
+    largestSameCustomerAggregate: '',
+    voluntaryElectronicInvoicer: false,
+    specialExceptionType: '',
+    specialExceptionScope: '',
+    rutAssetId: '',
+    rutFile: null,
+  };
+}
+
 export function createCompanyAdminForm() {
   return { fullName: '', email: '', password: '', role: 'OWNER' };
 }
