@@ -6,6 +6,8 @@ Documento de trabajo para `TASK-088`. La auditoria inicial ya fue ejecutada y la
 
 Fecha local de auditoria: 2026-08-10.
 
+Estado revisado 2026-09-09: documento `HISTORICAL` vigente como evidencia de TASK-088. Las tablas `public.*` que conservaban datos siguen excluidas de eliminacion automatica; cualquier limpieza adicional requiere nueva auditoria, respaldo y aprobacion. Para el esquema fisico actual consulte `database-design.md`, `data-dictionary.md` y `sdd-status.md`.
+
 ## Validaciones ejecutadas
 
 - `docker compose ps`: PostgreSQL y microservicios principales estaban arriba y saludables.

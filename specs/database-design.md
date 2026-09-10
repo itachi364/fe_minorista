@@ -2,6 +2,8 @@
 
 Este documento es la fuente SDD vigente para decisiones de persistencia junto con `specs/data-dictionary.md`. `specs/data-model.md` queda como documento historico/transitorio y matriz de evolucion legacy; ante diferencias, prevalecen `database-design.md` y `data-dictionary.md`.
 
+> Corte fisico 2026-09-09: el inventario de versiones Flyway desplegadas y las entidades que aun no existen se resume en `sdd-status.md`. Toda seccion marcada como objetivo describe una migracion futura, no una tabla disponible.
+
 Este documento consolida decisiones de persistencia para los modulos nuevos y complementa `specs/data-model.md` y `specs/data-dictionary.md`.
 
 ## Principios
@@ -751,16 +753,13 @@ Reglas:
 
 ## Fase 35 Mejoras Priorizadas Para Salida Comercial
 
-Estado: documentado; pendiente de implementacion.
+Estado: IMPLEMENTED con decisiones diferentes al primer modelo propuesto. Readiness se calcula en BFF y no se persiste en tablas dedicadas.
 
 ### Readiness empresarial
 
-Tablas implementadas:
+Proyeccion de respuesta implementada, sin tablas fisicas `tenant.company_readiness_snapshot` ni `tenant.company_readiness_check`:
 
-- `tenant.company_readiness_snapshot`
-- `tenant.company_readiness_check`
-
-Campos principales:
+Campos logicos principales:
 
 - `company_id`.
 - `overall_status`: `READY`, `WARNING`, `BLOCKED`.
@@ -833,9 +832,11 @@ Reglas:
 
 ## Fase 36 Modulo De Contadores, Reglas Fiscales Y Notificaciones
 
-Estado: documentado; pendiente de implementacion.
+Estado mixto: las subsecciones indican `IMPLEMENTED` o `TARGET`. No debe interpretarse toda la fase como pendiente ni como terminada.
 
 ### Contadores y asociaciones
+
+Estado: TARGET, TASK-290.
 
 Tablas objetivo sugeridas:
 
@@ -856,23 +857,24 @@ Reglas:
 
 ### Extension fiscal de terceros
 
-Tabla ajustada:
+Estado: IMPLEMENTED.
 
-- `thirdparty.third_party`
+Tablas ajustadas:
 
-Campo objetivo:
-
-- `ciiu_code varchar(10) null`
+- `thirdparty.third_party` conserva `ciiu_code` como compatibilidad.
+- `thirdparty.third_party_ciiu` es la relacion canonica multiactividad.
 
 Reglas:
 
-- El campo referencia catalogo CIIU vigente cuando exista en `catalog-service`.
-- El valor queda en el tercero porque el proveedor ya concentra regimen, responsabilidades fiscales y municipio.
-- Los calculos de retencion deben tomar un snapshot de `ciiu_code` al momento de confirmar la operacion.
+- Los codigos se seleccionan desde catalogo CIIU vigente en `catalog-service`.
+- La coleccion queda en el tercero porque el proveedor ya concentra regimen, responsabilidades fiscales y municipio.
+- Los calculos de retencion usan `ciiuCodes`; el singular historico representa la primera actividad compatible.
 
 ### Perfil fiscal/contable de empresa
 
-Tablas objetivo sugeridas:
+Estado: IMPLEMENTED para perfil actual; la temporalidad completa se amplia en TASK-310.
+
+Tablas implementadas:
 
 - `tenant.company_tax_profile`
 - `tenant.company_tax_profile_responsibility`
@@ -891,7 +893,9 @@ Reglas:
 
 ### Reglas fiscales y retenciones
 
-Tablas objetivo sugeridas:
+Estado: PARTIAL. Existen `accounting.withholding_rule`, `accounting.withholding_calculation_snapshot` y parametros fiscales hasta accounting V014; `fiscal_rule_set` y las extensiones juridicas completas pertenecen a TASK-309 a TASK-315.
+
+Tablas actuales y objetivo:
 
 - `accounting.fiscal_rule_set`
 - `accounting.withholding_rule`
@@ -913,6 +917,8 @@ Reglas:
 - Las plantillas basicas de compra, gasto y activo acreditan `2205` por el neto pagable y separan retefuente, reteIVA y reteICA en `2365`, `2367` y `2368`; `V014` actualiza exclusivamente las plantillas basicas existentes.
 
 ### Notificaciones por correo
+
+Estado: TARGET, TASK-295.
 
 Tablas objetivo sugeridas:
 

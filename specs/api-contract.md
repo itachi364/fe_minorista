@@ -1,10 +1,12 @@
 # API Contract: Microservicios
 
+> Estado SDD 2026-09-09: contrato consolidado con secciones historicas y evolutivas. Ante duplicados, prevalece la definicion mas reciente marcada `IMPLEMENTED`; los bloques `TARGET` no representan endpoints disponibles. OpenAPI runtime permite contrastar cada servicio levantado.
+
 ## Objetivo
 
-Definir contratos iniciales entre microservicios para una plataforma multiempresa de facturacion electronica, POS electronico, inventario y contabilidad.
+Consolidar los contratos vigentes y objetivo entre microservicios para la plataforma multiempresa NexoFiscal.
 
-Estos contratos son la base para futuros archivos OpenAPI por servicio.
+Estos contratos son la fuente SDD humana hasta publicar archivos OpenAPI versionados por servicio.
 
 ## Estado de contratos y OpenAPI
 
@@ -19,17 +21,27 @@ Pendiente aprobado: generar, versionar y validar OpenAPI por servicio/BFF cuando
 - Fechas: ISO-8601.
 - Montos: decimal string o numero JSON con precision controlada por backend.
 - IDs: `uuid` recomendado para nuevas tablas y contratos.
-- Autenticacion externa: `Authorization: Bearer <token>`.
+- Autenticacion directa de identity en desarrollo/E2E: `Authorization: Bearer <token>`; la SPA normal opera con sesion BFF.
 - Aislamiento multiempresa: `X-Company-Id` obligatorio en APIs de negocio.
 - Trazabilidad: `X-Correlation-Id` obligatorio o generado por gateway.
 - Idempotencia: `Idempotency-Key` obligatorio en emision fiscal, movimientos de inventario y contabilizacion.
 - Unidad de despliegue: un artefacto y contenedor por microservicio/bounded context, no por endpoint individual.
-- Comunicacion vigente: REST sincrono para comandos/consultas inmediatas y eventos Outbox/Inbox hacia EventBridge/SQS + Lambda para efectos posteriores, auditoria, reportes y reintentos productivos.
+- Autenticacion SPA vigente: sesion opaca administrada por BFF y cookie `HttpOnly`; el login Bearer de identity queda limitado a desarrollo/E2E e integracion interna controlada.
+- Comunicacion vigente: REST sincrono y Outbox/Inbox local; EventBridge/SQS y ejecucion Lambda administrada corresponden al target AWS.
 
-## Microservicios fisicos objetivo
+## Clasificacion de contratos
 
-| Microservicio | Responsabilidad principal | Artefacto objetivo |
+- `IMPLEMENTED`: ruta respaldada por controlador/caso de uso actual.
+- `PARTIAL`: ruta existente cuyo dominio aun tiene tareas de culminacion.
+- `TARGET`: contrato propuesto sin garantia de endpoint desplegado.
+- `HISTORICAL`: forma anterior conservada para trazabilidad.
+- La matriz de servicios y capacidades se consulta en `sdd-status.md`; el orden de contratos pendientes se consulta en `roadmap.md`.
+
+## Microservicios fisicos actuales
+
+| Microservicio | Responsabilidad principal | Artefacto actual |
 |---|---|---|
+| `bff-service` | Sesion web, autorizacion de borde, proxy y composicion | `services/bff-service` |
 | `tenant-service` | Empresas y estado del tenant | `services/tenant-service` |
 | `identity-service` | Usuarios, roles y permisos | `services/identity-service` |
 | `catalog-service` | Catalogos oficiales y configurables | `services/catalog-service` |
@@ -40,6 +52,7 @@ Pendiente aprobado: generar, versionar y validar OpenAPI por servicio/BFF cuando
 | `accounting-service` | PUC, reglas, asientos, libro diario y mayor | `services/accounting-service` |
 | `audit-service` | Auditoria fiscal y tecnica | `services/audit-service` |
 | `payroll-service` | Empleados, contratos, pagos diarios, liquidaciones y nomina electronica opcional | `services/payroll-service` |
+| `reporting-service` | Reportes normalizados, jobs de exportacion y descargas | `services/reporting-service` |
 
 ## Headers obligatorios
 
@@ -316,11 +329,11 @@ Estado TASK-056:
 - Persistencia propia bajo schema `identity`.
 - Login con token opaco Bearer, token persistido como hash y expiracion configurable.
 - Passwords persistidos con hash PBKDF2, nunca en texto plano.
-- Modelo actual con roles fijos por empresa: `OWNER`, `ADMIN`, `CASHIER`, `ACCOUNTANT`, `AUDITOR`.
+- RBAC modular implementado con roles y permisos persistidos por empresa; `OWNER`, `ADMIN`, `CASHIER`, `ACCOUNTANT` y `AUDITOR` se conservan como roles seed/compatibilidad, no como unica fuente de autorizacion.
 - Estado TASK-072: `POST /api/v1/auth/login` incluye `globalRoles` en la respuesta. Cuando contiene `ROOT`, el cliente puede iniciar flujo global sin `company_id`, membresia empresarial ni licencia empresarial.
 - Estado TASK-073: `ROOT` puede crear usuario con `POST /api/v1/users` y asignar `OWNER` como administrador inicial mediante `POST /api/v1/companies/{companyId}/memberships`, sin membresia previa ni licencia empresarial.
 
-Objetivo TASK-068/TASK-069:
+Estado implementado TASK-068/TASK-069:
 
 - `ROOT` es global, no tiene `company_id`, no depende de licencia empresarial y administra empresas contratantes, licencias, usuarios root y administradores iniciales.
 - Todo rol distinto de `ROOT` pertenece a una empresa y se aisla por `company_id`.
@@ -3736,9 +3749,9 @@ Reglas:
 - La descarga mantiene link intermediado y URL prefirmada de corta vida generada al momento del clic.
 - La UI debe consumir datasets normalizados, no JSON crudo de microservicios.
 
-## Contratos objetivo fase 36 - contadores, reglas fiscales y notificaciones
+## Contratos fase 36 - contadores, reglas fiscales y notificaciones
 
-Estado: documentado; pendiente de implementacion.
+Estado mixto: endpoints de contador, credenciales temporales y correo son `TARGET`; perfil fiscal, CIIU y calculos/snapshots de la primera vertical fiscal son `IMPLEMENTED/PARTIAL`. TASK-309 a TASK-315 definen su culminacion.
 
 ### Administracion ROOT de contadores
 

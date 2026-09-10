@@ -1,41 +1,44 @@
-# Requirements: Backend para facturacion electronica, POS, inventario y contabilidad
+# Requirements: Plataforma NexoFiscal
+
+## Estado documental
+
+- Corte de verificacion: 2026-09-09.
+- Este documento combina requisitos implementados y objetivo. El estado ejecutable se consulta en `sdd-status.md` y la secuencia pendiente en `roadmap.md`.
+- Los requisitos no prueban por si solos que una capacidad este implementada; esa trazabilidad corresponde a `tasks.md`, criterios automatizados y evidencia de validacion.
+- Las referencias regulatorias se versionan y deben confirmarse antes de publicar reglas fiscales. Esta especificacion no reemplaza concepto contable o tributario profesional.
 
 ## Contexto
 
-El proyecto actual es un backend Java/Spring Boot para un negocio pequeno, con modulos CRUD existentes para clientes, proveedores, productos, categorias, compras, gastos, impuestos, paises, metodos de pago, parametros y tipos de documento.
+NexoFiscal es una plataforma web multiempresa para operacion comercial, POS, facturacion, inventario, terceros, contabilidad, nomina, reportes, auditoria y configuracion fiscal colombiana. La solucion actual usa una SPA React, un BFF y microservicios Spring Boot con persistencia PostgreSQL separada por esquemas.
 
-El objetivo de esta especificacion es definir las actividades faltantes para evolucionar el backend hacia una plataforma de facturacion electronica colombiana, inventario y contabilidad, usando Clean Architecture basada en microservicios y emision mediante configuracion DIAN parametrizable por empresa.
+La documentacion conserva decisiones historicas porque explican la evolucion del producto, pero debe distinguir siempre entre comportamiento `IMPLEMENTED`, alcance `PARTIAL`, trabajo `TARGET`, referencia `HISTORICAL` y funcionalidad `RETIRED`.
 
 ## Fuentes normativas de referencia
 
 - DIAN - Sistema de Facturacion Electronica, normatividad: https://micrositios.dian.gov.co/sistema-de-facturacion-electronica/normatividad/
-- Resolucion DIAN 000165 de 2023: https://normograma.dian.gov.co/dian/compilacion/docs/resolucion_dian_0165_2023.htm
+- Resolucion DIAN 000165 de 2023 y sus modificaciones, compiladas en la Resolucion DIAN 000227 de 2025: https://normograma.dian.gov.co/dian/compilacion/docs/resolucion_dian_0165_2023.htm
 - DIAN - Modificaciones publicadas a la Resolucion 000165, incluyendo Resoluciones 000189 de 2024 y 000202 de 2025, segun pagina oficial de normatividad DIAN.
 - DIAN - Anexo Tecnico Factura Electronica de Venta v1.9.
 - DIAN - Documento Equivalente Electronico y POS electronico: https://micrositios.dian.gov.co/sistema-de-facturacion-electronica/documento-equivalente-electronico/
 - DIAN - Anexo Tecnico Documento Equivalente Electronico v1.0.
 - Ley 1314 de 2009.
-- Decreto 2420 de 2015.
+- Decreto 1625 de 2016, DUR tributario, version compilada vigente.
+- Decreto 2420 de 2015, DUR contable, version compilada vigente.
 
 Nota: esta especificacion tecnica no reemplaza validacion legal, tributaria o contable por contador publico, revisor fiscal o asesor tributario.
 
 ## Problema
 
-El backend actual contiene entidades y operaciones administrativas basicas, pero no implementa todavia los componentes obligatorios para operar facturacion electronica y POS electronico en Colombia:
+La plataforma ya implementa la mayor parte del flujo operativo local, pero aun no puede declararse completa para operacion fiscal colombiana en produccion. Permanecen brechas verificables:
 
-- Generacion de documentos electronicos conforme a anexos tecnicos DIAN.
-- Configuracion DIAN parametrizable por empresa, sin ofrecer el software como proveedor tecnologico DIAN.
-- Numeracion autorizada y resoluciones.
-- CUFE/CUDE, QR, firma, XML UBL, ApplicationResponse y trazabilidad.
-- Estados de documentos electronicos.
-- Notas credito/debito y notas de ajuste de POS.
-- Inventario transaccional asociado a ventas, compras y devoluciones.
-- Registro contable y tributario basico.
-- Seguridad, auditoria, observabilidad y pruebas suficientes.
+- Transporte SOAP WCF DIAN real, normalizacion completa de respuestas y validacion E2E de habilitacion por empresa.
+- Culminacion del motor fiscal por linea, temporalidad juridica, acumulaciones, territorialidad ReteICA, reversos, certificados y conciliacion contable-fiscal.
+- Portal de contadores, asociaciones contador-empresa, contrasenas temporales y notificaciones por correo.
+- Validacion normativa continua antes de publicar catalogos nacionales o territoriales.
 
 ## Objetivo
 
-Definir e implementar progresivamente un backend basado en microservicios con Clean Architecture para:
+Mantener y completar progresivamente una plataforma basada en microservicios y Clean Architecture para:
 
 - Emitir facturas electronicas de venta mediante conexion DIAN configurada por cada empresa facturadora.
 - Emitir documento equivalente electronico tipo tiquete POS.
@@ -88,15 +91,14 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - No exponer secretos, certificados, llaves o credenciales.
 - Trazabilidad por usuario, fecha, documento y transaccion.
 
-## Fuera de alcance inicial
+## Fuera del alcance vigente
 
-- Frontend movil. El frontend web SPA inicial queda incluido desde TASK-063 como capa operativa de prueba sobre BFF.
-- Nomina electronica.
-- RADIAN avanzado, salvo decision posterior.
+- Frontend movil nativo.
+- RADIAN avanzado, salvo especificacion y aprobacion posterior.
 - Prestacion de servicios como proveedor tecnologico DIAN autorizado.
-- Multiempresa avanzado, salvo que se confirme.
-- NIIF completo para empresas medianas/grandes.
-- Conciliacion bancaria automatica.
+- Automatizacion universal de NIIF sin politicas contables definidas por cada empresa y su profesional responsable.
+- Presentacion o pago automatico de declaraciones tributarias ante DIAN o municipios.
+- Conciliacion bancaria automatica, salvo futura especificacion.
 
 ## Stakeholders
 
@@ -104,7 +106,6 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - Cajero o vendedor.
 - Administrador del sistema.
 - Contador.
-- DIAN.
 - Empresa facturadora responsable de su habilitacion/certificacion.
 - Asesor tributario/contador de la empresa.
 - DIAN.
@@ -341,6 +342,8 @@ Definir e implementar progresivamente un backend basado en microservicios con Cl
 - No publicar sourcemaps productivos sin control de acceso.
 
 ## Fuentes normativas de referencia
+
+El registro canonico de consulta, estado y compuerta de publicacion se mantiene en `legal-baseline.md`.
 
 - Facturacion electronica y documento equivalente electronico: documentacion tecnica y normatividad oficial DIAN, incluyendo anexos tecnicos vigentes, Resolucion 00165 de 2023 y modificaciones publicadas.
 - Nomina electronica: documento soporte de pago de nomina electronica DIAN y Resolucion 000013 de 2021; se implementa como funcionalidad opcional por empresa, no como activacion obligatoria global.
@@ -671,3 +674,10 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-384: Mientras no exista catalogo oficial verificado para un concepto o municipio requerido, el motor debe bloquear la confirmacion fiscal y permitir solamente guardar el documento como borrador con diagnostico accionable.
 - RF-385: Las fuentes nacionales y territoriales deben someterse a revision periodica registrada; la aplicacion debe advertir versiones por vencer, fuentes no verificadas y cambios judiciales pendientes antes de que afecten operaciones.
 - RF-386: La primera entrega territorial no pretende precargar todos los municipios de Colombia: debe implementar el motor generico, un formato controlado de importacion y paquetes iniciales aprobados; cada municipio adicional requiere fuente oficial, pruebas y publicacion independiente.
+
+## Requisitos de gobierno documental SDD
+
+- RF-387: La documentacion debe mantener una fotografia canonica fechada que distinga capacidades implementadas, parciales, objetivo, historicas y retiradas, sin presentar alcance planeado como comportamiento disponible.
+- RF-388: Todo requisito y criterio activo debe ser trazable a una tarea o quedar identificado expresamente como historico, reservado o pendiente de planificacion; los identificadores publicados no se renumeran ni reutilizan.
+- RF-389: Las descripciones de arquitectura, contratos, persistencia, infraestructura y diagramas deben corresponder con el repositorio y el esquema desplegado, separando de forma explicita la infraestructura local actual del target AWS.
+- RF-390: `Context7 evidence` debe ser la seccion final de `tasks.md`; todas las fases, tareas y sus resultados deben aparecer antes de esa evidencia.

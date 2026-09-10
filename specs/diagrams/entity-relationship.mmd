@@ -1,513 +1,134 @@
 erDiagram
+  %% Esquema fisico resumido verificado contra Flyway al 2026-09-09.
   COMPANY ||--o{ COMPANY_LICENSE : has
   COMPANY ||--o| COMPANY_BRANDING : configures
   COMPANY ||--o{ COMPANY_FILE_ASSET : stores
-  COMPANY ||--o{ COMPANY_READINESS_SNAPSHOT : evaluates
-  COMPANY_READINESS_SNAPSHOT ||--o{ COMPANY_READINESS_CHECK : contains
-  COMPANY ||--o{ USER_COMPANY : authorizes
-  USER_ACCOUNT ||--o{ USER_COMPANY : belongs_to
-  USER_ACCOUNT ||--o{ GLOBAL_USER_ROLE : has
-  COMPANY ||--o{ COMPANY_ROLE : owns
-  COMPANY_ROLE ||--o{ ROLE_PERMISSION : grants
-  USER_COMPANY ||--o{ USER_COMPANY_ROLE : receives
-  COMPANY_ROLE ||--o{ USER_COMPANY_ROLE : assigned
+  COMPANY ||--o| COMPANY_TAX_PROFILE : declares
+  COMPANY_TAX_PROFILE ||--o{ COMPANY_TAX_PROFILE_RESPONSIBILITY : includes
+  COMPANY_TAX_PROFILE ||--o{ COMPANY_TAX_PROFILE_CIIU : includes
+  COMPANY ||--o{ COMPANY_INVOICING_OBLIGATION_SNAPSHOT : classifies
+  COMPANY_INVOICING_OBLIGATION_SNAPSHOT ||--o{ COMPANY_INVOICING_OBLIGATION_REASON : explains
+  COMPANY_INVOICING_OBLIGATION_SNAPSHOT ||--o{ COMPANY_INVOICING_OBLIGATION_RESPONSIBILITY : includes
+  COMPANY_INVOICING_OBLIGATION_SNAPSHOT ||--o{ COMPANY_INVOICING_OBLIGATION_CIIU : includes
+  COMPANY_INVOICING_OBLIGATION_SNAPSHOT ||--o{ COMPANY_INVOICING_OBLIGATION_OPERATION : scopes
 
-  COMPANY ||--o{ THIRD_PARTY : owns
-  CATALOG_ITEM ||--o{ THIRD_PARTY : identification_type
-  CATALOG_ITEM ||--o{ THIRD_PARTY : tax_regime
+  USER_ACCOUNT ||--o{ COMPANY_MEMBERSHIP : belongs
+  USER_ACCOUNT ||--o{ GLOBAL_USER_ROLE : has
+  COMPANY_ROLE ||--o{ COMPANY_ROLE_PERMISSION : grants
+  USER_ACCOUNT ||--o{ COMPANY_USER_ROLE_ASSIGNMENT : receives
+  COMPANY_ROLE ||--o{ COMPANY_USER_ROLE_ASSIGNMENT : assigned
+  USER_ACCOUNT ||--o{ OPERATIONAL_PIN : owns
+  USER_ACCOUNT ||--o{ SECURE_SESSION : opens
 
   CATALOG_DEFINITION ||--o{ CATALOG_ITEM : contains
-  CATALOG_ITEM ||--o{ COMPANY_CATALOG_ITEM_SETTING : configured_by
-  COMPANY ||--o{ COMPANY_CATALOG_ITEM_SETTING : configures
   DEPARTMENT ||--o{ MUNICIPALITY : contains
+  COMPANY ||--o{ COMPANY_CATALOG_ITEM_SETTING : overrides
+
+  COMPANY ||--o{ THIRD_PARTY : owns
+  THIRD_PARTY ||--o{ THIRD_PARTY_ROLE : acts_as
+  THIRD_PARTY ||--o{ THIRD_PARTY_TAX_RESPONSIBILITY : declares
+  THIRD_PARTY ||--o{ THIRD_PARTY_CIIU : performs
 
   COMPANY ||--o{ PRODUCT : owns
-  CATALOG_ITEM ||--o{ PRODUCT : tax_code
-  MUNICIPALITY ||--o{ THIRD_PARTY : located_in
   PRODUCT ||--|| STOCK_BALANCE : has
   PRODUCT ||--o{ INVENTORY_MOVEMENT : moves
-  PRODUCT ||--o{ SERVICE_SUPPLY_REFERENCE : service
-  PRODUCT ||--o{ SERVICE_SUPPLY_REFERENCE : supply
+  PRODUCT ||--o{ SERVICE_SUPPLY_REFERENCE : references
   COMPANY ||--o{ PURCHASE : owns
   THIRD_PARTY ||--o{ PURCHASE : supplies
   PURCHASE ||--o{ PURCHASE_LINE : contains
-  PRODUCT ||--o{ PURCHASE_LINE : optional_reference
 
   COMPANY ||--o{ ISSUER_PROFILE : configures
   COMPANY ||--o{ NUMBERING_RESOLUTION : owns
-  COMPANY ||--o{ FINAL_CONSUMER_PROFILE : configures
+  COMPANY ||--o{ COMPANY_FISCAL_POLICY : defines
   COMPANY ||--o{ SALE : owns
-  THIRD_PARTY ||--o{ SALE : buyer
   SALE ||--o{ SALE_LINE : contains
-  PRODUCT ||--o{ SALE_LINE : sold
   SALE ||--o| ELECTRONIC_DOCUMENT : generates
-  NUMBERING_RESOLUTION ||--o{ ELECTRONIC_DOCUMENT : numbers
-  ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_LINE : contains
-  ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_TAX : taxes
-  ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_ARTIFACT : produces
-  ELECTRONIC_DOCUMENT ||--o{ POS_PRINT_JOB : printed_by
-  COMPANY ||--o{ POS_PRINT_JOB : audits
-  ELECTRONIC_DOCUMENT ||--o{ ELECTRONIC_DOCUMENT_TRACE_EVENT : traces
+  ELECTRONIC_DOCUMENT ||--o{ FISCAL_NOTE : adjusts
+  SALE ||--o{ SALE_DOCUMENT_TYPE_OVERRIDE : overrides
 
-  COMPANY ||--o{ PROVIDER_CONFIGURATION : owns
-  PROVIDER_CONFIGURATION ||--o{ PROVIDER_SUBMISSION : used_by
-  ELECTRONIC_DOCUMENT ||--o{ PROVIDER_SUBMISSION : submitted
-  PROVIDER_SUBMISSION ||--o{ PROVIDER_RESPONSE : receives
+  COMPANY ||--o| DIAN_COMPANY_CONFIGURATION : configures
+  ELECTRONIC_DOCUMENT ||--o{ PROVIDER_SUBMISSION : submits
   PROVIDER_SUBMISSION ||--o{ DIAN_SUBMISSION_EVENT : traces
-  PROVIDER_SUBMISSION ||--o{ DIAN_SUBMISSION_ARTIFACT : produces
+  PROVIDER_SUBMISSION ||--o{ DIAN_SUBMISSION_ARTIFACT : stores
   PROVIDER_SUBMISSION ||--o{ DIAN_TECHNICAL_VALIDATION_RESULT : validates
 
   COMPANY ||--o{ ACCOUNTING_ACCOUNT : owns
-  ACCOUNTING_ACCOUNT ||--o{ ACCOUNTING_ACCOUNT : parent
   COMPANY ||--o{ ACCOUNTING_RULE : owns
   ACCOUNTING_RULE ||--o{ ACCOUNTING_RULE_LINE : contains
-  ACCOUNTING_ACCOUNT ||--o{ ACCOUNTING_RULE_LINE : posts_to
   COMPANY ||--o{ ACCOUNTING_ENTRY : owns
   ACCOUNTING_ENTRY ||--o{ ACCOUNTING_ENTRY_LINE : contains
-  ACCOUNTING_ACCOUNT ||--o{ ACCOUNTING_ENTRY_LINE : posts
-  THIRD_PARTY ||--o{ ACCOUNTS_RECEIVABLE : debtor
-  THIRD_PARTY ||--o{ ACCOUNTS_PAYABLE : creditor
+  COMPANY ||--o{ ACCOUNTING_EXPENSE : owns
+  THIRD_PARTY ||--o{ ACCOUNTING_ACCOUNTS_PAYABLE : creditor
+  THIRD_PARTY ||--o{ ACCOUNTING_ACCOUNTS_RECEIVABLE : debtor
+  COMPANY ||--o{ WITHHOLDING_RULE : configures
+  WITHHOLDING_RULE ||--o{ WITHHOLDING_CALCULATION_SNAPSHOT : produces
 
-  COMPANY ||--o{ PAYROLL_SETTINGS : configures
+  COMPANY ||--o| PAYROLL_SETTINGS : configures
   COMPANY ||--o{ WORKER : employs
-  WORKER ||--o{ CONTRACT : has
   WORKER ||--o{ DAILY_LABOR_PAYMENT : receives
   COMPANY ||--o{ ELECTRONIC_PAYROLL_DOCUMENT : emits
 
-  USER_ACCOUNT ||--o{ OAUTH_LOGIN_ATTEMPT : starts
-  USER_ACCOUNT ||--o{ WEB_SESSION : owns
-
   COMPANY ||--o{ AUDIT_EVENT : scopes
-  USER_ACCOUNT ||--o{ AUDIT_EVENT : triggers
-  COMPANY ||--o{ OUTBOX_EVENT : publishes
-  COMPANY ||--o{ INBOX_EVENT : consumes
-  COMPANY ||--o{ REPORTING_EVENT_PROJECTION : projects
-  REPORT_DEFINITION ||--o{ REPORT_EXECUTION : executed_as
-  REPORT_DEFINITION ||--o{ REPORT_EXPORT_JOB : exports
-  REPORT_DEFINITION ||--o{ REPORT_DATASET_CACHE : caches
+  COMPANY ||--o{ REPORT_EXPORT_JOB : requests
   REPORT_EXPORT_JOB ||--o{ REPORT_EXPORT_DOWNLOAD_ATTEMPT : records
-  COMPANY ||--o{ REPORT_EXECUTION : requests
-  COMPANY ||--o{ REPORT_EXPORT_JOB : owns
-  COMPANY ||--o{ BUSINESS_HEALTH_SNAPSHOT : monitors
-  COMPANY ||--o{ SERVICE_HEALTH_EVENT : receives
-  COMPANY_FILE_ASSET ||--o{ PURCHASE : evidence
-  COMPANY_FILE_ASSET ||--o{ ACCOUNTING_EXPENSE : evidence
 
   COMPANY {
     uuid id PK
-    int identification_type_code
     varchar identification_number
-    varchar verification_digit
     varchar legal_name
     varchar status
   }
-
-  COMPANY_BRANDING {
-    uuid company_id PK
-    varchar display_name
-    varchar primary_color
-    varchar accent_color
-    varchar main_logo_storage_key
-    varchar header_logo_storage_key
-    varchar login_logo_storage_key
-    varchar favicon_storage_key
-    varchar main_logo_hash
-    varchar favicon_hash
-  }
-
-  COMPANY_FILE_ASSET {
-    uuid id PK
-    uuid company_id FK
-    varchar business_category
-    varchar storage_provider
-    varchar storage_reference
-    varchar safe_file_name
-    varchar content_type
-    bigint size_bytes
-    varchar content_hash
-    varchar status
-  }
-
-  COMPANY_READINESS_SNAPSHOT {
-    uuid id PK
-    uuid company_id FK
-    varchar overall_status
-    timestamp evaluated_at
-    uuid evaluated_by FK
-    varchar correlation_id
-  }
-
-  COMPANY_READINESS_CHECK {
-    uuid id PK
-    uuid snapshot_id FK
-    varchar check_code
-    varchar module_code
-    varchar status
-    boolean blocking
-    varchar action_code
-  }
-
-  COMPANY_LICENSE {
-    uuid id PK
-    uuid company_id FK
-    date starts_at
-    date expires_at
-    varchar status
-    json enabled_modules
-    int max_users
-    int max_monthly_documents
-  }
-
-  USER_ACCOUNT {
-    uuid id PK
-    varchar email
-    varchar full_name
-    varchar password_hash
-    varchar cognito_subject
-    varchar status
-  }
-
-  COMPANY_ROLE {
-    uuid id PK
-    uuid company_id FK
-    varchar name
-    varchar status
-  }
-
   THIRD_PARTY {
     uuid id PK
-    uuid company_id FK
-    json roles
-    varchar person_type
-    int identification_type_code
+    uuid company_id
     varchar identification_number
-    varchar verification_digit
-    varchar business_name
-    varchar full_name
+    varchar person_type
   }
-
-  CATALOG_ITEM {
-    uuid id PK
-    varchar catalog_code
-    varchar item_code
-    varchar label
-    boolean regulatory
-    boolean active
-  }
-
   PRODUCT {
     uuid id PK
-    uuid company_id FK
+    uuid company_id
     varchar sku
-    varchar barcode
-    varchar item_type
-    varchar name
-    numeric sale_price
-    varchar tax_code
-    numeric tax_rate
     boolean stock_tracked
-    boolean active
   }
-
-  PURCHASE {
-    uuid id PK
-    uuid company_id FK
-    uuid supplier_id FK
-    date purchase_date
-    varchar concept
-    varchar payment_method_code
-    varchar status
-    numeric total
-    varchar evidence_type
-    uuid evidence_file_asset_id FK
-    varchar evidence_url
-  }
-
-  PURCHASE_LINE {
-    uuid id PK
-    uuid purchase_id FK
-    uuid product_id FK "optional historical reference"
-    varchar description
-    numeric line_total
-  }
-
-  INVENTORY_MOVEMENT {
-    uuid id PK
-    uuid company_id FK
-    uuid product_id FK
-    varchar movement_type
-    numeric quantity
-    numeric resulting_stock
-    varchar source_document_type
-    uuid source_document_id
-  }
-
-  ISSUER_PROFILE {
-    uuid id PK
-    uuid company_id FK
-    varchar identification_number
-    varchar legal_name
-    varchar environment
-    boolean active
-  }
-
-  NUMBERING_RESOLUTION {
-    uuid id PK
-    uuid company_id FK
-    varchar document_type
-    varchar resolution_number
-    varchar prefix
-    bigint from_number
-    bigint to_number
-    bigint current_number
-    varchar environment
-    boolean active
-  }
-
-  FINAL_CONSUMER_PROFILE {
-    uuid id PK
-    uuid company_id FK
-    varchar profile_code
-    varchar identification_number
-    varchar display_name
-    boolean active
-  }
-
   SALE {
     uuid id PK
-    uuid company_id FK
-    uuid buyer_third_party_id FK
-    varchar buyer_identification_mode
-    varchar payment_method_code
+    uuid company_id
     numeric total
     varchar status
   }
-
   ELECTRONIC_DOCUMENT {
     uuid id PK
-    uuid company_id FK
-    uuid sale_id FK
+    uuid sale_id
     varchar document_type
-    varchar prefix
-    bigint number
-    varchar cufe_cude
-    varchar qr_content
-    numeric total
     varchar status
   }
-
-  ELECTRONIC_DOCUMENT_ARTIFACT {
-    uuid id PK
-    uuid company_id FK
-    uuid document_id FK
-    varchar artifact_type
-    varchar storage_key
-    varchar content_hash
-    timestamp generated_at
-  }
-
-  POS_PRINT_JOB {
-    uuid id PK
-    uuid company_id FK
-    uuid document_id FK
-    int paper_width_mm
-    varchar strategy
-    varchar status
-    timestamp requested_at
-  }
-
-  PROVIDER_CONFIGURATION {
-    uuid id PK
-    uuid company_id FK
-    varchar mode
-    varchar environment
-    varchar wsdl_url
-    varchar service_base_url
-    varchar certificate_secret_ref
-    varchar certificate_file_type
-    varchar certificate_fingerprint
-    varchar software_pin_secret_ref
-    varchar technical_key_secret_ref
-    varchar test_set_id
-    varchar status
-  }
-
-  DIAN_SUBMISSION_EVENT {
-    uuid id PK
-    uuid company_id FK
-    uuid submission_id FK
-    uuid document_id FK
-    varchar event_type
-    varchar status
-    varchar dian_code
-    varchar correlation_id
-  }
-
-  DIAN_SUBMISSION_ARTIFACT {
-    uuid id PK
-    uuid company_id FK
-    uuid submission_id FK
-    uuid document_id FK
-    varchar artifact_type
-    varchar storage_key
-    varchar content_hash
-  }
-
-  DIAN_TECHNICAL_VALIDATION_RESULT {
-    uuid id PK
-    uuid company_id FK
-    uuid submission_id FK
-    uuid document_id FK
-    varchar validation_type
-    varchar result
-    varchar source_version
-  }
-
   ACCOUNTING_ENTRY {
     uuid id PK
-    uuid company_id FK
-    date entry_date
-    varchar source_type
+    uuid company_id
+    uuid accounting_rule_id
+    varchar status
+  }
+  WITHHOLDING_RULE {
+    uuid id PK
+    uuid company_id
+    varchar withholding_type
+    varchar version
+  }
+  WITHHOLDING_CALCULATION_SNAPSHOT {
+    uuid id PK
     uuid source_id
-    varchar status
+    uuid third_party_id
+    varchar decision
   }
-
-  ACCOUNTING_EXPENSE {
+  FISCAL_PARAMETER {
     uuid id PK
-    uuid company_id FK
-    uuid supplier_id FK
-    varchar expense_type
-    date expense_date
-    varchar concept
-    numeric total
-    varchar evidence_type
-    uuid evidence_file_asset_id FK
-    varchar evidence_url
-    varchar status
+    varchar code
+    varchar version
+    numeric value
   }
-
-  PAYROLL_SETTINGS {
-    uuid id PK
-    uuid company_id FK
-    boolean electronic_payroll_enabled
-  }
-
-  WEB_SESSION {
-    uuid id PK
-    uuid user_id FK
-    varchar session_token_hash
-    varchar csrf_token_hash
-    varchar status
-    timestamp expires_at
-  }
-
-  AUDIT_EVENT {
-    uuid id PK
-    uuid company_id FK
-    uuid user_id FK
-    varchar event_type
-    varchar resource_type
-    varchar action
-    varchar result
-    timestamp occurred_at
-  }
-
-  OUTBOX_EVENT {
-    uuid event_id PK
-    uuid company_id FK
-    varchar event_type
-    varchar status
-    timestamp occurred_at
-  }
-
-  INBOX_EVENT {
-    uuid id PK
-    uuid event_id
-    uuid company_id FK
-    varchar consumer
-    varchar status
-  }
-
-  REPORT_DEFINITION {
-    varchar code PK
-    varchar label
-    boolean date_range_required
-    json allowed_chart_types
-    json export_formats
-    boolean active
-  }
-
-  REPORT_EXECUTION {
-    uuid id PK
-    uuid company_id FK
-    varchar report_code FK
-    date from_date
-    date to_date
-    json filters_json
-    varchar status
-  }
-
-  REPORT_DATASET_CACHE {
-    uuid id PK
-    uuid company_id FK
-    varchar report_code FK
-    varchar cache_key
-    json normalized_dataset
-    timestamp created_at
-    timestamp expires_at
-  }
-
   REPORT_EXPORT_JOB {
     uuid id PK
-    uuid company_id FK
-    uuid requested_by_user_id
+    uuid company_id
     varchar report_code
-    varchar format
-    varchar chart_type
-    date from_date
-    date to_date
-    json filters_json
-    boolean notify_by_email
-    varchar token_hash
-    timestamp token_expires_at
-    varchar storage_key
-    varchar filename
-    varchar content_type
-    bigint file_size
     varchar status
-    varchar notification_status
-    varchar failure_message
-    timestamp requested_at
-    timestamp started_at
-    timestamp completed_at
-    timestamp expires_at
-  }
-
-  REPORT_EXPORT_DOWNLOAD_ATTEMPT {
-    uuid id PK
-    uuid job_id FK
-    uuid company_id FK
-    timestamp attempted_at
-    varchar result
-    varchar detail
-  }
-
-  BUSINESS_HEALTH_SNAPSHOT {
-    uuid id PK
-    uuid company_id FK
-    varchar sales_status
-    varchar dian_status
-    varchar storage_status
-    varchar reporting_status
-    timestamp evaluated_at
-  }
-
-  SERVICE_HEALTH_EVENT {
-    uuid id PK
-    uuid company_id FK
-    varchar service_name
-    varchar event_type
-    varchar status
-    varchar correlation_id
-    timestamp occurred_at
   }

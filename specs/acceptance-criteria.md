@@ -329,6 +329,56 @@
 - AC-255: Dado un usuario autorizado para notas, cuando cree Nota credito, Nota debito o Nota de ajuste POS, entonces el sistema debe usar la resolucion activa del tipo documental correspondiente y auditar la operacion.
 - AC-256: Dado cualquier uso exitoso o fallido de PIN/override/notas fiscales, entonces auditoria debe conservar correlation ID y no debe incluir PIN, hashes de PIN, contrasenas ni payloads fiscales completos.
 
+## Cierre de venta, permisos y configuracion contable
+
+- AC-257: La pantalla Ventas muestra `Cerrar venta` como accion principal y no exige `Crear venta` seguido de `Emitir documento fiscal`.
+- AC-258: `POST /api/v1/sales/close` crea y confirma la venta con una sola idempotency key.
+- AC-259: El cierre exitoso abre el comprobante imprimible y reinicia el formulario operativo.
+- AC-260: Faltantes de emisor fiscal/resolucion muestran mensaje funcional y llevan al modulo Fiscal.
+- AC-261: Fallos del conector DIAN se mapean como `EXTERNAL_PROVIDER_ERROR`, no como `INTERNAL_ERROR` generico.
+- AC-262: `identity.permission_catalog` no debe contener codigos activos ausentes de `PermissionCode`.
+- AC-263: `GET /api/v1/platform/permissions` es root-only y no autentica falsamente usuarios empresariales como ROOT.
+- AC-264: ROOT puede leer catalogos globales via BFF sin `X-Company-Id`.
+- AC-265: El permiso `OPERATIONAL_PIN_MANAGE` aparece en el catalogo de permisos y no rompe `/platform/permissions`.
+- AC-266: Guardar una licencia empresarial no debe fallar al refrescar el tablero de uso por consulta de documentos electronicos sin filtros opcionales.
+- AC-267: `GET /api/v1/reports/electronic-documents?from=...&to=...` debe responder `200` con lista vacia o documentos reales cuando solo recibe empresa y rango de fechas.
+- AC-268: Al iniciar sesion como `ROOT`, la SPA debe mantener el selector de empresa en blanco y no hidratar formularios con la primera empresa registrada.
+- AC-269: En el modulo `Licencias`, el boton `Cargar licencia` debe quedar deshabilitado despues de cargar o guardar la licencia de la empresa seleccionada.
+- AC-270: `billing-service` valida que exista regla contable activa `SALE_CONFIRMED` antes de asignar numeracion fiscal o enviar documento a DIAN/mock.
+- AC-271: Si falta configuracion contable, la venta permanece sin confirmar, no se consume consecutivo fiscal, no se descuenta inventario y no se registra asiento.
+- AC-272: `accounting-service` transforma la ausencia de regla contable en `400 BUSINESS_RULE_VIOLATION`, no en `500 INTERNAL_ERROR`.
+- AC-273: La SPA muestra mensaje funcional y lleva al usuario a `Configuracion contable`.
+- AC-274: `Desde` y `Hasta` deben ser enteros mayores a cero y `Hasta >= Desde`.
+- AC-275: `Vigencia hasta` no puede ser menor que `Vigencia desde`.
+- AC-276: Los campos invalidos se resaltan en rojo con mensaje local y el formulario no ejecuta POST mientras exista error.
+- AC-277: La SPA muestra `Configuracion contable` como modulo independiente; su ubicacion vigente bajo `Configuracion` se valida en AC-458.
+- AC-278: El modulo permite inicializar contabilidad basica por empresa mediante `POST /api/v1/accounting-setup/basic`.
+- AC-279: El modulo lista plan de cuentas y reglas contables existentes por empresa.
+- AC-280: El acceso depende de licencia `ACCOUNTING` y permisos `ACCOUNTING_VIEW` o `ACCOUNTING_MANAGE`.
+- AC-281: El boton de configuracion contable no crea datos automaticamente sin mostrar previamente el formulario/asistente.
+- AC-282: El asistente permite agregar, editar y quitar varias cuentas PUC antes de enviar una sola creacion batch.
+- AC-283: El asistente permite agregar, editar y quitar varias reglas contables antes de enviar una sola creacion batch.
+- AC-284: Cada regla permite agregar multiples `movimientos contables` con cuenta, naturaleza debito/credito, tipo de monto y descripcion.
+- AC-285: El backend valida que todas las cuentas referenciadas existan o vengan en el mismo lote, y que cada regla quede balanceable segun partida doble.
+- AC-286: El guardado batch es transaccional: si una cuenta, regla o movimiento falla, no se persiste ningun registro del lote.
+- AC-287: La opcion `Completar plantilla basica` usa `POST /api/v1/accounting-setup/basic` para completar faltantes sin duplicar parametros existentes.
+- AC-288: Cuentas o reglas ya usadas por asientos no se eliminan fisicamente; se inactivan o versionan conservando trazabilidad.
+- AC-289: Toda creacion, actualizacion, inactivacion o aplicacion de plantilla contable queda auditada con empresa, usuario, recurso, resultado y correlation ID.
+- AC-290: El plan de cuentas expone `used` y `usageCount` calculados desde asientos contables reales.
+- AC-291: Las reglas contables exponen `used` y `usageCount` calculados desde `accounting_entry.accounting_rule_id`.
+- AC-292: Los asientos nuevos guardan el `accounting_rule_id` de la regla usada para generar el asiento.
+- AC-293: Las reglas anteriores sin `accounting_rule_id` quedan como historico no trazado; no se inventa historial contable.
+- AC-294: Una cuenta sin uso puede actualizar nombre/cuenta padre o inactivarse; una cuenta usada no permite cambios estructurales ni inactivacion.
+- AC-295: Una regla sin uso puede actualizarse o inactivarse; una regla usada no permite cambios estructurales ni inactivacion.
+- AC-296: La SPA muestra columna `Uso` en tablas de reglas y plan de cuentas.
+- AC-297: La SPA muestra acciones `Actualizar` e `Inactivar` solo cuando el recurso no ha sido usado.
+- AC-298: En inventario, el usuario ingresa `Precio final` y la SPA calcula automaticamente `Precio sin IVA` y `Valor IVA`.
+- AC-299: `Tarifa impuesto` deja de aparecer como campo principal visible/editable; la tarifa se deriva del catalogo `SALES_TAX`.
+- AC-300: El payload `POST /api/v1/products` envia `salePrice` como precio unitario sin IVA calculado desde `Precio final`.
+- AC-301: En ventas, cada linea muestra valores fiscales derivados y el formulario muestra resumen `Subtotal`, `IVA` y `Total` antes de cerrar.
+- AC-302: La representacion imprimible conserva `Subtotal`, `IVA` y `Total` desde `SaleResponse`.
+- AC-303: El campo `Codigo de barras` de inventario acepta escritura manual o lector USB HID sin boton adicional.
+
 ## Bugs UX formularios y PIN operacional
 
 - AC-304: Dado un producto creado correctamente, cuando el backend responde exito, entonces el formulario de inventario se limpia y el producto queda visible en la lista.
@@ -596,3 +646,12 @@
 - AC-524: Dado un usuario empresarial, cuando intenta publicar una regla nacional o cambiar el estado juridico de una fuente, entonces recibe `403`; ROOT deja auditoria de cualquier publicacion, suspension o reactivacion.
 - AC-525: Dado un paquete municipal importado, cuando se valida antes de publicar, entonces todos sus municipios, CIIU, tarifas, vigencias y fuentes existen en catalogos controlados y las filas invalidas se rechazan sin publicacion parcial.
 - AC-526: Dada una version normativa proxima a vencer o sin revision vigente, cuando un usuario fiscal abre el panel, entonces recibe una advertencia sin que el sistema cambie reglas silenciosamente.
+
+## Gobierno documental SDD
+
+- AC-527: Dado el repositorio actual, cuando se consulta `sdd-status.md`, entonces cada capacidad principal aparece clasificada como `IMPLEMENTED`, `PARTIAL`, `TARGET`, `HISTORICAL` o `RETIRED` y tiene una referencia verificable.
+- AC-528: Dadas las tareas publicadas, cuando se valida su trazabilidad, entonces no existe ninguna referencia RF o AC indefinida y los rangos historicos omitidos se encuentran declarados como reservados.
+- AC-529: Dadas arquitectura, infraestructura, contratos, persistencia y diagramas, cuando se comparan con codigo, migraciones y Docker Compose, entonces no presentan componentes objetivo como si estuvieran desplegados.
+- AC-530: Dado `tasks.md`, cuando se localiza `Context7 evidence`, entonces no existe ninguna fase ni `TASK-*` despues de esa seccion.
+- AC-531: Dada la documentacion operativa, cuando se valida `docker compose config`, entonces README, puertos y variables de `.env.example` corresponden con la configuracion vigente sin contener secretos reales.
+- AC-532: Dado el cierre de la auditoria, cuando se ejecutan las validaciones documentales, entonces referencias, formato, enlaces locales y diff no presentan errores conocidos; cualquier prueba no ejecutada queda declarada expresamente.

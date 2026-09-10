@@ -1,5 +1,7 @@
 # Infrastructure: AWS cloud target
 
+> Estado SDD 2026-09-09: Docker Compose, PostgreSQL, servicios, Prometheus y Grafana estan implementados para entorno local. La infraestructura AWS descrita aqui es un target Terraform sin cargas productivas activas. Consulte `sdd-status.md` para el inventario actual.
+
 ## Decision vigente
 
 La infraestructura productiva se define con Terraform y servicios administrados AWS. No se contempla despliegue on-premise ni brokers self-hosted.
@@ -20,7 +22,7 @@ La infraestructura productiva se define con Terraform y servicios administrados 
 - `secrets`: Secrets Manager para secretos de aplicacion sin valores versionados.
 - `auth`: Amazon Cognito User Pool, App Client OAuth code flow + PKCE, dominio Hosted UI administrado, grupos base y MFA software token habilitado.
 
-Modulo objetivo pendiente:
+Brecha productiva pendiente:
 
 - `auth`: modulo Terraform Cognito base implementado; queda pendiente endurecer custom domain, politicas granulares de MFA por grupo/accion y puente definitivo Cognito -> identidad/permisos internos.
 
@@ -178,7 +180,7 @@ Impacto de infraestructura:
 - `frontend` corre como contenedor Node/Vite solo para desarrollo local y E2E; produccion compila artefacto estatico para S3/CloudFront.
 - La SPA no consume microservicios internos directamente; todas las llamadas publicas pasan por `bff-service`.
 - `bff-service` propaga `X-Company-Id`, `X-Correlation-Id`, `X-User-Id` e `Idempotency-Key` hacia servicios internos.
-- El login local/transitorio usa `identity-service`; la autenticacion productiva con Cognito queda en TASK-164 a TASK-174.
+- El login local/transitorio usa `identity-service`; TASK-164 a TASK-174 implementaron la base Cognito/Terraform y las sesiones seguras BFF. La integracion productiva completa Cognito -> permisos internos aun requiere validacion de ambiente.
 - ROOT local se usa solo para pruebas y administracion inicial; no requiere licencia empresarial.
 - RBAC y permisos efectivos se validan en backend/BFF, no solo en la SPA.
 - La modularizacion frontend no introduce catalogos de negocio locales ni secretos en el bundle.
@@ -1783,7 +1785,7 @@ POS_MOCK_RECEIPT_BASE_URL=http://localhost:5173
 
 ## TASK-261 a TASK-272 infraestructura objetivo
 
-Estado: documentado; pendiente de implementacion.
+Estado: IMPLEMENTED localmente con pendientes productivos especificos. TASK-261 a TASK-272 estan cerradas; DIAN SOAP real permanece en TASK-273/TASK-274/TASK-276/TASK-264 y el target AWS requiere una aprobacion de despliegue independiente.
 
 ### Fase 35 - Mejoras priorizadas para salida comercial
 
@@ -1852,7 +1854,7 @@ Notas:
 
 ## TASK-289 a TASK-295 infraestructura objetivo
 
-Estado: documentado; pendiente de implementacion.
+Estado mixto: perfil fiscal, CIIU y primera vertical de reglas fiscales estan IMPLEMENTED; perfiles/portal contador, contrasenas temporales y correo permanecen TARGET en TASK-290, TASK-291, TASK-294 y TASK-295.
 
 ### Correo y notificaciones
 

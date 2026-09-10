@@ -1,5 +1,7 @@
 # Design: Backend Clean Architecture basado en microservicios
 
+> Estado SDD 2026-09-09: este documento contiene decisiones implementadas y evoluciones objetivo. `sdd-status.md` clasifica el estado ejecutable y `roadmap.md` ordena el trabajo pendiente. Las secciones historicas se conservan para trazabilidad, no como declaracion automatica de disponibilidad.
+
 ## Decision tecnica
 
 Se usara Clean Architecture dentro de una estrategia basada en microservicios. Cada microservicio debe separar dominio, casos de uso, puertos, adaptadores y configuracion framework.
@@ -12,15 +14,16 @@ Estado implementado y desplegable localmente:
 
 - Microservicios Spring Boot: `bff-service`, `tenant-service`, `identity-service`, `catalog-service`, `thirdparty-service`, `inventory-service`, `billing-service`, `dian-provider-service`, `accounting-service`, `audit-service`, `payroll-service` y `reporting-service`.
 - Lambdas Java implementadas como artefactos Maven: `audit-event-writer-lambda`, `inventory-sale-effect-lambda`, `accounting-sale-entry-lambda`, `provider-submission-retry-lambda` y `reporting-projection-lambda`.
-- Autenticacion local/transitoria: `POST /api/v1/auth/login` con token opaco Bearer, limitada a desarrollo/E2E.
+- Autenticacion: `identity-service` conserva el login local con token opaco para desarrollo/E2E y el BFF materializa sesiones server-side, cookie segura y proteccion CSRF segun ambiente.
 - DIAN local/transitorio: `dian-provider-service` conserva modo mock para E2E local y agrega pipeline real configurable por empresa en modo `stub/http`.
 - Reportes actuales: `reporting-service` orquesta catalogo/opciones/query de reportes avanzados y consume endpoints de servicios duenos; las proyecciones asincronas siguen en `reporting-projection-lambda`.
 
-Objetivo pendiente:
+Brechas objetivo:
 
-- Cognito Hosted UI + PKCE, sesiones BFF server-side, cookies `HttpOnly`, CSRF, MFA y bloqueo productivo del login dummy: TASK-164 a TASK-174.
-- Produccion DIAN certificada por empresa con certificado real, URLs oficiales y fixtures de habilitacion aprobados; la base funcional configurable de Fase 20 `TASK-145` a `TASK-163` ya esta implementada.
-- OpenAPI versionado por servicio/BFF como artefacto controlado; Springdoc solo habilita documentacion runtime.
+- Integracion operativa completa Cognito -> identidad/permisos internos y validacion del flujo productivo; la base Terraform, sesiones BFF, cookies y CSRF de TASK-164 a TASK-174 ya fue implementada.
+- Produccion DIAN certificada por empresa mediante SOAP WCF, respuestas normalizadas y fixtures/E2E aprobados: TASK-273, TASK-274, TASK-276 y TASK-264.
+- Culminacion fiscal, portal contador, credenciales temporales y correo: TASK-309 a TASK-315, TASK-290, TASK-291, TASK-294 y TASK-295.
+- OpenAPI versionado por servicio/BFF como artefacto controlado; Springdoc habilita actualmente documentacion runtime.
 
 ## Microservicios implementados y objetivo
 
@@ -884,9 +887,9 @@ Flujo aprobado:
 - Relevant finding: React recomienda renderizado condicional basado en estado y ubicar efectos causados por interacciones en event handlers; el render debe permanecer puro.
 - Decision impact: `App.jsx` retorna una pantalla de login aislada cuando `session` es nula y ejecuta login/licencia/logout desde handlers controlados.
 
-## TASK-068 RBAC modular con ROOT global
+## TASK-068 RBAC modular con ROOT global (IMPLEMENTED)
 
-El modelo de autorizacion objetivo deja de depender de roles fijos hardcodeados y pasa a RBAC configurable con permisos persistidos.
+El modelo de autorizacion implementado deja de depender de roles fijos hardcodeados y usa RBAC configurable con permisos persistidos.
 
 ### Principios
 

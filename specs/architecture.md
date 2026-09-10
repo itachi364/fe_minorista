@@ -1,5 +1,7 @@
 # Architecture
 
+> Estado SDD 2026-09-09: arquitectura fisica actual en `sdd-status.md`; arquitectura pendiente en `roadmap.md`. Este documento conserva decisiones historicas y target AWS, siempre separados del despliegue local observado.
+
 ## Estilo seleccionado
 
 Clean Architecture basada en microservicios.
@@ -26,6 +28,10 @@ Clean Architecture basada en microservicios.
 - Contabilidad.
 - Reportes.
 - Licenciamiento por empresa.
+- Nomina.
+- Auditoria y observabilidad.
+- Reglas fiscales y retenciones, actualmente dentro de `accounting-service`.
+- Portal de contadores y notificaciones, como bounded contexts objetivo aun no materializados.
 
 ## Comunicacion
 
@@ -231,7 +237,7 @@ Reglas de migracion:
 
 - Microservicios prematuros pueden aumentar complejidad operacional.
 - La conexion DIAN real depende de configuracion, habilitacion/certificacion y certificados de cada empresa cliente.
-- Fase 20 cierra el backlog DIAN real en `TASK-145` a `TASK-163`; reportes asincronos avanzados no se ejecutan antes de ese cierre.
+- TASK-145 a TASK-163 construyeron la base DIAN configurable; la salida real sigue bloqueada por TASK-273, TASK-274, TASK-276 y TASK-264.
 - La normatividad cambia y requiere mantenimiento continuo.
 - El modelo contable debe ser validado por contador.
 
@@ -262,9 +268,9 @@ Decisiones:
 
 ## Decision TASK-261 a TASK-272
 
-La fase 35 se documenta como preparacion priorizada para salida comercial. No cambia la arquitectura vigente hasta aprobacion de implementacion.
+La fase 35 fue implementada localmente en TASK-261 a TASK-272. Readiness se compone en BFF sin tablas propias; reportes, auditoria, storage y observabilidad tienen componentes fisicos. DIAN real conserva pendientes independientes.
 
-Responsabilidades objetivo:
+Responsabilidades vigentes:
 
 - `bff-service`: compone readiness empresarial, aplica seguridad de borde, normaliza errores funcionales, evita exponer servicios internos y sirve como entrada publica para auditoria, reportes, descargas e impresion.
 - `tenant-service`: mantiene empresa, licencia, branding, metadata de archivos, estado de storage y configuraciones empresariales transversales.
@@ -290,14 +296,14 @@ Riesgos:
 
 ## Decision TASK-289 a TASK-295
 
-La fase 36 introduce el modulo de contadores, reglas fiscales/retenciones y notificaciones por correo sin crear privilegios globales nuevos fuera de ROOT.
+La fase 36 tiene estado mixto: CIIU, perfil fiscal empresarial y primera vertical de retenciones estan implementados; contador, credenciales temporales y notificaciones permanecen como target. Ninguna de estas capacidades crea privilegios globales fuera de ROOT.
 
 Responsabilidades objetivo:
 
 - `identity-service`: usuarios contador, contrasenas temporales, cambio obligatorio en primer ingreso y estado de credenciales.
 - `tenant-service`: asociaciones contador-empresa, restriccion de un contador activo por empresa y perfil fiscal/contable empresarial.
-- `thirdparty-service`: perfil fiscal canonico de clientes/proveedores, incluyendo responsabilidades, regimen, municipio y nuevo `ciiuCode`.
-- `accounting-service`: reglas fiscales versionadas, calculo de retenciones, snapshots aplicados, cuentas PUC sugeridas y validacion de reglas contables.
+- `thirdparty-service`: implementa el perfil fiscal canonico de clientes/proveedores, incluyendo responsabilidades, regimen, municipio y `ciiuCodes`; `ciiuCode` es alias historico.
+- `accounting-service`: implementa la primera vertical de reglas fiscales, calculo de retenciones, snapshots y cuentas sugeridas; TASK-309 a TASK-315 completan temporalidad, lineas, acumulaciones, ReteICA, conciliacion y certificados.
 - `reporting-service`: datasets normalizados para portal contador y exportaciones.
 - `inventory-service`: eventos de inventario bajo al cruzar umbral configurado por producto.
 - `notification-service` o modulo equivalente: puerto de notificaciones, plantillas, adaptadores SMTP/SES/local, reintentos y auditoria.

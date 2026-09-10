@@ -1,197 +1,97 @@
 flowchart TB
-  Browser[Browser / SPA]
+  %% Corte SDD 2026-09-09. Linea continua: actual local. Linea punteada: target.
+  classDef current fill:#eef7f2,stroke:#287a5d,color:#17251f
+  classDef partial fill:#fff7e6,stroke:#ad7417,color:#2d2414
+  classDef target fill:#f4f4f4,stroke:#666,color:#222,stroke-dasharray:5 5
 
-  subgraph PublicEdge["Public edge"]
-    CloudFront[CloudFront + security headers]
-    S3[S3 private SPA assets]
+  Browser[Browser]
+
+  subgraph LocalCurrent["IMPLEMENTED / PARTIAL - entorno local"]
+    Spa[React SPA :5173]
+    Bff[bff-service :8083]
+    Tenant[tenant-service :8084]
+    Catalog[catalog-service :8085]
+    ThirdParty[thirdparty-service :8086]
+    Inventory[inventory-service :8087]
+    Billing[billing-service :8088]
+    Dian[dian-provider-service :8089]
+    Accounting[accounting-service :8090]
+    Audit[audit-service :8091]
+    Identity[identity-service :8092]
+    Payroll[payroll-service :8093]
+    Reporting[reporting-service :8094]
+    Postgres[(PostgreSQL 16 / schema por servicio)]
+    Files[(Filesystem privado por empresa)]
+    Prometheus[Prometheus :9090]
+    Grafana[Grafana :3001]
+  end
+
+  subgraph AwsTarget["TARGET - produccion AWS"]
+    CloudFront[CloudFront + S3 SPA]
     Cognito[Cognito Hosted UI + PKCE]
-    ApiGateway[API Gateway / public ALB]
+    ApiGateway[API Gateway / ALB]
+    Ecs[ECS Fargate]
+    Rds[(RDS / Aurora)]
+    Eventing[EventBridge + SQS + DLQ]
+    Lambdas[Cinco Lambdas event-driven]
+    S3Files[(S3 privado + KMS)]
+    Secrets[Secrets Manager / KMS]
+    Ses[SES / notificaciones]
   end
 
-  subgraph PrivateCompute["Private ECS Fargate services"]
-    Bff[bff-service]
-    Readiness[company-readiness composition]
-    Tenant[tenant-service]
-    Identity[identity-service]
-    Catalog[catalog-service]
-    ThirdParty[thirdparty-service]
-    Inventory[inventory-service]
-    Billing[billing-service]
-    DianProvider[dian-provider-service / DIAN connector]
-    Accounting[accounting-service]
-    Audit[audit-service]
-    Payroll[payroll-service]
-    Reporting[reporting-service]
-    Observability[business-health facade]
+  subgraph PendingDomains["TARGET funcional"]
+    Accountant[Portal y asociaciones de contador]
+    TemporaryPassword[Credenciales temporales]
+    FiscalCompletion[Motor fiscal completo]
+    DianSoap[DIAN SOAP WCF real]
   end
 
-  subgraph DataPlane["Private data plane"]
-    RdsProxy[RDS Proxy]
-    Rds[(RDS / Aurora PostgreSQL)]
-    AssetBucket[S3 private company files / reports / POS artifacts]
-    Secrets[Secrets Manager]
-    Kms[KMS]
-  end
-
-  subgraph Eventing["AWS managed eventing"]
-    Outbox[(Service Outbox tables)]
-    EventBus[EventBridge custom bus]
-    AuditQueue[SQS audit-events + DLQ]
-    InventoryQueue[SQS inventory-effects + DLQ]
-    AccountingQueue[SQS accounting-effects + DLQ]
-    ProviderQueue[SQS provider-retries + DLQ]
-    ReportingQueue[SQS reporting-projections + DLQ]
-    ReportExportQueue[SQS report-export-jobs + DLQ]
-    AuditLambda[audit-event-writer Lambda]
-    InventoryLambda[inventory-sale-effect Lambda]
-    AccountingLambda[accounting-effect Lambda]
-    ProviderRetryLambda[provider-submission-retry Lambda]
-    ReportingLambda[reporting-projection Lambda]
-    ReportExportLambda[report-export-worker Lambda]
-    Inbox[(Consumer Inbox tables)]
-  end
-
-  subgraph Notifications["AWS notifications"]
-    Ses[SES report notifications]
-  end
-
-  subgraph ExternalDian["External DIAN responsibility"]
-    CompanyCertificate[Company DIAN certificate / credentials]
-    DianPlatform[DIAN WCF SOAP services configured by company]
-    DianHabWsdl[vpfe-hab WcfDianCustomerServices WSDL]
-  end
-
-  subgraph DianRealFlow["DIAN real flow inside dian-provider-service"]
-    UblBuilder[UBL 2.1 XML builder]
-    DianIdentifiers[CUFE / CUDE / QR calculator]
-    XmlSigner[Company certificate XML signer]
-    DianValidator[XSD / Schematron / code-list validator]
-    DianTransport[DIAN SOAP WCF habilitation / production transport]
-    SoapClient[SOAP client SendTestSetAsync / GetStatusZip / SendBillSync]
-    DianArtifacts[Private fiscal artifacts]
-  end
-
-  subgraph CompanyFiles["Company file storage"]
-    FileMetadata[tenant.company_file_asset metadata]
-    FilePrefixes[company/category prefixes]
-    MockReceiptQr[Configurable mock receipt QR]
-    MinioLocal[Local S3-compatible storage / MinIO optional]
-  end
-
-  subgraph OpsReadiness["Fase 35 readiness comercial"]
-    SetupWizard[Company setup wizard]
-    SecurityHardening[Production security hardening]
-    AccountingReadiness[Accounting readiness]
-    BusinessReports[Normalized business reports]
-    PosPrinter[POS thermal bridge target]
-    HealthMetrics[Actuator health / metrics / traces]
-  end
-
-  Browser --> CloudFront
-  CloudFront --> S3
-  CloudFront --> ApiGateway
-  Browser --> Cognito
-  Cognito --> ApiGateway
-  ApiGateway --> Bff
-
-  Bff --> Readiness
+  Browser --> Spa --> Bff
   Bff --> Tenant
-  Bff --> Identity
   Bff --> Catalog
   Bff --> ThirdParty
   Bff --> Inventory
   Bff --> Billing
   Bff --> Accounting
   Bff --> Audit
+  Bff --> Identity
   Bff --> Payroll
   Bff --> Reporting
-  Bff --> Observability
+  Billing --> Dian
+  Tenant --> Files
+  Reporting --> Files
+  Tenant --> Postgres
+  Catalog --> Postgres
+  ThirdParty --> Postgres
+  Inventory --> Postgres
+  Billing --> Postgres
+  Dian --> Postgres
+  Accounting --> Postgres
+  Audit --> Postgres
+  Identity --> Postgres
+  Payroll --> Postgres
+  Reporting --> Postgres
+  Bff --> Postgres
+  Prometheus --> Bff
+  Prometheus --> Tenant
+  Prometheus --> Accounting
+  Prometheus --> Reporting
+  Grafana --> Prometheus
 
-  Readiness --> Tenant
-  Readiness --> Billing
-  Readiness --> Accounting
-  Readiness --> DianProvider
-  Readiness --> Identity
-  Readiness --> Inventory
-  Observability --> HealthMetrics
+  Spa -. target .-> CloudFront
+  Bff -. target .-> ApiGateway
+  Identity -. target .-> Cognito
+  Ecs -. target .-> Rds
+  Ecs -. target .-> Eventing
+  Eventing -. target .-> Lambdas
+  Ecs -. target .-> S3Files
+  Ecs -. target .-> Secrets
+  Reporting -. target .-> Ses
+  Dian -. TASK-273/274/276 .-> DianSoap
+  Accounting -. TASK-309 a 315 .-> FiscalCompletion
+  Identity -. TASK-294 .-> TemporaryPassword
+  Bff -. TASK-290/291 .-> Accountant
 
-  Billing --> DianProvider
-  DianProvider --> UblBuilder --> DianIdentifiers --> XmlSigner --> DianValidator --> DianTransport --> SoapClient
-  DianProvider --> DianArtifacts
-  DianProvider --> Secrets
-  DianProvider --> CompanyCertificate
-  SoapClient --> DianHabWsdl
-  SoapClient --> DianPlatform
-  DianArtifacts --> AssetBucket
-  Billing --> MockReceiptQr
-  MockReceiptQr --> AssetBucket
-
-  Bff --> Secrets
-  Tenant --> Secrets
-  Identity --> Secrets
-  Billing --> Secrets
-  Reporting --> Secrets
-  Secrets --> Kms
-  AssetBucket --> Kms
-  CloudFront --> AssetBucket
-  Tenant --> AssetBucket
-  Billing --> AssetBucket
-  Reporting --> AssetBucket
-  Tenant --> FileMetadata
-  FileMetadata --> FilePrefixes
-  FilePrefixes --> AssetBucket
-  FilePrefixes --> MinioLocal
-  Reporting --> ReportExportQueue
-  Reporting --> Ses
-
-  SetupWizard --> Readiness
-  SecurityHardening --> Cognito
-  SecurityHardening --> Secrets
-  AccountingReadiness --> Accounting
-  BusinessReports --> Reporting
-  PosPrinter --> Billing
-  HealthMetrics --> Bff
-
-  Tenant --> RdsProxy
-  Identity --> RdsProxy
-  Catalog --> RdsProxy
-  ThirdParty --> RdsProxy
-  Inventory --> RdsProxy
-  Billing --> RdsProxy
-  DianProvider --> RdsProxy
-  Accounting --> RdsProxy
-  Audit --> RdsProxy
-  Payroll --> RdsProxy
-  Reporting --> RdsProxy
-  RdsProxy --> Rds
-
-  Billing --> Outbox
-  Inventory --> Outbox
-  Accounting --> Outbox
-  Audit --> Outbox
-  Payroll --> Outbox
-  Outbox --> EventBus
-
-  EventBus --> AuditQueue --> AuditLambda
-  EventBus --> InventoryQueue --> InventoryLambda
-  EventBus --> AccountingQueue --> AccountingLambda
-  EventBus --> ProviderQueue --> ProviderRetryLambda
-  EventBus --> ReportingQueue --> ReportingLambda
-  EventBus --> ReportExportQueue --> ReportExportLambda
-
-  AuditLambda --> Inbox
-  InventoryLambda --> Inbox
-  AccountingLambda --> Inbox
-  ProviderRetryLambda --> Inbox
-  ReportingLambda --> Inbox
-
-  AuditLambda --> Audit
-  InventoryLambda --> Inventory
-  AccountingLambda --> Accounting
-  ProviderRetryLambda --> DianProvider
-  ReportingLambda --> RdsProxy
-  ReportingLambda --> Reporting
-  ReportExportLambda --> RdsProxy
-  ReportExportLambda --> AssetBucket
-  ReportExportLambda --> Reporting
-  ReportExportLambda --> Ses
+  class Browser,Spa,Bff,Tenant,Catalog,ThirdParty,Inventory,Billing,Accounting,Audit,Identity,Payroll,Reporting,Postgres,Files,Prometheus,Grafana current
+  class Dian partial
+  class CloudFront,Cognito,ApiGateway,Ecs,Rds,Eventing,Lambdas,S3Files,Secrets,Ses,Accountant,TemporaryPassword,FiscalCompletion,DianSoap target

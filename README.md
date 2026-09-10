@@ -4,6 +4,8 @@ NexoFiscal es una plataforma modular para gestionar ventas, facturacion fiscal c
 
 El repositorio contiene una SPA React, un BFF Spring Boot, microservicios de dominio, lambdas de proyeccion o procesamiento asincrono, migraciones Flyway, despliegue local con Docker Compose y configuracion de calidad con SonarQube.
 
+El estado verificable de capacidades y limitaciones se mantiene en [`specs/sdd-status.md`](specs/sdd-status.md); el trabajo pendiente ordenado por fases esta en [`specs/roadmap.md`](specs/roadmap.md). La existencia de una especificacion objetivo no implica que la capacidad este implementada.
+
 ## Arquitectura General
 
 La aplicacion esta organizada en servicios autonomos comunicados por HTTP interno y eventos operativos:
@@ -53,7 +55,7 @@ La aplicacion esta organizada en servicios autonomos comunicados por HTTP intern
 
 ## Stack Tecnico
 
-- Backend: Java 17, Spring Boot 3.5, Spring Web, Spring Security, Spring Data JPA, Bean Validation, OpenAPI.
+- Backend: Java 17, Spring Boot 3.5.14, Spring Web, Spring Security, Spring Data JPA, Bean Validation, OpenAPI.
 - Frontend: React 19, TypeScript, Vite 7, i18next, React Testing Library, Vitest.
 - Base de datos: PostgreSQL con migraciones Flyway por servicio.
 - Contenedores: Docker y Docker Compose.
@@ -95,7 +97,7 @@ El contrato de licencia expone `enabledModules` y `enabledFeatures`. La migracio
 
 En el panel ROOT de licencias, seleccionar una empresa carga automaticamente su licencia y consumo comercial. Si no existe licencia, el formulario se limpia y queda listo para crearla sin reutilizar datos de otra empresa.
 
-La clasificacion de obligacion de facturar esta especificada para calcularse en backend durante la creacion de empresa por ROOT. El RUT se conserva como evidencia privada, los datos se capturan desde catalogos y un cuestionario complementario, y el resultado no es editable. Solo `NOT_OBLIGATED_VERIFIED` permite venta interna no fiscal; codigos de no responsable de IVA o consumo no bastan por si solos. La implementacion corresponde a `TASK-305` y no requiere OCR en su primera version.
+La clasificacion de obligacion de facturar se calcula en backend durante la creacion o actualizacion de empresa por ROOT. El RUT se conserva como evidencia privada, los datos se capturan desde catalogos y un cuestionario complementario, y el resultado no es editable. Solo `NOT_OBLIGATED_VERIFIED` permite venta interna no fiscal; codigos de no responsable de IVA o consumo no bastan por si solos. Esta capacidad fue implementada en `TASK-305` y no usa OCR en su primera version.
 
 Los estados nacionales de retencion del perfil empresarial se derivan de las responsabilidades RUT y se muestran como solo lectura. La designacion de ReteICA sigue siendo municipal y explicita. Las excepciones especiales declaradas requieren revision antes de permitir una venta no fiscal (`TASK-306`).
 
@@ -144,6 +146,7 @@ Servicios locales principales:
 | Accounting | `http://localhost:8090` |
 | Audit | `http://localhost:8091` |
 | Identity | `http://localhost:8092` |
+| Payroll | `http://localhost:8093` |
 | Reporting | `http://localhost:8094` |
 
 ## Observabilidad Local
@@ -232,7 +235,7 @@ $env:SONAR_TOKEN="token-local"
 .\scripts\sonar-local.ps1
 ```
 
-La configuracion base esta en `sonar-project.properties` e integra fuentes backend, frontend, infraestructura, cobertura JaCoCo y cobertura LCOV.
+La configuracion base esta en `sonar-project.properties` e integra fuentes backend, frontend, infraestructura, cobertura JaCoCo y cobertura LCOV. El pipeline `.github/workflows/quality.yml` ejecuta Maven, cobertura/build frontend y Sonar cuando existe `SONAR_TOKEN`. El objetivo SDD para logica de negocio nueva o modificada es 100% de cobertura de ramas; cualquier excepcion debe quedar justificada en la tarea.
 
 ## Infraestructura AWS
 
@@ -311,11 +314,21 @@ La plantilla basica contabiliza el neto del proveedor en `2205` y las retencione
 - Las exenciones fiscales dirigidas a un tercero cargan un soporte PDF privado de maximo 5 MB; la regla conserva una referencia interna aislada por empresa.
 - Los errores publicos deben ser claros para el usuario y no exponer trazas internas.
 
+## Limitaciones Conocidas
+
+- La conexion DIAN SOAP WCF real, su normalizacion de respuestas y la prueba E2E de habilitacion siguen pendientes; el modo mock no demuestra produccion DIAN.
+- El motor fiscal disponible es una primera vertical. No debe usarse para liquidaciones productivas mientras la vigencia juridica y los paquetes territoriales requeridos no esten verificados.
+- El portal de contadores, las contrasenas temporales y los correos operativos siguen especificados pero no implementados.
+- La infraestructura AWS esta definida como target; los recursos ECS se mantienen sin cargas productivas hasta contar con imagenes, secretos y pipeline aprobados.
+
 ## Documentacion Tecnica
 
 La documentacion de especificacion vive en `specs/`:
 
 - `requirements.md`: requisitos funcionales, reglas y criterios.
+- `sdd-status.md`: fotografia canonica de capacidades reales, parciales y objetivo.
+- `roadmap.md`: fases y dependencias del backlog activo.
+- `legal-baseline.md`: fuentes oficiales, estado documental y compuerta de publicacion fiscal.
 - `design.md`: arquitectura funcional, flujos, decisiones y evidencias tecnicas.
 - `api-contract.md`: contratos HTTP y eventos.
 - `database-design.md`: persistencia y migraciones.

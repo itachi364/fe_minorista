@@ -1,8 +1,10 @@
 # Data Dictionary
 
+> Estado SDD 2026-09-09: las migraciones Flyway son la autoridad sobre tipos fisicos. Este diccionario distingue tablas actuales y objetivo; `sdd-status.md` registra las versiones desplegadas y las entidades ausentes.
+
 ## Convenciones
 
-- `id`: identificador primario tipo UUID o `bigint`, a decidir antes de migraciones.
+- `id`: UUID en los agregados actuales de microservicios. Las referencias `uuid/bigint` que sobreviven en secciones legacy documentan compatibilidad historica y deben verificarse contra la migracion propietaria.
 - `company_id`: identificador de empresa/tenant. Obligatorio en tablas de negocio.
 - `created_at`, `updated_at`: fecha/hora en UTC.
 - `created_by`, `updated_by`: usuario que crea o modifica.
@@ -1090,9 +1092,9 @@ Reglas:
 
 ## Extensiones TASK-261 a TASK-272
 
-Estado: diccionario objetivo documentado; pendiente de implementacion.
+Estado mixto: readiness es una proyeccion runtime IMPLEMENTED sin tablas; cache/snapshots funcionales y extensiones antimalware permanecen TARGET.
 
-### `tenant.company_readiness_snapshot`
+### Proyeccion `company_readiness_snapshot` (sin tabla fisica)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1103,7 +1105,7 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | evaluated_by | uuid | No | Usuario que solicito el diagnostico, si aplica. |
 | correlation_id | varchar(120) | No | Correlacion tecnica de la evaluacion. |
 
-### `tenant.company_readiness_check`
+### Proyeccion `company_readiness_check` (sin tabla fisica)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1116,7 +1118,7 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | action_code | varchar(80) | No | Accion sugerida para la SPA. |
 | message | varchar(500) | Si | Mensaje funcional sanitizado. |
 
-### `reporting.report_dataset_cache`
+### `reporting.report_dataset_cache` (TARGET)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1128,7 +1130,7 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | created_at | timestamptz | Si | Fecha de creacion. |
 | expires_at | timestamptz | No | Fecha de expiracion del cache. |
 
-### `platform.business_health_snapshot`
+### `platform.business_health_snapshot` (TARGET opcional)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1140,7 +1142,7 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | reporting_status | varchar(20) | Si | Estado funcional de reportes. |
 | evaluated_at | timestamptz | Si | Fecha/hora de evaluacion. |
 
-### `platform.service_health_event`
+### `platform.service_health_event` (TARGET opcional)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1152,7 +1154,7 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | correlation_id | varchar(120) | No | Correlacion tecnica. |
 | occurred_at | timestamptz | Si | Fecha/hora del evento. |
 
-### Extension `tenant.company_file_asset`
+### Extension `tenant.company_file_asset` (TARGET parcial)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1163,7 +1165,9 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 
 ## Extensiones TASK-289 a TASK-295
 
-### `identity.accountant_profile`
+Estado mixto: contador, credenciales temporales y correo son TARGET; perfil fiscal empresarial, CIIU multiactividad y primera vertical de retenciones estan IMPLEMENTED/PARTIAL.
+
+### `identity.accountant_profile` (TARGET, TASK-290)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1176,7 +1180,7 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | created_at | timestamptz | Si | Fecha de creacion. |
 | updated_at | timestamptz | Si | Fecha de ultima actualizacion. |
 
-### `tenant.accountant_company_assignment`
+### `tenant.accountant_company_assignment` (TARGET, TASK-290)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1189,7 +1193,7 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | ended_at | timestamptz | No | Fecha de retiro/reemplazo. |
 | notes | varchar(500) | No | Observacion funcional sanitizada. |
 
-### Extension `identity.user_account`
+### Extension `identity.user_account` (TARGET, TASK-294)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1197,7 +1201,7 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | temporary_password_expires_at | timestamptz | No | Vencimiento de la contrasena temporal. |
 | temporary_password_created_by | uuid | No | Usuario ROOT que provisiono la credencial temporal. |
 
-### `accounting.fiscal_rule_set`
+### `accounting.fiscal_rule_set` (TARGET de culminacion)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1210,7 +1214,7 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | source_reference | varchar(500) | Si | Referencia normativa o parametrica. |
 | status | varchar(20) | Si | `DRAFT`, `ACTIVE`, `INACTIVE`. |
 
-### `tenant.company_tax_profile`
+### `tenant.company_tax_profile` (IMPLEMENTED)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1229,7 +1233,7 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | updated_by | uuid | Si | Usuario que modifico el perfil. |
 | updated_at | timestamptz | Si | Fecha de actualizacion. |
 
-### `tenant.company_tax_profile_responsibility`
+### `tenant.company_tax_profile_responsibility` (IMPLEMENTED)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1237,7 +1241,7 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | tax_responsibility_code | varchar(20) | Si | Responsabilidad RUT/DIAN de la empresa. |
 | active | boolean | Si | Estado de la responsabilidad. |
 
-### `tenant.company_tax_profile_ciiu`
+### `tenant.company_tax_profile_ciiu` (IMPLEMENTED)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1246,7 +1250,7 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | primary_activity | boolean | Si | Indica actividad principal. |
 | active | boolean | Si | Estado de la actividad. |
 
-### `accounting.withholding_rule`
+### `accounting.withholding_rule` (IMPLEMENTED/PARTIAL)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1264,7 +1268,7 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | priority | integer | Si | Prioridad de evaluacion. |
 | active | boolean | Si | Estado operacional. |
 
-### `accounting.withholding_calculation_snapshot`
+### `accounting.withholding_calculation_snapshot` (IMPLEMENTED/PARTIAL)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1283,7 +1287,7 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | reason | varchar(500) | No | Explicacion funcional sanitizada. |
 | created_at | timestamptz | Si | Fecha de calculo. |
 
-### `notification.email_message`
+### `notification.email_message` (TARGET, TASK-295)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1298,7 +1302,7 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | created_at | timestamptz | Si | Fecha de creacion. |
 | sent_at | timestamptz | No | Fecha de envio exitoso. |
 
-### `thirdparty.third_party_ciiu`
+### `thirdparty.third_party_ciiu` (IMPLEMENTED)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1306,6 +1310,8 @@ Estado: diccionario objetivo documentado; pendiente de implementacion.
 | ciiu_code | varchar(10) | Si | Codigo oficial CIIU seleccionado. |
 
 ## Diccionario objetivo del motor fiscal completo
+
+Estado: TARGET, TASK-309 a TASK-315. Ninguna entidad de esta seccion debe asumirse fisica sin una migracion Flyway aplicada.
 
 ### Enumeraciones
 

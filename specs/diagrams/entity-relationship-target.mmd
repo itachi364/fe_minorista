@@ -1,0 +1,56 @@
+erDiagram
+  %% Entidades TARGET. No existen fisicamente al corte SDD 2026-09-09.
+  USER_ACCOUNT ||--o| ACCOUNTANT_PROFILE : represents
+  ACCOUNTANT_PROFILE ||--o{ ACCOUNTANT_COMPANY_ASSIGNMENT : advises
+  COMPANY ||--o| ACCOUNTANT_COMPANY_ASSIGNMENT : assigns
+
+  LEGAL_SOURCE ||--o{ LEGAL_SOURCE_EVENT : changes
+  LEGAL_SOURCE ||--o{ FISCAL_RULE_SET : supports
+  FISCAL_RULE_SET ||--o{ WITHHOLDING_RULE : contains
+  WITHHOLDING_CALCULATION_SNAPSHOT ||--o{ WITHHOLDING_CALCULATION_LINE_SNAPSHOT : details
+  WITHHOLDING_CALCULATION_SNAPSHOT ||--o| WITHHOLDING_REVERSAL : reverses
+  COMPANY ||--o{ WITHHOLDING_ACCUMULATION : accumulates
+  COMPANY ||--o{ FISCAL_PERIOD_SUMMARY : closes
+  FISCAL_PERIOD_SUMMARY ||--o{ WITHHOLDING_CERTIFICATE : certifies
+  WITHHOLDING_CERTIFICATE ||--o{ WITHHOLDING_CERTIFICATE_LINE : contains
+  COMPANY ||--o{ ACCOUNT_PRESENTATION_MAPPING : presents
+
+  COMPANY ||--o{ EMAIL_MESSAGE : scopes
+  EMAIL_MESSAGE ||--o{ EMAIL_DELIVERY_ATTEMPT : retries
+
+  ACCOUNTANT_PROFILE {
+    uuid id PK
+    uuid user_id
+    varchar professional_card
+    varchar status
+  }
+  ACCOUNTANT_COMPANY_ASSIGNMENT {
+    uuid id PK
+    uuid company_id
+    uuid accountant_user_id
+    varchar status
+  }
+  LEGAL_SOURCE {
+    uuid id PK
+    varchar authority
+    varchar source_number
+    date publication_date
+  }
+  LEGAL_SOURCE_EVENT {
+    uuid id PK
+    uuid legal_source_id
+    varchar event_type
+    date effective_from
+  }
+  WITHHOLDING_ACCUMULATION {
+    uuid company_id
+    uuid third_party_id
+    varchar tax_type
+    numeric taxable_accumulated
+  }
+  EMAIL_MESSAGE {
+    uuid id PK
+    uuid company_id
+    varchar event_type
+    varchar status
+  }

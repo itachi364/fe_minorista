@@ -497,7 +497,7 @@ Estado TASK-036:
 - `dian-provider-service` fisico crea `dian_provider.provider_submission`.
 - La tabla registra empresa, documento, tipo de documento, clave de idempotencia, tracking ID, estado mock, CUFE/CUDE, QR, error seguro, fecha, request y response seguros.
 - `unique(company_id, document_id, document_type, idempotency_key)` evita duplicar envios por reintento.
-- La configuracion DIAN real, referencias de certificados/credenciales, respuestas oficiales, validaciones tecnicas y artefactos quedan implementadas/documentadas como configuracion parametrizable por empresa en Fase 20 TASK-145 a TASK-163. Estado actualizado 2026-09-03: el transporte SOAP WCF DIAN y la carga de certificado `.p12/.pfx` quedan pendientes en TASK-273 a TASK-276. Cada empresa es responsable de su habilitacion/certificacion DIAN; la plataforma no presta servicio de proveedor tecnologico.
+- La configuracion DIAN y la carga privada de certificado empresarial `.p12`/`.pfx` estan implementadas. El transporte SOAP WCF, la normalizacion de respuestas, los fixtures sanitizados y el E2E real permanecen pendientes en TASK-273, TASK-274, TASK-276 y TASK-264. Cada empresa es responsable de su habilitacion/certificacion DIAN; la plataforma no presta servicio de proveedor tecnologico.
 
 Extensiones SOAP objetivo:
 
@@ -657,9 +657,9 @@ Tabla agregada en TASK-052 para notas fiscales persistidas.
 
 Restricciones principales: FK a `billing.electronic_document(id)`, unicidad por `(company_id, prefix, document_number)` y por `(company_id, idempotency_key)`.
 
-### Modelo objetivo TASK-068/TASK-069: RBAC modular
+### Modelo implementado TASK-068/TASK-069: RBAC modular
 
-El modelo actual de roles fijos se conserva hasta implementar la migracion. El objetivo aprobado es reemplazar `identity.company_membership_role.role` como enum fijo por roles configurables y permisos persistidos.
+Los roles configurables y permisos persistidos ya reemplazan la autorizacion basada exclusivamente en roles fijos. Los nombres historicos se conservan como seeds/compatibilidad, pero las decisiones de acceso se toman por permisos efectivos.
 
 #### `identity.global_user_role`
 
@@ -980,7 +980,7 @@ Reglas:
 
 ## Extensiones TASK-261 a TASK-272
 
-Estado: modelo objetivo documentado; pendiente de implementacion.
+Estado mixto: readiness, reportes, auditoria, storage y observabilidad tienen implementaciones runtime; las tablas logicas de readiness/health/cache descritas aqui no fueron materializadas y se conservan como alternativas TARGET.
 
 ### Readiness empresarial
 
@@ -1047,7 +1047,7 @@ Reglas:
 
 ## Extensiones TASK-289 a TASK-295
 
-Estado: modelo objetivo documentado; pendiente de implementacion.
+Estado mixto: CIIU multiactividad, perfil fiscal y primera vertical de retenciones estan implementados; contador, credenciales temporales y correo permanecen como TARGET.
 
 ### Modulo de contadores
 
@@ -1068,13 +1068,14 @@ Reglas:
 
 `thirdparty.third_party` sigue siendo la fuente canonica del perfil fiscal de clientes/proveedores. El sistema no crea una configuracion fiscal paralela para proveedores.
 
-Campo objetivo:
+Modelo implementado:
 
-- `ciiu_code`: codigo CIIU/actividad economica del tercero cuando aplique.
+- `thirdparty.third_party_ciiu`: coleccion canonica de actividades.
+- `thirdparty.third_party.ciiu_code`: alias historico de actividad principal durante compatibilidad.
 
 Reglas:
 
-- El motor fiscal usa `tax_regime`, `third_party_tax_responsibility`, `municipality_code`, `person_type`, roles y `ciiu_code` como snapshot de evaluacion.
+- El motor fiscal usa `tax_regime`, responsabilidades, `municipality_code`, `person_type`, roles y `ciiuCodes` como snapshot de evaluacion.
 - Para proveedores usados en compras, gastos o pagos sujetos a retencion, la ausencia de CIIU requerido por la regla debe producir error funcional o advertencia segun el concepto.
 
 ### Perfil fiscal/contable de empresa

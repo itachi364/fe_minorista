@@ -5,7 +5,20 @@
 - `PENDING`: pendiente.
 - `APPROVED`: aprobado para implementar en una fase posterior.
 - `IN_PROGRESS`: en ejecucion.
+- `PARTIAL`: vertical aprobada terminada, con ampliaciones trazadas en tareas posteriores.
 - `DONE`: completado.
+- `HISTORICAL`: referencia conservada, no representa trabajo activo.
+- `SUPERSEDED`: alcance reemplazado por una tarea posterior sin borrar el historial.
+
+## Corte SDD 2026-09-09
+
+- Registro: 294 tareas terminadas y 15 tareas funcionales pendientes antes de esta auditoria.
+- Backlog DIAN: TASK-264, TASK-273, TASK-274 y TASK-276.
+- Backlog contador, accesos y correo: TASK-290, TASK-291, TASK-294 y TASK-295.
+- Backlog de culminacion fiscal: TASK-309 a TASK-315.
+- Los identificadores TASK-283 a TASK-288 se reservan como omisiones historicas y no se reutilizan ni renumeran.
+- Fuente canonica del estado actual: `sdd-status.md`. Orden de ejecucion pendiente: `roadmap.md`.
+- Regla de estructura: todas las fases y tareas deben aparecer antes de la seccion final `Context7 evidence`.
 
 ## Fase 0: Seguridad y base SDD
 
@@ -4366,9 +4379,6 @@
     - `NON_FISCAL_SALE` confirma venta sin DIAN, sin CUFE/CUDE ni QR DIAN.
     - Resoluciones electronicas fallan cerradas si DIAN no esta en modo `REAL`, `ACTIVE`, prueba `SUCCESS` y certificado configurado para la empresa.
     - `ELECTRONIC_INVOICE` y `ELECTRONIC_POS` no se envian a DIAN si la readiness empresarial no esta completa.
-  - Context7 evidence:
-    - Spring Boot 3.5.9: `RestClient`/`RestClient.Builder` para cliente HTTP interno con base URL por adaptador.
-    - React: selects controlados y renderizado derivado de props/estado para opciones de formulario.
   - Validacion propuesta:
     - Tests unitarios de use case para venta interna y bloqueo DIAN.
     - Tests de adaptador HTTP readiness DIAN.
@@ -4689,11 +4699,6 @@
     - Los artefactos ignorados `target`, `dist`, `.idea`, `.settings` y `.github/java-upgrade`/`.github/modernize` pueden eliminarse localmente si no estan rastreados por Git.
     - La documentacion vigente no debe presentar rutas legacy como contratos activos ni guias historicas como flujo de prueba principal.
     - Los textos visibles deben referirse a "conector DIAN" o "conexion DIAN parametrizable", no a "proveedor tecnologico" como servicio ofrecido por la plataforma.
-  - Context7 evidence:
-    - Library/tool: Flyway (`/flyway/flyway`).
-    - Topic consulted: versioned SQL migrations, validation and schema history.
-    - Relevant finding: Flyway valida migraciones aplicadas contra migraciones locales, incluyendo checksum y migraciones aplicadas no resueltas.
-    - Decision impact: No se eliminan ni reescriben migraciones historicas; la limpieza de tablas se expresa como script/migracion nueva y segura.
   - Validacion:
     - `git ls-files` para confirmar que artefactos generados/IDE no estan rastreados.
     - Conteo de tablas `public.*` antes y despues en PostgreSQL local.
@@ -7208,6 +7213,10 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - `npm test -- App.test.jsx`: 34 tests OK.
     - `npm run build`: build Vite OK.
 
+## Fase 36: Contadores, reglas fiscales y notificaciones
+
+Nota de gobierno: TASK-283 a TASK-288 son identificadores historicos reservados.
+
 - [x] TASK-289: Documentar modulo de contadores, reglas fiscales y notificaciones
   - Estado: DONE.
   - Requisitos: RF-284, RF-285, RF-286, RF-287, RF-288, RF-289, RF-290, RF-291, RF-292, RF-293, RF-294, RF-295, RF-296, RF-297, RF-298, RF-299, RF-300.
@@ -7232,7 +7241,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - Documentacion SDD actualizada sin generar codigo.
 
 - [ ] TASK-290: Implementar perfiles de contador y asociaciones contador-empresa
-  - Estado: TODO.
+  - Estado: PENDING.
   - Requisitos: RF-284, RF-285, RF-286, RF-287.
   - Acceptance criteria: AC-404, AC-405, AC-406, AC-408.
   - Descripcion: Crear perfil de contador, endpoints ROOT de asociacion/reemplazo, restricciones de unicidad activa por empresa y validaciones BFF/backend para alcance de lectura.
@@ -7242,7 +7251,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - TASK-122.
 
 - [ ] TASK-291: Implementar portal contador y reportes por empresa asociada
-  - Estado: TODO.
+  - Estado: PENDING.
   - Requisitos: RF-287, RF-288.
   - Acceptance criteria: AC-404, AC-407, AC-408.
   - Descripcion: Crear vista SPA de contador y endpoints de consulta que reutilicen reportes normalizados por empresa vinculada.
@@ -7267,8 +7276,8 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - `.\mvnw.cmd -pl services\thirdparty-service,services\accounting-service,services\bff-service -am test`: BUILD SUCCESS.
     - `npm test -- --run`: 40 tests OK.
 
-- [x] TASK-293: Implementar motor versionado de retenciones
-  - Estado: DONE parcial primera vertical.
+- [x] TASK-293: Implementar primera vertical del motor versionado de retenciones
+  - Estado: PARTIAL; la entrega aprobada termino y su culminacion esta trazada en TASK-309 a TASK-315.
   - Requisitos: RF-294, RF-295, RF-296, RF-297.
   - Acceptance criteria: AC-413, AC-414, AC-415, AC-416.
   - Descripcion: Crear reglas fiscales versionadas para retenciones sobre compras, gastos y pagos, usando perfil de empresa y tercero, municipio, CIIU, regimen, responsabilidades, concepto, base y fecha.
@@ -7288,8 +7297,8 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
   - Pendiente normativo-operativo:
     - Cada empresa debe cargar y aprobar las tarifas ReteICA de sus municipios; el motor bloquea ese calculo cuando falta el catalogo territorial para evitar aplicar una tarifa nacional inexistente.
 
-- [x] TASK-296: Completar catalogo fiscal versionado y motor de precedencia
-  - Estado: DONE (2026-09-07).
+- [x] TASK-296: Implementar catalogo fiscal versionado inicial y motor de precedencia
+  - Estado: PARTIAL; vertical inicial terminada el 2026-09-07 y ampliada por TASK-309 a TASK-315.
   - Requisitos: RF-294, RF-295, RF-297, RF-301, RF-302, RF-303, RF-304, RF-305.
   - Acceptance criteria: AC-413 a AC-416, AC-420 a AC-426.
   - Descripcion: Incorporar parametros UVT, metadatos normativos, conceptos, unidades de base, decisiones de exencion/bloqueo, precedencia determinista, autorretencion por CIIU y ReteICA territorial sin valores asumidos.
@@ -7314,7 +7323,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - Catalogo de autorretencion: 501 codigos CIIU generados desde la tabla oficial del Decreto 572 de 2025.
 
 - [ ] TASK-294: Implementar contrasenas temporales para administradores y contadores
-  - Estado: TODO.
+  - Estado: PENDING.
   - Requisitos: RF-289, RF-290, RF-291.
   - Acceptance criteria: AC-409, AC-410, AC-411.
   - Descripcion: Forzar cambio de clave en primer login para usuarios creados por ROOT y emitir evento de credenciales temporales.
@@ -7324,7 +7333,7 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - TASK-290.
 
 - [ ] TASK-295: Implementar notificaciones por correo
-  - Estado: TODO.
+  - Estado: PENDING.
   - Requisitos: RF-291, RF-298, RF-299, RF-300.
   - Acceptance criteria: AC-411, AC-417, AC-418, AC-419.
   - Descripcion: Crear puerto/adaptadores de correo para credenciales temporales, inventario bajo y reportes asincronos listos, con auditoria, reintentos y sanitizacion.
@@ -7333,7 +7342,10 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
     - TASK-279.
     - TASK-294.
 
+## Fase 37: Integracion fiscal, permisos y licenciamiento comercial
+
 - [x] TASK-297: Implementar CIIU multiactividad, catalogo oficial y vencimiento condicional
+  - Estado: DONE.
   - Requisitos: RF-306, RF-307, RF-308, RF-309, RF-310.
   - Acceptance criteria: AC-427, AC-428, AC-429, AC-430, AC-431, AC-432.
   - Entregables: migraciones de catalogo/terceros, contratos compatibles, dominio fiscal multivalor, selector dual filtrable, formularios de compra/gasto y navegacion.
@@ -7371,41 +7383,6 @@ Nota de estado: fase implementada con aprobacion explicita posterior. Incluye AP
   - Resultado: DIVIPOLA, CIIU, regimen, responsabilidad, concepto y tercero usan selecciones controladas; la exencion particular carga un PDF privado, conserva referencia empresarial y permite abrirlo mediante descarga autenticada.
   - Verificacion: reactor Maven exitoso con `tenant-service` 45 pruebas y `accounting-service` 93 pruebas sin fallos; `catalog-service` aplico Flyway V012. Frontend 50 pruebas sin fallos, build Vite exitoso y `git diff --check` sin errores. Reinicio de contenedores pendiente de confirmacion separada.
 
-Context7 evidence:
-
-- Library/tool: React.
-  - Topic consulted: controlled inputs, file input reset and form state updates.
-  - Relevant finding: controlled state is the source of truth for form values; file inputs are uncontrolled and can be reset by remounting with a stable `key`.
-  - Decision impact: product edit/create uses controlled state and PDF evidence inputs remount after reset.
-- Library/tool: Spring Boot.
-  - Topic consulted: multipart upload and `spring.servlet.multipart.*` limits.
-  - Relevant finding: Spring Boot exposes multipart handling through Servlet multipart support and configurable upload limits.
-  - Decision impact: company file upload validates PDF evidence and uses configurable max file/request size.
-- Library/tool: AWS SDK for Java v2 S3.
-  - Topic consulted: S3 `PutObjectRequest`, object key prefixes and server-side encryption.
-  - Relevant finding: S3 object keys support prefix organization and `PutObjectRequest` can include content metadata and SSE/SSE-KMS settings.
-  - Decision impact: production storage uses private S3 objects under company/category prefixes with SSE-S3 or SSE-KMS.
-- Library/tool: ZXing.
-  - Topic consulted: QR generation with `QRCodeWriter`.
-  - Relevant finding: `QRCodeWriter.encode` produces a `BitMatrix` for QR rendering.
-  - Decision impact: POS receipt renders a scan-ready inline SVG QR without calling external QR services.
-- Library/tool: Spring Boot.
-  - Topic consulted: `@ControllerAdvice` and `@ExceptionHandler` for business exception mapping.
-  - Relevant finding: Spring Boot MVC permite centralizar excepciones y devolver `ResponseEntity` con payload controlado por tipo de error.
-  - Decision impact: TASK-259 mantiene errores contables esperados como `400 BUSINESS_RULE_VIOLATION` con mensajes funcionales especificos.
-- Library/tool: React.
-  - Topic consulted: button event handlers and passing functions through props.
-  - Relevant finding: React recomienda pasar funciones como handlers `onClick` y levantar estado/operaciones compartidas al componente padre mediante props.
-  - Decision impact: TASK-260 mueve la aplicacion de plantilla basica a una accion idempotente del contenedor `App`, invocada desde el panel por prop.
-- Library/tool: Spring Boot.
-  - Topic consulted: Actuator production-ready health endpoints and metrics.
-  - Relevant finding: Spring Boot Actuator provee endpoints de monitoreo y administracion para produccion, incluyendo liveness/readiness y metricas integrables con herramientas externas.
-  - Decision impact: TASK-272 queda documentada con health liveness/readiness, metricas, logs correlacionables y alertas por microservicio.
-- Library/tool: Apache CXF.
-  - Topic consulted: JAX-WS SOAP client from WSDL and WS-Security X.509 certificate configuration.
-  - Relevant finding: CXF permite crear clientes JAX-WS desde WSDL y configurar WS-Security mediante propiedades de firma, callback handler y soporte WSS4J para tokens X.509.
-  - Decision impact: TASK-273 define el transporte DIAN real como adaptador SOAP WCF y TASK-275 exige certificado `.p12/.pfx` gestionado como secreto de empresa.
-
 - [x] TASK-301: Delegar configuracion fiscal y compactar selectores con busqueda
   - Estado: DONE.
   - Requisitos: RF-321 a RF-326.
@@ -7442,6 +7419,8 @@ Context7 evidence:
   - Pruebas: Vitest para empresa con licencia, empresa sin licencia, payload posterior y presets comerciales.
   - Validacion: 55 pruebas Vitest y build Vite de produccion aprobados el 2026-09-09.
 
+## Fase 38: Clasificacion autoritativa y evidencia RUT
+
 - [x] TASK-305: Implementar clasificacion autoritativa de obligacion de facturar
   - Estado: IMPLEMENTED; validado en backend y SPA el 2026-09-09.
   - Compatibilidad: endurece `TASK-282` y `RN-084`; no tener DIAN lista deja de ser una condicion suficiente para vender como `NON_FISCAL_SALE`.
@@ -7472,6 +7451,8 @@ Context7 evidence:
   - Alcance: desactivar resolucion multipart en BFF, conservar cuerpo y boundary, probar, desplegar y validar con un PDF RUT real.
   - Componente: `bff-service`.
   - Validacion: 50 pruebas Maven del BFF sin fallos; despliegue Docker saludable; carga del PDF RUT real de 573173 bytes a traves del BFF respondio `201`. Los tres archivos y registros creados durante el diagnostico fueron retirados por ID.
+
+## Fase 39: Culminacion del motor fiscal colombiano
 
 - [x] TASK-308: Documentar culminacion del motor fiscal colombiano
   - Estado: DONE; documentacion completada el 2026-09-09, sin generar codigo.
@@ -7536,3 +7517,67 @@ Context7 evidence:
   - Componentes previstos: SPA, BFF, servicios fiscales, auditoria y observabilidad.
   - Entregables: vista previa por linea, explicacion, estados bloqueados, administracion de fuentes/paquetes, alertas de vigencia y flujos frontend completos.
   - Pruebas: permisos ROOT/OWNER/rol delegado, aislamiento empresarial, E2E compra/gasto/pago, accesibilidad y alertas operativas.
+
+## Fase 40: Auditoria y normalizacion documental SDD
+
+- [x] TASK-316: Auditar y sincronizar la documentacion con el estado real de la aplicacion
+  - Estado: DONE.
+  - Fecha de cierre: 2026-09-09.
+  - Requisitos: RF-387 a RF-390.
+  - Acceptance criteria: AC-527 a AC-532.
+  - Alcance: crear una fotografia canonica, organizar el roadmap, reparar trazabilidad, diferenciar estado actual/objetivo/historico y contrastar arquitectura, contratos, persistencia, infraestructura, diagramas y operacion con el repositorio desplegado.
+  - Archivos: `README.md`, `.env.example`, `specs/*.md` y `specs/diagrams/*.mmd` aplicables.
+  - Restricciones: no modificar codigo de negocio, migraciones aplicadas, datos, infraestructura desplegada ni estados de tareas funcionales sin evidencia.
+  - Validacion: integridad RF/AC/TASK, orden estructural, enlaces locales, formato Markdown/Mermaid, `docker compose config`, pruebas/build declarados y `git diff --check`.
+  - Resultado:
+    - Se consolidaron `sdd-status.md`, `roadmap.md` y `legal-baseline.md` como fotografia vigente, orden de ejecucion y registro de fuentes oficiales.
+    - Se verificaron 368 requisitos, 532 criterios y 310 tareas: cero referencias RF/AC indefinidas o sin tarea, cero TASK duplicadas y cero tareas sin estado.
+    - Quedaron 295 tareas cerradas y 15 pendientes funcionales; TASK-283 a TASK-288 se declararon identificadores historicos reservados.
+    - `Context7 evidence` quedo como unica seccion final, sin fases ni tareas posteriores.
+    - Se validaron 19 archivos Markdown sin enlaces locales rotos, 162 variables usadas por Compose cubiertas en `.env.example`, ambos modelos de Compose y `git diff --check`.
+    - `mvnw.cmd clean verify` finalizo correctamente para los 19 modulos del reactor; frontend finalizo con 58 pruebas y `npm run build` exitoso.
+    - Los tres diagramas Mermaid pasaron control estructural de encabezados y comillas; no se ejecuto render automatico porque el repositorio no incluye Mermaid CLI.
+    - No se modificaron codigo de negocio, migraciones ni infraestructura desplegada.
+
+## Context7 evidence
+
+- Library/tool: React.
+  - Topic consulted: controlled inputs, file input reset and form state updates.
+  - Relevant finding: controlled state is the source of truth for form values; file inputs are uncontrolled and can be reset by remounting with a stable `key`.
+  - Decision impact: product edit/create uses controlled state and PDF evidence inputs remount after reset.
+- Library/tool: Spring Boot.
+  - Topic consulted: multipart upload and `spring.servlet.multipart.*` limits.
+  - Relevant finding: Spring Boot exposes multipart handling through Servlet multipart support and configurable upload limits.
+  - Decision impact: company file upload validates PDF evidence and uses configurable max file/request size.
+- Library/tool: AWS SDK for Java v2 S3.
+  - Topic consulted: S3 `PutObjectRequest`, object key prefixes and server-side encryption.
+  - Relevant finding: S3 object keys support prefix organization and `PutObjectRequest` can include content metadata and SSE/SSE-KMS settings.
+  - Decision impact: production storage uses private S3 objects under company/category prefixes with SSE-S3 or SSE-KMS.
+- Library/tool: ZXing.
+  - Topic consulted: QR generation with `QRCodeWriter`.
+  - Relevant finding: `QRCodeWriter.encode` produces a `BitMatrix` for QR rendering.
+  - Decision impact: POS receipt renders a scan-ready inline SVG QR without calling external QR services.
+- Library/tool: Spring Boot.
+  - Topic consulted: `@ControllerAdvice`, Actuator health probes, metrics and test support in Spring Boot 3.5.
+  - Relevant finding: exceptions can be mapped centrally; Actuator exposes liveness/readiness and Micrometer metrics; behavior can be verified with Spring MVC test support.
+  - Decision impact: expected business errors remain controlled responses, while the SDD snapshot distinguishes observed health/metrics from target production alerting.
+- Library/tool: React.
+  - Topic consulted: declarative controlled UI and behavior-oriented component tests.
+  - Relevant finding: shared state belongs in the closest common owner and tests should validate user-visible behavior rather than component internals.
+  - Decision impact: frontend requirements and acceptance criteria remain expressed as observable behavior through the BFF.
+- Library/tool: Apache CXF.
+  - Topic consulted: JAX-WS SOAP client from WSDL and WS-Security X.509 certificate configuration.
+  - Relevant finding: CXF supports WSDL-generated JAX-WS clients and WSS4J signature properties for X.509 credentials.
+  - Decision impact: TASK-273 retains SOAP WCF as pending and TASK-275 remains the implemented secure `.p12`/`.pfx` certificate boundary.
+- Library/tool: Flyway.
+  - Topic consulted: `info`, validation and immutability of applied versioned migrations.
+  - Relevant finding: `info` distinguishes applied and pending migrations, while validation detects checksum, type, description and missing/future migration inconsistencies.
+  - Decision impact: the physical database inventory is based on schema history; applied migrations are not rewritten to repair documentation.
+- Library/tool: Spring Boot 3.5.
+  - Topic consulted: `RestClient` for internal synchronous HTTP clients.
+  - Relevant finding: `RestClient.Builder` supports adapter-owned base URL and request configuration.
+  - Decision impact: TASK-282 keeps DIAN readiness behind an internal adapter instead of UI assumptions.
+- Library/tool: Flyway.
+  - Topic consulted: versioned SQL migrations, validation and schema history.
+  - Relevant finding: validation compares applied migrations with local definitions, including checksums and unresolved applied versions.
+  - Decision impact: TASK-088 cleanup remains additive and never rewrites applied migration history.

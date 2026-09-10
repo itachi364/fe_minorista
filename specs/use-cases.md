@@ -1,5 +1,7 @@
 # Use Cases
 
+> Estado SDD 2026-09-09: cada caso debe leerse con su estado. `IMPLEMENTED` describe comportamiento disponible, `PARTIAL` una vertical incompleta y `TARGET` trabajo pendiente. `sdd-status.md` es la fotografia canonica.
+
 ## UC-001: Configurar emisor
 
 Actor: Administrador.
@@ -664,6 +666,8 @@ Acceptance criteria: AC-381.
 
 ## UC-044: Emitir documento DIAN real por empresa
 
+Estado: TARGET, TASK-273/TASK-274/TASK-276/TASK-264.
+
 Actor: Empresa habilitada ante DIAN.
 
 Flujo principal:
@@ -697,6 +701,8 @@ Flujos alternos:
 Acceptance criteria: AC-394, AC-395.
 
 ## UC-050: Enviar set de pruebas DIAN por SOAP WCF
+
+Estado: TARGET, TASK-273/TASK-274/TASK-276/TASK-264.
 
 Actor: Empresa en proceso de habilitacion DIAN.
 
@@ -768,6 +774,8 @@ Acceptance criteria: AC-388.
 
 ## UC-051: Administrar contador asociado a empresa
 
+Estado: TARGET, TASK-290/TASK-294/TASK-295.
+
 Actor: ROOT.
 
 Flujo principal:
@@ -783,6 +791,8 @@ Flujo alterno:
 Acceptance criteria: AC-405, AC-406, AC-411.
 
 ## UC-052: Consultar empresas desde portal contador
+
+Estado: TARGET, TASK-290/TASK-291/TASK-294.
 
 Actor: Contador.
 
@@ -800,6 +810,8 @@ Acceptance criteria: AC-404, AC-407, AC-408, AC-409, AC-410.
 
 ## UC-053: Calcular retenciones de proveedor
 
+Estado: PARTIAL. La vista previa y confirmacion base existen; TASK-309 a TASK-315 completan vigencia juridica, lineas, acumulaciones, territorialidad, conciliacion, reversos y certificados.
+
 Actor: Administrador empresarial, usuario contable o contador con permiso de lectura.
 
 Flujo principal:
@@ -815,6 +827,8 @@ Flujo alterno:
 Acceptance criteria: AC-412, AC-413, AC-414, AC-415, AC-416.
 
 ## UC-054: Enviar correos operativos
+
+Estado: TARGET, TASK-295.
 
 Actor: Sistema.
 
@@ -865,3 +879,87 @@ Flujos alternos:
 - Si un umbral operacional fue alcanzado, el sistema registra transicion, bloquea nuevas ventas no fiscales y conserva las historicas.
 
 Acceptance criteria: AC-489 a AC-493.
+
+## UC-057: Resolver vigencia juridica de una regla fiscal
+
+Estado: TARGET, TASK-309.
+
+Actor: ROOT fiscal autorizado.
+
+Flujo principal:
+1. ROOT registra la fuente oficial y sus eventos juridicos fechados.
+2. El sistema valida autoridad, URL, estado y ausencia de solapamientos incompatibles.
+3. El motor selecciona el evento efectivo para la fecha de causacion.
+4. El calculo confirmado conserva la fuente y el estado juridico en un snapshot inmutable.
+
+Acceptance criteria: AC-501 a AC-504, AC-516, AC-524, AC-526.
+
+## UC-058: Calcular retenciones nacionales por linea y acumulacion
+
+Estado: TARGET, TASK-310/TASK-311.
+
+Actor: Usuario contable autorizado.
+
+Flujo principal:
+1. El sistema obtiene perfiles temporales de pagador y beneficiario.
+2. Clasifica cada linea por concepto, base, momento de causacion y alcance de acumulacion.
+3. Evalua retefuente, ReteIVA, SIMPLE, autorretencion y excepciones con reglas vigentes.
+4. Consolida resultados sin duplicar acumulados ante reintentos.
+
+Acceptance criteria: AC-505 a AC-512, AC-515, AC-516, AC-523.
+
+## UC-059: Resolver ReteICA por territorio
+
+Estado: TARGET, TASK-312.
+
+Actor: Usuario fiscal autorizado.
+
+Flujo principal:
+1. El sistema determina el lugar de realizacion de la actividad.
+2. Busca un paquete municipal publicado y vigente para esa jurisdiccion.
+3. Evalua CIIU, sujetos, conceptos, bases, tarifas y excepciones municipales.
+4. Si el paquete falta o no esta verificado, devuelve `BLOCKED` sin asumir tarifa.
+
+Acceptance criteria: AC-513, AC-514, AC-525.
+
+## UC-060: Conciliar operacion fiscal y contable
+
+Estado: TARGET, TASK-313.
+
+Actor: Contador o administrador contable autorizado.
+
+Flujo principal:
+1. El sistema identifica grupo de informacion financiera y plan contable empresarial.
+2. Separa calculo tributario, reconocimiento contable y presentacion financiera.
+3. Genera asiento balanceado y conciliacion con el neto pagable.
+4. Conserva diferencias explicables sin alterar el snapshot fiscal.
+
+Acceptance criteria: AC-520 a AC-523.
+
+## UC-061: Reversar y certificar retenciones
+
+Estado: TARGET, TASK-314.
+
+Actor: Usuario contable autorizado.
+
+Flujo principal:
+1. Una anulacion o nota referencia el calculo original.
+2. El sistema crea movimientos compensatorios sin editar ni borrar snapshots.
+3. Consolida el periodo por tercero, impuesto, concepto y territorio.
+4. Genera certificado versionado y descargable con trazabilidad.
+
+Acceptance criteria: AC-517 a AC-519, AC-523.
+
+## UC-062: Administrar y observar el motor fiscal completo
+
+Estado: TARGET, TASK-315.
+
+Actor: ROOT o usuario fiscal con permiso empresarial.
+
+Flujo principal:
+1. El actor consulta fuentes, paquetes, versiones y alertas de vigencia autorizadas.
+2. Simula una operacion y revisa explicacion por linea.
+3. El sistema informa bloqueos, reglas proximas a vencer y discrepancias sin datos sensibles.
+4. Las pruebas E2E validan aislamiento, permisos y atomicidad de compra, gasto y pago.
+
+Acceptance criteria: AC-516, AC-524 a AC-526.
