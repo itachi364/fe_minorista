@@ -62,11 +62,14 @@ public class PurchaseAccountingHttpAdapter implements PurchaseAccountingPort {
 
     private WithholdingCalculationResponse calculateWithholdings(Purchase purchase) {
         WithholdingCalculationResponse response = restClient.post()
-                .uri(accountingBaseUrl + "/api/v1/fiscal-calculations/withholdings")
+                .uri(accountingBaseUrl + "/api/v1/fiscal-calculations/withholdings/documents")
                 .header("X-Company-Id", purchase.companyId().toString())
                 .body(new WithholdingCalculationRequest("PURCHASE", purchase.supplierId(),
-                        purchase.fiscalConceptCode(), entryDate(purchase).toString(), purchase.subtotal(),
-                        purchase.taxTotal(), "PURCHASE", purchase.id()))
+                        entryDate(purchase).toString(), null, "PURCHASE", purchase.id(), purchase.lines().stream()
+                                .map(line -> new FiscalLineRequest(line.id(),
+                                        purchase.fiscalConceptCode() == null ? "ANY" : purchase.fiscalConceptCode(),
+                                        null, line.subtotal(), line.tax()))
+                                .toList()))
                 .retrieve()
                 .body(WithholdingCalculationResponse.class);
         if (response == null) {
@@ -126,22 +129,27 @@ public class PurchaseAccountingHttpAdapter implements PurchaseAccountingPort {
             String dueDate, BigDecimal totalAmount) {
     }
 
-    private record WithholdingCalculationRequest(String operationType, UUID thirdPartyId, String conceptCode,
-            String operationDate, BigDecimal taxableBaseAmount, BigDecimal taxAmount, String sourceType,
-            UUID sourceId) {
+    private record WithholdingCalculationRequest(String operationType, UUID thirdPartyId, String operationDate,
+            String municipalityCode, String sourceType, UUID sourceId, List<FiscalLineRequest> lines) {
     }
+
+    private record FiscalLineRequest(UUID lineId, String conceptCode, String ciiuCode,
+            BigDecimal taxableBaseAmount, BigDecimal taxAmount) { }
 
     private record WithholdingCalculationItem(String withholdingType, String decision, BigDecimal amount) {
     }
 
-    private record WithholdingCalculationResponse(List<WithholdingCalculationItem> items, BigDecimal grossAmount,
+    private record FiscalLineResponse(List<WithholdingCalculationItem> items) { }
+
+    private record WithholdingCalculationResponse(List<FiscalLineResponse> lines, BigDecimal grossAmount,
             BigDecimal withholdingTotal, BigDecimal netPayable) {
         BigDecimal amount(String type) {
-            if (items == null) {
+            if (lines == null) {
                 return BigDecimal.ZERO;
             }
-            return items.stream().filter(item -> type.equals(item.withholdingType()) && "APPLIED".equals(item.decision()))
-                    .map(WithholdingCalculationItem::amount).findFirst().orElse(BigDecimal.ZERO);
+            return lines.stream().filter(line -> line.items() != null).flatMap(line -> line.items().stream())
+                    .filter(item -> type.equals(item.withholdingType()) && "APPLIED".equals(item.decision()))
+                    .map(WithholdingCalculationItem::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
         }
     }
 }

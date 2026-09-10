@@ -4,14 +4,6 @@
 
 Este archivo ordena exclusivamente trabajo pendiente. No reemplaza requisitos, criterios ni tareas. Una fase requiere nueva aprobacion MUT-001 antes de modificar codigo, datos, infraestructura o sistemas externos.
 
-## Fase A: Validez juridica del catalogo fiscal
-
-- Prioridad: P0.
-- Tarea: TASK-309.
-- Objetivo: modelar fuentes y eventos juridicos temporales, bloquear versiones no verificadas y preservar snapshots historicos.
-- Dependencia externa: confirmar providencias, comunicaciones y compilaciones oficiales aplicables a cada fecha.
-- Salida: catalogo que no confunde fecha nominal con vigencia juridica efectiva.
-
 ## Fase B: Integracion DIAN productiva
 
 - Prioridad: P0.
@@ -23,9 +15,9 @@ Este archivo ordena exclusivamente trabajo pendiente. No reemplaza requisitos, c
 ## Fase C: Culminacion del motor fiscal
 
 - Prioridad: P0/P1.
-- Tareas: TASK-310, TASK-311, TASK-312, TASK-313, TASK-314 y TASK-315.
-- Objetivo: perfiles temporales, calculo por linea, acumulaciones, ReteICA territorial, conciliacion contable-fiscal, reversos, certificados, observabilidad y E2E.
-- Dependencia: Fase A completada; la parte DIAN puede avanzar en paralelo cuando no comparta contratos.
+- Tareas parciales: TASK-310, TASK-311, TASK-313, TASK-314 y TASK-315. TASK-309 y TASK-312 estan cerradas.
+- Objetivo pendiente: completar perfiles tipados, matriz nacional verificada, acumulaciones adicionales, movimientos compensatorios, presentacion NIIF, formato legal de certificados, observabilidad y E2E distribuidos.
+- Dependencia: gobierno juridico y plataforma ReteICA ya implementados; la parte DIAN puede avanzar en paralelo cuando no comparta contratos.
 - Salida: resultados explicables, inmutables, conciliables y bloqueados ante configuracion insuficiente.
 
 ## Fase D: Contadores y acceso inicial

@@ -11,6 +11,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
@@ -262,6 +263,25 @@ class WithholdingCalculationServiceTest {
         assertThat(result.items()).singleElement().satisfies(item -> {
             assertThat(item.decision()).isEqualTo(WithholdingDecision.APPLIED);
             assertThat(item.amount()).isEqualByComparingTo("25000.00");
+        });
+    }
+
+    @Test
+    void appliesDailyAccumulationWhenCurrentLineCrossesThreshold() {
+        TestContext context = new TestContext();
+        context.rules.rules.add(rule(UUID.randomUUID(), FiscalOperationType.PURCHASE, "PURCHASE_GENERAL",
+                WithholdingType.RETEFUENTE, "0.100000", FiscalThresholdUnit.COP, "100",
+                WithholdingDecision.APPLIED, null, null, 10));
+
+        WithholdingCalculationResult result = context.service().calculate(new CalculateWithholdingsCommand(
+                COMPANY_ID, FiscalOperationType.PURCHASE, THIRD_PARTY_ID, "PURCHASE_GENERAL", OPERATION_DATE,
+                money("30"), BigDecimal.ZERO, "11001", null, null, companyProfile(), ordinarySupplier(),
+                money("80"), BigDecimal.ZERO, Map.of()));
+
+        assertThat(result.items()).singleElement().satisfies(item -> {
+            assertThat(item.previousAccumulatedBase()).isEqualByComparingTo("80.00");
+            assertThat(item.cumulativeBase()).isEqualByComparingTo("110.00");
+            assertThat(item.amount()).isEqualByComparingTo("11.00");
         });
     }
 

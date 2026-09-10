@@ -4009,27 +4009,30 @@ Idempotency-Key: {uuid}
 {
   "operationType": "PURCHASE",
   "thirdPartyId": "uuid",
-  "causationDate": "2026-09-09",
-  "paymentDate": null,
-  "operationMunicipalityCode": "11001",
-  "currency": "COP",
+  "operationDate": "2026-09-09",
+  "municipalityCode": "11001",
   "lines": [
     {
       "lineId": "uuid",
-      "fiscalConceptCode": "SERVICE_GENERAL",
+      "conceptCode": "SERVICE_GENERAL",
       "ciiuCode": "6201",
-      "taxableAmount": 1000000,
-      "vatAmount": 190000,
-      "aiuAmount": 0,
-      "contractReference": null
+      "taxableBaseAmount": 1000000,
+      "taxAmount": 190000
     }
   ]
 }
 ```
 
-El cliente no envia perfiles fiscales autoritativos ni estados juridicos. El backend los resuelve por empresa, tercero y fecha. La respuesta contiene resultados por linea y totales, con `decision`, `reasonCode`, `reason`, `ruleId`, `ruleSetVersion`, `legalSource`, `legalEvent`, base, umbral, tarifa, acumulado previo y valor.
+Estado: IMPLEMENTED/PARTIAL. El cliente no envia perfiles fiscales autoritativos ni estados juridicos. El backend los resuelve por empresa, tercero y fecha. La respuesta contiene resultados por linea y totales con decision, razon, regla, fuente, base, tarifa, acumulado previo y acumulado resultante. `paymentDate`, moneda, AIU y contrato permanecen como ampliaciones de TASK-310/TASK-311.
 
-Cuando falta una condicion determinante, el resultado usa `BLOCKED` y `missingData`; nunca asume tarifa cero. `preview` no persiste efectos contables. La confirmacion del documento recalcula y compara el hash de entradas antes de persistir.
+Cuando falta una condicion determinante, el resultado usa `BLOCKED` con una razon accionable; nunca asume tarifa cero. `preview` no persiste efectos contables. La confirmacion del documento recalcula y compara el hash de entradas antes de persistir.
+
+```http
+POST /api/v1/fiscal-calculations/withholdings/documents
+GET /api/v1/fiscal-calculations/withholdings/documents?sourceType=PURCHASE&sourceId={uuid}
+```
+
+La confirmacion exige `sourceType/sourceId`; ambos identifican idempotentemente el documento fuente y no pueden reutilizarse con un hash de entrada diferente.
 
 ### Explicacion e historico
 
@@ -4044,23 +4047,31 @@ La explicacion incluye perfiles versionados, reglas candidatas descartadas, regl
 ### Periodos y certificados
 
 ```http
-GET /api/v1/fiscal-periods/2026-09/withholdings?taxType=RETEFUENTE
-POST /api/v1/fiscal-periods/2026-09/reconcile
+GET /api/v1/fiscal-account-mappings
+PUT /api/v1/fiscal-account-mappings
+GET /api/v1/fiscal-reconciliation?year=2026&month=9
+GET /api/v1/fiscal-periods/2026/9/summary
+POST /api/v1/fiscal-periods/2026/9/close
+POST /api/v1/fiscal-calculations/withholdings/documents/{calculationId}/reverse
 POST /api/v1/withholding-certificates
-GET /api/v1/withholding-certificates/{certificateId}/file
+GET /api/v1/withholding-certificates?thirdPartyId={uuid}&year=2026
+GET /api/v1/withholding-certificates/{certificateId}/download
 ```
 
-Los resumenes soportan conciliacion y preparacion del Formulario 350 o formatos territoriales, pero la respuesta debe indicar `filingStatus=NOT_FILED_BY_PLATFORM` mientras no exista una integracion aprobada de presentacion y pago.
+Estado: IMPLEMENTED/PARTIAL. V019 implementa mapeos empresariales, conciliacion mensual, reverso inmutable, cierre, resumen y certificados CSV versionados. No presenta ni paga declaraciones; el formato legal completo, movimientos compensatorios y conciliacion por casillas permanecen pendientes en TASK-313/TASK-314.
 
 ### Paquetes territoriales
 
 ```http
-POST /api/v1/fiscal-rule-packages/municipalities/validate
+POST /api/v1/fiscal-rule-packages/municipalities/validate-csv
 POST /api/v1/fiscal-rule-packages/municipalities
+POST /api/v1/fiscal-rule-packages/municipalities/import-csv
 POST /api/v1/fiscal-rule-packages/{packageId}/publish
 ```
 
-La importacion valida municipio DIVIPOLA, fuente oficial, vigencia, conceptos, CIIU, tarifas, umbrales, solapamientos y pruebas de frontera. Es atomica: un error impide publicar el paquete completo.
+Todos los endpoints de mutacion son exclusivos de ROOT. `municipalities` crea manualmente un paquete para el municipio seleccionado desde DIVIPOLA; `validate-csv` realiza vista previa sin persistir e `import-csv` persiste un borrador completo. No hay importacion desde internet ni procesamiento asincrono.
+
+El CSV usa coma y encabezado obligatorio: `municipalityDivipolaCode,packageCode,version,operationType,conceptCode,ciiuCode,rate,thresholdUnit,thresholdValue,thresholdOperator,calculationBase,validFrom,validTo,legalReference,officialSourceUrl`. La importacion valida municipio DIVIPOLA, fuente oficial HTTPS, vigencia, operacion, conceptos, CIIU, tarifas, umbrales y solapamientos. Es atomica: un error impide persistir el lote completo. DIVIPOLA no crea paquetes ReteICA.
 
 ### Errores funcionales nuevos
 

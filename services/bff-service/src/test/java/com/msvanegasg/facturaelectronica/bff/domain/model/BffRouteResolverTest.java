@@ -26,6 +26,14 @@ class BffRouteResolverTest {
                 .isEqualTo(TargetService.ACCOUNTING);
         assertThat(resolver.resolve("/api/v1/fiscal-catalog/rules"))
                 .isEqualTo(TargetService.ACCOUNTING);
+        assertThat(resolver.resolve("/api/v1/fiscal-legal-sources"))
+                .isEqualTo(TargetService.ACCOUNTING);
+        assertThat(resolver.resolve("/api/v1/fiscal-rule-packages/municipalities"))
+                .isEqualTo(TargetService.ACCOUNTING);
+        assertThat(resolver.resolve("/api/v1/fiscal-periods/2026-01"))
+                .isEqualTo(TargetService.ACCOUNTING);
+        assertThat(resolver.resolve("/api/v1/withholding-certificates"))
+                .isEqualTo(TargetService.ACCOUNTING);
         assertThat(resolver.resolve("/api/v1/accounting-configuration/batch")).isEqualTo(TargetService.ACCOUNTING);
         assertThat(resolver.resolve("/api/v1/payroll/workers")).isEqualTo(TargetService.PAYROLL);
         assertThat(resolver.resolve("/api/v1/dian-configuration/companies/11111111-1111-1111-1111-111111111111"))

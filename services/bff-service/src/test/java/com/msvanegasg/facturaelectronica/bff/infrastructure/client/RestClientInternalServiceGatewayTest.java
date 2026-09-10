@@ -187,6 +187,46 @@ class RestClientInternalServiceGatewayTest {
     }
 
     @Test
+    void allowsFiscalAccountMappingWhenUserHasFiscalSettingsPermission() throws IOException {
+        startIdentityServer("[\"FISCAL_SETTINGS_MANAGE\"]");
+        startLicenseServer(true);
+        CapturingHandler accountingHandler = startAccountingServer("/api/v1/fiscal-account-mappings");
+        RestClientInternalServiceGateway gateway = gateway();
+
+        ProxyResponse response = gateway.exchange(new ProxyRequest(TargetService.ACCOUNTING, HttpMethod.PUT,
+                URI.create("/api/v1/fiscal-account-mappings"), headers(), "{}".getBytes(StandardCharsets.UTF_8)));
+
+        assertThat(response.status()).isEqualTo(HttpStatus.CREATED);
+        assertThat(accountingHandler.requestPath).isEqualTo("/api/v1/fiscal-account-mappings");
+    }
+
+    @Test
+    void rejectsCentralMunicipalCatalogForCompanyFiscalAdministrator() throws IOException {
+        startIdentityServer("[\"FISCAL_SETTINGS_MANAGE\"]");
+        CapturingHandler accountingHandler = startAccountingServer("/api/v1/fiscal-rule-packages/municipalities");
+        RestClientInternalServiceGateway gateway = gateway();
+
+        assertThatThrownBy(() -> gateway.exchange(new ProxyRequest(TargetService.ACCOUNTING, HttpMethod.POST,
+                URI.create("/api/v1/fiscal-rule-packages/municipalities"), headers(), "{}".getBytes(StandardCharsets.UTF_8))))
+                .isInstanceOf(BffAccessDeniedException.class)
+                .hasMessageContaining("ROOT");
+        assertThat(accountingHandler.requestBody).isNull();
+    }
+
+    @Test
+    void allowsCentralMunicipalCatalogForRoot() throws IOException {
+        startRootIdentityServer();
+        CapturingHandler accountingHandler = startAccountingServer("/api/v1/fiscal-rule-packages/municipalities");
+        RestClientInternalServiceGateway gateway = gateway();
+
+        ProxyResponse response = gateway.exchange(new ProxyRequest(TargetService.ACCOUNTING, HttpMethod.POST,
+                URI.create("/api/v1/fiscal-rule-packages/municipalities"), headers(), "{}".getBytes(StandardCharsets.UTF_8)));
+
+        assertThat(response.status()).isEqualTo(HttpStatus.CREATED);
+        assertThat(accountingHandler.requestPath).isEqualTo("/api/v1/fiscal-rule-packages/municipalities");
+    }
+
+    @Test
     void allowsCompanyTaxProfileWithFiscalSettingsPermission() throws IOException {
         startIdentityServer("[\"FISCAL_SETTINGS_MANAGE\"]");
         String path = "/api/v1/companies/" + COMPANY_ID + "/tax-profile";

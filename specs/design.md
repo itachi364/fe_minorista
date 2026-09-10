@@ -3674,7 +3674,7 @@ Las fuentes se separan por finalidad:
 
 El catalogo existente contiene umbrales y tarifas introducidos por los articulos 2 a 8 del Decreto 572 de 2025. La DIAN informo la suspension provisional de esos articulos con efectos desde el 8 de mayo de 2026 y el retorno temporal a las reglas anteriores, incluidos umbrales de 4 UVT para servicios y 92 UVT para compras agropecuarias. Antes de activar o reactivar esas reglas debe existir evidencia oficial de la ejecutoria y de la fecha exacta de efectos de cualquier decision posterior.
 
-Hasta culminar `TASK-309`, esos datos se consideran catalogo en revision y no una base legal validada para produccion. Ninguna migracion debe inferir silenciosamente que una norma publicada continua vigente.
+`TASK-309` registra la suspension y cierra la efectividad del paquete afectado para las fechas correspondientes. Cualquier reactivacion continua bloqueada hasta registrar evidencia oficial y fecha efectiva; ninguna migracion infiere silenciosamente que una norma publicada permanece vigente.
 
 ### Linea base auditada
 
@@ -3729,7 +3729,9 @@ Las migraciones Flyway versionadas son aditivas e inmutables. Las migraciones ya
 
 - Es territorial. La operacion debe informar municipio DIVIPOLA de realizacion, actividad CIIU y regla de territorialidad.
 - El domicilio del proveedor solo puede ser una pista de captura, nunca la decision automatica del lugar de imposicion.
-- El nucleo soporta paquetes municipales independientes y versionados. No se promete cobertura nacional sin fuente y validacion individual de cada municipio.
+- El nucleo soporta paquetes municipales independientes y versionados creados bajo demanda. DIVIPOLA solo alimenta el selector y valida el codigo territorial; no crea municipios ReteICA ni presume cobertura.
+- Solo ROOT registra paquetes, mediante formulario manual o CSV delimitado por comas. No existen rastreadores web, OCR, tareas programadas, Lambda ni colas para alimentar este catalogo.
+- Cargar un paquete crea un borrador validado; publicarlo es una accion explicita y auditada. Un municipio no configurado permanece ausente del catalogo ReteICA.
 - Si la empresa esta obligada a practicar ReteICA y falta una regla territorial verificable, el resultado es `BLOCKED` y no se generan efectos parciales.
 
 #### Autorretencion y SIMPLE
@@ -3764,7 +3766,7 @@ Las migraciones Flyway versionadas son aditivas e inmutables. Las migraciones ya
 1. Corregir vigencia temporal del catalogo y modelar eventos juridicos.
 2. Completar perfiles temporales, calculo por linea, bases y acumulaciones.
 3. Publicar matriz nacional verificada de retefuente y ReteIVA.
-4. Implementar plataforma de paquetes ReteICA y aprobar municipios iniciales individualmente.
+4. Implementar plataforma ReteICA bajo demanda con captura manual y CSV sincronico, validacion atomica y publicacion ROOT por municipio.
 5. Completar mapeo contable, conciliacion, reversos, certificados y cierres.
 6. Exponer administracion, simulacion y explicacion en frontend con pruebas E2E.
 
@@ -3777,6 +3779,13 @@ Las migraciones Flyway versionadas son aditivas e inmutables. Las migraciones ya
 - Territorialidad con municipio de operacion distinto al domicilio y ausencia de paquete.
 - Atomicidad e idempotencia frente a reintentos y fallos entre servicios.
 - Reconciliacion de snapshots, asientos, cuentas por pagar, certificados y resumen de periodo.
+
+### Estado de implementacion al 2026-09-10
+
+- TASK-309 y TASK-312 estan implementadas: gobierno juridico y carga ReteICA manual/CSV exclusiva de ROOT.
+- TASK-310/TASK-311 implementan perfiles efectivos por fecha, documentos por linea y acumulacion diaria atomica e idempotente; siguen pendientes perfiles tipados completos, matriz nacional exhaustiva y acumulaciones distintas del dia.
+- TASK-313/TASK-314 implementan mapeo empresarial, conciliacion mensual, reverso, cierre y certificado CSV versionado; siguen pendientes presentacion NIIF, movimientos compensatorios, formato legal final y compensacion distribuida.
+- TASK-315 expone estos flujos en la SPA y BFF con permisos; quedan pendientes metricas fiscales dedicadas y E2E de fallos distribuidos.
 
 ### Evidencia normativa y tecnica TASK-308
 

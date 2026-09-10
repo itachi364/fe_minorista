@@ -116,6 +116,9 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         if (isRoot(authorization)) {
             return;
         }
+        if (isRootOnlyFiscalCatalogRoute(request)) {
+            throw new BffAccessDeniedException("ROOT is required for the central fiscal catalog");
+        }
         if (request.targetService() == TargetService.TENANT && rule == null) {
             throw new BffAccessDeniedException("ROOT is required for platform administration");
         }
@@ -230,15 +233,30 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
         if (request.targetService() == TargetService.INVENTORY) {
             return inventoryAccessRule(request.uri());
         }
-        if (request.targetService() == TargetService.ACCOUNTING
-                && matchesAny(normalizeApiPath(request.uri().getPath()), "fiscal-catalog")) {
-            return fiscalSettingsAccessRule();
+        if (request.targetService() == TargetService.ACCOUNTING) {
+            String path = normalizeApiPath(request.uri().getPath());
+            if (path.matches("fiscal-calculations/withholdings/documents/[^/]+/reverse")) {
+                return new AccessRule(Set.of("FISCAL_SETTINGS_MANAGE", "ACCOUNTING_MANAGE"),
+                        Set.of("FISCAL_SETTINGS_MANAGE", "ACCOUNTING_MANAGE"));
+            }
+            if (matchesAny(path, "fiscal-catalog", "fiscal-account-mappings")) {
+                return fiscalSettingsAccessRule();
+            }
+            if (matchesAny(path, "fiscal-periods", "fiscal-reconciliation", "withholding-certificates")) {
+                return new AccessRule(Set.of("FISCAL_SETTINGS_MANAGE", "ACCOUNTING_VIEW", "REPORTS_VIEW"),
+                        Set.of("FISCAL_SETTINGS_MANAGE", "ACCOUNTING_MANAGE"));
+            }
         }
         if (request.targetService() == TargetService.DIAN_PROVIDER
                 && normalizeApiPath(request.uri().getPath()).startsWith("dian-configuration/companies/")) {
             return fiscalSettingsAccessRule();
         }
         return ACCESS_RULES.get(request.targetService());
+    }
+
+    private static boolean isRootOnlyFiscalCatalogRoute(ProxyRequest request) {
+        String path = normalizeApiPath(request.uri().getPath());
+        return matchesAny(path, "fiscal-legal-sources", "fiscal-rule-packages");
     }
 
     private static AccessRule tenantAccessRule(URI uri) {

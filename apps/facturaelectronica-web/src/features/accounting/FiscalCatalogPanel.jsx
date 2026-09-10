@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { DataTable } from '../../components/DataTable.jsx';
 import { MunicipalityFields } from '../../components/MunicipalityFields.jsx';
 import { CheckField, Field, FormPanel, SearchableSelectField, SelectField } from '../../components/forms.jsx';
+import { FiscalGovernancePanel } from './FiscalGovernancePanel.jsx';
+import { FiscalCompliancePanel } from './FiscalCompliancePanel.jsx';
 
 const option = (value, label = value) => ({ value, label });
 const operationOptions = [option('PURCHASE', 'Compra'), option('EXPENSE', 'Gasto'), option('PAYMENT', 'Pago'), option('PAYROLL', 'Nomina'), option('RECEIPT', 'Ingreso / recaudo')];
@@ -11,7 +13,8 @@ const baseOptions = [option('TAXABLE_BASE', 'Base gravable'), option('VAT_AMOUNT
 
 export function FiscalCatalogPanel({ parameters, rules, isRoot, activeCompanyId, locations = [], ciiuOptions = [],
   taxRegimeOptions = [], responsibilityOptions = [], fiscalConceptOptions = [], thirdParties = [], onLoad, onSave,
-  onDeactivate, onOpenEvidence = () => {}, thirdPartiesLoading = false, thirdPartiesError = '', busy }) {
+  onDeactivate, onOpenEvidence = () => {}, thirdPartiesLoading = false, thirdPartiesError = '', busy,
+  governance = {}, compliance = {} }) {
   const [form, setForm] = useState(emptyForm);
   const change = (name, value) => setForm((current) => ({ ...current, [name]: value }));
   const thirdPartyOptions = thirdParties.filter((item) => item.active !== false).map((item) => ({
@@ -61,6 +64,8 @@ export function FiscalCatalogPanel({ parameters, rules, isRoot, activeCompanyId,
   }
 
   return <>
+    {isRoot && governance.enabled && <FiscalGovernancePanel {...governance} locations={locations} ciiuOptions={ciiuOptions} busy={busy} />}
+    {activeCompanyId && compliance.enabled && <FiscalCompliancePanel {...compliance} suppliers={thirdParties} busy={busy} />}
     <DataTable title="Parametros fiscales" description="Valores publicados usados segun la fecha de cada operacion." columns={['Parametro', 'Valor', 'Version', 'Vigencia', 'Fuente']} rows={parameters.map((item) => [
       item.code,
       Number(item.value).toLocaleString('es-CO'),

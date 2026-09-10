@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.accounting.infrastructure.client;
 
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -24,12 +25,22 @@ public class CompanyTaxProfileHttpAdapter implements CompanyTaxProfilePort {
 
     @Override
     public Optional<CompanyTaxProfile> findByCompanyId(UUID companyId) {
+        return find(companyId, null);
+    }
+
+    @Override
+    public Optional<CompanyTaxProfile> findByCompanyIdAndDate(UUID companyId, LocalDate effectiveOn) {
+        return find(companyId, effectiveOn);
+    }
+
+    private Optional<CompanyTaxProfile> find(UUID companyId, LocalDate effectiveOn) {
         if (tenantBaseUrl == null || tenantBaseUrl.isBlank()) {
             return Optional.empty();
         }
         try {
             CompanyTaxProfileResponse response = restClient.get()
-                    .uri(tenantBaseUrl + "/api/v1/companies/" + companyId + "/tax-profile")
+                    .uri(tenantBaseUrl + "/api/v1/companies/" + companyId + "/tax-profile"
+                            + (effectiveOn == null ? "" : "?effectiveOn=" + effectiveOn))
                     .retrieve()
                     .body(CompanyTaxProfileResponse.class);
             if (response == null) {

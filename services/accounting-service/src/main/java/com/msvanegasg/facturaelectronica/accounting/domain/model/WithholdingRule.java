@@ -76,12 +76,19 @@ public record WithholdingRule(
 
     public boolean appliesTo(FiscalOperationType operationType, String conceptCode, LocalDate operationDate,
             CompanyTaxProfile companyProfile, ThirdPartyFiscalProfile thirdPartyProfile) {
+        return appliesTo(operationType, conceptCode, operationDate, companyProfile, thirdPartyProfile,
+                thirdPartyProfile.municipalityCode());
+    }
+
+    public boolean appliesTo(FiscalOperationType operationType, String conceptCode, LocalDate operationDate,
+            CompanyTaxProfile companyProfile, ThirdPartyFiscalProfile thirdPartyProfile,
+            String operationMunicipalityCode) {
         return active && published
                 && this.operationType == operationType
                 && matchesConcept(conceptCode)
                 && matchesDate(operationDate)
                 && matchesCompany(companyProfile)
-                && matchesThirdParty(thirdPartyProfile);
+                && matchesThirdParty(thirdPartyProfile, operationMunicipalityCode);
     }
 
     private boolean matchesConcept(String requestedConceptCode) {
@@ -113,7 +120,7 @@ public record WithholdingRule(
         return true;
     }
 
-    private boolean matchesThirdParty(ThirdPartyFiscalProfile thirdPartyProfile) {
+    private boolean matchesThirdParty(ThirdPartyFiscalProfile thirdPartyProfile, String operationMunicipalityCode) {
         if (targetThirdPartyId != null && !Objects.equals(targetThirdPartyId, thirdPartyProfile.thirdPartyId())) {
             return false;
         }
@@ -125,7 +132,7 @@ public record WithholdingRule(
                 && !thirdPartyProfile.hasResponsibility(requiredThirdPartyResponsibility)) {
             return false;
         }
-        if (municipalityCode != null && !Objects.equals(municipalityCode, thirdPartyProfile.municipalityCode())) {
+        if (municipalityCode != null && !Objects.equals(municipalityCode, operationMunicipalityCode)) {
             return false;
         }
         return ciiuCode == null || withholdingType == WithholdingType.AUTORETENCION

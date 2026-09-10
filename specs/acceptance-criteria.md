@@ -644,7 +644,7 @@
 - AC-522: Dada una plantilla basada en PUC, cuando se activa, entonces identifica sus codigos como referencia configurable y mantiene un mapeo separado a rubros de estados financieros.
 - AC-523: Dado un fallo despues del calculo fiscal durante una confirmacion distribuida, cuando termina la operacion, entonces el documento no aparece confirmado con efectos faltantes y el reintento es idempotente.
 - AC-524: Dado un usuario empresarial, cuando intenta publicar una regla nacional o cambiar el estado juridico de una fuente, entonces recibe `403`; ROOT deja auditoria de cualquier publicacion, suspension o reactivacion.
-- AC-525: Dado un paquete municipal importado, cuando se valida antes de publicar, entonces todos sus municipios, CIIU, tarifas, vigencias y fuentes existen en catalogos controlados y las filas invalidas se rechazan sin publicacion parcial.
+- AC-525: Dado un ROOT que registra manualmente o importa por CSV un paquete ReteICA, cuando se valida antes de publicar, entonces cada codigo municipal existe en DIVIPOLA, sus CIIU, tarifas, vigencias y fuentes son validos, no se crean municipios ni paquetes automaticamente y cualquier fila invalida rechaza atomicamente toda la importacion.
 - AC-526: Dada una version normativa proxima a vencer o sin revision vigente, cuando un usuario fiscal abre el panel, entonces recibe una advertencia sin que el sistema cambie reglas silenciosamente.
 
 ## Gobierno documental SDD

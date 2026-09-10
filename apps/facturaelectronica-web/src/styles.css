@@ -366,6 +366,35 @@ nav {
   min-width: 0;
 }
 
+.fiscal-governance {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #cbd7e0;
+}
+
+.section-heading {
+  padding: 4px 2px;
+}
+
+.section-heading .hint {
+  margin: 4px 0 0;
+}
+
+.fiscal-csv-actions {
+  min-height: 42px;
+  align-self: end;
+}
+
+.inline-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(190px, 1fr));
@@ -1522,6 +1551,25 @@ pre {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.fiscal-compliance-section {
+  display: grid;
+  gap: 14px;
+}
+
+.field-actions,
+.status-field {
+  display: flex;
+  min-height: 64px;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.status-field {
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
 .identity-admin .tool-panel {

@@ -33,7 +33,9 @@ public final class BffRouteResolver {
         }
         if (matchesAny(normalized, "accounts", "accounting-rules", "accounting-setup", "accounting-configuration",
                 "accounting-readiness", "accounting-entries", "accounts-payable", "accounts-receivable", "expenses",
-                "fiscal-calculations", "fiscal-catalog")) {
+                "fiscal-calculations", "fiscal-catalog", "fiscal-legal-sources", "fiscal-rule-packages",
+                "fiscal-periods", "withholding-certificates", "fiscal-account-mappings",
+                "fiscal-reconciliation")) {
             return TargetService.ACCOUNTING;
         }
         if (matchesAny(normalized, "payroll")) {

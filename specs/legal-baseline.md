@@ -2,7 +2,7 @@
 
 ## Control
 
-- Fecha de consulta: 2026-09-09.
+- Fecha de consulta: 2026-09-10.
 - Alcance: referencias oficiales para diseno y validacion del producto; no constituye concepto juridico, tributario o contable.
 - Regla: una URL o una fecha nominal no prueba vigencia efectiva. Antes de publicar reglas se validan modificaciones, derogatorias, suspensiones, efectos temporales y jurisdiccion.
 - Estados: `CURRENT_REFERENCE`, `HISTORICAL_SOURCE`, `REQUIRES_REVIEW`.
@@ -18,7 +18,7 @@
 | [Normatividad del sistema de facturacion](https://micrositios.dian.gov.co/sistema-de-facturacion-electronica/normatividad/) | CURRENT_REFERENCE | Indice oficial de resoluciones, modificaciones y anexos tecnicos |
 | [Decreto 2420 de 2015](https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=76745) | CURRENT_REFERENCE | DUR de contabilidad e informacion financiera para Grupos 1, 2 y 3; no define tarifas tributarias |
 | [Decreto 2650 de 1993](https://suin-juriscol.gov.co/viewDocument.asp?id=1772403) | HISTORICAL_SOURCE | PUC historico util como plantilla y lenguaje operativo, no como plan NIIF universal |
-| [Decreto 572 de 2025](https://normograma.dian.gov.co/dian/compilacion/docs/decreto_0572_2025.htm) | REQUIRES_REVIEW | Sus efectos temporales y cualquier suspension/reactivacion deben resolverse por eventos juridicos antes de publicar tarifas |
+| [Decreto 572 de 2025](https://normograma.dian.gov.co/dian/compilacion/docs/decreto_0572_2025.htm) | REQUIRES_REVIEW | Los articulos 2 a 8 estan suspendidos provisionalmente desde el 8 de mayo de 2026; se aplican las disposiciones anteriores mientras no exista levantamiento o fallo ejecutoriado oficial |
 
 ## Fuentes territoriales
 
@@ -26,6 +26,8 @@
 - Cada paquete territorial requiere acuerdo, decreto, resolucion, calendario o acto oficial de la jurisdiccion correspondiente.
 - La fuente debe registrar municipio DIVIPOLA, autoridad, articulos, fecha de publicacion, fecha efectiva, URL oficial y eventos juridicos posteriores.
 - La ausencia de paquete verificado produce `BLOCKED`; no autoriza tarifa cero ni uso automatico del municipio de domicilio.
+- DIVIPOLA solo identifica el municipio que ROOT selecciona o importa; no constituye fuente tarifaria ni crea automaticamente un paquete ReteICA.
+- El catalogo territorial no usa rastreo web, OCR ni procesos asincronos. ROOT incorpora cada fuente y regla manualmente o mediante CSV y la publica despues de validacion.
 
 ## Fuentes tecnicas y catalogos
 
@@ -44,8 +46,8 @@
 
 ## Pendientes vinculados
 
-- TASK-309: temporalidad y eventos juridicos.
+- TASK-309: temporalidad y eventos juridicos, implementada.
 - TASK-310/TASK-311: perfiles, reglas nacionales, lineas y acumulaciones.
-- TASK-312: paquetes ReteICA.
+- TASK-312: paquetes ReteICA bajo demanda, implementada.
 - TASK-313/TASK-314: conciliacion, reversos, cierres y certificados.
 - TASK-315: experiencia, observabilidad y E2E.

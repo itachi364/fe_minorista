@@ -62,36 +62,38 @@
 | Facturacion y documento equivalente electronico | PARTIAL | flujos/modelos/mock implementados; DIAN SOAP real y E2E pendientes |
 | Certificado empresarial DIAN | IMPLEMENTED | carga privada `.p12`/`.pfx`; no existe certificado ROOT compartido |
 | Compras, gastos, cartera y contabilidad | IMPLEMENTED | configuracion POS basica automatica y configuracion avanzada separada |
-| Motor de retenciones | PARTIAL | reglas/snapshots/vista previa implementados; faltan TASK-309 a TASK-315 |
+| Motor de retenciones | PARTIAL | TASK-309/TASK-312 completas; temporalidad, lineas, acumulacion diaria, conciliacion, cierres y certificados implementados parcialmente en TASK-310/311/313/314/315 |
 | Nomina | IMPLEMENTED | modulo fisico y persistencia; homologacion productiva DIAN debe validarse por alcance |
 | Reportes y exportaciones | IMPLEMENTED | jobs y descargas intermediadas; correo al finalizar pendiente |
 | Portal de contador | TARGET | TASK-290 y TASK-291 |
 | Notificaciones por correo | TARGET | TASK-295 |
 
-## Migraciones desplegadas verificadas
+## Estado de migraciones
 
 | Esquema | Ultima version aplicada |
 |---|---|
-| tenant | `011` |
+| tenant | `012` local validada; `011` ultimo despliegue confirmado |
 | identity | `009` |
 | catalog | `013` |
-| thirdparty | `007` |
+| thirdparty | `008` local validada; `007` ultimo despliegue confirmado |
 | inventory | `008` |
 | billing | `013` |
 | dian_provider | `003` |
-| accounting | `014` |
+| accounting | `020` local validada; `014` ultimo despliegue confirmado |
 | audit | `002` |
 | payroll | `002` |
 | reporting | `001` |
 | bff | `001` |
 
-Las tablas de readiness empresarial no existen fisicamente: el BFF compone ese diagnostico desde datos de los servicios. Tampoco existen aun tablas de contador, notificaciones, eventos juridicos fiscales, acumulaciones fiscales por linea ni mapeo de presentacion contable; pertenecen al roadmap.
+Las versiones tenant V012, thirdparty V008 y accounting V015-V020 fueron aplicadas por las pruebas de contexto contra PostgreSQL local. No se consideran desplegadas al ambiente compartido hasta ejecutar el despliegue autorizado.
+
+Las tablas de readiness empresarial no existen fisicamente: el BFF compone ese diagnostico desde datos de los servicios. Las tablas de contador, notificaciones y mapeo de presentacion contable aun pertenecen al roadmap; V015-V019 ya cubren eventos juridicos, paquetes ReteICA, calculo por linea, acumulacion, mapeos fiscales, reversos, cierres y certificados en el esquema local validado.
 
 ## Backlog funcional activo
 
 - DIAN productiva: TASK-264, TASK-273, TASK-274 y TASK-276.
 - Contadores, accesos y correo: TASK-290, TASK-291, TASK-294 y TASK-295.
-- Culminacion fiscal: TASK-309 a TASK-315.
+- Culminacion fiscal: TASK-310, TASK-311, TASK-313, TASK-314 y TASK-315 permanecen parciales; TASK-309 y TASK-312 estan cerradas.
 - Gobierno documental: TASK-316 cerrada el 2026-09-09 con trazabilidad, Compose, backend, frontend y diff validados; el render automatico Mermaid no se ejecuto por no existir CLI en el repositorio.
 
 ## Restricciones vigentes

@@ -12,11 +12,13 @@ export function FiscalCalculationResult({ result, title = 'Resultado fiscal' }) 
         </div>
       </header>
       <DataTable
-        columns={['Retencion', 'Decision', 'Base', 'Tarifa', 'Valor', 'Regla', 'Razon']}
+        columns={['Retencion', 'Decision', 'Base linea', 'Acumulado anterior', 'Base acumulada', 'Tarifa', 'Valor', 'Regla', 'Razon']}
         rows={items.map((item) => [
           item.withholdingType,
           item.decision,
           money(item.baseAmount),
+          money(item.previousAccumulatedBase),
+          money(item.cumulativeBase ?? item.baseAmount),
           `${(Number(item.rate || 0) * 100).toLocaleString('es-CO')}%`,
           money(item.amount),
           item.ruleVersion || item.parameterVersion || 'Sin regla',

@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.thirdparty.application.port.in;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,6 +15,8 @@ public interface ManageThirdPartyUseCase {
     ThirdPartyResult update(UUID companyId, UUID id, ThirdPartyCommand command);
 
     ThirdPartyResult findById(UUID companyId, UUID id);
+
+    ThirdPartyResult findById(UUID companyId, UUID id, LocalDate effectiveOn);
 
     List<ThirdPartyResult> findByRole(UUID companyId, ThirdPartyRole role, Boolean active);
 

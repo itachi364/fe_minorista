@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.controller;
 
+import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -53,8 +54,8 @@ public class ThirdPartyController {
 
     @GetMapping("/third-parties/{id}")
     public ResponseEntity<ThirdPartyResponse> findById(@RequestHeader(COMPANY_HEADER) UUID companyId,
-            @PathVariable UUID id) {
-        return ResponseEntity.ok(ThirdPartyRestMapper.toResponse(useCase.findById(companyId, id)));
+            @PathVariable UUID id, @RequestParam(required = false) LocalDate effectiveOn) {
+        return ResponseEntity.ok(ThirdPartyRestMapper.toResponse(useCase.findById(companyId, id, effectiveOn)));
     }
 
     @GetMapping("/third-parties/by-document")

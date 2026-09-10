@@ -41,7 +41,7 @@ class PurchaseAccountingHttpAdapterTest {
     @Test
     void postsAccountingEntryAndPayableForCreditPurchase() throws IOException {
         CapturingHandler fiscalHandler = new CapturingHandler(200,
-                "{\"items\":[{\"withholdingType\":\"RETEFUENTE\",\"decision\":\"APPLIED\",\"amount\":1125.00}],\"grossAmount\":53550.00,\"withholdingTotal\":1125.00,\"netPayable\":52425.00}");
+                "{\"lines\":[{\"items\":[{\"withholdingType\":\"RETEFUENTE\",\"decision\":\"APPLIED\",\"amount\":1125.00}]}],\"grossAmount\":53550.00,\"withholdingTotal\":1125.00,\"netPayable\":52425.00}");
         CapturingHandler entryHandler = new CapturingHandler(201);
         CapturingHandler payableHandler = new CapturingHandler(201);
         startServer(fiscalHandler, entryHandler, payableHandler);
@@ -59,6 +59,7 @@ class PurchaseAccountingHttpAdapterTest {
         assertThat(payableHandler.requestBody).contains("\"sourceId\":\"" + PURCHASE_ID + "\"");
         assertThat(payableHandler.requestBody).contains("\"totalAmount\":52425.00");
         assertThat(fiscalHandler.requestBody).contains("\"conceptCode\":\"ANY\"");
+        assertThat(fiscalHandler.requestBody).contains("\"lines\":[");
         assertThat(fiscalHandler.requestBody).contains("\"sourceId\":\"" + PURCHASE_ID + "\"");
     }
 

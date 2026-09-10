@@ -7462,16 +7462,17 @@ Nota de gobierno: TASK-283 a TASK-288 son identificadores historicos reservados.
   - Evidencia: Estatuto Tributario, DUR 1625, Decreto 572 de 2025, comunicaciones DIAN de 2026, Ley 1819 de 2016, Decreto 2420 de 2015, doctrina oficial DIAN/Supersociedades y documentacion Flyway.
   - Riesgo abierto: la fecha de cualquier reactivacion posterior de los articulos 2 a 8 del Decreto 572 de 2025 debe confirmarse con providencia o comunicacion oficial antes de publicar reglas.
 
-- [ ] TASK-309: Corregir vigencia temporal y eventos juridicos del catalogo fiscal
-  - Estado: PENDING; requiere aprobacion independiente antes de codigo.
+- [x] TASK-309: Corregir vigencia temporal y eventos juridicos del catalogo fiscal
+  - Estado: DONE; implementado y validado el 2026-09-10.
   - Requisitos: RF-362 a RF-364, RF-376, RF-383 a RF-385.
   - Acceptance criteria: AC-501 a AC-504, AC-516, AC-524, AC-526.
   - Componentes previstos: `accounting-service`, migraciones aditivas, BFF y panel ROOT.
   - Entregables: fuentes/eventos inmutables, resolucion por fecha, suspension del paquete afectado por Decreto 572, auditoria y advertencias.
   - Pruebas: viaje temporal, fuentes suspendidas, snapshots historicos, permisos y migraciones en base limpia/actualizada.
+  - Resultado: `accounting V015`, fuentes y eventos inmutables, linea de tiempo efectiva, advertencias, bloqueo/cierre de reglas asociadas al Decreto 572, endpoints ROOT, BFF y panel de gobierno.
 
 - [ ] TASK-310: Completar perfiles fiscales temporales y modelo de reglas
-  - Estado: PENDING.
+  - Estado: PARTIAL; historial temporal de empresa y tercero implementado en `tenant V012` y `thirdparty V008` y consumido por fecha de operacion. Faltan residencia, declarante y alcance tipado de autorretencion.
   - Requisitos: RF-365, RF-366, RF-368, RF-373 a RF-375.
   - Acceptance criteria: AC-505 a AC-507, AC-510, AC-515, AC-516.
   - Componentes previstos: `tenant-service`, `thirdparty-service`, `accounting-service`, BFF y SPA.
@@ -7479,23 +7480,25 @@ Nota de gobierno: TASK-283 a TASK-288 son identificadores historicos reservados.
   - Pruebas: matrices de perfiles, contradicciones, vigencias, SIMPLE por impuesto y autorretenedor por alcance.
 
 - [ ] TASK-311: Implementar calculo nacional por linea y acumulaciones
-  - Estado: PENDING.
+  - Estado: PARTIAL; calculo por linea, snapshot V017, acumulacion diaria V018, bloqueo concurrente, reversos excluidos e idempotencia implementados. Faltan matriz nacional exhaustiva verificada, acumulaciones por contrato/mes/ano y pagos parciales.
   - Requisitos: RF-367 a RF-371, RF-374 a RF-376, RF-382.
   - Acceptance criteria: AC-508 a AC-512, AC-515, AC-516, AC-523.
   - Componentes previstos: `accounting-service`, consumidores de compras/gastos/pagos, BFF y SPA.
   - Entregables: matriz nacional verificada de retefuente y ReteIVA, documentos mixtos, acumulados, explicacion e idempotencia.
   - Pruebas: fronteras `GT/GTE`, bases IVA/AIU/total, agregaciones, pagos parciales, concurrencia y atomicidad.
 
-- [ ] TASK-312: Implementar plataforma ReteICA y paquetes municipales iniciales
-  - Estado: PENDING.
+- [x] TASK-312: Implementar plataforma ReteICA alimentada bajo demanda por ROOT
+  - Estado: DONE; implementado y validado el 2026-09-10.
   - Requisitos: RF-372, RF-376, RF-384, RF-386.
   - Acceptance criteria: AC-513, AC-514, AC-525.
   - Componentes previstos: `accounting-service`, catalogos DIVIPOLA/CIIU, BFF y SPA.
-  - Entregables: territorialidad por lugar de actividad, formato de importacion, validacion/publicacion atomica y primeros municipios aprobados por alcance.
-  - Pruebas: domicilio distinto al lugar de operacion, ausencia de paquete, solapamientos, tarifas y vigencias por municipio.
+  - Entregables: territorialidad por lugar de actividad, formulario con selector DIVIPOLA, captura manual, CSV delimitado por comas, validacion/importacion sincronica y atomica, publicacion ROOT y catalogo inicialmente vacio.
+  - Restricciones: DIVIPOLA solo valida/selecciona municipios; no crea paquetes. No se implementan importadores web, OCR, tareas programadas, Lambda ni colas para poblar ReteICA.
+  - Pruebas: autorizacion ROOT, domicilio distinto al lugar de operacion, ausencia de paquete, CSV valido/invalido, atomicidad, duplicados, solapamientos, tarifas y vigencias por municipio.
+  - Resultado: `accounting V016`, alta manual con DIVIPOLA como selector, CSV de coma validado/importado sincrona y atomicamente, borradores, publicacion exclusiva ROOT y panel SPA. El catalogo inicia vacio y no existe importador web o asincrono.
 
 - [ ] TASK-313: Completar integracion contable y conciliacion NIIF/fiscal
-  - Estado: PENDING.
+  - Estado: PARTIAL; `accounting V019` incorpora mapeos de cuentas por empresa y vigencia y conciliacion mensual fiscal/contable. Faltan mapeo de presentacion NIIF y garantia transaccional/compensacion entre microservicios.
   - Requisitos: RF-379 a RF-382.
   - Acceptance criteria: AC-520 a AC-523.
   - Componentes previstos: `accounting-service`, `tenant-service`, BFF y SPA.
@@ -7503,7 +7506,7 @@ Nota de gobierno: TASK-283 a TASK-288 son identificadores historicos reservados.
   - Pruebas: empresas con planes diferentes, grupos 1/2/3, redondeo, neto pagable y fallos distribuidos.
 
 - [ ] TASK-314: Implementar reversos, cierres y certificados de retencion
-  - Estado: PENDING.
+  - Estado: PARTIAL; reverso inmutable, exclusion de acumulados anulados, cierre mensual, resumen y certificado CSV versionado/aislado implementados en V019. Faltan movimientos compensatorios automaticos, formato legal completo, almacenamiento privado/notificacion y conciliacion por casillas territoriales/Formulario 350.
   - Requisitos: RF-377, RF-378, RF-381, RF-382.
   - Acceptance criteria: AC-517 a AC-519, AC-523.
   - Componentes previstos: `accounting-service`, reportes, almacenamiento privado, notificaciones, BFF y SPA.
@@ -7511,12 +7514,13 @@ Nota de gobierno: TASK-283 a TASK-288 son identificadores historicos reservados.
   - Pruebas: anulaciones, reemplazos, conciliacion, autorizacion, reintentos y trazabilidad.
 
 - [ ] TASK-315: Completar experiencia fiscal, observabilidad y pruebas E2E
-  - Estado: PENDING.
+  - Estado: PARTIAL; SPA incluye gobierno ROOT, paquetes ReteICA, resultado por linea/acumulado, mapeos contables, cierre, conciliacion y certificados. Faltan metricas fiscales dedicadas y E2E integrales de compra/gasto/pago con fallos distribuidos.
   - Requisitos: RF-376, RF-383 a RF-386.
   - Acceptance criteria: AC-516, AC-524 a AC-526.
   - Componentes previstos: SPA, BFF, servicios fiscales, auditoria y observabilidad.
   - Entregables: vista previa por linea, explicacion, estados bloqueados, administracion de fuentes/paquetes, alertas de vigencia y flujos frontend completos.
   - Pruebas: permisos ROOT/OWNER/rol delegado, aislamiento empresarial, E2E compra/gasto/pago, accesibilidad y alertas operativas.
+  - Validacion 2026-09-10: reactor selectivo exitoso para BFF (53), tenant (62), thirdparty (23), inventory (55) y accounting (111); migraciones tenant V012, thirdparty V008 y accounting V015-V020 aplicadas en PostgreSQL local; SPA con 63 pruebas y build Vite exitoso.
 
 ## Fase 40: Auditoria y normalizacion documental SDD
 
@@ -7581,3 +7585,15 @@ Nota de gobierno: TASK-283 a TASK-288 son identificadores historicos reservados.
   - Topic consulted: versioned SQL migrations, validation and schema history.
   - Relevant finding: validation compares applied migrations with local definitions, including checksums and unresolved applied versions.
   - Decision impact: TASK-088 cleanup remains additive and never rewrites applied migration history.
+- Library/tool: Spring Boot 3.5.
+  - Topic consulted: transacciones declarativas, validacion y pruebas MVC para el motor fiscal.
+  - Relevant finding: `@Transactional` delimita la unidad local de trabajo y Bean Validation/MVC Test permiten validar contratos en el borde HTTP.
+  - Decision impact: confirmacion, snapshot y acumulado comparten transaccion en accounting; los comandos REST se validan antes de entrar al dominio.
+- Library/tool: Flyway.
+  - Topic consulted: evolucion aditiva de esquemas con migraciones versionadas.
+  - Relevant finding: una migracion versionada aplicada se conserva inmutable y los cambios posteriores usan una version nueva.
+  - Decision impact: TASK-309 a TASK-314 agregan V015-V019, tenant V012 y thirdparty V008 sin reescribir migraciones historicas.
+- Library/tool: React.
+  - Topic consulted: estado controlado y elevacion de estado entre paneles operativos.
+  - Relevant finding: el propietario comun conserva el estado compartido y los formularios controlados proyectan valores derivados de ese estado.
+  - Decision impact: `App` conserva empresa, mapeos, periodo, conciliacion y certificados; los paneles solo emiten comandos autorizados.

@@ -202,6 +202,13 @@ export default function App() {
   const [accountingReadiness, setAccountingReadiness] = useState([]);
   const [fiscalParameters, setFiscalParameters] = useState([]);
   const [fiscalRules, setFiscalRules] = useState([]);
+  const [fiscalLegalSources, setFiscalLegalSources] = useState([]);
+  const [fiscalWarnings, setFiscalWarnings] = useState([]);
+  const [fiscalRulePackages, setFiscalRulePackages] = useState([]);
+  const [fiscalAccountMappings, setFiscalAccountMappings] = useState([]);
+  const [fiscalPeriodSummary, setFiscalPeriodSummary] = useState(null);
+  const [fiscalReconciliation, setFiscalReconciliation] = useState(null);
+  const [withholdingCertificates, setWithholdingCertificates] = useState([]);
   const [payrollSettingsForm, setPayrollSettingsForm] = useState(createPayrollSettingsForm);
   const [payrollWorkerForm, setPayrollWorkerForm] = useState(createPayrollWorkerForm);
   const [dailyLaborPaymentForm, setDailyLaborPaymentForm] = useState(createDailyLaborPaymentForm);
@@ -739,10 +746,17 @@ export default function App() {
   async function loadFiscalCatalog() {
     setFiscalSuppliersLoading(Boolean(activeCompanyId));
     setFiscalSuppliersError('');
-    const [parametersResult, rulesResult, suppliersResult] = await Promise.allSettled([
+    const rootContext = { token, userId: session?.userId };
+    const [parametersResult, rulesResult, suppliersResult, sourcesResult, warningsResult, packagesResult,
+      accountsResult, mappingsResult] = await Promise.allSettled([
       requestJson('/api/v1/fiscal-catalog/parameters', context),
       requestJson('/api/v1/fiscal-catalog/rules?active=true', context),
       activeCompanyId ? requestJson('/api/v1/suppliers?active=true', context) : Promise.resolve([]),
+      isRoot ? requestJson('/api/v1/fiscal-legal-sources', rootContext) : Promise.resolve([]),
+      isRoot ? requestJson('/api/v1/fiscal-legal-sources/warnings', rootContext) : Promise.resolve([]),
+      isRoot ? requestJson('/api/v1/fiscal-rule-packages/municipalities', rootContext) : Promise.resolve([]),
+      activeCompanyId ? requestJson('/api/v1/accounts', context) : Promise.resolve([]),
+      activeCompanyId ? requestJson('/api/v1/fiscal-account-mappings', context) : Promise.resolve([]),
     ]);
     setFiscalSuppliersLoading(false);
     if (suppliersResult.status === 'fulfilled') {
@@ -755,7 +769,110 @@ export default function App() {
     if (rulesResult.status === 'rejected') throw rulesResult.reason;
     setFiscalParameters(parametersResult.value || []);
     setFiscalRules(rulesResult.value || []);
+    setFiscalLegalSources(sourcesResult.status === 'fulfilled' ? sourcesResult.value || [] : []);
+    setFiscalWarnings(warningsResult.status === 'fulfilled' ? warningsResult.value || [] : []);
+    setFiscalRulePackages(packagesResult.status === 'fulfilled' ? packagesResult.value || [] : []);
+    setAccountingAccounts(accountsResult.status === 'fulfilled' ? accountsResult.value || [] : []);
+    setFiscalAccountMappings(mappingsResult.status === 'fulfilled' ? mappingsResult.value || [] : []);
     return rulesResult.value || [];
+  }
+
+  async function saveFiscalAccountMapping(payload) {
+    requireCompany();
+    const result = await requestJson('/api/v1/fiscal-account-mappings', {
+      ...context, method: 'PUT', body: payload,
+    });
+    setFiscalAccountMappings((current) => [result, ...current.filter((item) => item.id !== result.id)]);
+    return result;
+  }
+
+  async function loadFiscalPeriod(year, month) {
+    requireCompany();
+    const [summary, reconciliation] = await Promise.all([
+      requestJson(`/api/v1/fiscal-periods/${year}/${month}/summary`, context),
+      requestJson(`/api/v1/fiscal-reconciliation?year=${year}&month=${month}`, context),
+    ]);
+    setFiscalPeriodSummary(summary);
+    setFiscalReconciliation(reconciliation);
+    return { summary, reconciliation };
+  }
+
+  async function closeFiscalPeriod(year, month) {
+    requireCompany();
+    const summary = await requestJson(`/api/v1/fiscal-periods/${year}/${month}/close`, {
+      ...context, method: 'POST', idempotencyKey: createIdempotencyKey('fiscal-period-close'),
+    });
+    setFiscalPeriodSummary(summary);
+    setFiscalReconciliation(await requestJson(`/api/v1/fiscal-reconciliation?year=${year}&month=${month}`, context));
+    return summary;
+  }
+
+  async function loadWithholdingCertificates(thirdPartyId, year) {
+    requireCompany();
+    const result = await requestJson(`/api/v1/withholding-certificates?thirdPartyId=${encodeURIComponent(thirdPartyId)}&year=${year}`, context);
+    setWithholdingCertificates(result || []);
+    return result || [];
+  }
+
+  async function generateWithholdingCertificate(thirdPartyId, year) {
+    requireCompany();
+    const result = await requestJson('/api/v1/withholding-certificates', {
+      ...context, method: 'POST', body: { thirdPartyId, year },
+      idempotencyKey: createIdempotencyKey('withholding-certificate'),
+    });
+    await loadWithholdingCertificates(thirdPartyId, year);
+    return result;
+  }
+
+  async function downloadWithholdingCertificate(certificateId) {
+    requireCompany();
+    const result = await requestDownload(`/api/v1/withholding-certificates/${certificateId}/download`, context);
+    downloadBlob(result.blob, result.filename);
+    return result;
+  }
+
+  async function createFiscalLegalSource(payload) {
+    const result = await requestJson('/api/v1/fiscal-legal-sources', {
+      token, userId: session?.userId, method: 'POST', body: payload,
+    });
+    await loadFiscalCatalog();
+    return result;
+  }
+
+  async function addFiscalLegalEvent(sourceId, payload) {
+    const result = await requestJson(`/api/v1/fiscal-legal-sources/${sourceId}/events`, {
+      token, userId: session?.userId, method: 'POST', body: payload,
+    });
+    await loadFiscalCatalog();
+    return result;
+  }
+
+  async function createMunicipalFiscalPackage(payload) {
+    const result = await requestJson('/api/v1/fiscal-rule-packages/municipalities', {
+      token, userId: session?.userId, method: 'POST', body: payload,
+    });
+    await loadFiscalCatalog();
+    return result;
+  }
+
+  async function sendMunicipalFiscalCsv(path, file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return requestFormData(path, { token, userId: session?.userId, formData });
+  }
+
+  async function importMunicipalFiscalCsv(file) {
+    const result = await sendMunicipalFiscalCsv('/api/v1/fiscal-rule-packages/municipalities/import-csv', file);
+    await loadFiscalCatalog();
+    return result;
+  }
+
+  async function publishMunicipalFiscalPackage(packageId) {
+    const result = await requestJson(`/api/v1/fiscal-rule-packages/${packageId}/publish`, {
+      token, userId: session?.userId, method: 'POST',
+    });
+    await loadFiscalCatalog();
+    return result;
   }
 
   async function saveFiscalRule(payload, globalRule, evidenceFile) {
@@ -2240,24 +2357,39 @@ export default function App() {
 
   async function calculateDocumentFiscal(sourceType, document) {
     requireCompany();
-    return requestJson('/api/v1/fiscal-calculations/withholdings', {
+    const sourceLines = Array.isArray(document.lines) && document.lines.length > 0
+      ? document.lines
+      : [{ id: document.id || crypto.randomUUID(), subtotal: document.subtotal, tax: document.taxTotal }];
+    const result = await requestJson('/api/v1/fiscal-calculations/withholdings/preview', {
       ...context,
       method: 'POST',
       body: {
         operationType: sourceType,
         thirdPartyId: document.supplierId,
-        conceptCode: document.fiscalConceptCode || 'ANY',
         operationDate: sourceType === 'EXPENSE'
           ? document.expenseDate
           : String(document.createdAt || new Date().toISOString()).slice(0, 10),
-        taxableBaseAmount: Number(document.subtotal || 0),
-        taxAmount: Number(document.taxTotal || 0),
+        municipalityCode: companyMunicipalityCode || null,
+        lines: sourceLines.map((line) => ({
+          lineId: line.id || crypto.randomUUID(),
+          conceptCode: document.fiscalConceptCode || line.fiscalConceptCode || 'ANY',
+          ciiuCode: line.ciiuCode || null,
+          taxableBaseAmount: Number(line.subtotal || 0),
+          taxAmount: Number(line.tax ?? line.taxAmount ?? 0),
+        })),
       },
     });
+    return { ...result, items: (result.lines || []).flatMap((line) => line.items || []) };
   }
 
   async function loadDocumentFiscalSnapshot(sourceType, document) {
     requireCompany();
+    try {
+      const result = await requestJson(`/api/v1/fiscal-calculations/withholdings/documents${buildQuery({ sourceType, sourceId: document.id })}`, context);
+      return { ...result, items: (result.lines || []).flatMap((line) => line.items || []) };
+    } catch (error) {
+      if (error?.status !== 404) throw error;
+    }
     const items = await requestJson(`/api/v1/fiscal-calculations/withholdings/snapshots${buildQuery({ sourceType, sourceId: document.id })}`, context);
     const withholdingTotal = items
       .filter((item) => item.decision === 'APPLIED' && item.withholdingType !== 'AUTORETENCION')
@@ -3070,6 +3202,32 @@ export default function App() {
               onSave={(payload, globalRule, evidenceFile) => execute(() => saveFiscalRule(payload, globalRule, evidenceFile), { successMessage: 'Regla fiscal publicada correctamente.' })}
               onDeactivate={(rule) => execute(() => deactivateFiscalRule(rule), { successMessage: 'Regla fiscal inactivada correctamente.' })}
               onOpenEvidence={(evidenceReference) => execute(() => openFiscalRuleEvidence(evidenceReference), { silentSuccess: true })}
+              governance={{
+                enabled: true,
+                sources: fiscalLegalSources,
+                warnings: fiscalWarnings,
+                packages: fiscalRulePackages,
+                onCreateSource: (payload) => execute(() => createFiscalLegalSource(payload), { successMessage: 'Fuente normativa registrada.' }),
+                onAddEvent: (sourceId, payload) => execute(() => addFiscalLegalEvent(sourceId, payload), { successMessage: 'Evento juridico registrado.' }),
+                onCreatePackage: (payload) => execute(() => createMunicipalFiscalPackage(payload), { successMessage: 'Borrador ReteICA creado.' }),
+                onValidateCsv: (file) => execute(() => sendMunicipalFiscalCsv('/api/v1/fiscal-rule-packages/municipalities/validate-csv', file), { silentSuccess: true }),
+                onImportCsv: (file) => execute(() => importMunicipalFiscalCsv(file), { successMessage: 'Paquetes ReteICA importados como borrador.' }),
+                onPublish: (packageId) => execute(() => publishMunicipalFiscalPackage(packageId), { successMessage: 'Paquete ReteICA publicado.' }),
+              }}
+              compliance={{
+                enabled: true,
+                mappings: fiscalAccountMappings,
+                accounts: accountingAccounts,
+                periodSummary: fiscalPeriodSummary,
+                reconciliation: fiscalReconciliation,
+                certificates: withholdingCertificates,
+                onSaveMapping: (payload) => execute(() => saveFiscalAccountMapping(payload), { successMessage: 'Mapeo fiscal guardado.' }),
+                onLoadPeriod: (year, month) => execute(() => loadFiscalPeriod(year, month), { silentSuccess: true }),
+                onClosePeriod: (year, month) => execute(() => closeFiscalPeriod(year, month), { successMessage: 'Periodo fiscal cerrado.' }),
+                onLoadCertificates: (thirdPartyId, year) => execute(() => loadWithholdingCertificates(thirdPartyId, year), { silentSuccess: true }),
+                onGenerateCertificate: (thirdPartyId, year) => execute(() => generateWithholdingCertificate(thirdPartyId, year), { successMessage: 'Certificado de retencion generado.' }),
+                onDownloadCertificate: (certificateId) => execute(() => downloadWithholdingCertificate(certificateId), { successMessage: 'Certificado descargado.' }),
+              }}
               busy={busy || (!activeCompanyId && !isRoot) || !canUse(stepPermissionRules['Reglas fiscales'])} />
           )}
           {currentStep === 'DIAN' && (

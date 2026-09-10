@@ -93,7 +93,7 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
         List<WithholdingRule> rules = ruleRepository.findActiveRules(command.companyId(), command.operationType(),
                 command.operationDate()).stream()
                 .filter(rule -> rule.appliesTo(command.operationType(), command.conceptCode(), command.operationDate(),
-                        companyProfile, thirdPartyProfile))
+                        companyProfile, thirdPartyProfile, operationMunicipality(command, companyProfile)))
                 .sorted(rulePrecedence())
                 .toList();
         BigDecimal uvtValue = resolveUvt(command, rules);
@@ -156,9 +156,14 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
         Map<WithholdingType, WithholdingRule> selected = new EnumMap<>(WithholdingType.class);
         rules.forEach(rule -> selected.putIfAbsent(rule.withholdingType(), rule));
         List<WithholdingCalculationItemResult> calculated = new ArrayList<>(selected.values().stream()
-                .map(rule -> calculateRule(command.conceptCode(), taxableBase, taxAmount, uvtValue,
+                .map(rule -> calculateRule(command, taxableBase, taxAmount, uvtValue,
                         parameterVersion, rule))
                 .toList());
+        if (isSupplierPayment(command) && !companyProfile.withholdingAgent()
+                && selected.get(WithholdingType.RETEFUENTE) == null) {
+            calculated.add(notApplied(WithholdingType.RETEFUENTE, command.conceptCode(), taxableBase,
+                    "La empresa compradora no esta designada como agente de retencion en la fuente."));
+        }
         if (companyProfile.icaWithholdingAgent() && selected.get(WithholdingType.RETEICA) == null) {
             calculated.add(thirdPartyProfile.isSimpleRegime()
                     ? notApplied(WithholdingType.RETEICA, command.conceptCode(), taxableBase, SIMPLE_EXCLUSION_REASON)
@@ -185,23 +190,47 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
         return List.of(notApplied(WithholdingType.RETEFUENTE, command.conceptCode(), taxableBase, NO_RULE_REASON));
     }
 
-    private WithholdingCalculationItemResult calculateRule(String conceptCode, BigDecimal taxableBase,
+    private static boolean isSupplierPayment(CalculateWithholdingsCommand command) {
+        return switch (command.operationType()) {
+            case PURCHASE, EXPENSE, PAYMENT -> true;
+            default -> false;
+        };
+    }
+
+    private static String operationMunicipality(CalculateWithholdingsCommand command,
+            CompanyTaxProfile companyProfile) {
+        return command.municipalityCode() == null || command.municipalityCode().isBlank()
+                ? companyProfile.icaMunicipalityCode()
+                : command.municipalityCode().trim();
+    }
+
+    private WithholdingCalculationItemResult calculateRule(CalculateWithholdingsCommand command,
+            BigDecimal taxableBase,
             BigDecimal taxAmount, BigDecimal uvtValue, String parameterVersion, WithholdingRule rule) {
         BigDecimal evaluatedBase = rule.calculationBase() == FiscalCalculationBase.VAT_AMOUNT ? taxAmount : taxableBase;
-        if (!rule.thresholdReached(evaluatedBase, uvtValue)) {
-            return new WithholdingCalculationItemResult(rule.withholdingType(), conceptCode,
+        BigDecimal previousBase = rule.calculationBase() == FiscalCalculationBase.VAT_AMOUNT
+                ? money(command.previousAccumulatedTaxAmount())
+                : money(command.previousAccumulatedTaxableBase());
+        BigDecimal cumulativeBase = previousBase.add(evaluatedBase).setScale(2, RoundingMode.HALF_UP);
+        if (!rule.thresholdReached(cumulativeBase, uvtValue)) {
+            return new WithholdingCalculationItemResult(rule.withholdingType(), command.conceptCode(),
                     evaluatedBase.setScale(2, RoundingMode.HALF_UP), rule.rate(),
                     BigDecimal.ZERO.setScale(2), rule.ruleSetVersion(), WithholdingDecision.NOT_APPLIED,
                     "La base de la operacion no supera el umbral de la regla.", rule.id(), parameterVersion,
-                    rule.legalReference(), rule.sourceUrl());
+                    rule.legalReference(), rule.sourceUrl(), previousBase, cumulativeBase);
         }
-        BigDecimal baseAmount = rule.taxableAmount(evaluatedBase, uvtValue).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal cumulativeTaxable = rule.taxableAmount(cumulativeBase, uvtValue)
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal previousWithheld = command.previousWithheldByType()
+                .getOrDefault(rule.withholdingType(), BigDecimal.ZERO);
         BigDecimal amount = rule.decision() == WithholdingDecision.APPLIED
-                ? baseAmount.multiply(rule.rate()).setScale(2, RoundingMode.HALF_UP)
+                ? cumulativeTaxable.multiply(rule.rate()).subtract(previousWithheld).max(BigDecimal.ZERO)
+                        .setScale(2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO.setScale(2);
-        return new WithholdingCalculationItemResult(rule.withholdingType(), conceptCode, baseAmount, rule.rate(),
+        return new WithholdingCalculationItemResult(rule.withholdingType(), command.conceptCode(), evaluatedBase,
+                rule.rate(),
                 amount, rule.ruleSetVersion(), rule.decision(), decisionReason(rule), rule.id(), parameterVersion,
-                rule.legalReference(), rule.sourceUrl());
+                rule.legalReference(), rule.sourceUrl(), previousBase, cumulativeBase);
     }
 
     private WithholdingCalculationItemResult blocked(WithholdingType type, String conceptCode, BigDecimal base,
@@ -274,7 +303,8 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
             }
             return profile;
         }
-        return thirdPartyFiscalProfilePort.findByCompanyIdAndId(command.companyId(), command.thirdPartyId())
+        return thirdPartyFiscalProfilePort
+                .findByCompanyIdAndIdAndDate(command.companyId(), command.thirdPartyId(), command.operationDate())
                 .filter(ThirdPartyFiscalProfile::active)
                 .orElseThrow(() -> new IllegalStateException(
                         "No fue posible resolver el perfil fiscal del tercero para calcular retenciones."));
@@ -284,7 +314,7 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
         if (command.companyProfile() != null) {
             return toCompanyProfile(command.companyProfile());
         }
-        return companyTaxProfilePort.findByCompanyId(command.companyId())
+        return companyTaxProfilePort.findByCompanyIdAndDate(command.companyId(), command.operationDate())
                 .orElseThrow(() -> new IllegalStateException(
                         "La empresa no tiene un perfil fiscal configurado para calcular retenciones."));
     }

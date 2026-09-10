@@ -1311,13 +1311,13 @@ Estado mixto: contador, credenciales temporales y correo son TARGET; perfil fisc
 
 ## Diccionario objetivo del motor fiscal completo
 
-Estado: TARGET, TASK-309 a TASK-315. Ninguna entidad de esta seccion debe asumirse fisica sin una migracion Flyway aplicada.
+Estado: IMPLEMENTED/PARTIAL, TASK-309 a TASK-315. V015-V020 implementan las entidades indicadas en el apartado de persistencia vigente; las estructuras con otro nombre o alcance permanecen como objetivo explicito.
 
 ### Enumeraciones
 
 | Enumeracion | Valores | Uso |
 |---|---|---|
-| `LEGAL_SOURCE_EVENT_TYPE` | `PUBLISHED`, `EFFECTIVE`, `SUSPENDED`, `REACTIVATED`, `REPEALED` | Historia juridica de una fuente. |
+| `LEGAL_SOURCE_EVENT_TYPE` | `PUBLISHED`, `EFFECTIVE`, `MODIFIED`, `SUSPENDED`, `REACTIVATED`, `REPEALED` | Historia juridica de una fuente. |
 | `FISCAL_RULE_SET_STATUS` | `DRAFT`, `VERIFIED`, `ACTIVE`, `SUSPENDED`, `RETIRED` | Ciclo de publicacion de paquetes. |
 | `CAUSATION_MOMENT` | `PAYMENT`, `ACCRUAL`, `PAYMENT_OR_ACCRUAL_FIRST` | Momento que determina la retencion. |
 | `AGGREGATION_SCOPE` | `DOCUMENT`, `BENEFICIARY_DAY`, `BENEFICIARY_MONTH`, `CONTRACT`, `TAX_PERIOD` | Ambito para completar umbrales. |
@@ -1325,67 +1325,93 @@ Estado: TARGET, TASK-309 a TASK-315. Ninguna entidad de esta seccion debe asumir
 | `TERRITORIALITY_STRATEGY` | `NATIONAL`, `PLACE_OF_ACTIVITY`, `SPECIAL_RULE` | Regla para resolver jurisdiccion. |
 | `FISCAL_DECISION` | `APPLIED`, `NOT_APPLIED`, `EXEMPT`, `BLOCKED` | Resultado auditable por linea. |
 
-### `accounting.legal_source`
+### `accounting.fiscal_legal_source` (IMPLEMENTED, V015)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
 | id | uuid | Si | Identificador inmutable. |
+| code | varchar(80) | Si | Codigo unico controlado de la fuente. |
+| title | varchar(250) | Si | Titulo de la fuente. |
 | authority | varchar(160) | Si | Autoridad emisora. |
-| source_type | varchar(40) | Si | Ley, decreto, resolucion, sentencia, concepto u otro tipo aprobado. |
-| source_number | varchar(80) | Si | Numero oficial. |
-| applicable_articles | varchar(500) | No | Articulos que sustentan el paquete. |
 | official_url | varchar(1000) | Si | URL HTTPS oficial. |
-| publication_date | date | Si | Fecha de publicacion. |
-| jurisdiction_type | varchar(30) | Si | Nacional, distrital o municipal. |
-| jurisdiction_code | varchar(20) | No | DIVIPOLA cuando es territorial. |
-| content_hash | varchar(128) | No | Huella del documento verificado. |
+| issued_on | date | No | Fecha de expedicion/publicacion registrada. |
+| review_due_on | date | No | Fecha maxima de siguiente revision. |
+| active | boolean | Si | Disponibilidad administrativa de la fuente. |
+| created_at | timestamptz | Si | Instante de registro. |
+| created_by | uuid | No | ROOT que registro la fuente. |
 
-### `accounting.legal_source_event`
+### `accounting.fiscal_legal_source_event` (IMPLEMENTED, V015/V020)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
 | id | uuid | Si | Identificador del evento. |
-| legal_source_id | uuid | Si | Fuente afectada. |
+| source_id | uuid | Si | Fuente afectada. |
 | event_type | varchar(30) | Si | Valor de `LEGAL_SOURCE_EVENT_TYPE`. |
-| decision_reference | varchar(250) | Si | Acto o providencia que sustenta el evento. |
 | effective_from | date | Si | Inicio de efectos juridicos. |
 | effective_to | date | No | Fin de efectos cuando se conoce. |
+| reference | varchar(250) | Si | Acto o providencia que sustenta el evento. |
 | official_url | varchar(1000) | Si | Evidencia oficial del evento. |
-| recorded_by | uuid | Si | Usuario ROOT responsable. |
+| notes | varchar(1000) | No | Justificacion o alcance documentado. |
+| created_at | timestamptz | Si | Instante de registro. |
+| created_by | uuid | No | Usuario ROOT responsable. |
 
-### `accounting.withholding_accumulation`
+### `accounting.fiscal_accumulation_line` (IMPLEMENTED, V018)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
+| id | uuid | Si | Identificador de la acumulacion de linea. |
+| calculation_id | uuid | Si | Calculo confirmado propietario. |
 | company_id | uuid | Si | Empresa pagadora. |
 | third_party_id | uuid | Si | Beneficiario acumulado. |
-| tax_type | varchar(30) | Si | Tipo de retencion. |
+| operation_date | date | Si | Dia fiscal acumulado. |
 | concept_code | varchar(80) | Si | Concepto acumulado. |
-| contract_reference | varchar(120) | No | Contrato cuando define el alcance. |
-| period_start | date | Si | Inicio del alcance temporal. |
-| period_end | date | Si | Fin del alcance temporal. |
-| taxable_accumulated | numeric(19,2) | Si | Base acumulada confirmada. |
-| withheld_accumulated | numeric(19,2) | Si | Retencion acumulada confirmada. |
-| version | bigint | Si | Control de concurrencia. |
+| line_id | uuid | Si | Linea fuente; unica dentro del calculo. |
+| taxable_base | numeric(38,2) | Si | Base aportada al acumulado diario. |
+| tax_amount | numeric(38,2) | Si | IVA/impuesto aportado al acumulado. |
+| retefuente_amount | numeric(38,2) | Si | ReteFuente confirmada. |
+| reteiva_amount | numeric(38,2) | Si | ReteIVA confirmada. |
+| reteica_amount | numeric(38,2) | Si | ReteICA confirmada. |
+| self_withholding_amount | numeric(38,2) | Si | Autorretencion confirmada. |
+| reversed_at | timestamptz | No | Excluye la linea de acumulaciones posteriores. |
 
-### `accounting.withholding_calculation_line_snapshot`
+### `accounting.fiscal_line_calculation_snapshot` (IMPLEMENTED, V017/V018)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
-| calculation_snapshot_id | uuid | Si | Cabecera del calculo confirmado. |
-| source_line_id | uuid | Si | Linea del documento. |
-| operation_municipality_code | varchar(20) | No | Lugar real de la actividad para reglas territoriales. |
-| base_type | varchar(40) | Si | Base fiscal usada. |
+| calculation_id | uuid | Si | Cabecera del calculo confirmado. |
+| line_id | uuid | Si | Linea del documento. |
+| item_index | integer | Si | Orden estable del resultado en la linea. |
+| concept_code | varchar(80) | Si | Concepto fiscal evaluado. |
+| withholding_type | varchar(30) | Si | Tipo de retencion evaluado. |
 | base_amount | numeric(19,2) | Si | Valor sujeto a evaluacion. |
-| threshold_amount | numeric(19,2) | No | Umbral convertido para la fecha. |
 | rate | numeric(12,8) | Si | Tarifa decimal aplicada. |
 | amount | numeric(19,2) | Si | Retencion de la linea. |
 | decision | varchar(30) | Si | Valor de `FISCAL_DECISION`. |
-| reason_code | varchar(80) | Si | Explicacion estable y traducible. |
+| reason | varchar(500) | No | Explicacion legible de la decision. |
 | rule_id | uuid | No | Regla aplicada; nulo si el calculo quedo bloqueado antes de resolverla. |
-| legal_source_event_id | uuid | No | Estado juridico determinante. |
+| rule_version | varchar(40) | No | Version de regla aplicada. |
+| parameter_version | varchar(40) | No | Version del parametro convertido. |
+| legal_reference | varchar(250) | No | Referencia normativa conservada. |
+| previous_accumulated_base | numeric(38,2) | Si | Base valida previa del dia. |
+| cumulative_base | numeric(38,2) | Si | Base usada para evaluar el umbral. |
 
-### `accounting.account_presentation_mapping`
+### `accounting.fiscal_account_mapping` (IMPLEMENTED, V019)
+
+Versiona por empresa y tipo de retencion las cuentas por pagar/por cobrar, con `valid_from`, `valid_to`, estado, actor e instante de actualizacion. Los codigos deben existir activos en el plan propio de la empresa.
+
+### `accounting.fiscal_calculation_reversal` (IMPLEMENTED, V019)
+
+Conserva un unico reverso por empresa/calculo con motivo, actor e instante. No modifica el snapshot original y marca las lineas acumuladas para excluirlas de calculos posteriores.
+
+### `accounting.fiscal_period_close` (IMPLEMENTED, V019)
+
+Conserva un cierre inmutable unico por empresa, ano y mes, junto con el resumen JSON, actor e instante. Una confirmacion fiscal nueva no puede ingresar en un periodo cerrado.
+
+### `accounting.withholding_certificate` (IMPLEMENTED, V019)
+
+Conserva versiones por empresa, proveedor y ano gravable, totales de base/retencion, contenido CSV inmutable, actor e instante. La descarga exige la misma empresa del certificado.
+
+### `accounting.account_presentation_mapping` (TARGET, TASK-313)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|

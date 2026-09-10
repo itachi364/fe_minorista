@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.tenant.interfaces.rest;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.msvanegasg.facturaelectronica.tenant.application.dto.CompanyTaxProfileCommand;
@@ -28,8 +30,9 @@ public class CompanyTaxProfileController {
     }
 
     @GetMapping
-    public CompanyTaxProfileResponse find(@PathVariable UUID companyId) {
-        return toResponse(useCase.findByCompanyId(companyId));
+    public CompanyTaxProfileResponse find(@PathVariable UUID companyId,
+            @RequestParam(required = false) LocalDate effectiveOn) {
+        return toResponse(useCase.findByCompanyId(companyId, effectiveOn));
     }
 
     @PutMapping

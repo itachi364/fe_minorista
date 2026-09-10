@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.accounting.application.port.out;
 
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -7,4 +8,8 @@ import com.msvanegasg.facturaelectronica.accounting.domain.model.CompanyTaxProfi
 
 public interface CompanyTaxProfilePort {
     Optional<CompanyTaxProfile> findByCompanyId(UUID companyId);
+
+    default Optional<CompanyTaxProfile> findByCompanyIdAndDate(UUID companyId, LocalDate effectiveOn) {
+        return findByCompanyId(companyId);
+    }
 }

@@ -872,7 +872,7 @@ Reglas:
 
 ### Perfil fiscal/contable de empresa
 
-Estado: IMPLEMENTED para perfil actual; la temporalidad completa se amplia en TASK-310.
+Estado: IMPLEMENTED para perfil actual e historial efectivo por fecha mediante `tenant V012`; el modelo tipado completo se amplia en TASK-310.
 
 Tablas implementadas:
 
@@ -893,7 +893,7 @@ Reglas:
 
 ### Reglas fiscales y retenciones
 
-Estado: PARTIAL. Existen `accounting.withholding_rule`, `accounting.withholding_calculation_snapshot` y parametros fiscales hasta accounting V014; `fiscal_rule_set` y las extensiones juridicas completas pertenecen a TASK-309 a TASK-315.
+Estado: PARTIAL. Existen reglas/snapshots iniciales hasta V014 y las extensiones V015-V019 para gobierno juridico, paquetes territoriales, calculo por linea, acumulacion y cumplimiento. La matriz legal nacional exhaustiva y otros alcances pertenecen a TASK-310/TASK-311.
 
 Tablas actuales y objetivo:
 
@@ -967,6 +967,12 @@ Tabla `accounting.fiscal_rule_set`:
 - `status`: `DRAFT`, `VERIFIED`, `ACTIVE`, `SUSPENDED`, `RETIRED`.
 - Un paquete solo puede estar `ACTIVE` cuando su fuente resulta efectiva para la fecha y jurisdiccion.
 
+Tabla `accounting.fiscal_rule_import`:
+
+- `id`, `content_hash`, `original_filename`, `row_count`, `status`, `validation_errors`, `uploaded_by`, `uploaded_at`, `published_at`.
+- La importacion es sincrona y atomica. El archivo no crea registros DIVIPOLA; cada `municipality_code` debe existir en el catalogo remoto controlado antes de persistir el lote.
+- No existe conector web, OCR, programador, Lambda ni cola para poblar ReteICA. El catalogo se alimenta exclusivamente por ROOT mediante formulario o CSV.
+
 ### Extension de reglas
 
 `accounting.withholding_rule` debe incorporar:
@@ -1025,3 +1031,15 @@ El plan de cuentas sigue siendo propiedad de la empresa. Las plantillas con codi
 - Confirmacion fiscal, acumulados y asientos locales comparten transaccion; efectos remotos usan Outbox e idempotency key.
 - Las migraciones posteriores a las actuales son nuevas y aditivas. No se modifican `V009`, `V010` ni otras migraciones aplicadas.
 - La correccion del Decreto 572 debe registrar suspension y cerrar efectividad mediante una nueva migracion, sin borrar reglas ni snapshots historicos.
+- Un municipio aparece en el catalogo ReteICA solo cuando existe un `fiscal_rule_set` territorial creado por ROOT. DIVIPOLA se conserva como referencia de seleccion/validacion y no se replica como paquetes vacios.
+
+### Persistencia implementada en TASK-309 a TASK-314
+
+- `accounting V015/V020`: `fiscal_legal_source` y `fiscal_legal_source_event` para fuentes y eventos juridicos inmutables, incluida reactivacion explicita.
+- `accounting V016`: `municipal_fiscal_package`, reglas e importaciones CSV ReteICA en borrador/publicadas.
+- `accounting V017`: cabecera y lineas del calculo fiscal confirmado con hash idempotente y evidencia de perfiles.
+- `accounting V018`: acumulaciones diarias por empresa, tercero, fecha, concepto y linea; los reversos se excluyen mediante `reversed_at`.
+- `tenant V012` y `thirdparty V008`: historiales fiscales efectivos por fecha, con retrocarga del perfil vigente.
+- `accounting V019`: mapeos contables fiscales, reversos, cierres mensuales y certificados CSV versionados.
+
+Estas tablas estan aisladas por `company_id`. Los snapshots, eventos, cierres, reversos y certificados no se actualizan para recalcular historia; las correcciones crean nuevas versiones o movimientos enlazados.

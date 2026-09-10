@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.thirdparty.application.usecase;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -53,6 +54,16 @@ public class ThirdPartyManagementService implements ManageThirdPartyUseCase {
     @Override
     public ThirdPartyResult findById(UUID companyId, UUID id) {
         return toResult(find(companyId, id));
+    }
+
+    @Override
+    public ThirdPartyResult findById(UUID companyId, UUID id, LocalDate effectiveOn) {
+        if (effectiveOn == null) {
+            return findById(companyId, id);
+        }
+        return repository.findEffective(companyId, id, effectiveOn)
+                .map(ThirdPartyManagementService::toResult)
+                .orElseThrow(() -> new IllegalArgumentException("third party was not found for the requested date"));
     }
 
     @Override

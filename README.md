@@ -273,15 +273,17 @@ Flyway crea y evoluciona las tablas al iniciar el servicio. Los catalogos funcio
 
 El catalogo fiscal de `accounting-service` versiona UVT, conceptos, bases, tarifas, exenciones y fuentes normativas. Las reglas nacionales se actualizan mediante nuevas migraciones; ReteICA se configura por municipio y vigencia. Una operacion que requiera una regla territorial ausente queda bloqueada para evitar retenciones o asientos con tarifas asumidas.
 
-> Advertencia fiscal vigente al 2026-09-09: el catalogo actual incluye datos introducidos por los articulos 2 a 8 del Decreto 572 de 2025. La DIAN comunico que esos articulos quedaron suspendidos provisionalmente desde el 8 de mayo de 2026 y que temporalmente retornaban las reglas anteriores. Hasta implementar `TASK-309` y verificar en fuente oficial la fecha de efectos de cualquier decision posterior, este catalogo no debe considerarse validado para liquidaciones de produccion.
+> Advertencia fiscal vigente al 2026-09-10: `TASK-309` registra la suspension provisional de los articulos 2 a 8 del Decreto 572 de 2025 desde el 8 de mayo de 2026 y evita tratarlos como vigentes. Una eventual reactivacion exige registrar primero su providencia o comunicacion oficial y fecha efectiva.
 
-La culminacion del motor esta especificada en `TASK-308` a `TASK-315`. Incluye vigencia juridica por eventos, perfiles temporales del comprador y proveedor, calculo por linea, acumulaciones, matriz nacional de retefuente/ReteIVA, paquetes ReteICA por municipio, autorretencion, SIMPLE por impuesto, reversos, certificados y conciliacion. No se afirma cobertura de todos los municipios hasta publicar y probar cada paquete territorial con su fuente oficial.
+La culminacion del motor esta especificada en `TASK-308` a `TASK-315`. Ya estan implementados el gobierno juridico, perfiles efectivos por fecha, calculo por linea, acumulacion diaria, paquetes ReteICA bajo demanda, mapeos de cuentas, conciliacion, cierres, reversos y certificados CSV versionados. Permanecen parciales la matriz nacional exhaustiva, otros alcances de acumulacion, movimientos compensatorios, formato legal completo, metricas y pruebas E2E distribuidas. No se afirma cobertura de un municipio hasta publicar y probar su paquete con fuente oficial.
 
 NIIF y tributacion se mantienen separadas: el Decreto 2420 de 2015 orienta reconocimiento y presentacion financiera, no tarifas de retencion. Las cuentas `2205`, `2365`, `2367` y `2368` son una plantilla configurable inspirada en el PUC historico; cada empresa conserva su plan de cuentas y su mapeo contable.
 
 ROOT y los usuarios autorizados registran en el mismo formulario de empresa el regimen, responsabilidades RUT, CIIU y calidades de responsable de IVA, agente retenedor, agente de ReteIVA/ReteICA, gran contribuyente y autorretenedor. Estos datos se guardan para la empresa activa y deben corresponder al RUT y a la orientacion del contador.
 
 La administracion tributaria se encuentra en `Configuracion > Reglas fiscales` y requiere `FISCAL_SETTINGS_MANAGE`. El permiso tambien habilita el perfil fiscal de empresa, emisor, politica, resoluciones y conexion DIAN, pero no autoriza la emision de documentos, que conserva `FISCAL_DOCUMENTS_ISSUE`. El rol `OWNER` inicial recibe ambos permisos y puede delegar el permiso fiscal desde la administracion de roles.
+
+Con una empresa activa, `Reglas fiscales` tambien permite mapear cada tipo de retencion a cuentas activas del plan empresarial, consultar y cerrar periodos mensuales, revisar la conciliacion fiscal/contable y generar o descargar versiones CSV de certificados por proveedor. El periodo cerrado bloquea confirmaciones fiscales nuevas; los historicos y reversos permanecen inmutables.
 
 Los campos CIIU y tercero exento usan un unico selector con busqueda interna. Al seleccionar un tercero, la regla cambia a `Exento` y exige cargar su soporte PDF; las opciones se limitan a proveedores activos de la empresa seleccionada.
 
@@ -291,7 +293,7 @@ En compras y gastos, `Fecha limite de pago` solo aparece para operaciones a cred
 
 ### Prueba del motor fiscal desde la aplicacion
 
-Las pruebas actuales sirven para validar el flujo tecnico y las reglas publicadas en el ambiente. No deben usarse como certificacion de exactitud tributaria mientras permanezca abierta `TASK-309` ni para un municipio sin paquete ReteICA verificado.
+Las pruebas actuales sirven para validar el flujo tecnico y las reglas publicadas en el ambiente. No constituyen certificacion de exactitud tributaria de conceptos que sigan pendientes en TASK-310/TASK-311 ni de un municipio sin paquete ReteICA verificado.
 
 1. En `Configuracion > Configuracion contable`, usa `Completar plantilla basica` si la empresa aun no tiene sus cuentas y reglas iniciales.
 2. En `Configuracion > Empresa`, guarda el perfil fiscal de la empresa: regimen, responsabilidades RUT, condiciones de agente, municipio ICA y CIIU.

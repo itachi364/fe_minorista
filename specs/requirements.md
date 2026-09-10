@@ -673,7 +673,7 @@ Cada tarea de `specs/tasks.md` debe enlazar uno o mas requisitos funcionales, no
 - RF-383: Publicar, suspender o reactivar reglas nacionales corresponde exclusivamente a ROOT con auditoria reforzada; las reglas municipales/empresariales requieren `FISCAL_SETTINGS_MANAGE`, aislamiento empresarial y no pueden sobrescribir una norma nacional.
 - RF-384: Mientras no exista catalogo oficial verificado para un concepto o municipio requerido, el motor debe bloquear la confirmacion fiscal y permitir solamente guardar el documento como borrador con diagnostico accionable.
 - RF-385: Las fuentes nacionales y territoriales deben someterse a revision periodica registrada; la aplicacion debe advertir versiones por vencer, fuentes no verificadas y cambios judiciales pendientes antes de que afecten operaciones.
-- RF-386: La primera entrega territorial no pretende precargar todos los municipios de Colombia: debe implementar el motor generico, un formato controlado de importacion y paquetes iniciales aprobados; cada municipio adicional requiere fuente oficial, pruebas y publicacion independiente.
+- RF-386: El catalogo ReteICA debe poder incorporar cualquier municipio bajo demanda sin crear paquetes a partir de DIVIPOLA. Solo ROOT puede registrar reglas manualmente o importarlas mediante CSV delimitado por comas; DIVIPOLA se usa exclusivamente como lista de seleccion y validacion del municipio. Cada paquete requiere fuente oficial, validacion, publicacion independiente y versionado; un municipio sin paquete vigente produce `BLOCKED` cuando la retencion sea obligatoria.
 
 ## Requisitos de gobierno documental SDD
 

@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.tenant.application.usecase;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.tenant.application.dto.CompanyTaxProfileCommand;
@@ -26,6 +27,17 @@ public class CompanyTaxProfileManagementService implements ManageCompanyTaxProfi
     public CompanyTaxProfileResult findByCompanyId(UUID companyId) {
         assertCompanyExists(companyId);
         return profileRepository.findByCompanyId(companyId)
+                .map(CompanyTaxProfileResult::from)
+                .orElseThrow(() -> new CompanyTaxProfileNotFoundException(companyId));
+    }
+
+    @Override
+    public CompanyTaxProfileResult findByCompanyId(UUID companyId, LocalDate effectiveOn) {
+        assertCompanyExists(companyId);
+        if (effectiveOn == null) {
+            return findByCompanyId(companyId);
+        }
+        return profileRepository.findEffective(companyId, effectiveOn)
                 .map(CompanyTaxProfileResult::from)
                 .orElseThrow(() -> new CompanyTaxProfileNotFoundException(companyId));
     }

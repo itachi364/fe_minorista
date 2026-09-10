@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.thirdparty.application.port.out;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -12,6 +13,10 @@ public interface ThirdPartyRepositoryPort {
     ThirdParty save(ThirdParty thirdParty);
 
     Optional<ThirdParty> findByCompanyIdAndId(UUID companyId, UUID id);
+
+    default Optional<ThirdParty> findEffective(UUID companyId, UUID id, LocalDate effectiveOn) {
+        return findByCompanyIdAndId(companyId, id);
+    }
 
     Optional<ThirdParty> findByCompanyIdAndDocument(UUID companyId, Integer identificationTypeCode,
             String identificationNumber);

@@ -810,7 +810,7 @@ Acceptance criteria: AC-404, AC-407, AC-408, AC-409, AC-410.
 
 ## UC-053: Calcular retenciones de proveedor
 
-Estado: PARTIAL. La vista previa y confirmacion base existen; TASK-309 a TASK-315 completan vigencia juridica, lineas, acumulaciones, territorialidad, conciliacion, reversos y certificados.
+Estado: PARTIAL. La vista previa y confirmacion incluyen vigencia juridica, lineas, acumulacion diaria, territorialidad por paquete, conciliacion, reversos y certificados; TASK-310/311/313/314/315 conservan las ampliaciones declaradas.
 
 Actor: Administrador empresarial, usuario contable o contador con permiso de lectura.
 
@@ -882,7 +882,7 @@ Acceptance criteria: AC-489 a AC-493.
 
 ## UC-057: Resolver vigencia juridica de una regla fiscal
 
-Estado: TARGET, TASK-309.
+Estado: IMPLEMENTED, TASK-309.
 
 Actor: ROOT fiscal autorizado.
 
@@ -896,7 +896,7 @@ Acceptance criteria: AC-501 a AC-504, AC-516, AC-524, AC-526.
 
 ## UC-058: Calcular retenciones nacionales por linea y acumulacion
 
-Estado: TARGET, TASK-310/TASK-311.
+Estado: PARTIAL, TASK-310/TASK-311. Disponible por linea y acumulacion diaria; quedan pendientes perfiles tipados completos, matriz nacional exhaustiva y otros alcances de agregacion.
 
 Actor: Usuario contable autorizado.
 
@@ -910,9 +910,9 @@ Acceptance criteria: AC-505 a AC-512, AC-515, AC-516, AC-523.
 
 ## UC-059: Resolver ReteICA por territorio
 
-Estado: TARGET, TASK-312.
+Estado: IMPLEMENTED, TASK-312.
 
-Actor: Usuario fiscal autorizado.
+Actor: ROOT para administracion; usuario fiscal autorizado para calculo y consulta.
 
 Flujo principal:
 1. El sistema determina el lugar de realizacion de la actividad.
@@ -920,11 +920,17 @@ Flujo principal:
 3. Evalua CIIU, sujetos, conceptos, bases, tarifas y excepciones municipales.
 4. Si el paquete falta o no esta verificado, devuelve `BLOCKED` sin asumir tarifa.
 
+Flujo de administracion:
+1. ROOT selecciona un municipio desde DIVIPOLA y registra el paquete manualmente, o carga un CSV delimitado por comas.
+2. El sistema valida sincrona y atomicamente municipio, CIIU, tarifa, vigencia, solapamientos y fuente oficial.
+3. La carga queda en borrador; ROOT publica explicitamente la version aprobada.
+4. El sistema no crea paquetes desde DIVIPOLA ni consulta fuentes externas automaticamente.
+
 Acceptance criteria: AC-513, AC-514, AC-525.
 
 ## UC-060: Conciliar operacion fiscal y contable
 
-Estado: TARGET, TASK-313.
+Estado: PARTIAL, TASK-313. Disponible el mapeo empresarial por vigencia y la conciliacion mensual; quedan pendientes presentacion NIIF y atomicidad distribuida completa.
 
 Actor: Contador o administrador contable autorizado.
 
@@ -938,7 +944,7 @@ Acceptance criteria: AC-520 a AC-523.
 
 ## UC-061: Reversar y certificar retenciones
 
-Estado: TARGET, TASK-314.
+Estado: PARTIAL, TASK-314. Disponibles reverso, cierre, resumen y certificado CSV versionado; quedan pendientes movimientos contables compensatorios y formato legal completo.
 
 Actor: Usuario contable autorizado.
 
@@ -952,7 +958,7 @@ Acceptance criteria: AC-517 a AC-519, AC-523.
 
 ## UC-062: Administrar y observar el motor fiscal completo
 
-Estado: TARGET, TASK-315.
+Estado: PARTIAL, TASK-315. Disponibles gobierno y operacion fiscal en SPA; quedan pendientes metricas dedicadas y E2E distribuidos completos.
 
 Actor: ROOT o usuario fiscal con permiso empresarial.
 

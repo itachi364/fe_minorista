@@ -1,5 +1,6 @@
 package com.msvanegasg.facturaelectronica.accounting.infrastructure.client;
 
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -25,12 +26,23 @@ public class ThirdPartyFiscalProfileHttpAdapter implements ThirdPartyFiscalProfi
 
     @Override
     public Optional<ThirdPartyFiscalProfile> findByCompanyIdAndId(UUID companyId, UUID thirdPartyId) {
+        return find(companyId, thirdPartyId, null);
+    }
+
+    @Override
+    public Optional<ThirdPartyFiscalProfile> findByCompanyIdAndIdAndDate(UUID companyId, UUID thirdPartyId,
+            LocalDate effectiveOn) {
+        return find(companyId, thirdPartyId, effectiveOn);
+    }
+
+    private Optional<ThirdPartyFiscalProfile> find(UUID companyId, UUID thirdPartyId, LocalDate effectiveOn) {
         if (thirdPartyBaseUrl == null || thirdPartyBaseUrl.isBlank()) {
             return Optional.empty();
         }
         try {
             ThirdPartyResponse response = restClient.get()
-                    .uri(thirdPartyBaseUrl + "/api/v1/third-parties/" + thirdPartyId)
+                    .uri(thirdPartyBaseUrl + "/api/v1/third-parties/" + thirdPartyId
+                            + (effectiveOn == null ? "" : "?effectiveOn=" + effectiveOn))
                     .header("X-Company-Id", companyId.toString())
                     .retrieve()
                     .body(ThirdPartyResponse.class);
