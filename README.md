@@ -250,6 +250,14 @@ terraform validate
 
 La arquitectura objetivo usa frontend en S3/CloudFront, BFF y microservicios privados en ECS/Fargate, PostgreSQL administrado, Secrets Manager/KMS, CloudWatch, EventBridge/SQS y lambdas para procesos asincronos.
 
+### AWS Free Preview
+
+Antes del target productivo existe una fase separada, temporal y no productiva (`TASK-317` a `TASK-321`) para la cuenta `883425315805`. El proceso previsto valida por API que la cuenta permanezca `FREE/ACTIVE`, bloquea recursos de costo persistente, ejecuta toda la plataforma en una unica EC2 apagada automaticamente a las cuatro horas y exige una prueba local de memoria antes de crear infraestructura.
+
+No se debe ejecutar `infra/aws/envs/dev` para esta finalidad. El entorno Free Preview prohibe NAT, Fargate, RDS, balanceadores, Route 53, WAF, Secrets Manager, KMS propio y observabilidad administrada. Aun sin cobro externo mientras la cuenta conserve Free Plan, el uso de EC2/EBS y otros servicios puede consumir creditos y cerrar la cuenta al agotarlos o vencer el plan.
+
+El runbook y la decision completa estan en `infra/aws/envs/free-preview/README.md`, `specs/infrastructure.md` y `specs/adr/ADR-003-aws-free-preview-cost-gated.md`. El entorno Terraform, las imagenes y los scripts ya existen y pasaron validacion local con 14 contenedores y 3096,98 MiB; ningun `terraform apply` fue autorizado y no se han creado recursos AWS.
+
 ## API Y Swagger
 
 Cada microservicio Spring Boot expone OpenAPI cuando esta levantado:
@@ -321,7 +329,7 @@ La plantilla basica contabiliza el neto del proveedor en `2205` y las retencione
 - La conexion DIAN SOAP WCF real, su normalizacion de respuestas y la prueba E2E de habilitacion siguen pendientes; el modo mock no demuestra produccion DIAN.
 - El motor fiscal aplica solo reglas cuya vigencia y condiciones puede demostrar. Los conceptos `REQUIRES_REVIEW` y los municipios sin paquete territorial se bloquean y requieren validacion profesional antes de operar.
 - El portal de contadores, las contrasenas temporales y los correos operativos siguen especificados pero no implementados.
-- La infraestructura AWS esta definida como target; los recursos ECS se mantienen sin cargas productivas hasta contar con imagenes, secretos y pipeline aprobados.
+- La infraestructura AWS productiva esta definida como target; los recursos ECS se mantienen sin cargas productivas. El entorno `free-preview` esta documentado pero no implementado ni desplegado.
 
 ## Documentacion Tecnica
 

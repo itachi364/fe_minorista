@@ -1,0 +1,72 @@
+#!/bin/bash
+set -euo pipefail
+
+dnf install -y docker gzip tar curl
+systemctl enable --now docker
+install -d -m 0755 /usr/local/lib/docker/cli-plugins /opt/nexofiscal/releases /opt/nexofiscal/current
+curl --fail --location --silent --show-error \
+  "https://github.com/docker/compose/releases/download/${compose_version}/docker-compose-linux-x86_64" \
+  --output /usr/local/lib/docker/cli-plugins/docker-compose
+chmod 0755 /usr/local/lib/docker/cli-plugins/docker-compose
+
+cat >/usr/local/sbin/nexofiscal-refresh <<'SCRIPT'
+#!/bin/bash
+set -euo pipefail
+umask 077
+release_dir="/opt/nexofiscal/releases/current"
+archive="/opt/nexofiscal/releases/nexofiscal-preview.tar.gz"
+rm -rf "$release_dir"
+mkdir -p "$release_dir"
+
+aws s3 cp "s3://${artifact_bucket}/${artifact_key}" "$archive" --region "${aws_region}"
+tar -xzf "$archive" -C "$release_dir"
+aws ssm get-parameter \
+  --name "${runtime_parameter_name}" \
+  --with-decryption \
+  --query 'Parameter.Value' \
+  --output text \
+  --region "${aws_region}" >"$release_dir/runtime.env"
+
+if grep -q 'CONFIGURE_BEFORE_START\|change_me' "$release_dir/runtime.env"; then
+  echo "Runtime configuration still contains a blocked placeholder" >&2
+  exit 1
+fi
+
+gzip -dc "$release_dir/images.tar.gz" | docker load
+ln -sfn "$release_dir" /opt/nexofiscal/current
+cd /opt/nexofiscal/current
+docker compose --env-file runtime.env -f compose.preview.yml up -d --remove-orphans
+SCRIPT
+chmod 0750 /usr/local/sbin/nexofiscal-refresh
+
+cat >/etc/systemd/system/nexofiscal-stop.service <<'UNIT'
+[Unit]
+Description=Stop the NexoFiscal free preview EC2 instance
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/shutdown -h now
+UNIT
+
+cat >/etc/systemd/system/nexofiscal-stop.timer <<'UNIT'
+[Unit]
+Description=Stop NexoFiscal no later than four hours after boot
+
+[Timer]
+OnBootSec=4h
+AccuracySec=1min
+Unit=nexofiscal-stop.service
+
+[Install]
+WantedBy=timers.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable --now nexofiscal-stop.timer
+
+if aws s3api head-object --bucket "${artifact_bucket}" --key "${artifact_key}" --region "${aws_region}" >/dev/null 2>&1; then
+  /usr/local/sbin/nexofiscal-refresh
+else
+  echo "Artifact not published yet; use Session Manager and run /usr/local/sbin/nexofiscal-refresh after publication"
+fi
+

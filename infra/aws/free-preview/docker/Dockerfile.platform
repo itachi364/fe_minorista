@@ -1,0 +1,30 @@
+FROM maven:3.9.11-eclipse-temurin-17-alpine AS build
+WORKDIR /workspace
+
+COPY pom.xml mvnw mvnw.cmd ./
+COPY .mvn .mvn
+COPY services services
+RUN mvn -B -DskipTests package
+
+FROM eclipse-temurin:17-jre-alpine
+RUN apk add --no-cache wget \
+    && addgroup -S -g 10001 nexofiscal \
+    && adduser -S -D -H -u 10001 -G nexofiscal nexofiscal
+WORKDIR /app
+
+COPY --from=build /workspace/services/accounting-service/target/accounting-service-*.jar /app/accounting-service.jar
+COPY --from=build /workspace/services/audit-service/target/audit-service-*.jar /app/audit-service.jar
+COPY --from=build /workspace/services/bff-service/target/bff-service-*.jar /app/bff-service.jar
+COPY --from=build /workspace/services/billing-service/target/billing-service-*.jar /app/billing-service.jar
+COPY --from=build /workspace/services/catalog-service/target/catalog-service-*.jar /app/catalog-service.jar
+COPY --from=build /workspace/services/dian-provider-service/target/dian-provider-service-*.jar /app/dian-provider-service.jar
+COPY --from=build /workspace/services/identity-service/target/identity-service-*.jar /app/identity-service.jar
+COPY --from=build /workspace/services/inventory-service/target/inventory-service-*.jar /app/inventory-service.jar
+COPY --from=build /workspace/services/payroll-service/target/payroll-service-*.jar /app/payroll-service.jar
+COPY --from=build /workspace/services/reporting-service/target/reporting-service-*.jar /app/reporting-service.jar
+COPY --from=build /workspace/services/tenant-service/target/tenant-service-*.jar /app/tenant-service.jar
+COPY --from=build /workspace/services/thirdparty-service/target/thirdparty-service-*.jar /app/thirdparty-service.jar
+
+USER 10001:10001
+ENTRYPOINT ["sh", "-c", "exec java ${JAVA_OPTS:-} -jar /app/${SERVICE_NAME}.jar"]
+

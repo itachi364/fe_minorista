@@ -1886,4 +1886,50 @@ SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
 - Los parametros municipales o normativos no deben depender de despliegue de frontend.
 - La actualizacion de reglas requiere proceso controlado, pruebas y evidencia de fuente normativa.
 
+## AWS Free Preview
+
+Estado: IMPLEMENTACION LOCAL EN CURSO en TASK-317 a TASK-321. Terraform, imagenes, Compose y runbooks existen y fueron validados localmente; no existen recursos AWS creados por esta fase.
+
+### Preflight obligatorio
+
+```powershell
+aws sts get-caller-identity --output json
+aws freetier get-account-plan-state --region us-east-1 --output json
+aws freetier get-free-tier-usage --region us-east-1 --max-results 100 --output json
+```
+
+El proceso exige cuenta `883425315805`, plan `FREE`, estado `ACTIVE`, credito minimo y una ventana de expiracion configurables. Los valores observados nunca se guardan como supuestos permanentes. El provider Terraform debe declarar `allowed_account_ids` y todos los recursos deben usar etiquetas del ambiente.
+
+### Lista permitida
+
+- VPC/subnet publica/Internet Gateway/rutas y security groups minimos, sin NAT ni endpoints de interfaz facturables.
+- Una EC2 de hasta 8 GiB inicialmente, sin auto scaling, sin compra reservada y sin inicio automatico.
+- Un EBS `gp3` de hasta 30 GB, cifrado administrado por AWS y sin rendimiento adicional.
+- CloudFront, S3 privado temporal con lifecycle, Parameter Store Standard, IAM/SSM, Budgets y automatizacion de parada.
+
+La politica del plan rechaza Fargate, RDS/Aurora, RDS Proxy, NAT, ALB/NLB, Route 53, WAF, Secrets Manager, KMS propio, Managed Grafana/Prometheus, Marketplace y cualquier recurso no listado. La ausencia de cobro externo bajo Free Plan no convierte estos servicios en Always Free: el consumo reduce los creditos.
+
+### Procedimiento controlado
+
+```powershell
+cd infra/aws/envs/free-preview
+terraform init -backend=false
+terraform fmt -recursive -check ../..
+terraform validate
+.\scripts\plan.ps1 -BudgetAlertEmail <correo-aprobado>
+```
+
+Despues del plan se debe revisar cuenta, recursos, horas maximas, almacenamiento, IPv4, estimacion y ausencia de cambios sobre recursos existentes. `terraform apply free-preview.tfplan`, cargas S3, cambios IAM y despliegue requieren confirmacion separada. La destruccion tambien requiere confirmacion y debe finalizar con inventario de residuos.
+
+### Operacion
+
+- Inicio manual, apagado obligatorio a las cuatro horas y detencion independiente de respaldo.
+- Presupuesto mensual con notificaciones al 50% real y 80% previsto, mas detencion EC2 automatica al 80% real; estos datos pueden llegar con retraso.
+- Docker con limites de memoria, logs rotados y healthchecks; PostgreSQL solo en red interna y volumen local.
+- Session Manager sin SSH; CloudFront es la unica entrada web y solo alcanza proxy/BFF.
+- Consulta de Free Tier antes/despues de cada sesion; alerta de presupuesto y exportacion previa al 2026-12-13 o a la nueva fecha consultada.
+- Si la prueba local no demuestra estabilidad en 8 GiB, el proceso se bloquea: no escala a una instancia mayor ni degrada controles.
+- Resultado local 2026-09-11: 14 contenedores saludables durante la ventana de estabilidad, 3096,98 MiB usados sobre un maximo permitido de 6500 MiB.
+- El dominio `app.nexofiscal.online` se habilita despues de validar ACM por CNAME en Hostinger; antes de eso se usa el dominio HTTPS predeterminado de CloudFront.
+
 <!-- END SDD TASK INFRASTRUCTURE TRACEABILITY -->

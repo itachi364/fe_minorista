@@ -3808,3 +3808,46 @@ Las migraciones Flyway versionadas son aditivas e inmutables. Las migraciones ya
   - Topic consulted: migraciones versionadas, checksums y migraciones repetibles.
   - Relevant finding: las migraciones versionadas se aplican una vez y se validan por checksum; las repetibles se reejecutan al cambiar y se recomiendan para objetos recreables.
   - Decision impact: la historia normativa usa migraciones versionadas aditivas; las repetibles se reservan para vistas y validaciones derivadas.
+
+## AWS Free Preview (TASK-317 a TASK-321)
+
+### Limite del ambiente
+
+`free-preview` es un entorno temporal de demostracion en la cuenta `883425315805`. No es produccion, no sustituye `infra/aws/envs/dev` y no puede activar el target ECS/Fargate/RDS mediante variables. El estado observado el 2026-09-11 es `FREE/ACTIVE`, USD 140,01 restantes y vencimiento el 2026-12-13; toda ejecucion debe volver a consultar estos datos porque no son constantes de configuracion.
+
+### Componentes
+
+1. Un preflight consulta `aws sts get-caller-identity` y `aws freetier get-account-plan-state`; compara cuenta, plan, estado, credito minimo y ventana hasta expiracion.
+2. Una politica inspecciona el plan Terraform y admite unicamente EC2, EBS, VPC basica, IAM minimo, SSM Standard, S3 temporal, CloudFront, Budgets y automatizacion de parada.
+3. Una sola EC2 ejecuta proxy/frontend, BFF, microservicios y PostgreSQL en redes Docker internas. Solo el proxy recibe trafico de CloudFront.
+4. Parameter Store Standard entrega secretos al bootstrap sin incluir valores en user data, outputs o estado Terraform. Los contenedores recibenlos mediante archivo efimero de permisos restringidos.
+5. Un temporizador de sistema solicita apagado cuatro horas despues de cada arranque. EventBridge Scheduler detiene la instancia cada cuatro horas y AWS Budgets ejecuta `STOP_EC2_INSTANCES` automaticamente al 80% del limite mensual como respaldos independientes.
+6. El bucket de artefactos conserva solo el paquete actual y aplica lifecycle corto. Los respaldos son privados, explicitos y separados de artefactos desechables.
+
+### Dimensionamiento y bloqueo
+
+El compose de preview usa JAR/frontend de produccion, imagenes multi-stage y limites por contenedor. La prueba ejecutada el 2026-09-11 mantuvo saludables los 14 contenedores durante la ventana de estabilidad y midio 3096,98 MiB totales frente al maximo aceptado de 6500 MiB. Se conserva margen para SO y Docker dentro de 8 GiB; una regresion futura bloquea el despliegue y nunca escala automaticamente a una instancia mas costosa.
+
+### Seguridad
+
+- No hay SSH, credenciales AWS estaticas, puertos publicos de servicios o base de datos.
+- La instancia usa un rol IAM limitado a sus parametros y objetos de artefactos.
+- CloudFront sirve HTTPS y el security group de origen acepta solo la entrada aprobada; el BFF mantiene cookies seguras, CSRF y aislamiento empresarial.
+- El certificado ACM se valida por DNS y el alias `app.nexofiscal.online` solo se habilita en un segundo plan cuando ACM esta `ISSUED`; Hostinger conserva los CNAME de validacion y de aplicacion.
+- Ninguna operacion crea/junta Organizations, Control Tower o cambia `FREE` a `PAID`.
+- Los recursos existentes, incluida una distribucion CloudFront deshabilitada observada en la cuenta, quedan fuera del estado y del plan.
+
+### Costo y ciclo de vida
+
+AWS Budgets y Free Tier alerts tienen posible retraso. El presupuesto notifica al 50% real y 80% previsto; al 80% real ejecuta automaticamente la detencion EC2. Las barreras deterministas adicionales son: una instancia, tamano maximo aprobado, ausencia de auto-start/auto-scaling, apagado local y Scheduler cada cuatro horas, lista cerrada y destruccion verificada. El operador consulta creditos antes y despues de cada sesion y exporta datos antes de la expiracion.
+
+### Context7 evidence
+
+- Library/tool: Terraform AWS Provider `/hashicorp/terraform-provider-aws/v6.33.0`.
+- Topic consulted: `allowed_account_ids` y `aws_budgets_budget`.
+- Relevant finding: el provider puede rechazar una cuenta distinta tras consultar STS y AWS Budgets soporta limites/notificaciones declarativos.
+- Decision impact: la identidad de cuenta es una compuerta del provider y el presupuesto una defensa adicional, nunca una promesa de costo cero.
+- Library/tool: Docker Compose `/docker/docs`.
+- Topic consulted: configuracion de produccion, redes internas, healthchecks, usuario no root y limites de recursos.
+- Relevant finding: Compose permite separar redes, limitar memoria, declarar healthchecks y superponer configuracion de despliegue.
+- Decision impact: el preview publica solo Nginx, mantiene PostgreSQL y servicios en red interna, usa imagenes no-root y valida 14 contenedores bajo un limite agregado local.

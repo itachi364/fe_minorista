@@ -1,0 +1,196 @@
+x-java-service: &java-service
+  image: nexofiscal/platform:free-preview
+  restart: unless-stopped
+  env_file:
+    - ${PREVIEW_RUNTIME_ENV_FILE:-runtime.env}
+  networks:
+    - services
+  read_only: true
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  pids_limit: 180
+  mem_limit: 384m
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+  depends_on:
+    postgres:
+      condition: service_healthy
+  healthcheck:
+    test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:$${SERVER_PORT}/actuator/health >/dev/null 2>&1 || exit 1"]
+    interval: 20s
+    timeout: 5s
+    retries: 12
+    start_period: 90s
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - ${PREVIEW_RUNTIME_ENV_FILE:-runtime.env}
+    networks:
+      - services
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    mem_limit: 768m
+    cpus: 0.75
+    pids_limit: 160
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  tenant-service:
+    <<: *java-service
+    environment:
+      SERVICE_NAME: tenant-service
+      SERVER_PORT: "8084"
+      JAVA_OPTS: "-Xms64m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    volumes:
+      - tenant_branding_data:/var/nexofiscal/tenant-branding
+      - company_files_data:/var/nexofiscal/company-files
+
+  identity-service:
+    <<: *java-service
+    environment:
+      SERVICE_NAME: identity-service
+      SERVER_PORT: "8092"
+      JAVA_OPTS: "-Xms64m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -Xss512k"
+
+  catalog-service:
+    <<: *java-service
+    environment:
+      SERVICE_NAME: catalog-service
+      SERVER_PORT: "8085"
+      JAVA_OPTS: "-Xms64m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -Xss512k"
+
+  thirdparty-service:
+    <<: *java-service
+    environment:
+      SERVICE_NAME: thirdparty-service
+      SERVER_PORT: "8086"
+      JAVA_OPTS: "-Xms64m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -Xss512k"
+
+  inventory-service:
+    <<: *java-service
+    mem_limit: 512m
+    environment:
+      SERVICE_NAME: inventory-service
+      SERVER_PORT: "8087"
+      JAVA_OPTS: "-Xms64m -Xmx320m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -Xss512k"
+
+  billing-service:
+    <<: *java-service
+    mem_limit: 512m
+    environment:
+      SERVICE_NAME: billing-service
+      SERVER_PORT: "8088"
+      JAVA_OPTS: "-Xms64m -Xmx320m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -Xss512k"
+
+  dian-provider-service:
+    <<: *java-service
+    environment:
+      SERVICE_NAME: dian-provider-service
+      SERVER_PORT: "8089"
+      JAVA_OPTS: "-Xms64m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -Xss512k"
+
+  accounting-service:
+    <<: *java-service
+    mem_limit: 512m
+    environment:
+      SERVICE_NAME: accounting-service
+      SERVER_PORT: "8090"
+      JAVA_OPTS: "-Xms64m -Xmx320m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -Xss512k"
+
+  audit-service:
+    <<: *java-service
+    environment:
+      SERVICE_NAME: audit-service
+      SERVER_PORT: "8091"
+      JAVA_OPTS: "-Xms64m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -Xss512k"
+
+  payroll-service:
+    <<: *java-service
+    mem_limit: 512m
+    environment:
+      SERVICE_NAME: payroll-service
+      SERVER_PORT: "8093"
+      JAVA_OPTS: "-Xms64m -Xmx320m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -Xss512k"
+
+  reporting-service:
+    <<: *java-service
+    mem_limit: 512m
+    environment:
+      SERVICE_NAME: reporting-service
+      SERVER_PORT: "8094"
+      JAVA_OPTS: "-Xms64m -Xmx320m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    volumes:
+      - report_exports_data:/var/nexofiscal/report-exports
+
+  bff-service:
+    <<: *java-service
+    mem_limit: 512m
+    environment:
+      SERVICE_NAME: bff-service
+      SERVER_PORT: "8083"
+      JAVA_OPTS: "-Xms64m -Xmx320m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -Xss512k"
+
+  frontend:
+    image: nexofiscal/frontend:free-preview
+    restart: unless-stopped
+    networks:
+      - edge
+      - services
+    ports:
+      - "${PREVIEW_HTTP_PORT:-80}:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+      - /var/cache/nginx:size=16m,mode=0755
+      - /var/run:size=4m,mode=0755
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 80
+    mem_limit: 96m
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    depends_on:
+      bff-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+networks:
+  edge:
+  services:
+    internal: true
+
+volumes:
+  postgres_data:
+  tenant_branding_data:
+  company_files_data:
+  report_exports_data:

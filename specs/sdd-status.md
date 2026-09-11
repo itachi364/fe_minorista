@@ -25,6 +25,7 @@
 | Persistencia | IMPLEMENTED | PostgreSQL 16 local, esquema por servicio y Flyway |
 | Eventing | PARTIAL | contratos compartidos y cinco Lambdas Maven; AWS EventBridge/SQS sigue siendo target productivo |
 | Observabilidad | IMPLEMENTED local | Actuator, Prometheus y Grafana provisionados; alertamiento productivo externo sigue siendo target |
+| AWS Free Preview | TARGET | TASK-317 a TASK-321 documentan un entorno temporal con una EC2, compuertas de cuenta/costo y apagado automatico; no hay recursos creados |
 | Produccion AWS | TARGET | CloudFront/S3, API Gateway, ECS Fargate, RDS/Aurora, SQS/EventBridge, Secrets Manager/KMS y SES |
 
 ## Servicios locales
@@ -91,6 +92,7 @@ Las tablas de readiness empresarial no existen fisicamente: el BFF compone ese d
 
 ## Backlog funcional activo
 
+- AWS Free Preview: TASK-317 a TASK-321, antes del backlog funcional; documentado pero sin Terraform ni recursos creados.
 - DIAN productiva: TASK-264, TASK-273, TASK-274 y TASK-276.
 - Contadores, accesos y correo: TASK-290, TASK-291, TASK-294 y TASK-295.
 - Culminacion fiscal: TASK-309 a TASK-315 cerradas; la ampliacion de tarifas permanece sometida al gobierno ordinario del catalogo y a fuentes oficiales verificadas.
@@ -103,6 +105,7 @@ Las tablas de readiness empresarial no existen fisicamente: el BFF compone ese d
 - No se generan CUFE, CUDE o QR DIAN para una venta interna no fiscal.
 - El motor fiscal no sustituye validacion profesional ni habilita reglas nacionales/territoriales sin fuente oficial vigente.
 - El PUC historico puede servir como plantilla; no se presenta como un plan NIIF universal.
+- La cuenta AWS observada esta en Free Plan hasta el 2026-12-13 o agotamiento de creditos. Esto no convierte el target ECS/Fargate/RDS en gratuito ni autoriza su despliegue.
 
 ## Fuentes de verdad relacionadas
 

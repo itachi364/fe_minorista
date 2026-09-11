@@ -4,6 +4,14 @@
 
 Este archivo ordena exclusivamente trabajo pendiente. No reemplaza requisitos, criterios ni tareas. Una fase requiere nueva aprobacion MUT-001 antes de modificar codigo, datos, infraestructura o sistemas externos.
 
+## Fase A: AWS Free Preview
+
+- Prioridad: P0, antes del backlog funcional restante.
+- Tareas: TASK-317 a TASK-321, en ese orden.
+- Objetivo: crear un despliegue temporal de demostracion en la cuenta `883425315805`, protegido por validacion de cuenta/plan, lista cerrada de recursos, limite de memoria, presupuesto y apagado automatico.
+- Restriccion: no aplicar el target ECS/Fargate actual; no usar NAT, RDS, balanceadores, servicios administrados de secretos/observabilidad ni recursos ajenos. El entorno no es productivo y consume creditos Free Plan aunque no genere cobro mientras el plan permanezca `FREE`.
+- Salida: procedimiento reproducible y plan Terraform validado. `apply`, publicacion y despliegue requieren una confirmacion posterior separada.
+
 ## Fase B: Integracion DIAN productiva
 
 - Prioridad: P0.
@@ -42,5 +50,6 @@ Este archivo ordena exclusivamente trabajo pendiente. No reemplaza requisitos, c
 
 - Los requisitos sin tarea activa no autorizan implementacion por si solos.
 - La fase 39 esta cerrada. Incorporar una nueva tarifa nacional o municipal exige fuente oficial, version, pruebas y publicacion; un concepto `REQUIRES_REVIEW` no es una regla operativa.
+- El target AWS productivo de ECS/Fargate/RDS permanece separado del entorno temporal `free-preview`; nunca se promueve uno al otro mediante una variable accidental.
 - Los identificadores historicos omitidos no se reutilizan.
 - Toda nueva necesidad se agrega al final de la numeracion vigente y antes de `Context7 evidence` en `tasks.md`.

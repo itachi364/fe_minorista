@@ -1,0 +1,12 @@
+budget_alert_email  = "alerts@example.com"
+enable_custom_domain = false
+
+# Locked safety defaults. Change only through a reviewed SDD update.
+allowed_account_id      = "883425315805"
+aws_region              = "us-east-1"
+instance_type           = "t3.large"
+root_volume_size_gib    = 30
+budget_limit_usd        = 15
+artifact_retention_days = 7
+custom_domain           = "app.nexofiscal.online"
+

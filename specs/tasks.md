@@ -12,7 +12,8 @@
 
 ## Corte SDD 2026-09-11
 
-- Registro: 300 tareas terminadas y 10 tareas funcionales pendientes; la fase 39 esta cerrada.
+- Registro: 302 tareas terminadas y 13 tareas pendientes; la fase 39 esta cerrada y AWS Free Preview se planifica antes del backlog funcional restante.
+- Backlog AWS Free Preview: TASK-317 a TASK-321.
 - Backlog DIAN: TASK-264, TASK-273, TASK-274 y TASK-276.
 - Backlog contador, accesos y correo: TASK-290, TASK-291, TASK-294 y TASK-295.
 - Culminacion fiscal: TASK-309 a TASK-315 cerradas; nuevas tarifas se gobiernan como versiones del catalogo.
@@ -7547,6 +7548,49 @@ Nota de gobierno: TASK-283 a TASK-288 son identificadores historicos reservados.
     - `mvnw.cmd clean verify` finalizo correctamente para los 19 modulos del reactor; frontend finalizo con 58 pruebas y `npm run build` exitoso.
     - Los tres diagramas Mermaid pasaron control estructural de encabezados y comillas; no se ejecuto render automatico porque el repositorio no incluye Mermaid CLI.
     - No se modificaron codigo de negocio, migraciones ni infraestructura desplegada.
+
+## Fase 41: Despliegue temporal AWS Free Preview
+
+- [ ] TASK-317: Implementar compuertas de cuenta, Free Plan y costo
+  - Estado: IN_PROGRESS; preflight positivo, presupuesto, accion de detencion y politica local implementados; falta validar el plan real con el correo aprobado.
+  - Requisitos: RF-391 a RF-393, RF-397 y RF-400.
+  - Acceptance criteria: AC-533 a AC-535, AC-540, AC-541 y AC-546.
+  - Alcance: validar cuenta permitida, estado/creditos/vencimiento Free Tier, lista cerrada de recursos, presupuesto, alertas y prohibicion de cambio automatico a plan pago.
+  - Archivos previstos: `infra/aws/envs/free-preview/**`, scripts de preflight y documentacion.
+  - Pruebas: cuenta incorrecta, plan inactivo, credito insuficiente, expiracion cercana y plan con recurso prohibido.
+
+- [ ] TASK-318: Implementar Terraform aislado para la topologia Free Preview
+  - Estado: IN_PROGRESS; Terraform formateado y validado localmente; falta plan real, revision y `apply` separado.
+  - Requisitos: RF-393 a RF-398 y RF-400.
+  - Acceptance criteria: AC-535, AC-537 a AC-543 y AC-546.
+  - Alcance: una EC2 temporal, EBS `gp3`, CloudFront, bucket de artefactos con lifecycle, Parameter Store Standard, IAM minimo, red sin NAT/balanceador y automatizacion de detencion.
+  - Archivos previstos: `infra/aws/envs/free-preview/**` y modulos exclusivos que no alteren `envs/dev` ni el target productivo.
+  - Pruebas: `terraform fmt`, `validate`, plan de cuenta permitido, politica de recursos y ausencia de cambios sobre recursos preexistentes.
+
+- [x] TASK-319: Crear artefactos de produccion y ejecucion contenida en EC2
+  - Estado: IMPLEMENTED.
+  - Requisitos: RF-394, RF-396 y RF-399.
+  - Acceptance criteria: AC-536, AC-538, AC-539 y AC-542.
+  - Alcance: Dockerfiles multi-stage/no-root, compose de preview, limites JVM/memoria, frontend estatico, proxy unico y paquete privado reproducible.
+  - Archivos previstos: Dockerfiles por servicio, `.dockerignore`, compose/script de empaquetado y configuracion de proxy.
+  - Pruebas: reactor Maven, Vitest/build, escaneo de secretos, healthchecks y ejecucion local limitada a la memoria util aprobada.
+  - Resultado: reactor Maven de 19 modulos y 63 pruebas Vitest exitosos; build Vite exitoso; bundle de 854,93 MiB con solo `images.tar.gz` y `compose.preview.yml`; 14 contenedores saludables y estables con 3096,98 MiB totales frente al limite de 6500 MiB.
+
+- [ ] TASK-320: Validar seguridad, operacion y consumo del Free Preview
+  - Estado: IN_PROGRESS; aislamiento Compose, healthchecks, memoria y validacion Terraform completados localmente; HTTPS, SSM, apagado y residuos requieren entorno desplegado.
+  - Requisitos: RF-395 a RF-399.
+  - Acceptance criteria: AC-536 a AC-545.
+  - Alcance: puertos, aislamiento, HTTPS, SSM sin SSH, rotacion de logs, apagado primario/respaldo, inventario y estimacion mensual bajo horario maximo.
+  - Dependencia: TASK-317 a TASK-319.
+  - Pruebas: inspeccion de plan, puertos, smoke tests, apagado a cuatro horas, restauracion y deteccion de residuos facturables.
+
+- [ ] TASK-321: Ejecutar despliegue controlado y cierre operativo
+  - Estado: PENDING.
+  - Requisitos: RF-398, RF-400 y RF-401.
+  - Acceptance criteria: AC-543 a AC-547.
+  - Alcance: runbook de `plan`, aprobacion, `apply`, publicacion, arranque, smoke test, monitoreo de creditos, stop, respaldo y `destroy`.
+  - Dependencia: TASK-317 a TASK-320 y confirmacion MUT-001 separada para cada mutacion externa.
+  - Restriccion: documentar o validar no autoriza `terraform apply`, carga de artefactos, cambios IAM/facturacion ni despliegue.
 
 ## Context7 evidence
 

@@ -655,3 +655,21 @@
 - AC-530: Dado `tasks.md`, cuando se localiza `Context7 evidence`, entonces no existe ninguna fase ni `TASK-*` despues de esa seccion.
 - AC-531: Dada la documentacion operativa, cuando se valida `docker compose config`, entonces README, puertos y variables de `.env.example` corresponden con la configuracion vigente sin contener secretos reales.
 - AC-532: Dado el cierre de la auditoria, cuando se ejecutan las validaciones documentales, entonces referencias, formato, enlaces locales y diff no presentan errores conocidos; cualquier prueba no ejecutada queda declarada expresamente.
+
+## Despliegue AWS Free Preview
+
+- AC-533: Dadas credenciales AWS activas, cuando STS devuelve una cuenta distinta de `883425315805`, entonces `init`, `plan`, publicacion y despliegue se bloquean antes de crear o modificar recursos.
+- AC-534: Dada la cuenta permitida, cuando Free Tier informa un plan distinto de `FREE/ACTIVE`, creditos inferiores al minimo o vencimiento dentro de la ventana de seguridad, entonces el proceso termina con diagnostico y no continua automaticamente.
+- AC-535: Dado un plan Terraform `free-preview`, cuando contiene NAT Gateway, Fargate, RDS/Aurora, RDS Proxy, ALB/NLB, Route 53, WAF, Secrets Manager, KMS propio u otro tipo no autorizado, entonces la validacion de politica falla.
+- AC-536: Dado el conjunto completo de servicios, cuando se construyen imagenes de produccion y se ejecuta la prueba local limitada, entonces las pruebas pasan, los healthchecks responden y el uso estable total cabe en el presupuesto documentado de una instancia con 8 GiB; de lo contrario AWS permanece sin cambios.
+- AC-537: Dado un despliegue autorizado, cuando Terraform termina, entonces existe como maximo una instancia EC2, un volumen `gp3` de hasta 30 GB, una distribucion CloudFront, almacenamiento privado temporal, parametros Standard y los recursos IAM/monitoreo estrictamente necesarios.
+- AC-538: Dado el entorno activo, cuando se inspeccionan red y puertos, entonces solo CloudFront alcanza el proxy web, solo el BFF enruta API y PostgreSQL/microservicios no tienen puertos publicos.
+- AC-539: Dado un secreto de aplicacion, cuando se despliega o consulta el estado Terraform, entonces su valor no aparece en Git, plan, outputs, user data, logs ni etiquetas y se obtiene desde Parameter Store Standard `SecureString` con minimo privilegio.
+- AC-540: Dada una instancia iniciada, cuando cumple cuatro horas, entonces se detiene aunque no exista intervencion del operador; no existe regla de inicio automatico y una automatizacion independiente puede detenerla como respaldo.
+- AC-541: Dado el consumo del entorno, cuando alcanza un umbral presupuestal o de Free Tier, entonces se notifica al correo configurado y la accion aprobada detiene EC2; el runbook advierte que la informacion de costos puede tener retraso.
+- AC-542: Dado un paquete de despliegue, cuando vence su retencion, entonces el objeto temporal se elimina; no se almacenan imagenes o versiones ilimitadas ni se habilita replicacion entre regiones.
+- AC-543: Dada una distribucion CloudFront u otro recurso preexistente no etiquetado para `nexofiscal-free-preview`, cuando se ejecuta plan o destruccion, entonces no se importa, modifica ni elimina.
+- AC-544: Dado el entorno desplegado, cuando se ejecuta smoke test, entonces frontend responde por HTTPS, autenticacion/BFF y healthchecks principales funcionan y ninguna URL interna queda expuesta.
+- AC-545: Dado el cierre de una sesion de pruebas, cuando se ejecuta el runbook aprobado, entonces la instancia queda detenida o la infraestructura se destruye, se verifica ausencia de recursos facturables residuales y se conserva solo el respaldo expresamente aprobado.
+- AC-546: Dado que la documentacion y el plan fueron validados, cuando aun no existe confirmacion separada para `apply`, entonces no se crea ningun recurso ni se cambia IAM, facturacion, plan de cuenta o sistemas externos.
+- AC-547: Dado `app.nexofiscal.online`, cuando ACM aun no esta `ISSUED`, entonces CloudFront conserva su dominio predeterminado y el plan bloquea el alias personalizado; despues de validar el CNAME de ACM, un segundo plan aprobado habilita el alias y publica el CNAME `app` requerido en Hostinger.

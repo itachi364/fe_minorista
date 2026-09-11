@@ -47,3 +47,12 @@ postgres_data/
 coverage/
 **/coverage/
 **/target/site/jacoco/
+
+### AWS Free Preview local artifacts and state ###
+infra/aws/envs/free-preview/runtime.env
+infra/aws/envs/free-preview/terraform.tfvars
+infra/aws/envs/free-preview/*.tfplan
+infra/aws/envs/free-preview/*.tfstate
+infra/aws/envs/free-preview/*.tfstate.*
+infra/aws/envs/free-preview/.terraform/
+infra/aws/envs/free-preview/.artifacts/
