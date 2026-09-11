@@ -4008,7 +4008,7 @@
     - `rg "proveedor tecnologico|Provider|provider"` revisado y clasificado.
 
 - [x] TASK-151: Preparar flujo tecnico DIAN real segun caja de herramientas
-  - Estado: DONE como preparacion tecnica. El `dian-provider-service` valida la existencia configurable de XSD UBL 2.1, Schematron DIAN, XSL compilado y lista de codigos antes de aprobar una prueba en modo real. El cierre funcional del envio DIAN real configurable queda cubierto dentro de esta misma Fase 20 en TASK-153 a TASK-163.
+  - Estado: DONE. Corresponde a preparacion tecnica: el `dian-provider-service` valida la existencia configurable de XSD UBL 2.1, Schematron DIAN, XSL compilado y lista de codigos antes de aprobar una prueba en modo real. El cierre funcional del envio DIAN real configurable queda cubierto dentro de esta misma Fase 20 en TASK-153 a TASK-163.
   - Requisitos: RF-064, RF-066.
   - Acceptance criteria: AC-175.
   - Descripcion: Disenar e implementar progresivamente generacion XML UBL 2.1, firma XMLDSig/XAdES, CUFE/CUDE, QR, validacion XSD/Schematron, AttachedDocument, ApplicationResponse y set de pruebas, usando la configuracion de cada empresa.
@@ -7277,7 +7277,7 @@ Nota de gobierno: TASK-283 a TASK-288 son identificadores historicos reservados.
     - `npm test -- --run`: 40 tests OK.
 
 - [x] TASK-293: Implementar primera vertical del motor versionado de retenciones
-  - Estado: PARTIAL; la entrega aprobada termino y su culminacion esta trazada en TASK-309 a TASK-315.
+  - Estado: DONE; la vertical inicial aprobada termino y fue culminada posteriormente por TASK-309 a TASK-315.
   - Requisitos: RF-294, RF-295, RF-296, RF-297.
   - Acceptance criteria: AC-413, AC-414, AC-415, AC-416.
   - Descripcion: Crear reglas fiscales versionadas para retenciones sobre compras, gastos y pagos, usando perfil de empresa y tercero, municipio, CIIU, regimen, responsabilidades, concepto, base y fecha.
@@ -7298,7 +7298,7 @@ Nota de gobierno: TASK-283 a TASK-288 son identificadores historicos reservados.
     - Cada empresa debe cargar y aprobar las tarifas ReteICA de sus municipios; el motor bloquea ese calculo cuando falta el catalogo territorial para evitar aplicar una tarifa nacional inexistente.
 
 - [x] TASK-296: Implementar catalogo fiscal versionado inicial y motor de precedencia
-  - Estado: PARTIAL; vertical inicial terminada el 2026-09-07 y ampliada por TASK-309 a TASK-315.
+  - Estado: DONE; vertical inicial terminada el 2026-09-07 y culminada posteriormente por TASK-309 a TASK-315.
   - Requisitos: RF-294, RF-295, RF-297, RF-301, RF-302, RF-303, RF-304, RF-305.
   - Acceptance criteria: AC-413 a AC-416, AC-420 a AC-426.
   - Descripcion: Incorporar parametros UVT, metadatos normativos, conceptos, unidades de base, decisiones de exencion/bloqueo, precedencia determinista, autorretencion por CIIU y ReteICA territorial sin valores asumidos.
@@ -7422,7 +7422,7 @@ Nota de gobierno: TASK-283 a TASK-288 son identificadores historicos reservados.
 ## Fase 38: Clasificacion autoritativa y evidencia RUT
 
 - [x] TASK-305: Implementar clasificacion autoritativa de obligacion de facturar
-  - Estado: IMPLEMENTED; validado en backend y SPA el 2026-09-09.
+  - Estado: DONE; implementado y validado en backend y SPA el 2026-09-09.
   - Compatibilidad: endurece `TASK-282` y `RN-084`; no tener DIAN lista deja de ser una condicion suficiente para vender como `NON_FISCAL_SALE`.
   - Requisitos: RF-343 a RF-355.
   - Acceptance criteria: AC-477 a AC-493.
