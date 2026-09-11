@@ -36,6 +36,17 @@ export function ThirdPartyForm({
   const naturalCustomerHasAddress = Boolean((normalizedForm.address || '').trim());
   const fiscalResponsibilityLabel = optionLabel(taxResponsibilityOptionsSource, SIMPLE_NATURAL_CUSTOMER_RESPONSIBILITY);
   const taxRegimeLabel = optionLabel(taxRegimeOptionsSource, SIMPLE_NATURAL_CUSTOMER_REGIME);
+  const residencyOptions = [
+    { value: 'COLOMBIA', label: 'Residente fiscal en Colombia' },
+    { value: 'EXTERIOR', label: 'Residente fiscal en el exterior' },
+    { value: 'UNKNOWN', label: 'Pendiente de verificar' },
+  ];
+  const incomeTaxOptions = [
+    { value: 'DECLARANTE', label: 'Declarante de renta' },
+    { value: 'NO_DECLARANTE', label: 'No declarante de renta' },
+    { value: 'NO_APLICA', label: 'No aplica' },
+    { value: 'UNKNOWN', label: 'Pendiente de verificar' },
+  ];
 
   function update(nextForm) {
     setForm(normalizeThirdPartyForm(nextForm, companyMunicipalityCode));
@@ -86,6 +97,13 @@ export function ThirdPartyForm({
         {simpleNaturalCustomer
           ? <Field label="Regimen tributario" value={taxRegimeLabel} onChange={() => {}} readOnly />
           : <SelectField label="Regimen tributario" value={normalizedForm.taxRegime} onChange={(value) => update({ ...normalizedForm, taxRegime: value })} options={taxRegimeOptionsSource} />}
+        {!simpleNaturalCustomer && <SelectField label="Residencia fiscal" value={normalizedForm.taxResidency} onChange={(value) => update({ ...normalizedForm, taxResidency: value })} options={residencyOptions} />}
+        {!simpleNaturalCustomer && <SelectField label="Calidad frente a renta" value={normalizedForm.incomeTaxStatus} onChange={(value) => update({ ...normalizedForm, incomeTaxStatus: value })} options={incomeTaxOptions} />}
+        {!simpleNaturalCustomer && <DualListField label="Alcances de autorretencion" value={normalizedForm.selfWithholdingScopes} onChange={(value) => update({ ...normalizedForm, selfWithholdingScopes: value })} options={[
+          { value: 'RENTA', label: 'Renta' },
+          { value: 'CREE', label: 'Autorretencion especial de renta' },
+          { value: 'ICA', label: 'ICA' },
+        ]} />}
       </div>
     </FormPanel>
     <section className="tool-panel">

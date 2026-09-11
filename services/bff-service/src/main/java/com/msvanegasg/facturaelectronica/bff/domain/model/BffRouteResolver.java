@@ -35,6 +35,7 @@ public final class BffRouteResolver {
                 "accounting-readiness", "accounting-entries", "accounts-payable", "accounts-receivable", "expenses",
                 "fiscal-calculations", "fiscal-catalog", "fiscal-legal-sources", "fiscal-rule-packages",
                 "fiscal-periods", "withholding-certificates", "fiscal-account-mappings",
+                "account-presentation-mappings", "fiscal-auxiliaries", "fiscal-national-concepts",
                 "fiscal-reconciliation")) {
             return TargetService.ACCOUNTING;
         }

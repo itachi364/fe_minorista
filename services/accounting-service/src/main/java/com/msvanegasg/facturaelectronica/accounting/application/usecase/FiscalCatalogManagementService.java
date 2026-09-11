@@ -60,7 +60,10 @@ public class FiscalCatalogManagementService implements ManageFiscalCatalogUseCas
                 command.calculationBase(), command.thresholdTreatment(), command.decision(),
                 command.requiresCompanyVatWithholdingAgent(), command.requiresCompanyIcaWithholdingAgent(),
                 command.legalReference().trim(), command.sourceUrl().trim(), command.specificity(), command.published(),
-                command.targetThirdPartyId(), normalize(command.evidenceReference()));
+                command.targetThirdPartyId(), normalize(command.evidenceReference()), command.triggerMoment(),
+                command.accumulationScope(), normalize(command.requiredThirdPartyPersonType()),
+                normalize(command.requiredThirdPartyTaxResidency()), normalize(command.requiredThirdPartyIncomeTaxStatus()),
+                normalize(command.requiredThirdPartySelfWithholdingScope()));
         assertNoEquivalentActiveRule(rule);
         return ruleRepository.save(rule);
     }
@@ -81,7 +84,10 @@ public class FiscalCatalogManagementService implements ManageFiscalCatalogUseCas
                 current.thresholdOperator(), current.calculationBase(), current.thresholdTreatment(),
                 current.decision(), current.requiresCompanyVatWithholdingAgent(),
                 current.requiresCompanyIcaWithholdingAgent(), current.legalReference(), current.sourceUrl(),
-                current.specificity(), current.published(), current.targetThirdPartyId(), current.evidenceReference());
+                current.specificity(), current.published(), current.targetThirdPartyId(), current.evidenceReference(),
+                current.triggerMoment(), current.accumulationScope(), current.requiredThirdPartyPersonType(),
+                current.requiredThirdPartyTaxResidency(), current.requiredThirdPartyIncomeTaxStatus(),
+                current.requiredThirdPartySelfWithholdingScope());
         return ruleRepository.save(inactive);
     }
 

@@ -26,9 +26,21 @@ public record FiscalDocumentCalculationResult(
         BigDecimal withholdingTotal,
         BigDecimal netPayable,
         Map<String, Object> profileEvidence,
-        Instant calculatedAt) {
+        Instant calculatedAt,
+        UUID contractId,
+        UUID paymentId) {
     public FiscalDocumentCalculationResult {
         lines = List.copyOf(lines);
         profileEvidence = Map.copyOf(profileEvidence);
+    }
+
+    public FiscalDocumentCalculationResult(UUID calculationId, UUID companyId, FiscalOperationType operationType,
+            UUID thirdPartyId, LocalDate operationDate, String municipalityCode, AccountingSourceType sourceType,
+            UUID sourceId, String requestHash, String status, List<FiscalDocumentLineResult> lines,
+            BigDecimal grossAmount, BigDecimal withholdingTotal, BigDecimal netPayable,
+            Map<String, Object> profileEvidence, Instant calculatedAt) {
+        this(calculationId, companyId, operationType, thirdPartyId, operationDate, municipalityCode, sourceType,
+                sourceId, requestHash, status, lines, grossAmount, withholdingTotal, netPayable, profileEvidence,
+                calculatedAt, null, null);
     }
 }

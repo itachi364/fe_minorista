@@ -62,7 +62,8 @@ public class FiscalDocumentCalculationController {
                 request.operationDate(), request.municipalityCode(), sourceRequired ? request.sourceType() : null,
                 sourceRequired ? request.sourceId() : null, request.lines().stream()
                         .map(line -> new FiscalDocumentLineCommand(line.lineId(), line.conceptCode(), line.ciiuCode(),
-                                line.taxableBaseAmount(), line.taxAmount()))
-                        .toList());
+                                line.taxableBaseAmount(), line.taxAmount(), line.aiuAmount(),
+                                line.grossPaymentAmount()))
+                        .toList(), request.contractId(), request.paymentId());
     }
 }

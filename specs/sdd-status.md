@@ -2,9 +2,9 @@
 
 ## Corte
 
-- Fecha de auditoria: 2026-09-09.
-- Commit base auditado: `a4654d0`.
-- Estado observado: repositorio limpio al iniciar la auditoria; stack Docker local levantado con servicios backend saludables.
+- Fecha de actualizacion: 2026-09-11.
+- Commit base de la auditoria integral: `a4654d0`; cambios de fase 39 pendientes de commit.
+- Estado observado: fase 39 implementada, validada y desplegada localmente; los servicios intervenidos quedaron saludables y el catalogo nacional respondio con 16 conceptos.
 - Proposito: fuente canonica corta del estado real. Los detalles historicos permanecen en `tasks.md` y las decisiones objetivo en los documentos de diseno.
 
 ## Vocabulario
@@ -39,7 +39,7 @@
 | inventory-service | 8087 | Productos, stock, kardex y compras documentales |
 | billing-service | 8088 | Ventas, documentos fiscales, numeracion y comprobantes |
 | dian-provider-service | 8089 | Configuracion DIAN y transporte mock/referencia |
-| accounting-service | 8090 | Plan de cuentas, asientos, gastos, cartera y primera vertical fiscal |
+| accounting-service | 8090 | Plan de cuentas, asientos, gastos, cartera y motor fiscal gobernado |
 | audit-service | 8091 | Auditoria sanitizada |
 | identity-service | 8092 | Usuarios, roles, permisos, sesiones y PIN operacional |
 | payroll-service | 8093 | Nomina y documentos de nomina electronica modelados |
@@ -62,7 +62,7 @@
 | Facturacion y documento equivalente electronico | PARTIAL | flujos/modelos/mock implementados; DIAN SOAP real y E2E pendientes |
 | Certificado empresarial DIAN | IMPLEMENTED | carga privada `.p12`/`.pfx`; no existe certificado ROOT compartido |
 | Compras, gastos, cartera y contabilidad | IMPLEMENTED | configuracion POS basica automatica y configuracion avanzada separada |
-| Motor de retenciones | PARTIAL | TASK-309/TASK-312 completas; temporalidad, lineas, acumulacion diaria, conciliacion, cierres y certificados implementados parcialmente en TASK-310/311/313/314/315 |
+| Motor de retenciones | IMPLEMENTED | TASK-309 a TASK-315 cerradas; perfiles temporales tipados, calculo por linea, acumulaciones, ReteICA gobernada, atomicidad de compra, conciliacion, reversos, certificados y metricas. Conceptos sin regla oficial verificada bloquean la confirmacion. |
 | Nomina | IMPLEMENTED | modulo fisico y persistencia; homologacion productiva DIAN debe validarse por alcance |
 | Reportes y exportaciones | IMPLEMENTED | jobs y descargas intermediadas; correo al finalizar pendiente |
 | Portal de contador | TARGET | TASK-290 y TASK-291 |
@@ -72,28 +72,28 @@
 
 | Esquema | Ultima version aplicada |
 |---|---|
-| tenant | `012` local validada; `011` ultimo despliegue confirmado |
+| tenant | `013` local validada |
 | identity | `009` |
 | catalog | `013` |
-| thirdparty | `008` local validada; `007` ultimo despliegue confirmado |
+| thirdparty | `009` local validada |
 | inventory | `008` |
 | billing | `013` |
 | dian_provider | `003` |
-| accounting | `020` local validada; `014` ultimo despliegue confirmado |
+| accounting | `021` local validada |
 | audit | `002` |
 | payroll | `002` |
 | reporting | `001` |
 | bff | `001` |
 
-Las versiones tenant V012, thirdparty V008 y accounting V015-V020 fueron aplicadas por las pruebas de contexto contra PostgreSQL local. No se consideran desplegadas al ambiente compartido hasta ejecutar el despliegue autorizado.
+Las versiones tenant V013, thirdparty V009 y accounting V021, junto con sus predecesoras, fueron aplicadas en PostgreSQL local. El despliegue autorizado se completo con `tenant-service`, `thirdparty-service`, `accounting-service`, `inventory-service`, `bff-service` y `frontend` saludables; la verificacion HTTP encontro 16 conceptos nacionales, 5 verificados y 11 bloqueados para revision.
 
-Las tablas de readiness empresarial no existen fisicamente: el BFF compone ese diagnostico desde datos de los servicios. Las tablas de contador, notificaciones y mapeo de presentacion contable aun pertenecen al roadmap; V015-V019 ya cubren eventos juridicos, paquetes ReteICA, calculo por linea, acumulacion, mapeos fiscales, reversos, cierres y certificados en el esquema local validado.
+Las tablas de readiness empresarial no existen fisicamente: el BFF compone ese diagnostico desde datos de los servicios. Las tablas de contador y notificaciones aun pertenecen al roadmap. V015-V021 cubren eventos juridicos, paquetes ReteICA, calculo por linea, acumulacion, mapeos fiscales y de presentacion, reversos, cierres, auxiliar 350, confirmacion fiscal atomica y certificados.
 
 ## Backlog funcional activo
 
 - DIAN productiva: TASK-264, TASK-273, TASK-274 y TASK-276.
 - Contadores, accesos y correo: TASK-290, TASK-291, TASK-294 y TASK-295.
-- Culminacion fiscal: TASK-310, TASK-311, TASK-313, TASK-314 y TASK-315 permanecen parciales; TASK-309 y TASK-312 estan cerradas.
+- Culminacion fiscal: TASK-309 a TASK-315 cerradas; la ampliacion de tarifas permanece sometida al gobierno ordinario del catalogo y a fuentes oficiales verificadas.
 - Gobierno documental: TASK-316 cerrada el 2026-09-09 con trazabilidad, Compose, backend, frontend y diff validados; el render automatico Mermaid no se ejecuto por no existir CLI en el repositorio.
 
 ## Restricciones vigentes
@@ -101,7 +101,7 @@ Las tablas de readiness empresarial no existen fisicamente: el BFF compone ese d
 - La aplicacion no debe declararse lista para emision DIAN productiva mientras el transporte SOAP y el E2E real sigan pendientes.
 - Ninguna empresa emite con certificados de otra empresa ni con un certificado ROOT/global.
 - No se generan CUFE, CUDE o QR DIAN para una venta interna no fiscal.
-- La primera vertical fiscal no sustituye validacion profesional ni habilita reglas nacionales/territoriales sin fuente oficial vigente.
+- El motor fiscal no sustituye validacion profesional ni habilita reglas nacionales/territoriales sin fuente oficial vigente.
 - El PUC historico puede servir como plantilla; no se presenta como un plan NIIF universal.
 
 ## Fuentes de verdad relacionadas

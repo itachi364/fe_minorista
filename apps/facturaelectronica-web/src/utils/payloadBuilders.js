@@ -18,6 +18,9 @@ function commaList(value) {
   if (Array.isArray(value)) {
     return value.filter(Boolean);
   }
+  if (value === null || value === undefined || value === '') {
+    return [];
+  }
   return value.split(',').map((item) => item.trim()).filter(Boolean);
 }
 
@@ -110,6 +113,10 @@ export function buildThirdPartyPayload(form, companyMunicipalityCode) {
     ciiuCodes: simpleNaturalCustomer ? [] : commaList(normalizedForm.ciiuCodes),
     taxResponsibilities: commaList(normalizedForm.taxResponsibilities),
     taxRegime: normalizedForm.taxRegime,
+    taxResidency: normalizedForm.taxResidency,
+    incomeTaxStatus: normalizedForm.incomeTaxStatus,
+    selfWithholdingScopes: commaList(normalizedForm.selfWithholdingScopes),
+    fiscalEvidenceReference: normalizedForm.fiscalEvidenceReference,
     roles,
   });
 }

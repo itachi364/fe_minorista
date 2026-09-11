@@ -78,6 +78,12 @@ public class WithholdingRulePersistenceAdapter implements WithholdingRuleReposit
         entity.setPublished(rule.published());
         entity.setTargetThirdPartyId(rule.targetThirdPartyId());
         entity.setEvidenceReference(rule.evidenceReference());
+        entity.setTriggerMoment(rule.triggerMoment());
+        entity.setAccumulationScope(rule.accumulationScope());
+        entity.setRequiredThirdPartyPersonType(rule.requiredThirdPartyPersonType());
+        entity.setRequiredThirdPartyTaxResidency(rule.requiredThirdPartyTaxResidency());
+        entity.setRequiredThirdPartyIncomeTaxStatus(rule.requiredThirdPartyIncomeTaxStatus());
+        entity.setRequiredThirdPartySelfWithholdingScope(rule.requiredThirdPartySelfWithholdingScope());
         return entity;
     }
 
@@ -95,6 +101,9 @@ public class WithholdingRulePersistenceAdapter implements WithholdingRuleReposit
                 Boolean.TRUE.equals(entity.getRequiresCompanyVatWithholdingAgent()),
                 Boolean.TRUE.equals(entity.getRequiresCompanyIcaWithholdingAgent()), entity.getLegalReference(),
                 entity.getSourceUrl(), entity.getSpecificity(), Boolean.TRUE.equals(entity.getPublished()),
-                entity.getTargetThirdPartyId(), entity.getEvidenceReference());
+                entity.getTargetThirdPartyId(), entity.getEvidenceReference(), entity.getTriggerMoment(),
+                entity.getAccumulationScope(), entity.getRequiredThirdPartyPersonType(),
+                entity.getRequiredThirdPartyTaxResidency(), entity.getRequiredThirdPartyIncomeTaxStatus(),
+                entity.getRequiredThirdPartySelfWithholdingScope());
     }
 }

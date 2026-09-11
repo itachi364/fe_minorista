@@ -15,5 +15,14 @@ public record CalculateFiscalDocumentCommand(
         String municipalityCode,
         AccountingSourceType sourceType,
         UUID sourceId,
-        List<FiscalDocumentLineCommand> lines) {
+        List<FiscalDocumentLineCommand> lines,
+        UUID contractId,
+        UUID paymentId) {
+
+    public CalculateFiscalDocumentCommand(UUID companyId, FiscalOperationType operationType, UUID thirdPartyId,
+            LocalDate operationDate, String municipalityCode, AccountingSourceType sourceType, UUID sourceId,
+            List<FiscalDocumentLineCommand> lines) {
+        this(companyId, operationType, thirdPartyId, operationDate, municipalityCode, sourceType, sourceId, lines,
+                null, null);
+    }
 }

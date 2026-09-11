@@ -34,14 +34,19 @@ public final class ThirdParty {
     private final Set<String> ciiuCodes;
     private final Set<String> taxResponsibilities;
     private final TaxRegime taxRegime;
+    private final TaxResidency taxResidency;
+    private final IncomeTaxStatus incomeTaxStatus;
+    private final Set<String> selfWithholdingScopes;
+    private final String fiscalEvidenceReference;
     private final Set<ThirdPartyRole> roles;
     private final boolean active;
 
     private ThirdParty(UUID id, UUID companyId, PersonType personType, Integer identificationTypeCode,
             String identificationNumber, Integer verificationDigit, String fullName, String businessName,
             String tradeName, String email, String phone, String address, String municipalityCode,
-            Set<String> ciiuCodes, Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles,
-            boolean active) {
+            Set<String> ciiuCodes, Set<String> taxResponsibilities, TaxRegime taxRegime,
+            TaxResidency taxResidency, IncomeTaxStatus incomeTaxStatus, Set<String> selfWithholdingScopes,
+            String fiscalEvidenceReference, Set<ThirdPartyRole> roles, boolean active) {
         this.id = id;
         this.companyId = companyId;
         this.personType = personType;
@@ -58,6 +63,10 @@ public final class ThirdParty {
         this.ciiuCodes = ciiuCodes;
         this.taxResponsibilities = taxResponsibilities;
         this.taxRegime = taxRegime;
+        this.taxResidency = taxResidency;
+        this.incomeTaxStatus = incomeTaxStatus;
+        this.selfWithholdingScopes = selfWithholdingScopes;
+        this.fiscalEvidenceReference = fiscalEvidenceReference;
         this.roles = roles;
         this.active = active;
     }
@@ -95,7 +104,7 @@ public final class ThirdParty {
             Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles, boolean active) {
         return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
                 fullName, businessName, tradeName, email, phone, address, municipalityCode, Set.of(), taxResponsibilities,
-                taxRegime, roles, active);
+                taxRegime, TaxResidency.UNKNOWN, IncomeTaxStatus.UNKNOWN, Set.of(), null, roles, active);
     }
 
     public static ThirdParty restore(UUID id, UUID companyId, PersonType personType, Integer identificationTypeCode,
@@ -112,6 +121,18 @@ public final class ThirdParty {
             String tradeName, String email, String phone, String address, String municipalityCode,
             Set<String> ciiuCodes,
             Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles, boolean active) {
+        return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
+                fullName, businessName, tradeName, email, phone, address, municipalityCode, ciiuCodes,
+                taxResponsibilities, taxRegime, TaxResidency.UNKNOWN, IncomeTaxStatus.UNKNOWN, Set.of(), null, roles,
+                active);
+    }
+
+    public static ThirdParty restore(UUID id, UUID companyId, PersonType personType, Integer identificationTypeCode,
+            String identificationNumber, Integer verificationDigit, String fullName, String businessName,
+            String tradeName, String email, String phone, String address, String municipalityCode,
+            Set<String> ciiuCodes, Set<String> taxResponsibilities, TaxRegime taxRegime,
+            TaxResidency taxResidency, IncomeTaxStatus incomeTaxStatus, Set<String> selfWithholdingScopes,
+            String fiscalEvidenceReference, Set<ThirdPartyRole> roles, boolean active) {
         UUID requiredCompanyId = Objects.requireNonNull(companyId, "companyId is required");
         PersonType requiredPersonType = Objects.requireNonNull(personType, "personType is required");
         DianIdentificationTypeCode.validate(identificationTypeCode);
@@ -140,7 +161,10 @@ public final class ThirdParty {
                 normalizeOptional(address, MAX_ADDRESS_LENGTH, "address"), normalizeOptional(municipalityCode,
                         MAX_MUNICIPALITY_CODE_LENGTH, "municipalityCode"),
                 simpleNaturalCustomer ? Set.of() : normalizeCiiuCodes(ciiuCodes), normalizedTaxResponsibilities,
-                normalizedTaxRegime, requiredRoles, active);
+                normalizedTaxRegime, taxResidency == null ? TaxResidency.UNKNOWN : taxResidency,
+                incomeTaxStatus == null ? IncomeTaxStatus.UNKNOWN : incomeTaxStatus,
+                normalizeCodes(selfWithholdingScopes, 100, "selfWithholdingScope"),
+                normalizeOptional(fiscalEvidenceReference, 500, "fiscalEvidenceReference"), requiredRoles, active);
     }
 
     public ThirdParty update(PersonType personType, String fullName, String businessName, String tradeName,
@@ -156,7 +180,8 @@ public final class ThirdParty {
             Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles) {
         return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
                 fullName, businessName, tradeName, email, phone, address, municipalityCode, legacyCiiuCodes(ciiuCode),
-                taxResponsibilities, taxRegime, roles, active);
+                taxResponsibilities, taxRegime, taxResidency, incomeTaxStatus, selfWithholdingScopes,
+                fiscalEvidenceReference, roles, active);
     }
 
     public ThirdParty update(PersonType personType, String fullName, String businessName, String tradeName,
@@ -164,19 +189,33 @@ public final class ThirdParty {
             Set<String> taxResponsibilities, TaxRegime taxRegime, Set<ThirdPartyRole> roles) {
         return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
                 fullName, businessName, tradeName, email, phone, address, municipalityCode, ciiuCodes,
-                taxResponsibilities, taxRegime, roles, active);
+                taxResponsibilities, taxRegime, taxResidency, incomeTaxStatus, selfWithholdingScopes,
+                fiscalEvidenceReference, roles, active);
+    }
+
+    public ThirdParty update(PersonType personType, String fullName, String businessName, String tradeName,
+            String email, String phone, String address, String municipalityCode, Set<String> ciiuCodes,
+            Set<String> taxResponsibilities, TaxRegime taxRegime, TaxResidency taxResidency,
+            IncomeTaxStatus incomeTaxStatus, Set<String> selfWithholdingScopes, String fiscalEvidenceReference,
+            Set<ThirdPartyRole> roles) {
+        return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
+                fullName, businessName, tradeName, email, phone, address, municipalityCode, ciiuCodes,
+                taxResponsibilities, taxRegime, taxResidency, incomeTaxStatus, selfWithholdingScopes,
+                fiscalEvidenceReference, roles, active);
     }
 
     public ThirdParty activate() {
         return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
                 fullName, businessName, tradeName, email, phone, address, municipalityCode, ciiuCodes,
-                taxResponsibilities, taxRegime, roles, true);
+                taxResponsibilities, taxRegime, taxResidency, incomeTaxStatus, selfWithholdingScopes,
+                fiscalEvidenceReference, roles, true);
     }
 
     public ThirdParty deactivate() {
         return restore(id, companyId, personType, identificationTypeCode, identificationNumber, verificationDigit,
                 fullName, businessName, tradeName, email, phone, address, municipalityCode, ciiuCodes,
-                taxResponsibilities, taxRegime, roles, false);
+                taxResponsibilities, taxRegime, taxResidency, incomeTaxStatus, selfWithholdingScopes,
+                fiscalEvidenceReference, roles, false);
     }
 
     public UUID id() {
@@ -246,6 +285,14 @@ public final class ThirdParty {
     public TaxRegime taxRegime() {
         return taxRegime;
     }
+
+    public TaxResidency taxResidency() { return taxResidency; }
+
+    public IncomeTaxStatus incomeTaxStatus() { return incomeTaxStatus; }
+
+    public Set<String> selfWithholdingScopes() { return selfWithholdingScopes; }
+
+    public String fiscalEvidenceReference() { return fiscalEvidenceReference; }
 
     public Set<ThirdPartyRole> roles() {
         return roles;
@@ -341,6 +388,16 @@ public final class ThirdParty {
             if (code != null) {
                 normalized.add(code);
             }
+        }
+        return Collections.unmodifiableSet(normalized);
+    }
+
+    private static Set<String> normalizeCodes(Set<String> values, int maxLength, String fieldName) {
+        if (values == null || values.isEmpty()) return Set.of();
+        java.util.TreeSet<String> normalized = new java.util.TreeSet<>();
+        for (String value : values) {
+            String code = normalizeOptional(value, maxLength, fieldName);
+            if (code != null) normalized.add(code.toUpperCase(java.util.Locale.ROOT));
         }
         return Collections.unmodifiableSet(normalized);
     }

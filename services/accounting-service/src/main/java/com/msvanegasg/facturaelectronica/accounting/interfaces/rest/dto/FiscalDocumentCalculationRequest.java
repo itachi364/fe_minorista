@@ -18,5 +18,13 @@ public record FiscalDocumentCalculationRequest(
         String municipalityCode,
         AccountingSourceType sourceType,
         UUID sourceId,
-        @NotEmpty List<@Valid FiscalDocumentLineRequest> lines) {
+        @NotEmpty List<@Valid FiscalDocumentLineRequest> lines,
+        UUID contractId,
+        UUID paymentId) {
+
+    public FiscalDocumentCalculationRequest(FiscalOperationType operationType, UUID thirdPartyId,
+            LocalDate operationDate, String municipalityCode, AccountingSourceType sourceType, UUID sourceId,
+            List<FiscalDocumentLineRequest> lines) {
+        this(operationType, thirdPartyId, operationDate, municipalityCode, sourceType, sourceId, lines, null, null);
+    }
 }

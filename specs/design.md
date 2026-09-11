@@ -1,6 +1,6 @@
 # Design: Backend Clean Architecture basado en microservicios
 
-> Estado SDD 2026-09-09: este documento contiene decisiones implementadas y evoluciones objetivo. `sdd-status.md` clasifica el estado ejecutable y `roadmap.md` ordena el trabajo pendiente. Las secciones historicas se conservan para trazabilidad, no como declaracion automatica de disponibilidad.
+> Estado SDD 2026-09-11: este documento contiene decisiones implementadas y evoluciones objetivo. `sdd-status.md` clasifica el estado ejecutable y `roadmap.md` ordena el trabajo pendiente. Las secciones historicas se conservan para trazabilidad, no como declaracion automatica de disponibilidad.
 
 ## Decision tecnica
 
@@ -22,7 +22,7 @@ Brechas objetivo:
 
 - Integracion operativa completa Cognito -> identidad/permisos internos y validacion del flujo productivo; la base Terraform, sesiones BFF, cookies y CSRF de TASK-164 a TASK-174 ya fue implementada.
 - Produccion DIAN certificada por empresa mediante SOAP WCF, respuestas normalizadas y fixtures/E2E aprobados: TASK-273, TASK-274, TASK-276 y TASK-264.
-- Culminacion fiscal, portal contador, credenciales temporales y correo: TASK-309 a TASK-315, TASK-290, TASK-291, TASK-294 y TASK-295.
+- Portal contador, credenciales temporales y correo: TASK-290, TASK-291, TASK-294 y TASK-295. La culminacion fiscal TASK-309 a TASK-315 esta implementada.
 - OpenAPI versionado por servicio/BFF como artefacto controlado; Springdoc habilita actualmente documentacion runtime.
 
 ## Microservicios implementados y objetivo
@@ -3780,12 +3780,20 @@ Las migraciones Flyway versionadas son aditivas e inmutables. Las migraciones ya
 - Atomicidad e idempotencia frente a reintentos y fallos entre servicios.
 - Reconciliacion de snapshots, asientos, cuentas por pagar, certificados y resumen de periodo.
 
-### Estado de implementacion al 2026-09-10
+### Estado de implementacion al 2026-09-11
 
-- TASK-309 y TASK-312 estan implementadas: gobierno juridico y carga ReteICA manual/CSV exclusiva de ROOT.
-- TASK-310/TASK-311 implementan perfiles efectivos por fecha, documentos por linea y acumulacion diaria atomica e idempotente; siguen pendientes perfiles tipados completos, matriz nacional exhaustiva y acumulaciones distintas del dia.
-- TASK-313/TASK-314 implementan mapeo empresarial, conciliacion mensual, reverso, cierre y certificado CSV versionado; siguen pendientes presentacion NIIF, movimientos compensatorios, formato legal final y compensacion distribuida.
-- TASK-315 expone estos flujos en la SPA y BFF con permisos; quedan pendientes metricas fiscales dedicadas y E2E de fallos distribuidos.
+- TASK-309 y TASK-312 gobiernan la vigencia juridica y la carga ReteICA manual/CSV exclusiva de ROOT.
+- TASK-310/TASK-311 completan perfiles efectivos y tipados, calculo por linea, bases AIU/bruta/IVA, causacion y acumulaciones por operacion, contrato, dia, mes y ano. El catalogo nacional distingue cobertura verificada de conceptos pendientes; estos ultimos no habilitan una tarifa y cierran en `BLOCKED` si no hay regla aplicable.
+- TASK-313 coordina la confirmacion de compra dentro de una transaccion local de `accounting-service`: calculo, snapshots, acumulados, asiento, cuenta por pagar y estado idempotente quedan completos o se revierten. `inventory-service` consume un unico contrato, evitando confirmaciones parciales por llamadas HTTP independientes.
+- TASK-314 agrega mapeo de presentacion por grupo, auxiliar Formulario 350, movimiento contable compensatorio y certificado con identidades legales, version, clave privada por empresa y evento `WithholdingCertificateGenerated`. El evento deja la notificacion pendiente; TASK-295 sigue siendo responsable de entregar el correo.
+- TASK-315 expone las capacidades en SPA/BFF y agrega metricas Micrometer de resultado, bloqueo, tipo y duracion sin dimensiones sensibles. La fase 39 queda cerrada como plataforma; la publicacion de nuevas tarifas verificadas continua como gobierno operativo del catalogo y no se infiere desde conceptos `REQUIRES_REVIEW`.
+
+#### Context7 evidence TASK-315
+
+- Library/tool: HikariCP.
+  - Topic consulted: esquema predeterminado para conexiones JDBC agrupadas.
+  - Relevant finding: la propiedad `schema` establece el esquema por defecto en bases que soportan esquemas; si se omite se conserva el valor predeterminado del driver.
+  - Decision impact: `accounting-service` configura `spring.datasource.hikari.schema=accounting`, de modo que JPA, Flyway y `JdbcTemplate` resuelven el mismo esquema. Una prueba de contexto verifica `current_schema()` y consulta una tabla V021.
 
 ### Evidencia normativa y tecnica TASK-308
 

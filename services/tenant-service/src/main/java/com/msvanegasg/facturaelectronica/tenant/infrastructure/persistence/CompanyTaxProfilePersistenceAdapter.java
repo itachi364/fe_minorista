@@ -57,6 +57,7 @@ public class CompanyTaxProfilePersistenceAdapter implements CompanyTaxProfileRep
                         + "financial_reporting_group, tax_regime, rut_responsibilities, vat_responsible, "
                         + "withholding_agent, vat_withholding_agent, ica_withholding_agent, large_taxpayer, "
                         + "self_withholding, simple_regime, ica_municipality_code, ciiu_codes, updated_by, "
+                        + "tax_residency, income_tax_status, self_withholding_scopes, fiscal_evidence_reference, "
                         + "effective_from) SELECT ?, profile.company_id, profile.company_size, "
                         + "profile.financial_reporting_group, profile.tax_regime, "
                         + "COALESCE((SELECT array_agg(item.responsibility_code ORDER BY item.responsibility_code) "
@@ -66,7 +67,9 @@ public class CompanyTaxProfilePersistenceAdapter implements CompanyTaxProfileRep
                         + "profile.self_withholding, profile.simple_regime, profile.ica_municipality_code, "
                         + "COALESCE((SELECT array_agg(item.ciiu_code ORDER BY item.ciiu_code) "
                         + "FROM tenant.company_tax_profile_ciiu item WHERE item.company_id = profile.company_id), "
-                        + "ARRAY[]::VARCHAR(10)[]), profile.updated_by, profile.updated_at "
+                        + "ARRAY[]::VARCHAR(10)[]), profile.updated_by, "
+                        + "profile.tax_residency, profile.income_tax_status, profile.self_withholding_scopes, "
+                        + "profile.fiscal_evidence_reference, profile.updated_at "
                         + "FROM tenant.company_tax_profile profile WHERE profile.company_id = ?",
                 UUID.randomUUID(), saved.companyId());
         return saved;
@@ -80,6 +83,8 @@ public class CompanyTaxProfilePersistenceAdapter implements CompanyTaxProfileRep
                 rs.getBoolean("ica_withholding_agent"), rs.getBoolean("large_taxpayer"),
                 rs.getBoolean("self_withholding"), rs.getBoolean("simple_regime"),
                 rs.getString("ica_municipality_code"), stringSet(rs.getArray("ciiu_codes")),
+                rs.getString("tax_residency"), rs.getString("income_tax_status"),
+                stringSet(rs.getArray("self_withholding_scopes")), rs.getString("fiscal_evidence_reference"),
                 rs.getObject("updated_by", UUID.class), rs.getTimestamp("effective_from").toInstant());
     }
 
@@ -96,8 +101,9 @@ public class CompanyTaxProfilePersistenceAdapter implements CompanyTaxProfileRep
                 profile.financialReportingGroup(), profile.taxRegime(), profile.rutResponsibilities(),
                 profile.vatResponsible(), profile.withholdingAgent(), profile.vatWithholdingAgent(),
                 profile.icaWithholdingAgent(), profile.largeTaxpayer(), profile.selfWithholding(),
-                profile.simpleRegime(), profile.icaMunicipalityCode(), profile.ciiuCodes(), profile.updatedBy(),
-                profile.updatedAt());
+                profile.simpleRegime(), profile.icaMunicipalityCode(), profile.ciiuCodes(), profile.taxResidency(),
+                profile.incomeTaxStatus(), profile.selfWithholdingScopes(), profile.fiscalEvidenceReference(),
+                profile.updatedBy(), profile.updatedAt());
     }
 
     private CompanyTaxProfile toDomain(CompanyTaxProfileJpaEntity entity) {
@@ -105,7 +111,8 @@ public class CompanyTaxProfilePersistenceAdapter implements CompanyTaxProfileRep
                 entity.getFinancialReportingGroup(), entity.getTaxRegime(), entity.getRutResponsibilities(),
                 entity.isVatResponsible(), entity.isWithholdingAgent(), entity.isVatWithholdingAgent(),
                 entity.isIcaWithholdingAgent(), entity.isLargeTaxpayer(), entity.isSelfWithholding(),
-                entity.isSimpleRegime(), entity.getIcaMunicipalityCode(), entity.getCiiuCodes(), entity.getUpdatedBy(),
-                entity.getUpdatedAt());
+                entity.isSimpleRegime(), entity.getIcaMunicipalityCode(), entity.getCiiuCodes(),
+                entity.getTaxResidency(), entity.getIncomeTaxStatus(), entity.getSelfWithholdingScopes(),
+                entity.getFiscalEvidenceReference(), entity.getUpdatedBy(), entity.getUpdatedAt());
     }
 }

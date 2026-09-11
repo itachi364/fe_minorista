@@ -31,7 +31,9 @@ import com.msvanegasg.facturaelectronica.accounting.application.port.out.Withhol
 import com.msvanegasg.facturaelectronica.accounting.domain.model.AccountingSourceType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.CompanyTaxProfile;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalOperationType;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalAccumulationScope;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalCalculationBase;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalTriggerMoment;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalThresholdOperator;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalParameter;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalThresholdTreatment;
@@ -59,11 +61,12 @@ class WithholdingCalculationServiceTest {
         assertThat(result.grossAmount()).isEqualByComparingTo("1190000.00");
         assertThat(result.withholdingTotal()).isEqualByComparingTo("28500.00");
         assertThat(result.netPayable()).isEqualByComparingTo("1161500.00");
-        assertThat(result.items()).hasSize(1);
-        assertThat(result.items().get(0).withholdingType()).isEqualTo(WithholdingType.RETEIVA);
-        assertThat(result.items().get(0).baseAmount()).isEqualByComparingTo("190000.00");
-        assertThat(result.items().get(0).amount()).isEqualByComparingTo("28500.00");
-        assertThat(result.items().get(0).decision()).isEqualTo(WithholdingDecision.APPLIED);
+        assertThat(result.items()).filteredOn(item -> item.withholdingType() == WithholdingType.RETEIVA)
+                .singleElement().satisfies(item -> {
+                    assertThat(item.baseAmount()).isEqualByComparingTo("190000.00");
+                    assertThat(item.amount()).isEqualByComparingTo("28500.00");
+                    assertThat(item.decision()).isEqualTo(WithholdingDecision.APPLIED);
+                });
     }
 
     @Test
@@ -89,9 +92,12 @@ class WithholdingCalculationServiceTest {
                 new ThirdPartyFiscalProfileCommand(THIRD_PARTY_ID, "NO_RESPONSABLE_IVA", Set.of("R-99-PN"),
                         "11001", "6201", true)));
 
-        assertThat(result.items()).hasSize(1);
-        assertThat(result.items().get(0).withholdingType()).isEqualTo(WithholdingType.RETEIVA);
-        assertThat(result.items().get(0).decision()).isEqualTo(WithholdingDecision.NOT_APPLIED);
+        assertThat(result.items()).extracting("withholdingType", "decision")
+                .contains(
+                        org.assertj.core.groups.Tuple.tuple(WithholdingType.RETEFUENTE,
+                                WithholdingDecision.BLOCKED),
+                        org.assertj.core.groups.Tuple.tuple(WithholdingType.RETEIVA,
+                                WithholdingDecision.NOT_APPLIED));
     }
 
     @Test
@@ -103,9 +109,12 @@ class WithholdingCalculationServiceTest {
                 THIRD_PARTY_ID, "PURCHASE_GENERAL", OPERATION_DATE, money("1000000"), money("190000"),
                 "11001", AccountingSourceType.PURCHASE, SOURCE_ID, companyProfile(), simpleSupplier()));
 
-        assertThat(context.snapshots.snapshots).hasSize(1);
-        assertThat(context.snapshots.snapshots.get(0).sourceId()).isEqualTo(SOURCE_ID);
-        assertThat(context.snapshots.snapshots.get(0).withholdingType()).isEqualTo(WithholdingType.RETEIVA);
+        assertThat(context.snapshots.snapshots).hasSize(3);
+        assertThat(context.snapshots.snapshots).allSatisfy(snapshot ->
+                assertThat(snapshot.sourceId()).isEqualTo(SOURCE_ID));
+        assertThat(context.snapshots.snapshots).filteredOn(snapshot ->
+                snapshot.withholdingType() == WithholdingType.RETEIVA).singleElement().satisfies(snapshot ->
+                        assertThat(snapshot.decision()).isEqualTo(WithholdingDecision.APPLIED));
     }
 
     @Test
@@ -121,9 +130,9 @@ class WithholdingCalculationServiceTest {
         context.rules.rules.clear();
         WithholdingCalculationResult second = context.service().calculate(command);
 
-        assertThat(context.snapshots.snapshots).hasSize(1);
+        assertThat(context.snapshots.snapshots).hasSize(3);
         assertThat(second.withholdingTotal()).isEqualByComparingTo(first.withholdingTotal());
-        assertThat(second.items()).extracting("decision").containsExactly(WithholdingDecision.APPLIED);
+        assertThat(second.items()).extracting("decision").contains(WithholdingDecision.APPLIED);
     }
 
     @Test
@@ -136,8 +145,9 @@ class WithholdingCalculationServiceTest {
                         "PURCHASE_GENERAL", OPERATION_DATE, money("1000000"), money("190000"), "11001",
                         null, null, null, simpleSupplier()));
 
-        assertThat(result.items()).singleElement().satisfies(item ->
-                assertThat(item.amount()).isEqualByComparingTo("28500.00"));
+        assertThat(result.items()).filteredOn(item -> item.withholdingType() == WithholdingType.RETEIVA)
+                .singleElement().satisfies(item ->
+                        assertThat(item.amount()).isEqualByComparingTo("28500.00"));
     }
 
     @Test
@@ -167,11 +177,13 @@ class WithholdingCalculationServiceTest {
                 COMPANY_ID, FiscalOperationType.EXPENSE, THIRD_PARTY_ID, "SERVICE", OPERATION_DATE,
                 money("104748"), BigDecimal.ZERO, "11001", null, null, companyProfile(), ordinarySupplier()));
 
-        assertThat(result.items()).hasSize(1);
-        assertThat(result.items().get(0).amount()).isEqualByComparingTo("4189.92");
-        assertThat(result.items().get(0).ruleId()).isEqualTo(ruleId);
-        assertThat(result.items().get(0).parameterVersion()).isEqualTo("TEST-2026");
-        assertThat(result.items().get(0).legalReference()).isEqualTo("NORMA");
+        assertThat(result.items()).filteredOn(item -> item.withholdingType() == WithholdingType.RETEFUENTE)
+                .singleElement().satisfies(item -> {
+                    assertThat(item.amount()).isEqualByComparingTo("4189.92");
+                    assertThat(item.ruleId()).isEqualTo(ruleId);
+                    assertThat(item.parameterVersion()).isEqualTo("TEST-2026");
+                    assertThat(item.legalReference()).isEqualTo("NORMA");
+                });
     }
 
     @Test
@@ -224,10 +236,12 @@ class WithholdingCalculationServiceTest {
                 COMPANY_ID, FiscalOperationType.PURCHASE, THIRD_PARTY_ID, "PURCHASE_GENERAL", OPERATION_DATE,
                 money("1000000"), money("190000"), "11001", null, null, profile, ordinarySupplier()));
 
-        assertThat(result.items()).singleElement().satisfies(item -> {
-            assertThat(item.withholdingType()).isEqualTo(WithholdingType.RETEICA);
-            assertThat(item.decision()).isEqualTo(WithholdingDecision.BLOCKED);
-        });
+        assertThat(result.items()).extracting("withholdingType", "decision")
+                .contains(
+                        org.assertj.core.groups.Tuple.tuple(WithholdingType.RETEFUENTE,
+                                WithholdingDecision.BLOCKED),
+                        org.assertj.core.groups.Tuple.tuple(WithholdingType.RETEICA,
+                                WithholdingDecision.BLOCKED));
     }
 
     @Test
@@ -278,10 +292,64 @@ class WithholdingCalculationServiceTest {
                 money("30"), BigDecimal.ZERO, "11001", null, null, companyProfile(), ordinarySupplier(),
                 money("80"), BigDecimal.ZERO, Map.of()));
 
-        assertThat(result.items()).singleElement().satisfies(item -> {
+        assertThat(result.items()).filteredOn(item -> item.withholdingType() == WithholdingType.RETEFUENTE)
+                .singleElement().satisfies(item -> {
             assertThat(item.previousAccumulatedBase()).isEqualByComparingTo("80.00");
             assertThat(item.cumulativeBase()).isEqualByComparingTo("110.00");
             assertThat(item.amount()).isEqualByComparingTo("11.00");
+                });
+    }
+
+    @Test
+    void calculatesAiuBaseUsingContractAccumulation() {
+        TestContext context = new TestContext();
+        UUID contractId = UUID.randomUUID();
+        context.rules.rules.add(advancedRule(FiscalCalculationBase.AIU,
+                FiscalAccumulationScope.CONTRACT, null));
+
+        CalculateWithholdingsCommand command = new CalculateWithholdingsCommand(COMPANY_ID,
+                FiscalOperationType.PURCHASE, THIRD_PARTY_ID, "PURCHASE_GENERAL", OPERATION_DATE,
+                money("1000000"), money("190000"), "11001", null, null, companyProfile(), ordinarySupplier(),
+                BigDecimal.ZERO, BigDecimal.ZERO, Map.of(), money("200000"), money("1190000"), contractId,
+                Map.of(FiscalAccumulationScope.CONTRACT,
+                        new com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalAccumulationTotals(
+                                money("400000"), money("76000"), money("80000"), money("476000"), Map.of())));
+
+        WithholdingCalculationResult result = context.service().calculate(command);
+
+        assertThat(result.items()).singleElement().satisfies(item -> {
+            assertThat(item.baseAmount()).isEqualByComparingTo("200000.00");
+            assertThat(item.previousAccumulatedBase()).isEqualByComparingTo("80000.00");
+            assertThat(item.cumulativeBase()).isEqualByComparingTo("280000.00");
+            assertThat(item.amount()).isEqualByComparingTo("7000.00");
+        });
+    }
+
+    @Test
+    void blocksContractRuleWhenContractIdentifierIsMissing() {
+        TestContext context = new TestContext();
+        context.rules.rules.add(advancedRule(FiscalCalculationBase.TAXABLE_BASE,
+                FiscalAccumulationScope.CONTRACT, null));
+
+        WithholdingCalculationResult result = context.service().calculate(command(ordinarySupplier()));
+
+        assertThat(result.items()).singleElement().satisfies(item -> {
+            assertThat(item.decision()).isEqualTo(WithholdingDecision.BLOCKED);
+            assertThat(item.reason()).contains("contractId");
+        });
+    }
+
+    @Test
+    void blocksRuleWhenRequiredIncomeTaxStatusIsUnknown() {
+        TestContext context = new TestContext();
+        context.rules.rules.add(advancedRule(FiscalCalculationBase.TAXABLE_BASE,
+                FiscalAccumulationScope.OPERATION, "DECLARANT"));
+
+        WithholdingCalculationResult result = context.service().calculate(command(ordinarySupplier()));
+
+        assertThat(result.items()).singleElement().satisfies(item -> {
+            assertThat(item.decision()).isEqualTo(WithholdingDecision.BLOCKED);
+            assertThat(item.reason()).contains("calidad de declarante");
         });
     }
 
@@ -292,8 +360,19 @@ class WithholdingCalculationServiceTest {
     }
 
     private static CompanyTaxProfileCommand companyProfile() {
-        return new CompanyTaxProfileCommand("ORDINARIO", Set.of("O-13", "O-23"), true, true, false, false,
+        return new CompanyTaxProfileCommand("ORDINARIO", Set.of("O-13"), true, true, false, false,
                 false, "11001", Set.of("6201"));
+    }
+
+    private static WithholdingRule advancedRule(FiscalCalculationBase calculationBase,
+            FiscalAccumulationScope accumulationScope, String requiredIncomeTaxStatus) {
+        return new WithholdingRule(UUID.randomUUID(), null, "TEST-ADVANCED", FiscalOperationType.PURCHASE,
+                "PURCHASE_GENERAL", WithholdingType.RETEFUENTE, BigDecimal.ZERO, money("0.025000"), true,
+                false, null, null, null, null, LocalDate.of(2025, 1, 1), null, 10, true,
+                FiscalThresholdUnit.COP, BigDecimal.ZERO, FiscalThresholdOperator.GTE, calculationBase,
+                FiscalThresholdTreatment.FULL_AMOUNT, WithholdingDecision.APPLIED, false, false,
+                "NORMA", "https://example.test", 20, true, null, null, FiscalTriggerMoment.ACCRUAL,
+                accumulationScope, null, null, requiredIncomeTaxStatus, null);
     }
 
     private static ThirdPartyFiscalProfileCommand simpleSupplier() {

@@ -39,33 +39,25 @@ class PurchaseAccountingHttpAdapterTest {
     }
 
     @Test
-    void postsAccountingEntryAndPayableForCreditPurchase() throws IOException {
-        CapturingHandler fiscalHandler = new CapturingHandler(200,
-                "{\"lines\":[{\"items\":[{\"withholdingType\":\"RETEFUENTE\",\"decision\":\"APPLIED\",\"amount\":1125.00}]}],\"grossAmount\":53550.00,\"withholdingTotal\":1125.00,\"netPayable\":52425.00}");
-        CapturingHandler entryHandler = new CapturingHandler(201);
-        CapturingHandler payableHandler = new CapturingHandler(201);
-        startServer(fiscalHandler, entryHandler, payableHandler);
+    void postsOneAtomicFiscalConfirmationForCreditPurchase() throws IOException {
+        CapturingHandler confirmationHandler = new CapturingHandler(200, "{\"status\":\"COMPLETED\"}");
+        startServer(confirmationHandler);
 
         adapter().applyConfirmedPurchase(confirmedPurchase(), USER_ID);
 
-        assertThat(entryHandler.requestBody).contains("\"eventType\":\"PURCHASE_CONFIRMED\"");
-        assertThat(entryHandler.requestBody).contains("\"sourceType\":\"PURCHASE\"");
-        assertThat(entryHandler.requestBody).contains("\"sourceId\":\"" + PURCHASE_ID + "\"");
-        assertThat(entryHandler.requestBody).contains("\"entryDate\":\"2026-08-18\"");
-        assertThat(entryHandler.requestBody).contains("\"retefuente\":1125.00");
-        assertThat(entryHandler.requestBody).contains("\"netPayable\":52425.00");
-        assertThat(entryHandler.companyId).isEqualTo(COMPANY_ID.toString());
-        assertThat(payableHandler.requestBody).contains("\"sourceType\":\"PURCHASE\"");
-        assertThat(payableHandler.requestBody).contains("\"sourceId\":\"" + PURCHASE_ID + "\"");
-        assertThat(payableHandler.requestBody).contains("\"totalAmount\":52425.00");
-        assertThat(fiscalHandler.requestBody).contains("\"conceptCode\":\"ANY\"");
-        assertThat(fiscalHandler.requestBody).contains("\"lines\":[");
-        assertThat(fiscalHandler.requestBody).contains("\"sourceId\":\"" + PURCHASE_ID + "\"");
+        assertThat(confirmationHandler.requestBody).contains("\"sourceId\":\"" + PURCHASE_ID + "\"");
+        assertThat(confirmationHandler.requestBody).contains("\"operationDate\":\"2026-08-18\"");
+        assertThat(confirmationHandler.requestBody).contains("\"creditPurchase\":true");
+        assertThat(confirmationHandler.requestBody).contains("\"dueDate\":\"2026-12-31\"");
+        assertThat(confirmationHandler.requestBody).contains("\"subtotal\":45000.00");
+        assertThat(confirmationHandler.requestBody).contains("\"conceptCode\":\"ANY\"");
+        assertThat(confirmationHandler.requestBody).contains("\"lines\":[");
+        assertThat(confirmationHandler.companyId).isEqualTo(COMPANY_ID.toString());
     }
 
     @Test
     void propagatesAccountingFailuresSoPurchaseFlowIsVerifiable() throws IOException {
-        startServer(new CapturingHandler(500), new CapturingHandler(201), new CapturingHandler(201));
+        startServer(new CapturingHandler(500));
 
         assertThatThrownBy(() -> adapter().applyConfirmedPurchase(confirmedPurchase(), USER_ID))
                 .isInstanceOf(HttpServerErrorException.class);
@@ -74,8 +66,7 @@ class PurchaseAccountingHttpAdapterTest {
     @Test
     void exposesFiscalRejectionAsBusinessError() throws IOException {
         startServer(new CapturingHandler(400,
-                "{\"message\":\"Falta un catalogo ReteICA publicado para el municipio.\"}"),
-                new CapturingHandler(201), new CapturingHandler(201));
+                "{\"message\":\"Falta un catalogo ReteICA publicado para el municipio.\"}"));
 
         assertThatThrownBy(() -> adapter().applyConfirmedPurchase(confirmedPurchase(), USER_ID))
                 .isInstanceOf(IllegalStateException.class)
@@ -86,12 +77,9 @@ class PurchaseAccountingHttpAdapterTest {
         return new PurchaseAccountingHttpAdapter(RestClient.builder(), "http://localhost:" + server.getAddress().getPort());
     }
 
-    private void startServer(CapturingHandler fiscalHandler, CapturingHandler entryHandler,
-            CapturingHandler payableHandler) throws IOException {
+    private void startServer(CapturingHandler confirmationHandler) throws IOException {
         server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/api/v1/fiscal-calculations/withholdings", fiscalHandler::handle);
-        server.createContext("/api/v1/accounting-entries", entryHandler::handle);
-        server.createContext("/api/v1/accounts-payable", payableHandler::handle);
+        server.createContext("/api/v1/fiscal-confirmations/purchases", confirmationHandler::handle);
         server.start();
     }
 

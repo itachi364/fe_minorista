@@ -116,6 +116,8 @@ public class CompanyManagementService implements ManageCompanyUseCase {
                 profile.taxRegime(), profile.rutResponsibilities(), profile.vatResponsible(),
                 profile.withholdingAgent(), profile.vatWithholdingAgent(), profile.icaWithholdingAgent(),
                 profile.largeTaxpayer(), profile.selfWithholding(), profile.simpleRegime(),
-                profile.icaMunicipalityCode(), profile.ciiuCodes(), profile.updatedBy(), now);
+                profile.icaMunicipalityCode(), profile.ciiuCodes(), profile.taxResidency(),
+                profile.incomeTaxStatus(), profile.selfWithholdingScopes(), profile.fiscalEvidenceReference(),
+                profile.updatedBy(), now);
     }
 }

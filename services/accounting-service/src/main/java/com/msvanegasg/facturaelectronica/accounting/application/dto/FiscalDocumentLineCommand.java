@@ -8,5 +8,13 @@ public record FiscalDocumentLineCommand(
         String conceptCode,
         String ciiuCode,
         BigDecimal taxableBaseAmount,
-        BigDecimal taxAmount) {
+        BigDecimal taxAmount,
+        BigDecimal aiuAmount,
+        BigDecimal grossPaymentAmount) {
+
+    public FiscalDocumentLineCommand(UUID lineId, String conceptCode, String ciiuCode,
+            BigDecimal taxableBaseAmount, BigDecimal taxAmount) {
+        this(lineId, conceptCode, ciiuCode, taxableBaseAmount, taxAmount, BigDecimal.ZERO,
+                taxableBaseAmount == null || taxAmount == null ? BigDecimal.ZERO : taxableBaseAmount.add(taxAmount));
+    }
 }

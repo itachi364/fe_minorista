@@ -1854,7 +1854,7 @@ Notas:
 
 ## TASK-289 a TASK-295 infraestructura objetivo
 
-Estado mixto: perfil fiscal, CIIU y primera vertical de reglas fiscales estan IMPLEMENTED; perfiles/portal contador, contrasenas temporales y correo permanecen TARGET en TASK-290, TASK-291, TASK-294 y TASK-295.
+Estado mixto: perfil fiscal, CIIU y motor fiscal gobernado estan IMPLEMENTED; perfiles/portal contador, contrasenas temporales y correo permanecen TARGET en TASK-290, TASK-291, TASK-294 y TASK-295.
 
 ### Correo y notificaciones
 

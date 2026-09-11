@@ -52,6 +52,8 @@ public class ThirdPartyFiscalProfileHttpAdapter implements ThirdPartyFiscalProfi
             return Optional.of(new ThirdPartyFiscalProfile(response.id(), response.taxRegime(),
                     response.taxResponsibilities() == null ? Set.of() : response.taxResponsibilities(),
                     response.municipalityCode(), mergeCiiuCodes(response.ciiuCodes(), response.ciiuCode()),
+                    response.personType(), response.taxResidency(), response.incomeTaxStatus(),
+                    response.selfWithholdingScopes(), response.fiscalEvidenceReference(),
                     response.active()));
         } catch (RuntimeException exception) {
             return Optional.empty();
@@ -65,6 +67,11 @@ public class ThirdPartyFiscalProfileHttpAdapter implements ThirdPartyFiscalProfi
             String municipalityCode,
             String ciiuCode,
             Set<String> ciiuCodes,
+            String personType,
+            String taxResidency,
+            String incomeTaxStatus,
+            Set<String> selfWithholdingScopes,
+            String fiscalEvidenceReference,
             boolean active) {
     }
 

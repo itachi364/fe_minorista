@@ -54,6 +54,15 @@ public class CompanyTaxProfileJpaEntity {
     private Set<String> ciiuCodes = new HashSet<>();
     @Column(name = "updated_by")
     private UUID updatedBy;
+    @Column(name = "tax_residency", nullable = false, length = 20)
+    private String taxResidency;
+    @Column(name = "income_tax_status", nullable = false, length = 20)
+    private String incomeTaxStatus;
+    @Column(name = "self_withholding_scopes", nullable = false, columnDefinition = "varchar(100)[]")
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.ARRAY)
+    private String[] selfWithholdingScopes = new String[0];
+    @Column(name = "fiscal_evidence_reference", length = 500)
+    private String fiscalEvidenceReference;
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
@@ -65,6 +74,18 @@ public class CompanyTaxProfileJpaEntity {
             boolean vatWithholdingAgent, boolean icaWithholdingAgent, boolean largeTaxpayer, boolean selfWithholding,
             boolean simpleRegime, String icaMunicipalityCode, Set<String> ciiuCodes, UUID updatedBy,
             Instant updatedAt) {
+        this(companyId, companySize, financialReportingGroup, taxRegime, rutResponsibilities, vatResponsible,
+                withholdingAgent, vatWithholdingAgent, icaWithholdingAgent, largeTaxpayer, selfWithholding,
+                simpleRegime, icaMunicipalityCode, ciiuCodes, "UNKNOWN", "UNKNOWN", Set.of(), null, updatedBy,
+                updatedAt);
+    }
+
+    public CompanyTaxProfileJpaEntity(UUID companyId, String companySize, String financialReportingGroup,
+            String taxRegime, Set<String> rutResponsibilities, boolean vatResponsible, boolean withholdingAgent,
+            boolean vatWithholdingAgent, boolean icaWithholdingAgent, boolean largeTaxpayer, boolean selfWithholding,
+            boolean simpleRegime, String icaMunicipalityCode, Set<String> ciiuCodes, String taxResidency,
+            String incomeTaxStatus, Set<String> selfWithholdingScopes, String fiscalEvidenceReference,
+            UUID updatedBy, Instant updatedAt) {
         this.companyId = companyId;
         this.companySize = companySize;
         this.financialReportingGroup = financialReportingGroup;
@@ -79,6 +100,10 @@ public class CompanyTaxProfileJpaEntity {
         this.simpleRegime = simpleRegime;
         this.icaMunicipalityCode = icaMunicipalityCode;
         this.ciiuCodes = new HashSet<>(ciiuCodes);
+        this.taxResidency = taxResidency;
+        this.incomeTaxStatus = incomeTaxStatus;
+        this.selfWithholdingScopes = selfWithholdingScopes.toArray(String[]::new);
+        this.fiscalEvidenceReference = fiscalEvidenceReference;
         this.updatedBy = updatedBy;
         this.updatedAt = updatedAt;
     }
@@ -97,6 +122,10 @@ public class CompanyTaxProfileJpaEntity {
     public boolean isSimpleRegime() { return simpleRegime; }
     public String getIcaMunicipalityCode() { return icaMunicipalityCode; }
     public Set<String> getCiiuCodes() { return ciiuCodes; }
+    public String getTaxResidency() { return taxResidency; }
+    public String getIncomeTaxStatus() { return incomeTaxStatus; }
+    public Set<String> getSelfWithholdingScopes() { return Set.of(selfWithholdingScopes); }
+    public String getFiscalEvidenceReference() { return fiscalEvidenceReference; }
     public UUID getUpdatedBy() { return updatedBy; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

@@ -26,6 +26,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.port.out.Withhol
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.WithholdingRuleRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.CompanyTaxProfile;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalCalculationBase;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalAccumulationScope;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalParameter;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.ThirdPartyFiscalProfile;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingCalculationSnapshot;
@@ -90,8 +91,9 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
         if (!existing.isEmpty()) {
             return fromSnapshots(command, thirdPartyProfile, taxableBase, taxAmount, existing);
         }
-        List<WithholdingRule> rules = ruleRepository.findActiveRules(command.companyId(), command.operationType(),
-                command.operationDate()).stream()
+        List<WithholdingRule> candidates = ruleRepository.findActiveRules(command.companyId(), command.operationType(),
+                command.operationDate());
+        List<WithholdingRule> rules = candidates.stream()
                 .filter(rule -> rule.appliesTo(command.operationType(), command.conceptCode(), command.operationDate(),
                         companyProfile, thirdPartyProfile, operationMunicipality(command, companyProfile)))
                 .sorted(rulePrecedence())
@@ -104,6 +106,7 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
                         : null;
         List<WithholdingCalculationItemResult> items = calculateItems(command, companyProfile, thirdPartyProfile,
                 taxableBase, taxAmount, rules, uvtValue, parameterVersion);
+        items = applyMissingProfileBlocks(command, thirdPartyProfile, taxableBase, candidates, items);
         if (command.sourceType() != null && command.sourceId() != null
                 && items.stream().anyMatch(item -> item.decision() == WithholdingDecision.BLOCKED)) {
             String reasons = items.stream().filter(item -> item.decision() == WithholdingDecision.BLOCKED)
@@ -163,6 +166,18 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
                 && selected.get(WithholdingType.RETEFUENTE) == null) {
             calculated.add(notApplied(WithholdingType.RETEFUENTE, command.conceptCode(), taxableBase,
                     "La empresa compradora no esta designada como agente de retencion en la fuente."));
+        } else if (isSupplierPayment(command) && companyProfile.withholdingAgent()
+                && selected.get(WithholdingType.RETEFUENTE) == null && !thirdPartyProfile.isSimpleRegime()) {
+            calculated.add(blocked(WithholdingType.RETEFUENTE, command.conceptCode(), taxableBase,
+                    "Falta una regla nacional de retefuente verificada para el concepto y perfil fiscal."));
+        }
+        if (isSupplierPayment(command) && selected.get(WithholdingType.RETEIVA) == null) {
+            if (taxAmount.signum() == 0 || thirdPartyProfile.isNoResponsibleOrNotApplicable()) {
+                calculated.add(notApplied(WithholdingType.RETEIVA, command.conceptCode(), taxAmount, NO_VAT_REASON));
+            } else if (companyProfile.vatWithholdingAgent()) {
+                calculated.add(blocked(WithholdingType.RETEIVA, command.conceptCode(), taxAmount,
+                        "Falta una regla ReteIVA verificada para la calidad del comprador y beneficiario."));
+            }
         }
         if (companyProfile.icaWithholdingAgent() && selected.get(WithholdingType.RETEICA) == null) {
             calculated.add(thirdPartyProfile.isSimpleRegime()
@@ -175,6 +190,14 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
                 && selected.get(WithholdingType.AUTORETENCION) == null) {
             calculated.add(blocked(WithholdingType.AUTORETENCION, command.conceptCode(), taxableBase,
                     "No existe tarifa de autorretencion vigente para el CIIU propio de la empresa."));
+        }
+        if (thirdPartyProfile.isSimpleRegime()) {
+            addIfMissing(calculated, WithholdingType.RETEFUENTE,
+                    notApplied(WithholdingType.RETEFUENTE, command.conceptCode(), taxableBase,
+                            SIMPLE_EXCLUSION_REASON));
+            addIfMissing(calculated, WithholdingType.RETEICA,
+                    notApplied(WithholdingType.RETEICA, command.conceptCode(), taxableBase,
+                            SIMPLE_EXCLUSION_REASON));
         }
         if (!calculated.isEmpty()) {
             return List.copyOf(calculated);
@@ -207,10 +230,34 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
     private WithholdingCalculationItemResult calculateRule(CalculateWithholdingsCommand command,
             BigDecimal taxableBase,
             BigDecimal taxAmount, BigDecimal uvtValue, String parameterVersion, WithholdingRule rule) {
-        BigDecimal evaluatedBase = rule.calculationBase() == FiscalCalculationBase.VAT_AMOUNT ? taxAmount : taxableBase;
-        BigDecimal previousBase = rule.calculationBase() == FiscalCalculationBase.VAT_AMOUNT
-                ? money(command.previousAccumulatedTaxAmount())
-                : money(command.previousAccumulatedTaxableBase());
+        if (rule.accumulationScope() == FiscalAccumulationScope.CONTRACT && command.contractId() == null) {
+            return blocked(rule.withholdingType(), command.conceptCode(), taxableBase,
+                    "La regla exige acumulacion por contrato y falta contractId.");
+        }
+        BigDecimal evaluatedBase = switch (rule.calculationBase()) {
+            case VAT_AMOUNT -> taxAmount;
+            case AIU -> money(command.aiuAmount());
+            case GROSS_PAYMENT -> money(command.grossPaymentAmount());
+            case TAXABLE_BASE, COMPANY_INCOME -> taxableBase;
+        };
+        com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalAccumulationTotals totals =
+                command.accumulationsByScope().get(rule.accumulationScope());
+        BigDecimal previousBase;
+        Map<WithholdingType, BigDecimal> previousWithheldByType;
+        if (totals == null) {
+            previousBase = rule.calculationBase() == FiscalCalculationBase.VAT_AMOUNT
+                    ? money(command.previousAccumulatedTaxAmount())
+                    : money(command.previousAccumulatedTaxableBase());
+            previousWithheldByType = command.previousWithheldByType();
+        } else {
+            previousBase = switch (rule.calculationBase()) {
+                case VAT_AMOUNT -> money(totals.taxAmount());
+                case AIU -> money(totals.aiuAmount());
+                case GROSS_PAYMENT -> money(totals.grossPaymentAmount());
+                case TAXABLE_BASE, COMPANY_INCOME -> money(totals.taxableBase());
+            };
+            previousWithheldByType = totals.withheldByType();
+        }
         BigDecimal cumulativeBase = previousBase.add(evaluatedBase).setScale(2, RoundingMode.HALF_UP);
         if (!rule.thresholdReached(cumulativeBase, uvtValue)) {
             return new WithholdingCalculationItemResult(rule.withholdingType(), command.conceptCode(),
@@ -221,7 +268,7 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
         }
         BigDecimal cumulativeTaxable = rule.taxableAmount(cumulativeBase, uvtValue)
                 .setScale(2, RoundingMode.HALF_UP);
-        BigDecimal previousWithheld = command.previousWithheldByType()
+        BigDecimal previousWithheld = previousWithheldByType
                 .getOrDefault(rule.withholdingType(), BigDecimal.ZERO);
         BigDecimal amount = rule.decision() == WithholdingDecision.APPLIED
                 ? cumulativeTaxable.multiply(rule.rate()).subtract(previousWithheld).max(BigDecimal.ZERO)
@@ -237,6 +284,49 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
             String reason) {
         return new WithholdingCalculationItemResult(type, conceptCode, money(base), BigDecimal.ZERO.setScale(6),
                 BigDecimal.ZERO.setScale(2), null, WithholdingDecision.BLOCKED, reason);
+    }
+
+    private static void addIfMissing(List<WithholdingCalculationItemResult> items, WithholdingType type,
+            WithholdingCalculationItemResult item) {
+        if (items.stream().noneMatch(existing -> existing.withholdingType() == type)) items.add(item);
+    }
+
+    private List<WithholdingCalculationItemResult> applyMissingProfileBlocks(CalculateWithholdingsCommand command,
+            ThirdPartyFiscalProfile profile, BigDecimal taxableBase, List<WithholdingRule> candidates,
+            List<WithholdingCalculationItemResult> items) {
+        List<WithholdingCalculationItemResult> result = new ArrayList<>(items);
+        for (WithholdingRule rule : candidates) {
+            if (!candidateForConcept(rule, command) || result.stream().anyMatch(item ->
+                    item.withholdingType() == rule.withholdingType() && item.decision() == WithholdingDecision.APPLIED)) {
+                continue;
+            }
+            String missing = null;
+            if (rule.requiredThirdPartyPersonType() != null && "UNKNOWN".equals(profile.personType())) {
+                missing = "tipo de persona del tercero";
+            } else if (rule.requiredThirdPartyTaxResidency() != null && "UNKNOWN".equals(profile.taxResidency())) {
+                missing = "residencia fiscal del tercero";
+            } else if (rule.requiredThirdPartyIncomeTaxStatus() != null && "UNKNOWN".equals(profile.incomeTaxStatus())) {
+                missing = "calidad de declarante del tercero";
+            } else if (rule.requiredThirdPartySelfWithholdingScope() != null
+                    && profile.selfWithholdingScopes().isEmpty()) {
+                missing = "alcance de autorretencion del tercero";
+            }
+            if (missing != null) {
+                WithholdingType type = rule.withholdingType();
+                result.removeIf(item -> item.withholdingType() == type);
+                result.add(blocked(type, command.conceptCode(), taxableBase,
+                        "Falta definir " + missing + " en el perfil fiscal vigente."));
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    private static boolean candidateForConcept(WithholdingRule rule, CalculateWithholdingsCommand command) {
+        boolean concept = rule.conceptCode() == null || rule.conceptCode().isBlank()
+                || "ANY".equals(rule.conceptCode()) || Objects.equals(rule.conceptCode(), command.conceptCode());
+        return rule.active() && rule.published() && rule.operationType() == command.operationType() && concept
+                && !command.operationDate().isBefore(rule.validFrom())
+                && (rule.validTo() == null || !command.operationDate().isAfter(rule.validTo()));
     }
 
     private BigDecimal resolveUvt(CalculateWithholdingsCommand command, List<WithholdingRule> rules) {
@@ -323,19 +413,24 @@ public class WithholdingCalculationService implements CalculateWithholdingsUseCa
         return new CompanyTaxProfile(command.taxRegime(), command.rutResponsibilities(), command.vatResponsible(),
                 command.withholdingAgent(), command.largeTaxpayer(), command.selfWithholding(), command.simpleRegime(),
                 command.icaMunicipalityCode(), command.ciiuCodes(), command.vatWithholdingAgent(),
-                command.icaWithholdingAgent());
+                command.icaWithholdingAgent(), command.taxResidency(), command.incomeTaxStatus(),
+                command.selfWithholdingScopes(), command.fiscalEvidenceReference());
     }
 
     private static ThirdPartyFiscalProfile toThirdPartyProfile(ThirdPartyFiscalProfileCommand command,
             UUID fallbackThirdPartyId) {
         UUID thirdPartyId = command.thirdPartyId() == null ? fallbackThirdPartyId : command.thirdPartyId();
         return new ThirdPartyFiscalProfile(thirdPartyId, command.taxRegime(), command.taxResponsibilities(),
-                command.municipalityCode(), command.ciiuCodes(), command.active());
+                command.municipalityCode(), command.ciiuCodes(), command.personType(), command.taxResidency(),
+                command.incomeTaxStatus(), command.selfWithholdingScopes(), command.fiscalEvidenceReference(),
+                command.active());
     }
 
     private static ThirdPartyFiscalProfileCommand toCommand(ThirdPartyFiscalProfile profile) {
         return new ThirdPartyFiscalProfileCommand(profile.thirdPartyId(), profile.taxRegime(),
                 profile.taxResponsibilities(), profile.municipalityCode(), profile.ciiuCode(), profile.ciiuCodes(),
+                profile.personType(), profile.taxResidency(), profile.incomeTaxStatus(),
+                profile.selfWithholdingScopes(), profile.fiscalEvidenceReference(),
                 profile.active());
     }
 

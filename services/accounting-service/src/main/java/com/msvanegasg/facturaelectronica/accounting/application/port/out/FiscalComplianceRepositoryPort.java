@@ -6,10 +6,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalAccountMappingResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountPresentationMappingResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalAuxiliaryResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.NationalFiscalConceptResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalPeriodSummary;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalReconciliationResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalReversalResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCertificateResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCertificateIdentity;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingType;
 
 public interface FiscalComplianceRepositoryPort {
@@ -21,6 +25,18 @@ public interface FiscalComplianceRepositoryPort {
     FiscalPeriodSummary summarize(UUID companyId, int year, int month);
     FiscalPeriodSummary close(UUID companyId, int year, int month, UUID userId);
     WithholdingCertificateResult generateCertificate(UUID companyId, UUID thirdPartyId, int year, UUID userId);
+    default WithholdingCertificateResult generateCertificate(UUID companyId, UUID thirdPartyId, int year,
+            WithholdingCertificateIdentity identity, UUID userId) {
+        return generateCertificate(companyId, thirdPartyId, year, userId);
+    }
     List<WithholdingCertificateResult> findCertificates(UUID companyId, UUID thirdPartyId, int year);
     Optional<String> findCertificateContent(UUID companyId, UUID certificateId);
+    default AccountPresentationMappingResult savePresentationMapping(UUID companyId, UUID accountId,
+            String financialReportingGroup, String statementSection, String presentationConcept,
+            LocalDate validFrom, LocalDate validTo, String evidenceReference, UUID userId) {
+        throw new UnsupportedOperationException("presentation mappings are not available");
+    }
+    default List<AccountPresentationMappingResult> findPresentationMappings(UUID companyId) { return List.of(); }
+    default List<FiscalAuxiliaryResult> findForm350Auxiliary(UUID companyId, int year, int month) { return List.of(); }
+    default List<NationalFiscalConceptResult> findNationalConcepts() { return List.of(); }
 }

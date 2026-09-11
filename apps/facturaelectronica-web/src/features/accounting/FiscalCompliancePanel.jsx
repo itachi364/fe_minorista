@@ -5,23 +5,35 @@ import { Field, FormPanel, SearchableSelectField, SelectField, StatusBadge } fro
 const option = (value, label = value) => ({ value, label });
 const withholdingTypes = ['RETEFUENTE', 'RETEIVA', 'RETEICA', 'AUTORETENCION'].map((value) => option(value));
 
-export function FiscalCompliancePanel({ mappings = [], accounts = [], suppliers = [], periodSummary = null,
+export function FiscalCompliancePanel({ mappings = [], presentationMappings = [], form350Auxiliary = [], accounts = [], suppliers = [], periodSummary = null,
   reconciliation = null, certificates = [], onSaveMapping, onLoadPeriod, onClosePeriod,
-  onLoadCertificates, onGenerateCertificate, onDownloadCertificate, busy = false }) {
+  onSavePresentationMapping, onLoadCertificates, onGenerateCertificate, onDownloadCertificate, busy = false }) {
   const now = new Date();
   const [mapping, setMapping] = useState(() => ({
     withholdingType: 'RETEFUENTE', payableAccountCode: '', receivableAccountCode: '',
     validFrom: `${now.getFullYear()}-01-01`, validTo: '',
   }));
   const [period, setPeriod] = useState(() => ({ year: String(now.getFullYear()), month: String(now.getMonth() + 1) }));
-  const [certificate, setCertificate] = useState(() => ({ thirdPartyId: '', year: String(now.getFullYear()) }));
+  const [presentation, setPresentation] = useState(() => ({ accountId: '', financialReportingGroup: 'GRUPO_3',
+    statementSection: '', presentationConcept: '', validFrom: `${now.getFullYear()}-01-01`, validTo: '', evidenceReference: '' }));
+  const [certificate, setCertificate] = useState(() => ({ thirdPartyId: '', year: String(now.getFullYear()),
+    certificateCity: '', issuerIdentification: '', issuerName: '', issuerAddress: '',
+    beneficiaryIdentification: '', beneficiaryName: '' }));
   const activeAccounts = accounts.filter((item) => item.active !== false).map((item) => option(item.code, `${item.code} - ${item.name}`));
+  const presentationAccountOptions = accounts.filter((item) => item.active !== false).map((item) => option(item.id, `${item.code} - ${item.name}`));
   const supplierOptions = suppliers.filter((item) => item.active !== false).map((item) => option(item.id,
     [item.businessName || item.fullName || item.tradeName || item.legalName, item.identificationNumber]
       .filter(Boolean).join(' - ')));
   const changeMapping = (name, value) => setMapping((current) => ({ ...current, [name]: value }));
   const changePeriod = (name, value) => setPeriod((current) => ({ ...current, [name]: value }));
   const changeCertificate = (name, value) => setCertificate((current) => ({ ...current, [name]: value }));
+  const changePresentation = (name, value) => setPresentation((current) => ({ ...current, [name]: value }));
+  const changeSupplier = (value) => {
+    const supplier = suppliers.find((item) => item.id === value);
+    setCertificate((current) => ({ ...current, thirdPartyId: value,
+      beneficiaryIdentification: supplier?.identificationNumber || '',
+      beneficiaryName: supplier?.businessName || supplier?.fullName || supplier?.tradeName || '' }));
+  };
   const visiblePeriodSummary = periodSummary && Number(period.year) === periodSummary.year
     && Number(period.month) === periodSummary.month ? periodSummary : null;
   const visibleReconciliation = reconciliation && Number(period.year) === reconciliation.year
@@ -45,6 +57,24 @@ export function FiscalCompliancePanel({ mappings = [], accounts = [], suppliers 
         item.receivableAccountCode || 'No aplica', `${item.validFrom} / ${item.validTo || 'abierta'}`,
         item.active ? 'Activo' : 'Inactivo'])} rowKey={(row) => `${row[0]}-${row[3]}`} pageSize={8} />
 
+    <FormPanel title="Presentacion de estados financieros" submitLabel="Guardar presentacion"
+      busy={busy || !presentation.accountId || !presentation.statementSection || !presentation.presentationConcept}
+      onSubmit={() => onSavePresentationMapping({ ...presentation, validTo: presentation.validTo || null,
+        evidenceReference: presentation.evidenceReference || null })}>
+      <div className="form-grid three">
+        <SearchableSelectField label="Cuenta contable" value={presentation.accountId} onChange={(value) => changePresentation('accountId', value)} options={presentationAccountOptions} placeholder="Selecciona una cuenta" searchPlaceholder="Buscar por codigo o nombre" />
+        <SelectField label="Grupo de informacion financiera" value={presentation.financialReportingGroup} onChange={(value) => changePresentation('financialReportingGroup', value)} options={[option('GRUPO_1', 'Grupo 1'), option('GRUPO_2', 'Grupo 2'), option('GRUPO_3', 'Grupo 3')]} />
+        <Field label="Seccion del estado financiero" value={presentation.statementSection} onChange={(value) => changePresentation('statementSection', value)} />
+        <Field label="Concepto de presentacion" value={presentation.presentationConcept} onChange={(value) => changePresentation('presentationConcept', value)} />
+        <Field label="Vigente desde" value={presentation.validFrom} onChange={(value) => changePresentation('validFrom', value)} type="date" />
+        <Field label="Vigente hasta" value={presentation.validTo} onChange={(value) => changePresentation('validTo', value)} type="date" />
+      </div>
+    </FormPanel>
+    <DataTable title="Mapeos de presentacion" columns={['Cuenta', 'Grupo', 'Seccion', 'Concepto', 'Vigencia']}
+      rows={presentationMappings.map((item) => [item.accountCode, item.financialReportingGroup, item.statementSection,
+        item.presentationConcept, `${item.validFrom} / ${item.validTo || 'abierta'}`])}
+      rowKey={(row) => `${row[0]}-${row[1]}-${row[4]}`} pageSize={8} />
+
     <section className="tool-panel">
       <header className="panel-header">
         <div><h1>Cierre y conciliacion fiscal</h1><p>Consolida el periodo y compara retenciones calculadas con sus movimientos contables.</p></div>
@@ -66,16 +96,26 @@ export function FiscalCompliancePanel({ mappings = [], accounts = [], suppliers 
         <span><b>Diferencia</b> {money(visibleReconciliation.difference)}</span>
         <StatusBadge label="Conciliacion" value={visibleReconciliation.status} tone={Number(visibleReconciliation.difference) === 0 ? 'ok' : 'warn'} />
       </div>}
+      <DataTable title="Auxiliar para Formulario 350" columns={['Seccion', 'Concepto', 'Tipo', 'Base', 'Retenido', 'Documentos']}
+        rows={form350Auxiliary.map((item) => [item.form350Section || 'Pendiente de homologar', item.conceptCode,
+          item.withholdingType, money(item.baseAmount), money(item.withheldAmount), item.documentCount])}
+        rowKey={(row) => `${row[0]}-${row[1]}-${row[2]}`} pageSize={8} />
     </section>
 
     <section className="tool-panel">
       <header className="panel-header"><div><h1>Certificados de retencion</h1><p>Genera versiones inmutables por proveedor y ano gravable.</p></div></header>
       <div className="form-grid three">
-        <SearchableSelectField label="Proveedor" value={certificate.thirdPartyId} onChange={(value) => changeCertificate('thirdPartyId', value)} options={supplierOptions} placeholder="Selecciona un proveedor" searchPlaceholder="Buscar por nombre o documento" />
+        <SearchableSelectField label="Proveedor" value={certificate.thirdPartyId} onChange={changeSupplier} options={supplierOptions} placeholder="Selecciona un proveedor" searchPlaceholder="Buscar por nombre o documento" />
         <Field label="Ano gravable" value={certificate.year} onChange={(value) => changeCertificate('year', value)} type="number" min="2000" max="2100" />
+        <Field label="Ciudad de expedicion" value={certificate.certificateCity} onChange={(value) => changeCertificate('certificateCity', value)} />
+        <Field label="NIT del agente retenedor" value={certificate.issuerIdentification} onChange={(value) => changeCertificate('issuerIdentification', value)} />
+        <Field label="Nombre del agente retenedor" value={certificate.issuerName} onChange={(value) => changeCertificate('issuerName', value)} />
+        <Field label="Direccion del agente retenedor" value={certificate.issuerAddress} onChange={(value) => changeCertificate('issuerAddress', value)} />
+        <Field label="Identificacion del beneficiario" value={certificate.beneficiaryIdentification} onChange={(value) => changeCertificate('beneficiaryIdentification', value)} />
+        <Field label="Nombre del beneficiario" value={certificate.beneficiaryName} onChange={(value) => changeCertificate('beneficiaryName', value)} />
         <div className="field-actions">
           <button className="secondary" disabled={busy || !certificate.thirdPartyId} onClick={() => onLoadCertificates(certificate.thirdPartyId, Number(certificate.year))} type="button">Consultar</button>
-          <button className="primary" disabled={busy || !certificate.thirdPartyId} onClick={() => onGenerateCertificate(certificate.thirdPartyId, Number(certificate.year))} type="button">Generar</button>
+          <button className="primary" disabled={busy || Object.values(certificate).some((value) => !value)} onClick={() => onGenerateCertificate({ ...certificate, year: Number(certificate.year) })} type="button">Generar</button>
         </div>
       </div>
       <DataTable title="Versiones generadas" columns={['Ano', 'Version', 'Base', 'Retenido', 'Generado', 'Acciones']}

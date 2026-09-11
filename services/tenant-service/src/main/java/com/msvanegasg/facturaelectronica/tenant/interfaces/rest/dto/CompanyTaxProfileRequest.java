@@ -17,5 +17,9 @@ public record CompanyTaxProfileRequest(
         boolean selfWithholding,
         boolean simpleRegime,
         String icaMunicipalityCode,
-        Set<String> ciiuCodes) {
+        Set<String> ciiuCodes,
+        String taxResidency,
+        String incomeTaxStatus,
+        Set<String> selfWithholdingScopes,
+        String fiscalEvidenceReference) {
 }

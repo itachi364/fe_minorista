@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.Clock;
+import java.time.ZoneOffset;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +20,11 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalPeriod
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalReconciliationResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalReversalResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCertificateResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCertificateIdentity;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.FiscalComplianceRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingType;
+import com.msvanegasg.facturaelectronica.eventing.DomainEventEnvelope;
+import com.msvanegasg.facturaelectronica.eventing.EventTypes;
 
 class FiscalComplianceServiceTest {
     private static final UUID COMPANY_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
@@ -53,6 +58,26 @@ class FiscalComplianceServiceTest {
 
         assertThatThrownBy(() -> service.reverse(COMPANY_ID, UUID.randomUUID(), " ", null))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("reason");
+    }
+
+    @Test
+    void publishesCertificateEventWithPrivateDownloadPath() {
+        FakeRepository repository = new FakeRepository();
+        java.util.ArrayList<DomainEventEnvelope> events = new java.util.ArrayList<>();
+        UUID eventId = UUID.randomUUID();
+        FiscalComplianceService service = new FiscalComplianceService(repository, events::add, () -> eventId,
+                Clock.fixed(Instant.parse("2026-09-11T12:00:00Z"), ZoneOffset.UTC));
+
+        WithholdingCertificateResult result = service.generateCertificate(COMPANY_ID, UUID.randomUUID(), 2026,
+                new WithholdingCertificateIdentity("Bogota", "900123456", "Empresa SAS", "Calle 1",
+                        "901234567", "Proveedor SAS"), null);
+
+        assertThat(events).singleElement().satisfies(event -> {
+            assertThat(event.eventType()).isEqualTo(EventTypes.WITHHOLDING_CERTIFICATE_GENERATED);
+            assertThat(event.aggregateId()).isEqualTo(result.id());
+            assertThat(event.payload()).containsEntry("downloadPath",
+                    "/api/v1/withholding-certificates/" + result.id() + "/download");
+        });
     }
 
     private static final class FakeRepository implements FiscalComplianceRepositoryPort {

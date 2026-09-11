@@ -47,7 +47,7 @@
 ## Pendientes vinculados
 
 - TASK-309: temporalidad y eventos juridicos, implementada.
-- TASK-310/TASK-311: perfiles, reglas nacionales, lineas y acumulaciones.
+- TASK-310/TASK-311: perfiles, reglas nacionales, lineas y acumulaciones, implementadas.
 - TASK-312: paquetes ReteICA bajo demanda, implementada.
-- TASK-313/TASK-314: conciliacion, reversos, cierres y certificados.
-- TASK-315: experiencia, observabilidad y E2E.
+- TASK-313/TASK-314: conciliacion, reversos, cierres y certificados, implementadas.
+- TASK-315: experiencia, observabilidad y pruebas de integracion, implementada.

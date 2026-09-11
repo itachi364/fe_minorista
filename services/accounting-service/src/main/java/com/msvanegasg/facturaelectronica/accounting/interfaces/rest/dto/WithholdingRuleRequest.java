@@ -5,6 +5,8 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalCalculationBase;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalAccumulationScope;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalTriggerMoment;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalOperationType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalThresholdOperator;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalThresholdTreatment;
@@ -45,5 +47,11 @@ public record WithholdingRuleRequest(
         @NotBlank @Pattern(regexp = "https://.*") String sourceUrl,
         boolean published,
         UUID targetThirdPartyId,
-        String evidenceReference) {
+        String evidenceReference,
+        FiscalTriggerMoment triggerMoment,
+        FiscalAccumulationScope accumulationScope,
+        String requiredThirdPartyPersonType,
+        String requiredThirdPartyTaxResidency,
+        String requiredThirdPartyIncomeTaxStatus,
+        String requiredThirdPartySelfWithholdingScope) {
 }

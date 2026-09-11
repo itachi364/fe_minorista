@@ -49,8 +49,9 @@ public class CompanyTaxProfileManagementService implements ManageCompanyTaxProfi
                 command.financialReportingGroup(), command.taxRegime(), command.rutResponsibilities(),
                 command.vatResponsible(), command.withholdingAgent(), command.vatWithholdingAgent(),
                 command.icaWithholdingAgent(), command.largeTaxpayer(), command.selfWithholding(),
-                command.simpleRegime(), command.icaMunicipalityCode(), command.ciiuCodes(), command.updatedBy(),
-                clock.now());
+                command.simpleRegime(), command.icaMunicipalityCode(), command.ciiuCodes(), command.taxResidency(),
+                command.incomeTaxStatus(), command.selfWithholdingScopes(), command.fiscalEvidenceReference(),
+                command.updatedBy(), clock.now());
         return CompanyTaxProfileResult.from(profileRepository.save(profile));
     }
 

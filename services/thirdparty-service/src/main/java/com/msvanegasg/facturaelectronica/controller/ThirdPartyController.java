@@ -119,6 +119,8 @@ public class ThirdPartyController {
                 request.identificationNumber(), request.verificationDigit(), request.fullName(),
                 request.businessName(), request.tradeName(), request.email(), request.phone(), request.address(),
                 request.municipalityCode(), request.ciiuCode(), request.ciiuCodes(), request.taxResponsibilities(), request.taxRegime(),
+                request.taxResidency(), request.incomeTaxStatus(), request.selfWithholdingScopes(),
+                request.fiscalEvidenceReference(),
                 roles);
     }
 }

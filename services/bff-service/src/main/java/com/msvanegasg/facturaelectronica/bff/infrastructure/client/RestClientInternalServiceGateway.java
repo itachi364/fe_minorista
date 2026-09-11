@@ -239,10 +239,11 @@ public class RestClientInternalServiceGateway implements InternalServiceGateway 
                 return new AccessRule(Set.of("FISCAL_SETTINGS_MANAGE", "ACCOUNTING_MANAGE"),
                         Set.of("FISCAL_SETTINGS_MANAGE", "ACCOUNTING_MANAGE"));
             }
-            if (matchesAny(path, "fiscal-catalog", "fiscal-account-mappings")) {
+            if (matchesAny(path, "fiscal-catalog", "fiscal-account-mappings", "account-presentation-mappings")) {
                 return fiscalSettingsAccessRule();
             }
-            if (matchesAny(path, "fiscal-periods", "fiscal-reconciliation", "withholding-certificates")) {
+            if (matchesAny(path, "fiscal-periods", "fiscal-reconciliation", "withholding-certificates",
+                    "fiscal-auxiliaries", "fiscal-national-concepts")) {
                 return new AccessRule(Set.of("FISCAL_SETTINGS_MANAGE", "ACCOUNTING_VIEW", "REPORTS_VIEW"),
                         Set.of("FISCAL_SETTINGS_MANAGE", "ACCOUNTING_MANAGE"));
             }

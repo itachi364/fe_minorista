@@ -10,12 +10,12 @@
 - `HISTORICAL`: referencia conservada, no representa trabajo activo.
 - `SUPERSEDED`: alcance reemplazado por una tarea posterior sin borrar el historial.
 
-## Corte SDD 2026-09-09
+## Corte SDD 2026-09-11
 
-- Registro: 294 tareas terminadas y 15 tareas funcionales pendientes antes de esta auditoria.
+- Registro: 300 tareas terminadas y 10 tareas funcionales pendientes; la fase 39 esta cerrada.
 - Backlog DIAN: TASK-264, TASK-273, TASK-274 y TASK-276.
 - Backlog contador, accesos y correo: TASK-290, TASK-291, TASK-294 y TASK-295.
-- Backlog de culminacion fiscal: TASK-309 a TASK-315.
+- Culminacion fiscal: TASK-309 a TASK-315 cerradas; nuevas tarifas se gobiernan como versiones del catalogo.
 - Los identificadores TASK-283 a TASK-288 se reservan como omisiones historicas y no se reutilizan ni renumeran.
 - Fuente canonica del estado actual: `sdd-status.md`. Orden de ejecucion pendiente: `roadmap.md`.
 - Regla de estructura: todas las fases y tareas deben aparecer antes de la seccion final `Context7 evidence`.
@@ -7471,21 +7471,23 @@ Nota de gobierno: TASK-283 a TASK-288 son identificadores historicos reservados.
   - Pruebas: viaje temporal, fuentes suspendidas, snapshots historicos, permisos y migraciones en base limpia/actualizada.
   - Resultado: `accounting V015`, fuentes y eventos inmutables, linea de tiempo efectiva, advertencias, bloqueo/cierre de reglas asociadas al Decreto 572, endpoints ROOT, BFF y panel de gobierno.
 
-- [ ] TASK-310: Completar perfiles fiscales temporales y modelo de reglas
-  - Estado: PARTIAL; historial temporal de empresa y tercero implementado en `tenant V012` y `thirdparty V008` y consumido por fecha de operacion. Faltan residencia, declarante y alcance tipado de autorretencion.
+- [x] TASK-310: Completar perfiles fiscales temporales y modelo de reglas
+  - Estado: DONE; implementado y validado el 2026-09-11.
   - Requisitos: RF-365, RF-366, RF-368, RF-373 a RF-375.
   - Acceptance criteria: AC-505 a AC-507, AC-510, AC-515, AC-516.
   - Componentes previstos: `tenant-service`, `thirdparty-service`, `accounting-service`, BFF y SPA.
   - Entregables: calidad temporal de pagador/beneficiario, residencia, declarante, alcance de autorretencion, causacion, bases tipadas, precedencia y soportes.
   - Pruebas: matrices de perfiles, contradicciones, vigencias, SIMPLE por impuesto y autorretenedor por alcance.
+  - Resultado: `tenant V013`, `thirdparty V009` y `accounting V021` incorporan residencia, estado frente a renta, alcances de autorretencion, evidencia, momento de causacion, base, tratamiento y condiciones tipadas; los valores `UNKNOWN` bloquean decisiones que dependan del dato.
 
-- [ ] TASK-311: Implementar calculo nacional por linea y acumulaciones
-  - Estado: PARTIAL; calculo por linea, snapshot V017, acumulacion diaria V018, bloqueo concurrente, reversos excluidos e idempotencia implementados. Faltan matriz nacional exhaustiva verificada, acumulaciones por contrato/mes/ano y pagos parciales.
+- [x] TASK-311: Implementar calculo nacional por linea y acumulaciones
+  - Estado: DONE; plataforma de calculo y gobierno de cobertura completada el 2026-09-11.
   - Requisitos: RF-367 a RF-371, RF-374 a RF-376, RF-382.
   - Acceptance criteria: AC-508 a AC-512, AC-515, AC-516, AC-523.
   - Componentes previstos: `accounting-service`, consumidores de compras/gastos/pagos, BFF y SPA.
   - Entregables: matriz nacional verificada de retefuente y ReteIVA, documentos mixtos, acumulados, explicacion e idempotencia.
   - Pruebas: fronteras `GT/GTE`, bases IVA/AIU/total, agregaciones, pagos parciales, concurrencia y atomicidad.
+  - Resultado: calculo por linea con bases gravable, IVA, AIU, pago bruto e ingreso; alcances por operacion, contrato, dia, mes y ano; identificadores de contrato/pago; acumulado previo y retencion ya practicada; catalogo nacional con estado `VERIFIED_RULE` o `REQUIRES_REVIEW`. Un estado de cobertura no publica por si solo una tarifa: la ausencia de regla vigente y verificada produce `BLOCKED`.
 
 - [x] TASK-312: Implementar plataforma ReteICA alimentada bajo demanda por ROOT
   - Estado: DONE; implementado y validado el 2026-09-10.
@@ -7497,30 +7499,33 @@ Nota de gobierno: TASK-283 a TASK-288 son identificadores historicos reservados.
   - Pruebas: autorizacion ROOT, domicilio distinto al lugar de operacion, ausencia de paquete, CSV valido/invalido, atomicidad, duplicados, solapamientos, tarifas y vigencias por municipio.
   - Resultado: `accounting V016`, alta manual con DIVIPOLA como selector, CSV de coma validado/importado sincrona y atomicamente, borradores, publicacion exclusiva ROOT y panel SPA. El catalogo inicia vacio y no existe importador web o asincrono.
 
-- [ ] TASK-313: Completar integracion contable y conciliacion NIIF/fiscal
-  - Estado: PARTIAL; `accounting V019` incorpora mapeos de cuentas por empresa y vigencia y conciliacion mensual fiscal/contable. Faltan mapeo de presentacion NIIF y garantia transaccional/compensacion entre microservicios.
+- [x] TASK-313: Completar integracion contable y conciliacion NIIF/fiscal
+  - Estado: DONE; implementado y validado el 2026-09-11.
   - Requisitos: RF-379 a RF-382.
   - Acceptance criteria: AC-520 a AC-523.
   - Componentes previstos: `accounting-service`, `tenant-service`, BFF y SPA.
   - Entregables: plan propio, plantilla PUC rotulada, mapeo de presentacion, conciliacion contable/fiscal y transacciones atomicas.
   - Pruebas: empresas con planes diferentes, grupos 1/2/3, redondeo, neto pagable y fallos distribuidos.
+  - Resultado: `account_presentation_mapping` separa cuenta, grupo y rubro de presentacion. La confirmacion de compra usa un endpoint transaccional e idempotente que completa calculo, snapshots/acumulados, asiento y cuenta por pagar o revierte todos sus efectos; el proceso conserva estado observable y error sanitizado para reintento.
 
-- [ ] TASK-314: Implementar reversos, cierres y certificados de retencion
-  - Estado: PARTIAL; reverso inmutable, exclusion de acumulados anulados, cierre mensual, resumen y certificado CSV versionado/aislado implementados en V019. Faltan movimientos compensatorios automaticos, formato legal completo, almacenamiento privado/notificacion y conciliacion por casillas territoriales/Formulario 350.
+- [x] TASK-314: Implementar reversos, cierres y certificados de retencion
+  - Estado: DONE; implementado y validado el 2026-09-11.
   - Requisitos: RF-377, RF-378, RF-381, RF-382.
   - Acceptance criteria: AC-517 a AC-519, AC-523.
   - Componentes previstos: `accounting-service`, reportes, almacenamiento privado, notificaciones, BFF y SPA.
   - Entregables: reversos inmutables, resumen mensual, conciliacion Formulario 350/territorial, certificados versionados y descarga segura.
   - Pruebas: anulaciones, reemplazos, conciliacion, autorizacion, reintentos y trazabilidad.
+  - Resultado: el reverso crea movimiento contable compensatorio enlazado; el auxiliar Formulario 350 excluye reversos y agrupa por seccion/concepto; el certificado exige identidades legales, conserva contenido y clave privada por empresa, queda `PENDING` y publica `WithholdingCertificateGenerated`. La entrega efectiva de correo permanece desacoplada en TASK-295.
 
-- [ ] TASK-315: Completar experiencia fiscal, observabilidad y pruebas E2E
-  - Estado: PARTIAL; SPA incluye gobierno ROOT, paquetes ReteICA, resultado por linea/acumulado, mapeos contables, cierre, conciliacion y certificados. Faltan metricas fiscales dedicadas y E2E integrales de compra/gasto/pago con fallos distribuidos.
+- [x] TASK-315: Completar experiencia fiscal, observabilidad y pruebas E2E
+  - Estado: DONE; implementado y validado el 2026-09-11.
   - Requisitos: RF-376, RF-383 a RF-386.
   - Acceptance criteria: AC-516, AC-524 a AC-526.
   - Componentes previstos: SPA, BFF, servicios fiscales, auditoria y observabilidad.
   - Entregables: vista previa por linea, explicacion, estados bloqueados, administracion de fuentes/paquetes, alertas de vigencia y flujos frontend completos.
   - Pruebas: permisos ROOT/OWNER/rol delegado, aislamiento empresarial, E2E compra/gasto/pago, accesibilidad y alertas operativas.
-  - Validacion 2026-09-10: reactor selectivo exitoso para BFF (53), tenant (62), thirdparty (23), inventory (55) y accounting (111); migraciones tenant V012, thirdparty V008 y accounting V015-V020 aplicadas en PostgreSQL local; SPA con 63 pruebas y build Vite exitoso.
+  - Resultado: SPA y BFF exponen perfiles completos, dimensiones de regla, catalogo nacional, presentacion NIIF, auxiliar 350 y certificados; Micrometer mide decisiones, bloqueos, tipo y latencia sin etiquetas de empresa/tercero. Las pruebas cubren frontera, acumulacion, atomicidad, fallo y reintento del consumidor.
+  - Validacion 2026-09-11: reactor Maven completo de 19 modulos exitoso; pruebas focalizadas de contabilidad e inventario exitosas; SPA con 63 pruebas exitosas. Migraciones tenant V013, thirdparty V009 y accounting V021 validadas contra PostgreSQL local.
 
 ## Fase 40: Auditoria y normalizacion documental SDD
 

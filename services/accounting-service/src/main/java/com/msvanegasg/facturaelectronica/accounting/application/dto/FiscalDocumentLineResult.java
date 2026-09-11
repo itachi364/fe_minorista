@@ -10,8 +10,16 @@ public record FiscalDocumentLineResult(
         String ciiuCode,
         BigDecimal taxableBaseAmount,
         BigDecimal taxAmount,
+        BigDecimal aiuAmount,
+        BigDecimal grossPaymentAmount,
         List<WithholdingCalculationItemResult> items) {
     public FiscalDocumentLineResult {
         items = List.copyOf(items);
+    }
+
+    public FiscalDocumentLineResult(UUID lineId, String conceptCode, String ciiuCode,
+            BigDecimal taxableBaseAmount, BigDecimal taxAmount, List<WithholdingCalculationItemResult> items) {
+        this(lineId, conceptCode, ciiuCode, taxableBaseAmount, taxAmount, BigDecimal.ZERO,
+                taxableBaseAmount.add(taxAmount), items);
     }
 }

@@ -31,7 +31,9 @@ public final class CompanyRestMapper {
                 request.taxRegime(), request.rutResponsibilities(), request.vatResponsible(),
                 request.withholdingAgent(), request.vatWithholdingAgent(), request.icaWithholdingAgent(),
                 request.largeTaxpayer(), request.selfWithholding(), request.simpleRegime(),
-                request.icaMunicipalityCode(), request.ciiuCodes(), updatedBy);
+                request.icaMunicipalityCode(), request.ciiuCodes(), request.taxResidency(),
+                request.incomeTaxStatus(), request.selfWithholdingScopes(), request.fiscalEvidenceReference(),
+                updatedBy);
     }
 
     public static CompanyResponse toResponse(CompanyResult result) {

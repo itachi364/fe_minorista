@@ -36,6 +36,10 @@ export function createCompanyTaxProfileForm() {
     simpleRegime: false,
     icaMunicipalityCode: '',
     ciiuCodes: [],
+    taxResidency: 'COLOMBIA',
+    incomeTaxStatus: 'UNKNOWN',
+    selfWithholdingScopes: [],
+    fiscalEvidenceReference: '',
   };
 }
 
@@ -126,6 +130,10 @@ export function createThirdPartyForm() {
     ciiuCodes: [],
     taxResponsibilities: [],
     taxRegime: '',
+    taxResidency: 'COLOMBIA',
+    incomeTaxStatus: 'UNKNOWN',
+    selfWithholdingScopes: [],
+    fiscalEvidenceReference: '',
   };
 }
 

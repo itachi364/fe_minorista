@@ -33,10 +33,12 @@ import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingC
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.CalculateFiscalDocumentUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.CalculateWithholdingsUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.CompanyTaxProfilePort;
+import com.msvanegasg.facturaelectronica.accounting.application.port.out.FiscalCalculationObserver;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.FiscalDocumentCalculationRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.IdGeneratorPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.ThirdPartyFiscalProfilePort;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.CompanyTaxProfile;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalAccumulationScope;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.ThirdPartyFiscalProfile;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingDecision;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingType;
@@ -49,20 +51,31 @@ public class FiscalDocumentCalculationService implements CalculateFiscalDocument
     private final ThirdPartyFiscalProfilePort thirdPartyProfilePort;
     private final IdGeneratorPort idGenerator;
     private final Clock clock;
+    private final FiscalCalculationObserver observer;
 
     public FiscalDocumentCalculationService(CalculateWithholdingsUseCase lineCalculator,
             FiscalDocumentCalculationRepositoryPort repository, CompanyTaxProfilePort companyProfilePort,
             ThirdPartyFiscalProfilePort thirdPartyProfilePort, IdGeneratorPort idGenerator, Clock clock) {
+        this(lineCalculator, repository, companyProfilePort, thirdPartyProfilePort, idGenerator, clock,
+                FiscalCalculationObserver.NOOP);
+    }
+
+    public FiscalDocumentCalculationService(CalculateWithholdingsUseCase lineCalculator,
+            FiscalDocumentCalculationRepositoryPort repository, CompanyTaxProfilePort companyProfilePort,
+            ThirdPartyFiscalProfilePort thirdPartyProfilePort, IdGeneratorPort idGenerator, Clock clock,
+            FiscalCalculationObserver observer) {
         this.lineCalculator = Objects.requireNonNull(lineCalculator);
         this.repository = Objects.requireNonNull(repository);
         this.companyProfilePort = Objects.requireNonNull(companyProfilePort);
         this.thirdPartyProfilePort = Objects.requireNonNull(thirdPartyProfilePort);
         this.idGenerator = Objects.requireNonNull(idGenerator);
         this.clock = Objects.requireNonNull(clock);
+        this.observer = Objects.requireNonNull(observer);
     }
 
     @Override
     public FiscalDocumentCalculationResult calculate(CalculateFiscalDocumentCommand command) {
+        long startedAt = System.nanoTime();
         validate(command);
         CompanyTaxProfile company = companyProfilePort
                 .findByCompanyIdAndDate(command.companyId(), command.operationDate())
@@ -93,21 +106,23 @@ public class FiscalDocumentCalculationService implements CalculateFiscalDocument
 
         CompanyTaxProfileCommand companyCommand = companyCommand(company);
         List<FiscalDocumentLineResult> lines = new ArrayList<>();
-        Map<String, FiscalAccumulationTotals> accumulations = new LinkedHashMap<>();
+        Map<String, Map<FiscalAccumulationScope, FiscalAccumulationTotals>> accumulations = new LinkedHashMap<>();
         for (FiscalDocumentLineCommand line : command.lines()) {
             String conceptCode = normalizedConcept(line.conceptCode());
-            FiscalAccumulationTotals accumulated = accumulations.computeIfAbsent(conceptCode,
-                    ignored -> repository.findDailyAccumulation(command.companyId(), command.thirdPartyId(),
-                            command.operationDate(), conceptCode));
+            Map<FiscalAccumulationScope, FiscalAccumulationTotals> byScope = accumulations.computeIfAbsent(
+                    conceptCode, ignored -> loadAccumulations(command, conceptCode));
+            FiscalAccumulationTotals accumulated = byScope.get(FiscalAccumulationScope.DAY);
             ThirdPartyFiscalProfileCommand thirdPartyCommand = thirdPartyCommand(thirdParty, line.ciiuCode());
             WithholdingCalculationResult result = lineCalculator.calculate(new CalculateWithholdingsCommand(
                     command.companyId(), command.operationType(), command.thirdPartyId(), conceptCode,
                     command.operationDate(), line.taxableBaseAmount(), line.taxAmount(), municipality, null, null,
                     companyCommand, thirdPartyCommand, accumulated.taxableBase(), accumulated.taxAmount(),
-                    accumulated.withheldByType()));
+                    accumulated.withheldByType(), line.aiuAmount(), line.grossPaymentAmount(), command.contractId(),
+                    byScope));
             lines.add(new FiscalDocumentLineResult(line.lineId(), conceptCode,
-                    normalize(line.ciiuCode()), money(line.taxableBaseAmount()), money(line.taxAmount()), result.items()));
-            accumulations.put(conceptCode, add(accumulated, line, result.items()));
+                    normalize(line.ciiuCode()), money(line.taxableBaseAmount()), money(line.taxAmount()),
+                    money(line.aiuAmount()), money(line.grossPaymentAmount()), result.items()));
+            byScope.replaceAll((scope, current) -> add(current, line, result.items()));
         }
 
         String status = status(lines);
@@ -129,12 +144,14 @@ public class FiscalDocumentCalculationService implements CalculateFiscalDocument
                 command.companyId(), command.operationType(), command.thirdPartyId(), command.operationDate(),
                 municipality, command.sourceType(), command.sourceId(), requestHash, status, lines, gross, withheld,
                 gross.subtract(withheld).setScale(2, RoundingMode.HALF_UP), evidence(company, thirdParty),
-                Instant.now(clock));
+                Instant.now(clock), command.contractId(), command.paymentId());
         if (command.sourceType() == null) {
+            observer.record(command.operationType(), status, System.nanoTime() - startedAt);
             return result;
         }
         FiscalDocumentCalculationResult saved = repository.save(result);
         repository.saveAccumulations(saved);
+        observer.record(command.operationType(), status, System.nanoTime() - startedAt);
         return saved;
     }
 
@@ -167,7 +184,8 @@ public class FiscalDocumentCalculationService implements CalculateFiscalDocument
             if (!ids.add(line.lineId())) throw new IllegalArgumentException("lineId cannot be duplicated");
             Objects.requireNonNull(line.taxableBaseAmount(), "taxableBaseAmount is required");
             Objects.requireNonNull(line.taxAmount(), "taxAmount is required");
-            if (line.taxableBaseAmount().signum() < 0 || line.taxAmount().signum() < 0) {
+            if (line.taxableBaseAmount().signum() < 0 || line.taxAmount().signum() < 0
+                    || money(line.aiuAmount()).signum() < 0 || money(line.grossPaymentAmount()).signum() < 0) {
                 throw new IllegalArgumentException("line amounts cannot be negative");
             }
         });
@@ -185,7 +203,8 @@ public class FiscalDocumentCalculationService implements CalculateFiscalDocument
         return new CompanyTaxProfileCommand(profile.taxRegime(), profile.rutResponsibilities(),
                 profile.vatResponsible(), profile.withholdingAgent(), profile.largeTaxpayer(), profile.selfWithholding(),
                 profile.simpleRegime(), profile.icaMunicipalityCode(), profile.ciiuCodes(),
-                profile.vatWithholdingAgent(), profile.icaWithholdingAgent());
+                profile.vatWithholdingAgent(), profile.icaWithholdingAgent(), profile.taxResidency(),
+                profile.incomeTaxStatus(), profile.selfWithholdingScopes(), profile.fiscalEvidenceReference());
     }
 
     private static ThirdPartyFiscalProfileCommand thirdPartyCommand(ThirdPartyFiscalProfile profile,
@@ -194,6 +213,8 @@ public class FiscalDocumentCalculationService implements CalculateFiscalDocument
         if (normalize(lineCiiu) != null) ciiuCodes.add(normalize(lineCiiu));
         return new ThirdPartyFiscalProfileCommand(profile.thirdPartyId(), profile.taxRegime(),
                 profile.taxResponsibilities(), profile.municipalityCode(), profile.ciiuCode(), ciiuCodes,
+                profile.personType(), profile.taxResidency(), profile.incomeTaxStatus(),
+                profile.selfWithholdingScopes(), profile.fiscalEvidenceReference(),
                 profile.active());
     }
 
@@ -205,10 +226,17 @@ public class FiscalDocumentCalculationService implements CalculateFiscalDocument
         values.put("companyVatWithholdingAgent", company.vatWithholdingAgent());
         values.put("companyIcaWithholdingAgent", company.icaWithholdingAgent());
         values.put("companySelfWithholding", company.selfWithholding());
+        values.put("companyTaxResidency", company.taxResidency());
+        values.put("companyIncomeTaxStatus", company.incomeTaxStatus());
+        values.put("companySelfWithholdingScopes", company.selfWithholdingScopes());
         values.put("thirdPartyTaxRegime", Objects.toString(thirdParty.taxRegime(), ""));
         values.put("thirdPartyResponsibilities", thirdParty.taxResponsibilities());
         values.put("thirdPartyMunicipalityCode", Objects.toString(thirdParty.municipalityCode(), ""));
         values.put("thirdPartyCiiuCodes", thirdParty.ciiuCodes());
+        values.put("thirdPartyPersonType", thirdParty.personType());
+        values.put("thirdPartyTaxResidency", thirdParty.taxResidency());
+        values.put("thirdPartyIncomeTaxStatus", thirdParty.incomeTaxStatus());
+        values.put("thirdPartySelfWithholdingScopes", thirdParty.selfWithholdingScopes());
         return Map.copyOf(values);
     }
 
@@ -236,7 +264,18 @@ public class FiscalDocumentCalculationService implements CalculateFiscalDocument
         items.stream().filter(item -> item.decision() == WithholdingDecision.APPLIED)
                 .forEach(item -> withheld.merge(item.withholdingType(), item.amount(), BigDecimal::add));
         return new FiscalAccumulationTotals(current.taxableBase().add(money(line.taxableBaseAmount())),
-                current.taxAmount().add(money(line.taxAmount())), withheld);
+                current.taxAmount().add(money(line.taxAmount())), current.aiuAmount().add(money(line.aiuAmount())),
+                current.grossPaymentAmount().add(money(line.grossPaymentAmount())), withheld);
+    }
+
+    private Map<FiscalAccumulationScope, FiscalAccumulationTotals> loadAccumulations(
+            CalculateFiscalDocumentCommand command, String conceptCode) {
+        Map<FiscalAccumulationScope, FiscalAccumulationTotals> values = new EnumMap<>(FiscalAccumulationScope.class);
+        for (FiscalAccumulationScope scope : FiscalAccumulationScope.values()) {
+            values.put(scope, repository.findAccumulation(command.companyId(), command.thirdPartyId(),
+                    command.operationDate(), conceptCode, scope, command.contractId()));
+        }
+        return values;
     }
 
     private static String normalizedConcept(String value) {

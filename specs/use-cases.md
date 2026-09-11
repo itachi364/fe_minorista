@@ -810,7 +810,7 @@ Acceptance criteria: AC-404, AC-407, AC-408, AC-409, AC-410.
 
 ## UC-053: Calcular retenciones de proveedor
 
-Estado: PARTIAL. La vista previa y confirmacion incluyen vigencia juridica, lineas, acumulacion diaria, territorialidad por paquete, conciliacion, reversos y certificados; TASK-310/311/313/314/315 conservan las ampliaciones declaradas.
+Estado: IMPLEMENTED. La vista previa y confirmacion incluyen vigencia juridica, perfiles tipados, lineas, acumulaciones, territorialidad por paquete, conciliacion, reversos y certificados; las reglas sin evidencia vigente bloquean la operacion.
 
 Actor: Administrador empresarial, usuario contable o contador con permiso de lectura.
 
@@ -896,7 +896,7 @@ Acceptance criteria: AC-501 a AC-504, AC-516, AC-524, AC-526.
 
 ## UC-058: Calcular retenciones nacionales por linea y acumulacion
 
-Estado: PARTIAL, TASK-310/TASK-311. Disponible por linea y acumulacion diaria; quedan pendientes perfiles tipados completos, matriz nacional exhaustiva y otros alcances de agregacion.
+Estado: IMPLEMENTED, TASK-310/TASK-311. Disponible por linea y alcances de operacion, contrato, dia, mes y ano; el catalogo separa conceptos verificados de conceptos que requieren revision y nunca deriva tarifas desde estos ultimos.
 
 Actor: Usuario contable autorizado.
 
@@ -930,7 +930,7 @@ Acceptance criteria: AC-513, AC-514, AC-525.
 
 ## UC-060: Conciliar operacion fiscal y contable
 
-Estado: PARTIAL, TASK-313. Disponible el mapeo empresarial por vigencia y la conciliacion mensual; quedan pendientes presentacion NIIF y atomicidad distribuida completa.
+Estado: IMPLEMENTED, TASK-313. Disponible el mapeo empresarial y de presentacion por vigencia, la conciliacion mensual y la confirmacion local atomica/idempotente de compras.
 
 Actor: Contador o administrador contable autorizado.
 
@@ -944,7 +944,7 @@ Acceptance criteria: AC-520 a AC-523.
 
 ## UC-061: Reversar y certificar retenciones
 
-Estado: PARTIAL, TASK-314. Disponibles reverso, cierre, resumen y certificado CSV versionado; quedan pendientes movimientos contables compensatorios y formato legal completo.
+Estado: IMPLEMENTED, TASK-314. Disponibles movimiento compensatorio, cierre, resumen, auxiliar Formulario 350 y certificado CSV versionado con identidades legales, aislamiento y evento de notificacion pendiente.
 
 Actor: Usuario contable autorizado.
 
@@ -958,7 +958,7 @@ Acceptance criteria: AC-517 a AC-519, AC-523.
 
 ## UC-062: Administrar y observar el motor fiscal completo
 
-Estado: PARTIAL, TASK-315. Disponibles gobierno y operacion fiscal en SPA; quedan pendientes metricas dedicadas y E2E distribuidos completos.
+Estado: IMPLEMENTED, TASK-315. Gobierno y operacion fiscal estan expuestos en SPA/BFF; existen metricas dedicadas y pruebas de atomicidad, fallo e idempotencia del flujo de compra.
 
 Actor: ROOT o usuario fiscal con permiso empresarial.
 

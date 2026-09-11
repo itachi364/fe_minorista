@@ -872,7 +872,7 @@ Reglas:
 
 ### Perfil fiscal/contable de empresa
 
-Estado: IMPLEMENTED para perfil actual e historial efectivo por fecha mediante `tenant V012`; el modelo tipado completo se amplia en TASK-310.
+Estado: IMPLEMENTED para perfil actual e historial efectivo por fecha mediante `tenant V012/V013`.
 
 Tablas implementadas:
 
@@ -882,7 +882,7 @@ Tablas implementadas:
 
 Campos principales:
 
-- `company_tax_profile`: `company_id`, `company_size`, `financial_reporting_group`, `tax_regime`, `vat_responsible`, `withholding_agent`, `vat_withholding_agent`, `ica_withholding_agent`, `large_taxpayer`, `self_withholding`, `simple_regime`, `ica_municipality_code`, `updated_by`, `updated_at`.
+- `company_tax_profile`: `company_id`, `company_size`, `financial_reporting_group`, `tax_regime`, `tax_residency`, `income_tax_status`, `vat_responsible`, `withholding_agent`, `vat_withholding_agent`, `ica_withholding_agent`, `large_taxpayer`, `self_withholding`, `self_withholding_scopes`, `simple_regime`, `ica_municipality_code`, `fiscal_evidence_reference`, `updated_by`, `updated_at`.
 - `company_tax_profile_responsibility`: `company_id`, `responsibility_code`.
 - `company_tax_profile_ciiu`: `company_id`, `ciiu_code`.
 
@@ -893,7 +893,7 @@ Reglas:
 
 ### Reglas fiscales y retenciones
 
-Estado: PARTIAL. Existen reglas/snapshots iniciales hasta V014 y las extensiones V015-V019 para gobierno juridico, paquetes territoriales, calculo por linea, acumulacion y cumplimiento. La matriz legal nacional exhaustiva y otros alcances pertenecen a TASK-310/TASK-311.
+Estado: IMPLEMENTED como plataforma gobernada mediante V008-V021. El catalogo de cobertura nacional no activa conceptos `REQUIRES_REVIEW`; solo una regla publicada, vigente y verificable puede operar.
 
 Tablas actuales y objetivo:
 
@@ -904,7 +904,7 @@ Tablas actuales y objetivo:
 Campos principales:
 
 - `fiscal_rule_set`: `id`, `country_code`, `name`, `version`, `valid_from`, `valid_to`, `source_reference`, `status`.
-- `withholding_rule`: `id`, `rule_set_id`, `withholding_type`, `operation_type`, `concept_code`, `base_min_amount`, `rate`, `buyer_conditions`, `third_party_conditions`, `municipality_code`, `ciiu_code`, `valid_from`, `valid_to`, `priority`, `active`.
+- `withholding_rule`: `id`, `rule_set_id`, `withholding_type`, `operation_type`, `concept_code`, `rate`, `trigger_moment`, `accumulation_scope`, `threshold_unit`, `threshold_value`, `threshold_operator`, `calculation_base`, `threshold_treatment`, condiciones tipadas de pagador/tercero, `municipality_code`, `ciiu_code`, vigencia, prioridad, estado y fuente.
 - `withholding_calculation_snapshot`: `id`, `company_id`, `source_type`, `source_id`, `third_party_id`, `operation_date`, `gross_amount`, `tax_amount`, `withholding_type`, `base_amount`, `rate`, `amount`, `rule_version`, `decision`, `reason`, `created_at`.
 
 Reglas:
@@ -1033,7 +1033,7 @@ El plan de cuentas sigue siendo propiedad de la empresa. Las plantillas con codi
 - La correccion del Decreto 572 debe registrar suspension y cerrar efectividad mediante una nueva migracion, sin borrar reglas ni snapshots historicos.
 - Un municipio aparece en el catalogo ReteICA solo cuando existe un `fiscal_rule_set` territorial creado por ROOT. DIVIPOLA se conserva como referencia de seleccion/validacion y no se replica como paquetes vacios.
 
-### Persistencia implementada en TASK-309 a TASK-314
+### Persistencia implementada en TASK-309 a TASK-315
 
 - `accounting V015/V020`: `fiscal_legal_source` y `fiscal_legal_source_event` para fuentes y eventos juridicos inmutables, incluida reactivacion explicita.
 - `accounting V016`: `municipal_fiscal_package`, reglas e importaciones CSV ReteICA en borrador/publicadas.
@@ -1041,5 +1041,9 @@ El plan de cuentas sigue siendo propiedad de la empresa. Las plantillas con codi
 - `accounting V018`: acumulaciones diarias por empresa, tercero, fecha, concepto y linea; los reversos se excluyen mediante `reversed_at`.
 - `tenant V012` y `thirdparty V008`: historiales fiscales efectivos por fecha, con retrocarga del perfil vigente.
 - `accounting V019`: mapeos contables fiscales, reversos, cierres mensuales y certificados CSV versionados.
+- `tenant V013` y `thirdparty V009`: residencia fiscal, estado frente a renta, alcances de autorretencion y referencia de evidencia en perfil vigente e historia temporal.
+- `accounting V021`: causacion y alcance de acumulacion en reglas; contrato/pago y bases AIU/bruta en calculos; mapeo de presentacion; catalogo nacional gobernado; asiento compensatorio; identidades, clave privada y estado de notificacion de certificados; proceso de confirmacion atomica y vista auxiliar del Formulario 350.
 
-Estas tablas estan aisladas por `company_id`. Los snapshots, eventos, cierres, reversos y certificados no se actualizan para recalcular historia; las correcciones crean nuevas versiones o movimientos enlazados.
+`fiscal_confirmation_process` es unico por empresa, tipo y documento fuente; registra `PROCESSING`, `COMPLETED` o `FAILED` y las referencias al calculo, asiento y cuenta por pagar. La transaccion local de contabilidad confirma todos esos efectos o los revierte.
+
+Estas tablas estan aisladas por `company_id`. Los snapshots, eventos, cierres, reversos y certificados no se actualizan para recalcular historia; las correcciones crean nuevas versiones o movimientos enlazados. `national_fiscal_concept_catalog` es global y solo expresa cobertura: no sustituye una regla publicada, vigente y efectiva.

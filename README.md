@@ -275,7 +275,7 @@ El catalogo fiscal de `accounting-service` versiona UVT, conceptos, bases, tarif
 
 > Advertencia fiscal vigente al 2026-09-10: `TASK-309` registra la suspension provisional de los articulos 2 a 8 del Decreto 572 de 2025 desde el 8 de mayo de 2026 y evita tratarlos como vigentes. Una eventual reactivacion exige registrar primero su providencia o comunicacion oficial y fecha efectiva.
 
-La culminacion del motor esta especificada en `TASK-308` a `TASK-315`. Ya estan implementados el gobierno juridico, perfiles efectivos por fecha, calculo por linea, acumulacion diaria, paquetes ReteICA bajo demanda, mapeos de cuentas, conciliacion, cierres, reversos y certificados CSV versionados. Permanecen parciales la matriz nacional exhaustiva, otros alcances de acumulacion, movimientos compensatorios, formato legal completo, metricas y pruebas E2E distribuidas. No se afirma cobertura de un municipio hasta publicar y probar su paquete con fuente oficial.
+La fase 39 (`TASK-308` a `TASK-315`) esta implementada: gobierno juridico, perfiles efectivos y tipados, calculo por linea, bases AIU/IVA/bruta, acumulaciones por operacion/contrato/dia/mes/ano, paquetes ReteICA bajo demanda, mapeos contables y de presentacion, confirmacion atomica de compras, conciliacion, auxiliar 350, cierres, movimientos reversores, certificados versionados y metricas. Un concepto nacional `REQUIRES_REVIEW` o un municipio sin paquete publicado sigue bloqueado; cerrar la fase tecnica no presume una tarifa sin fuente oficial vigente.
 
 NIIF y tributacion se mantienen separadas: el Decreto 2420 de 2015 orienta reconocimiento y presentacion financiera, no tarifas de retencion. Las cuentas `2205`, `2365`, `2367` y `2368` son una plantilla configurable inspirada en el PUC historico; cada empresa conserva su plan de cuentas y su mapeo contable.
 
@@ -283,7 +283,7 @@ ROOT y los usuarios autorizados registran en el mismo formulario de empresa el r
 
 La administracion tributaria se encuentra en `Configuracion > Reglas fiscales` y requiere `FISCAL_SETTINGS_MANAGE`. El permiso tambien habilita el perfil fiscal de empresa, emisor, politica, resoluciones y conexion DIAN, pero no autoriza la emision de documentos, que conserva `FISCAL_DOCUMENTS_ISSUE`. El rol `OWNER` inicial recibe ambos permisos y puede delegar el permiso fiscal desde la administracion de roles.
 
-Con una empresa activa, `Reglas fiscales` tambien permite mapear cada tipo de retencion a cuentas activas del plan empresarial, consultar y cerrar periodos mensuales, revisar la conciliacion fiscal/contable y generar o descargar versiones CSV de certificados por proveedor. El periodo cerrado bloquea confirmaciones fiscales nuevas; los historicos y reversos permanecen inmutables.
+Con una empresa activa, `Reglas fiscales` tambien permite mapear cada tipo de retencion a cuentas activas del plan empresarial, mapear cuentas a rubros de presentacion por grupo NIIF, consultar el catalogo nacional y el auxiliar del Formulario 350, cerrar periodos, revisar la conciliacion y generar o descargar certificados CSV por proveedor. El certificado conserva identidades legales y queda pendiente de notificacion; el correo efectivo corresponde al modulo futuro de TASK-295.
 
 Los campos CIIU y tercero exento usan un unico selector con busqueda interna. Al seleccionar un tercero, la regla cambia a `Exento` y exige cargar su soporte PDF; las opciones se limitan a proveedores activos de la empresa seleccionada.
 
@@ -293,7 +293,7 @@ En compras y gastos, `Fecha limite de pago` solo aparece para operaciones a cred
 
 ### Prueba del motor fiscal desde la aplicacion
 
-Las pruebas actuales sirven para validar el flujo tecnico y las reglas publicadas en el ambiente. No constituyen certificacion de exactitud tributaria de conceptos que sigan pendientes en TASK-310/TASK-311 ni de un municipio sin paquete ReteICA verificado.
+Las pruebas validan el flujo tecnico y las reglas publicadas en el ambiente. No certifican conceptos nacionales marcados `REQUIRES_REVIEW` ni municipios sin paquete ReteICA verificado; esos casos deben permanecer bloqueados.
 
 1. En `Configuracion > Configuracion contable`, usa `Completar plantilla basica` si la empresa aun no tiene sus cuentas y reglas iniciales.
 2. En `Configuracion > Empresa`, guarda el perfil fiscal de la empresa: regimen, responsabilidades RUT, condiciones de agente, municipio ICA y CIIU.
@@ -319,7 +319,7 @@ La plantilla basica contabiliza el neto del proveedor en `2205` y las retencione
 ## Limitaciones Conocidas
 
 - La conexion DIAN SOAP WCF real, su normalizacion de respuestas y la prueba E2E de habilitacion siguen pendientes; el modo mock no demuestra produccion DIAN.
-- El motor fiscal disponible es una primera vertical. No debe usarse para liquidaciones productivas mientras la vigencia juridica y los paquetes territoriales requeridos no esten verificados.
+- El motor fiscal aplica solo reglas cuya vigencia y condiciones puede demostrar. Los conceptos `REQUIRES_REVIEW` y los municipios sin paquete territorial se bloquean y requieren validacion profesional antes de operar.
 - El portal de contadores, las contrasenas temporales y los correos operativos siguen especificados pero no implementados.
 - La infraestructura AWS esta definida como target; los recursos ECS se mantienen sin cargas productivas hasta contar con imagenes, secretos y pipeline aprobados.
 

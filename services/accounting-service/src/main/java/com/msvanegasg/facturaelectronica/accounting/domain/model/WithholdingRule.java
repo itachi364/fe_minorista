@@ -37,7 +37,13 @@ public record WithholdingRule(
         int specificity,
         boolean published,
         UUID targetThirdPartyId,
-        String evidenceReference) {
+        String evidenceReference,
+        FiscalTriggerMoment triggerMoment,
+        FiscalAccumulationScope accumulationScope,
+        String requiredThirdPartyPersonType,
+        String requiredThirdPartyTaxResidency,
+        String requiredThirdPartyIncomeTaxStatus,
+        String requiredThirdPartySelfWithholdingScope) {
 
     public WithholdingRule {
         Objects.requireNonNull(id, "id is required");
@@ -53,6 +59,11 @@ public record WithholdingRule(
         calculationBase = calculationBase == null ? defaultCalculationBase(withholdingType) : calculationBase;
         thresholdTreatment = thresholdTreatment == null ? FiscalThresholdTreatment.FULL_AMOUNT : thresholdTreatment;
         decision = decision == null ? WithholdingDecision.APPLIED : decision;
+        triggerMoment = triggerMoment == null ? defaultTriggerMoment(operationType) : triggerMoment;
+        accumulationScope = accumulationScope == null ? FiscalAccumulationScope.DAY : accumulationScope;
+        if (thresholdTreatment == FiscalThresholdTreatment.BRACKETED) {
+            throw new IllegalArgumentException("BRACKETED requires a bracket catalog and cannot be published as a flat rule");
+        }
         if (rate.signum() < 0) {
             throw new IllegalArgumentException("withholding rule rate cannot be negative");
         }
@@ -74,6 +85,25 @@ public record WithholdingRule(
                 WithholdingDecision.APPLIED, false, false, null, null, 0, true, null, null);
     }
 
+    public WithholdingRule(UUID id, UUID companyId, String ruleSetVersion, FiscalOperationType operationType,
+            String conceptCode, WithholdingType withholdingType, BigDecimal baseMinAmount, BigDecimal rate,
+            boolean requiresCompanyWithholdingAgent, boolean requiresCompanyVatResponsible,
+            String requiredThirdPartyTaxRegime, String requiredThirdPartyResponsibility, String municipalityCode,
+            String ciiuCode, LocalDate validFrom, LocalDate validTo, int priority, boolean active,
+            FiscalThresholdUnit thresholdUnit, BigDecimal thresholdValue, FiscalThresholdOperator thresholdOperator,
+            FiscalCalculationBase calculationBase, FiscalThresholdTreatment thresholdTreatment,
+            WithholdingDecision decision, boolean requiresCompanyVatWithholdingAgent,
+            boolean requiresCompanyIcaWithholdingAgent, String legalReference, String sourceUrl, int specificity,
+            boolean published, UUID targetThirdPartyId, String evidenceReference) {
+        this(id, companyId, ruleSetVersion, operationType, conceptCode, withholdingType, baseMinAmount, rate,
+                requiresCompanyWithholdingAgent, requiresCompanyVatResponsible, requiredThirdPartyTaxRegime,
+                requiredThirdPartyResponsibility, municipalityCode, ciiuCode, validFrom, validTo, priority, active,
+                thresholdUnit, thresholdValue, thresholdOperator, calculationBase, thresholdTreatment, decision,
+                requiresCompanyVatWithholdingAgent, requiresCompanyIcaWithholdingAgent, legalReference, sourceUrl,
+                specificity, published, targetThirdPartyId, evidenceReference, defaultTriggerMoment(operationType),
+                FiscalAccumulationScope.DAY, null, null, null, null);
+    }
+
     public boolean appliesTo(FiscalOperationType operationType, String conceptCode, LocalDate operationDate,
             CompanyTaxProfile companyProfile, ThirdPartyFiscalProfile thirdPartyProfile) {
         return appliesTo(operationType, conceptCode, operationDate, companyProfile, thirdPartyProfile,
@@ -85,6 +115,7 @@ public record WithholdingRule(
             String operationMunicipalityCode) {
         return active && published
                 && this.operationType == operationType
+                && triggerMoment == defaultTriggerMoment(operationType)
                 && matchesConcept(conceptCode)
                 && matchesDate(operationDate)
                 && matchesCompany(companyProfile)
@@ -132,6 +163,14 @@ public record WithholdingRule(
                 && !thirdPartyProfile.hasResponsibility(requiredThirdPartyResponsibility)) {
             return false;
         }
+        if (requiredThirdPartyPersonType != null
+                && !Objects.equals(requiredThirdPartyPersonType, thirdPartyProfile.personType())) return false;
+        if (requiredThirdPartyTaxResidency != null
+                && !Objects.equals(requiredThirdPartyTaxResidency, thirdPartyProfile.taxResidency())) return false;
+        if (requiredThirdPartyIncomeTaxStatus != null
+                && !Objects.equals(requiredThirdPartyIncomeTaxStatus, thirdPartyProfile.incomeTaxStatus())) return false;
+        if (requiredThirdPartySelfWithholdingScope != null
+                && !thirdPartyProfile.selfWithholdingScopes().contains(requiredThirdPartySelfWithholdingScope)) return false;
         if (municipalityCode != null && !Objects.equals(municipalityCode, operationMunicipalityCode)) {
             return false;
         }
@@ -160,6 +199,10 @@ public record WithholdingRule(
         calculated += ciiuCode == null ? 0 : 8;
         calculated += requiredThirdPartyResponsibility == null ? 0 : 4;
         calculated += requiredThirdPartyTaxRegime == null ? 0 : 2;
+        calculated += requiredThirdPartyPersonType == null ? 0 : 2;
+        calculated += requiredThirdPartyTaxResidency == null ? 0 : 2;
+        calculated += requiredThirdPartyIncomeTaxStatus == null ? 0 : 2;
+        calculated += requiredThirdPartySelfWithholdingScope == null ? 0 : 4;
         calculated += conceptCode == null || "ANY".equals(conceptCode) ? 0 : 1;
         return calculated;
     }
@@ -175,5 +218,9 @@ public record WithholdingRule(
         return type == WithholdingType.RETEIVA ? FiscalCalculationBase.VAT_AMOUNT
                 : type == WithholdingType.AUTORETENCION ? FiscalCalculationBase.COMPANY_INCOME
                         : FiscalCalculationBase.TAXABLE_BASE;
+    }
+
+    private static FiscalTriggerMoment defaultTriggerMoment(FiscalOperationType operationType) {
+        return operationType == FiscalOperationType.PAYMENT ? FiscalTriggerMoment.PAYMENT : FiscalTriggerMoment.ACCRUAL;
     }
 }

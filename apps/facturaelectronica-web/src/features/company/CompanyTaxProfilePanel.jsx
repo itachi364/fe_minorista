@@ -15,6 +15,23 @@ const reportingGroupOptions = [
   { value: 'GRUPO_3', label: 'Grupo 3' },
 ];
 
+const residencyOptions = [
+  { value: 'COLOMBIA', label: 'Residente fiscal en Colombia' },
+  { value: 'EXTERIOR', label: 'Residente fiscal en el exterior' },
+  { value: 'UNKNOWN', label: 'Pendiente de verificar' },
+];
+const incomeTaxOptions = [
+  { value: 'DECLARANTE', label: 'Declarante de renta' },
+  { value: 'NO_DECLARANTE', label: 'No declarante de renta' },
+  { value: 'NO_APLICA', label: 'No aplica' },
+  { value: 'UNKNOWN', label: 'Pendiente de verificar' },
+];
+const selfWithholdingScopeOptions = [
+  { value: 'RENTA', label: 'Renta' },
+  { value: 'CREE', label: 'Autorretencion especial de renta' },
+  { value: 'ICA', label: 'ICA' },
+];
+
 export function CompanyTaxProfilePanel({ form, setForm, onSave, busy, disabled, taxRegimeOptions = [],
   responsibilityOptions = [], ciiuOptions = [], locations = [] }) {
   return (
@@ -41,9 +58,12 @@ export function CompanyTaxProfileFields({ form, setForm, taxRegimeOptions = [], 
         <SelectField label="Tamano empresarial" value={form.companySize} onChange={(value) => change('companySize', value)} options={companySizeOptions} disabled={disabled} />
         <SelectField label="Grupo de informacion financiera" value={form.financialReportingGroup} onChange={(value) => change('financialReportingGroup', value)} options={reportingGroupOptions} disabled={disabled} />
         <SelectField label="Regimen tributario" value={form.taxRegime} onChange={changeRegime} options={taxRegimeOptions} disabled={disabled} />
+        <SelectField label="Residencia fiscal" value={form.taxResidency} onChange={(value) => change('taxResidency', value)} options={residencyOptions} disabled={disabled} />
+        <SelectField label="Calidad frente a renta" value={form.incomeTaxStatus} onChange={(value) => change('incomeTaxStatus', value)} options={incomeTaxOptions} disabled={disabled} />
         <MunicipalityFields municipalityCode={form.icaMunicipalityCode} onChange={(value) => change('icaMunicipalityCode', value)} locations={locations} disabled={disabled} />
         <DualListField label="Responsabilidades RUT" value={form.rutResponsibilities} onChange={changeResponsibilities} options={responsibilityOptions} disabled={disabled} />
         <DualListField label="Actividades economicas CIIU" value={form.ciiuCodes} onChange={(value) => change('ciiuCodes', value)} options={ciiuOptions} searchable disabled={disabled} />
+        {form.selfWithholding && <DualListField label="Alcances de autorretencion" value={form.selfWithholdingScopes} onChange={(value) => change('selfWithholdingScopes', value)} options={selfWithholdingScopeOptions} disabled={disabled} />}
       </div>
       <div className="check-grid">
         <CheckField label="Detectado del RUT: responsable de IVA" checked={form.vatResponsible} onChange={() => {}} disabled />

@@ -1047,7 +1047,7 @@ Reglas:
 
 ## Extensiones TASK-289 a TASK-295
 
-Estado mixto: CIIU multiactividad, perfil fiscal y primera vertical de retenciones estan implementados; contador, credenciales temporales y correo permanecen como TARGET.
+Estado mixto: CIIU multiactividad, perfil fiscal y motor fiscal gobernado estan implementados; contador, credenciales temporales y correo permanecen como TARGET.
 
 ### Modulo de contadores
 
@@ -1097,6 +1097,8 @@ Campos logicos:
 - Regimen SIMPLE.
 - Municipio ICA.
 - Actividades economicas CIIU.
+- Residencia fiscal y estado frente al impuesto de renta.
+- Alcances tipados de autorretencion y referencia de evidencia.
 
 Reglas:
 
@@ -1110,12 +1112,18 @@ Modelo logico:
 - `accounting.fiscal_rule_set`: paquete versionado de reglas fiscales por vigencia.
 - `accounting.withholding_rule`: regla de retencion por tipo, concepto, base, tarifa, condiciones de empresa, condiciones de tercero, municipio y vigencia.
 - `accounting.withholding_calculation_snapshot`: resultado aplicado a compra, gasto o pago.
+- `accounting.fiscal_accumulation_line`: contribuciones por linea, contrato/pago y periodo, excluyendo reversos.
+- `accounting.national_fiscal_concept_catalog`: cobertura nacional gobernada, separada de las reglas operativas.
+- `accounting.fiscal_confirmation_process`: coordinacion idempotente de calculo, asiento y cuenta por pagar.
+- `accounting.account_presentation_mapping`: asociacion temporal entre cuenta propia, grupo y rubro financiero.
 
 Reglas:
 
 - Las reglas citan fuente normativa o parametro interno: Estatuto Tributario, DUR, PUC, responsabilidad RUT, acuerdo municipal o decision contable de empresa.
 - La regla aplicada se guarda como snapshot para que cambios normativos futuros no reescriban historicos.
 - El calculo puede sugerir cuentas PUC, pero la contabilizacion debe validar reglas contables activas de la empresa.
+- Las bases, causacion y acumulacion son valores cerrados del backend; un dato fiscal desconocido o un concepto sin regla verificada produce `BLOCKED`.
+- La confirmacion de compra realiza los efectos locales en una unica transaccion. Un error conserva diagnostico de proceso sin dejar asiento o cuenta por pagar parciales.
 
 ### Contrasenas temporales y notificaciones
 

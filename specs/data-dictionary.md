@@ -1165,7 +1165,7 @@ Estado mixto: readiness es una proyeccion runtime IMPLEMENTED sin tablas; cache/
 
 ## Extensiones TASK-289 a TASK-295
 
-Estado mixto: contador, credenciales temporales y correo son TARGET; perfil fiscal empresarial, CIIU multiactividad y primera vertical de retenciones estan IMPLEMENTED/PARTIAL.
+Estado mixto: contador, credenciales temporales y correo son TARGET; perfil fiscal empresarial, CIIU multiactividad y motor fiscal gobernado estan IMPLEMENTED.
 
 ### `identity.accountant_profile` (TARGET, TASK-290)
 
@@ -1201,7 +1201,7 @@ Estado mixto: contador, credenciales temporales y correo son TARGET; perfil fisc
 | temporary_password_expires_at | timestamptz | No | Vencimiento de la contrasena temporal. |
 | temporary_password_created_by | uuid | No | Usuario ROOT que provisiono la credencial temporal. |
 
-### `accounting.fiscal_rule_set` (TARGET de culminacion)
+### `accounting.fiscal_rule_set` (IMPLEMENTED)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1228,6 +1228,10 @@ Estado mixto: contador, credenciales temporales y correo son TARGET; perfil fisc
 | self_withholding | boolean | Si | Indica condicion de autorretenedor. |
 | simple_regime | boolean | Si | Indica si pertenece al regimen SIMPLE. |
 | ica_municipality_code | varchar(20) | No | Municipio base para ICA/reteICA. |
+| tax_residency | varchar(20) | Si | `UNKNOWN`, `COLOMBIA` o `EXTERIOR`. |
+| income_tax_status | varchar(20) | Si | Estado declarado frente al impuesto de renta. |
+| self_withholding_scopes | varchar(100)[] | Si | Impuestos/conceptos cubiertos por la designacion. |
+| fiscal_evidence_reference | varchar(500) | No | Referencia al soporte vigente. |
 | valid_from | date | Si | Inicio de vigencia del perfil. |
 | valid_to | date | No | Fin de vigencia. |
 | updated_by | uuid | Si | Usuario que modifico el perfil. |
@@ -1250,7 +1254,7 @@ Estado mixto: contador, credenciales temporales y correo son TARGET; perfil fisc
 | primary_activity | boolean | Si | Indica actividad principal. |
 | active | boolean | Si | Estado de la actividad. |
 
-### `accounting.withholding_rule` (IMPLEMENTED/PARTIAL)
+### `accounting.withholding_rule` (IMPLEMENTED)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1267,8 +1271,12 @@ Estado mixto: contador, credenciales temporales y correo son TARGET; perfil fisc
 | ciiu_code | varchar(10) | No | CIIU cuando la regla depende de actividad economica. |
 | priority | integer | Si | Prioridad de evaluacion. |
 | active | boolean | Si | Estado operacional. |
+| trigger_moment | varchar(20) | Si | `ACCRUAL` o `PAYMENT`. |
+| accumulation_scope | varchar(20) | Si | `OPERATION`, `CONTRACT`, `DAY`, `MONTH` o `YEAR`. |
+| calculation_base | varchar(30) | Si | Base cerrada de calculo. |
+| threshold_treatment | varchar(20) | Si | `FULL_AMOUNT`, `EXCESS` o `BRACKETED`. |
 
-### `accounting.withholding_calculation_snapshot` (IMPLEMENTED/PARTIAL)
+### `accounting.withholding_calculation_snapshot` (IMPLEMENTED)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1311,7 +1319,7 @@ Estado mixto: contador, credenciales temporales y correo son TARGET; perfil fisc
 
 ## Diccionario objetivo del motor fiscal completo
 
-Estado: IMPLEMENTED/PARTIAL, TASK-309 a TASK-315. V015-V020 implementan las entidades indicadas en el apartado de persistencia vigente; las estructuras con otro nombre o alcance permanecen como objetivo explicito.
+Estado: IMPLEMENTED, TASK-309 a TASK-315. V015-V021, tenant V012/V013 y thirdparty V008/V009 implementan la plataforma; una tarifa solo es operativa cuando su regla y fuente estan verificadas, publicadas y vigentes.
 
 ### Enumeraciones
 
@@ -1319,8 +1327,8 @@ Estado: IMPLEMENTED/PARTIAL, TASK-309 a TASK-315. V015-V020 implementan las enti
 |---|---|---|
 | `LEGAL_SOURCE_EVENT_TYPE` | `PUBLISHED`, `EFFECTIVE`, `MODIFIED`, `SUSPENDED`, `REACTIVATED`, `REPEALED` | Historia juridica de una fuente. |
 | `FISCAL_RULE_SET_STATUS` | `DRAFT`, `VERIFIED`, `ACTIVE`, `SUSPENDED`, `RETIRED` | Ciclo de publicacion de paquetes. |
-| `CAUSATION_MOMENT` | `PAYMENT`, `ACCRUAL`, `PAYMENT_OR_ACCRUAL_FIRST` | Momento que determina la retencion. |
-| `AGGREGATION_SCOPE` | `DOCUMENT`, `BENEFICIARY_DAY`, `BENEFICIARY_MONTH`, `CONTRACT`, `TAX_PERIOD` | Ambito para completar umbrales. |
+| `TRIGGER_MOMENT` | `PAYMENT`, `ACCRUAL` | Momento efectivo que determina la retencion. |
+| `ACCUMULATION_SCOPE` | `OPERATION`, `CONTRACT`, `DAY`, `MONTH`, `YEAR` | Ambito para completar umbrales. |
 | `FISCAL_BASE_TYPE` | `TAXABLE_AMOUNT`, `VAT_AMOUNT`, `AIU`, `GROSS_PAYMENT`, `COMPANY_INCOME`, `EXCESS`, `BRACKETED` | Base matematica de calculo. |
 | `TERRITORIALITY_STRATEGY` | `NATIONAL`, `PLACE_OF_ACTIVITY`, `SPECIAL_RULE` | Regla para resolver jurisdiccion. |
 | `FISCAL_DECISION` | `APPLIED`, `NOT_APPLIED`, `EXEMPT`, `BLOCKED` | Resultado auditable por linea. |
@@ -1373,6 +1381,10 @@ Estado: IMPLEMENTED/PARTIAL, TASK-309 a TASK-315. V015-V020 implementan las enti
 | reteica_amount | numeric(38,2) | Si | ReteICA confirmada. |
 | self_withholding_amount | numeric(38,2) | Si | Autorretencion confirmada. |
 | reversed_at | timestamptz | No | Excluye la linea de acumulaciones posteriores. |
+| contract_id | uuid | No | Contrato usado por acumulaciones de alcance `CONTRACT`. |
+| payment_id | uuid | No | Pago parcial fuente, usado para idempotencia y trazabilidad. |
+| aiu_amount | numeric(38,2) | Si | Base AIU aportada por la linea. |
+| gross_payment_amount | numeric(38,2) | Si | Pago bruto aportado por la linea. |
 
 ### `accounting.fiscal_line_calculation_snapshot` (IMPLEMENTED, V017/V018)
 
@@ -1399,19 +1411,19 @@ Estado: IMPLEMENTED/PARTIAL, TASK-309 a TASK-315. V015-V020 implementan las enti
 
 Versiona por empresa y tipo de retencion las cuentas por pagar/por cobrar, con `valid_from`, `valid_to`, estado, actor e instante de actualizacion. Los codigos deben existir activos en el plan propio de la empresa.
 
-### `accounting.fiscal_calculation_reversal` (IMPLEMENTED, V019)
+### `accounting.fiscal_calculation_reversal` (IMPLEMENTED, V019/V021)
 
-Conserva un unico reverso por empresa/calculo con motivo, actor e instante. No modifica el snapshot original y marca las lineas acumuladas para excluirlas de calculos posteriores.
+Conserva un unico reverso por empresa/calculo con motivo, actor, instante y `compensating_entry_id`. No modifica el snapshot original y marca las lineas acumuladas para excluirlas de calculos y auxiliares posteriores.
 
 ### `accounting.fiscal_period_close` (IMPLEMENTED, V019)
 
 Conserva un cierre inmutable unico por empresa, ano y mes, junto con el resumen JSON, actor e instante. Una confirmacion fiscal nueva no puede ingresar en un periodo cerrado.
 
-### `accounting.withholding_certificate` (IMPLEMENTED, V019)
+### `accounting.withholding_certificate` (IMPLEMENTED, V019/V021)
 
-Conserva versiones por empresa, proveedor y ano gravable, totales de base/retencion, contenido CSV inmutable, actor e instante. La descarga exige la misma empresa del certificado.
+Conserva versiones por empresa, proveedor y ano gravable, totales de base/retencion, identidades del agente y beneficiario, ciudad, contenido CSV inmutable, tipo, clave privada logica, estado de notificacion, actor e instante. La descarga exige la misma empresa del certificado.
 
-### `accounting.account_presentation_mapping` (TARGET, TASK-313)
+### `accounting.account_presentation_mapping` (IMPLEMENTED, V021)
 
 | Campo | Tipo | Requerido | Descripcion |
 |---|---|---:|---|
@@ -1422,3 +1434,17 @@ Conserva versiones por empresa, proveedor y ano gravable, totales de base/retenc
 | presentation_concept | varchar(120) | Si | Concepto de reporte asociado. |
 | valid_from | date | Si | Inicio del mapeo. |
 | valid_to | date | No | Fin del mapeo. |
+| evidence_reference | varchar(500) | No | Politica, acta o soporte del mapeo. |
+| active | boolean | Si | Estado administrativo de la version. |
+
+### `accounting.national_fiscal_concept_catalog` (IMPLEMENTED, V021)
+
+Registra codigo, descripcion, tipo de retencion, seccion del Formulario 350, estado `VERIFIED_RULE`/`REQUIRES_REVIEW`, referencia normativa, URL oficial y fecha de revision. No contiene ni publica por si mismo una tarifa.
+
+### `accounting.fiscal_confirmation_process` (IMPLEMENTED, V021)
+
+Conserva por `company_id + source_type + source_id` el estado, numero de intentos, error sanitizado y referencias al calculo, asiento y cuenta por pagar de una confirmacion fiscal atomica.
+
+### `accounting.fiscal_form_350_auxiliary` (IMPLEMENTED, V021)
+
+Vista por empresa, ano, mes, concepto, seccion y tipo de retencion que suma base/valor y cuenta documentos aplicados no reversados. Es un auxiliar de conciliacion, no una declaracion presentada.

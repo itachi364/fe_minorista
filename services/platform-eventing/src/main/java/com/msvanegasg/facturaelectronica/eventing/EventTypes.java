@@ -9,6 +9,7 @@ public final class EventTypes {
     public static final String AUDIT_EVENT_REQUESTED = "AuditEventRequested";
     public static final String PROVIDER_SUBMISSION_PENDING = "ProviderSubmissionPending";
     public static final String PROVIDER_SUBMISSION_FAILED = "ProviderSubmissionFailed";
+    public static final String WITHHOLDING_CERTIFICATE_GENERATED = "WithholdingCertificateGenerated";
 
     private EventTypes() {
     }

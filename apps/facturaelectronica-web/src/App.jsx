@@ -206,6 +206,9 @@ export default function App() {
   const [fiscalWarnings, setFiscalWarnings] = useState([]);
   const [fiscalRulePackages, setFiscalRulePackages] = useState([]);
   const [fiscalAccountMappings, setFiscalAccountMappings] = useState([]);
+  const [accountPresentationMappings, setAccountPresentationMappings] = useState([]);
+  const [nationalFiscalConcepts, setNationalFiscalConcepts] = useState([]);
+  const [fiscalForm350Auxiliary, setFiscalForm350Auxiliary] = useState([]);
   const [fiscalPeriodSummary, setFiscalPeriodSummary] = useState(null);
   const [fiscalReconciliation, setFiscalReconciliation] = useState(null);
   const [withholdingCertificates, setWithholdingCertificates] = useState([]);
@@ -748,7 +751,7 @@ export default function App() {
     setFiscalSuppliersError('');
     const rootContext = { token, userId: session?.userId };
     const [parametersResult, rulesResult, suppliersResult, sourcesResult, warningsResult, packagesResult,
-      accountsResult, mappingsResult] = await Promise.allSettled([
+      accountsResult, mappingsResult, presentationMappingsResult, nationalConceptsResult] = await Promise.allSettled([
       requestJson('/api/v1/fiscal-catalog/parameters', context),
       requestJson('/api/v1/fiscal-catalog/rules?active=true', context),
       activeCompanyId ? requestJson('/api/v1/suppliers?active=true', context) : Promise.resolve([]),
@@ -757,6 +760,8 @@ export default function App() {
       isRoot ? requestJson('/api/v1/fiscal-rule-packages/municipalities', rootContext) : Promise.resolve([]),
       activeCompanyId ? requestJson('/api/v1/accounts', context) : Promise.resolve([]),
       activeCompanyId ? requestJson('/api/v1/fiscal-account-mappings', context) : Promise.resolve([]),
+      activeCompanyId ? requestJson('/api/v1/account-presentation-mappings', context) : Promise.resolve([]),
+      requestJson('/api/v1/fiscal-national-concepts', context),
     ]);
     setFiscalSuppliersLoading(false);
     if (suppliersResult.status === 'fulfilled') {
@@ -774,6 +779,8 @@ export default function App() {
     setFiscalRulePackages(packagesResult.status === 'fulfilled' ? packagesResult.value || [] : []);
     setAccountingAccounts(accountsResult.status === 'fulfilled' ? accountsResult.value || [] : []);
     setFiscalAccountMappings(mappingsResult.status === 'fulfilled' ? mappingsResult.value || [] : []);
+    setAccountPresentationMappings(presentationMappingsResult.status === 'fulfilled' ? presentationMappingsResult.value || [] : []);
+    setNationalFiscalConcepts(nationalConceptsResult.status === 'fulfilled' ? nationalConceptsResult.value || [] : []);
     return rulesResult.value || [];
   }
 
@@ -786,6 +793,15 @@ export default function App() {
     return result;
   }
 
+  async function saveAccountPresentationMapping(payload) {
+    requireCompany();
+    const result = await requestJson('/api/v1/account-presentation-mappings', {
+      ...context, method: 'PUT', body: payload,
+    });
+    setAccountPresentationMappings((current) => [result, ...current.filter((item) => item.id !== result.id)]);
+    return result;
+  }
+
   async function loadFiscalPeriod(year, month) {
     requireCompany();
     const [summary, reconciliation] = await Promise.all([
@@ -794,6 +810,7 @@ export default function App() {
     ]);
     setFiscalPeriodSummary(summary);
     setFiscalReconciliation(reconciliation);
+    setFiscalForm350Auxiliary(await requestJson(`/api/v1/fiscal-auxiliaries/form-350?year=${year}&month=${month}`, context));
     return { summary, reconciliation };
   }
 
@@ -814,13 +831,13 @@ export default function App() {
     return result || [];
   }
 
-  async function generateWithholdingCertificate(thirdPartyId, year) {
+  async function generateWithholdingCertificate(payload) {
     requireCompany();
     const result = await requestJson('/api/v1/withholding-certificates', {
-      ...context, method: 'POST', body: { thirdPartyId, year },
+      ...context, method: 'POST', body: payload,
       idempotencyKey: createIdempotencyKey('withholding-certificate'),
     });
-    await loadWithholdingCertificates(thirdPartyId, year);
+    await loadWithholdingCertificates(payload.thirdPartyId, payload.year);
     return result;
   }
 
@@ -3192,7 +3209,8 @@ export default function App() {
             </>
           )}
           {currentStep === 'Reglas fiscales' && (
-            <FiscalCatalogPanel parameters={fiscalParameters} rules={fiscalRules} isRoot={isRoot}
+            <FiscalCatalogPanel parameters={fiscalParameters} rules={fiscalRules}
+              nationalConcepts={nationalFiscalConcepts} isRoot={isRoot}
               activeCompanyId={activeCompanyId} locations={runtimeCatalogs.locations}
               ciiuOptions={runtimeCatalogs.ciiuOptions} taxRegimeOptions={runtimeCatalogs.taxRegimeOptions}
               responsibilityOptions={runtimeCatalogs.taxResponsibilityOptions}
@@ -3217,15 +3235,18 @@ export default function App() {
               compliance={{
                 enabled: true,
                 mappings: fiscalAccountMappings,
+                presentationMappings: accountPresentationMappings,
+                form350Auxiliary: fiscalForm350Auxiliary,
                 accounts: accountingAccounts,
                 periodSummary: fiscalPeriodSummary,
                 reconciliation: fiscalReconciliation,
                 certificates: withholdingCertificates,
                 onSaveMapping: (payload) => execute(() => saveFiscalAccountMapping(payload), { successMessage: 'Mapeo fiscal guardado.' }),
+                onSavePresentationMapping: (payload) => execute(() => saveAccountPresentationMapping(payload), { successMessage: 'Mapeo de presentacion guardado.' }),
                 onLoadPeriod: (year, month) => execute(() => loadFiscalPeriod(year, month), { silentSuccess: true }),
                 onClosePeriod: (year, month) => execute(() => closeFiscalPeriod(year, month), { successMessage: 'Periodo fiscal cerrado.' }),
                 onLoadCertificates: (thirdPartyId, year) => execute(() => loadWithholdingCertificates(thirdPartyId, year), { silentSuccess: true }),
-                onGenerateCertificate: (thirdPartyId, year) => execute(() => generateWithholdingCertificate(thirdPartyId, year), { successMessage: 'Certificado de retencion generado.' }),
+                onGenerateCertificate: (payload) => execute(() => generateWithholdingCertificate(payload), { successMessage: 'Certificado de retencion generado.' }),
                 onDownloadCertificate: (certificateId) => execute(() => downloadWithholdingCertificate(certificateId), { successMessage: 'Certificado descargado.' }),
               }}
               busy={busy || (!activeCompanyId && !isRoot) || !canUse(stepPermissionRules['Reglas fiscales'])} />
@@ -3465,6 +3486,7 @@ function toCompanyTaxProfileForm(profile) {
     ...profile,
     rutResponsibilities: Array.from(profile.rutResponsibilities || []),
     ciiuCodes: Array.from(profile.ciiuCodes || []),
+    selfWithholdingScopes: Array.from(profile.selfWithholdingScopes || []),
     icaMunicipalityCode: profile.icaMunicipalityCode || '',
     taxRegime: profile.taxRegime || '',
   };

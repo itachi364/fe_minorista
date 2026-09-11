@@ -17,6 +17,8 @@ public final class ThirdPartyRestMapper {
                 request.identificationNumber(), request.verificationDigit(), request.fullName(),
                 request.businessName(), request.tradeName(), request.email(), request.phone(), request.address(),
                 request.municipalityCode(), request.ciiuCode(), request.ciiuCodes(), request.taxResponsibilities(), request.taxRegime(),
+                request.taxResidency(), request.incomeTaxStatus(), request.selfWithholdingScopes(),
+                request.fiscalEvidenceReference(),
                 request.roles());
     }
 
@@ -25,6 +27,7 @@ public final class ThirdPartyRestMapper {
                 result.identificationTypeCode(), result.identificationNumber(), result.verificationDigit(),
                 result.fullName(), result.businessName(), result.tradeName(), result.email(), result.phone(),
                 result.address(), result.municipalityCode(), result.ciiuCode(), result.ciiuCodes(), result.taxResponsibilities(),
-                result.taxRegime(), result.roles(), result.active());
+                result.taxRegime(), result.taxResidency(), result.incomeTaxStatus(), result.selfWithholdingScopes(),
+                result.fiscalEvidenceReference(), result.roles(), result.active());
     }
 }

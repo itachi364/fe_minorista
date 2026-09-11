@@ -5,10 +5,14 @@ import java.util.List;
 import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalAccountMappingResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountPresentationMappingResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalAuxiliaryResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.NationalFiscalConceptResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalPeriodSummary;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalReconciliationResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalReversalResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCertificateResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCertificateIdentity;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingType;
 
 public interface ManageFiscalComplianceUseCase {
@@ -20,6 +24,16 @@ public interface ManageFiscalComplianceUseCase {
     FiscalPeriodSummary summarize(UUID companyId, int year, int month);
     FiscalPeriodSummary close(UUID companyId, int year, int month, UUID userId);
     WithholdingCertificateResult generateCertificate(UUID companyId, UUID thirdPartyId, int year, UUID userId);
+    default WithholdingCertificateResult generateCertificate(UUID companyId, UUID thirdPartyId, int year,
+            WithholdingCertificateIdentity identity, UUID userId) {
+        return generateCertificate(companyId, thirdPartyId, year, userId);
+    }
     List<WithholdingCertificateResult> findCertificates(UUID companyId, UUID thirdPartyId, int year);
     String certificateContent(UUID companyId, UUID certificateId);
+    AccountPresentationMappingResult savePresentationMapping(UUID companyId, UUID accountId,
+            String financialReportingGroup, String statementSection, String presentationConcept,
+            LocalDate validFrom, LocalDate validTo, String evidenceReference, UUID userId);
+    List<AccountPresentationMappingResult> findPresentationMappings(UUID companyId);
+    List<FiscalAuxiliaryResult> form350Auxiliary(UUID companyId, int year, int month);
+    List<NationalFiscalConceptResult> nationalConcepts();
 }

@@ -19,6 +19,10 @@ public record CompanyTaxProfile(
         boolean simpleRegime,
         String icaMunicipalityCode,
         Set<String> ciiuCodes,
+        String taxResidency,
+        String incomeTaxStatus,
+        Set<String> selfWithholdingScopes,
+        String fiscalEvidenceReference,
         UUID updatedBy,
         Instant updatedAt) {
 
@@ -29,6 +33,10 @@ public record CompanyTaxProfile(
         rutResponsibilities = clean(rutResponsibilities);
         icaMunicipalityCode = normalize(icaMunicipalityCode);
         ciiuCodes = clean(ciiuCodes);
+        taxResidency = normalizeOrDefault(taxResidency, "UNKNOWN");
+        incomeTaxStatus = normalizeOrDefault(incomeTaxStatus, "UNKNOWN");
+        selfWithholdingScopes = clean(selfWithholdingScopes);
+        fiscalEvidenceReference = normalizeReference(fiscalEvidenceReference);
         if (companyId == null || taxRegime == null || updatedAt == null) {
             throw new IllegalArgumentException("Company, tax regime and update date are required");
         }
@@ -50,6 +58,17 @@ public record CompanyTaxProfile(
         simpleRegime = "SIMPLE".equals(taxRegime) || hasCode(rutResponsibilities, "47");
     }
 
+    public CompanyTaxProfile(UUID companyId, String companySize, String financialReportingGroup, String taxRegime,
+            Set<String> rutResponsibilities, boolean vatResponsible, boolean withholdingAgent,
+            boolean vatWithholdingAgent, boolean icaWithholdingAgent, boolean largeTaxpayer,
+            boolean selfWithholding, boolean simpleRegime, String icaMunicipalityCode, Set<String> ciiuCodes,
+            UUID updatedBy, Instant updatedAt) {
+        this(companyId, companySize, financialReportingGroup, taxRegime, rutResponsibilities, vatResponsible,
+                withholdingAgent, vatWithholdingAgent, icaWithholdingAgent, largeTaxpayer, selfWithholding,
+                simpleRegime, icaMunicipalityCode, ciiuCodes, "UNKNOWN", "UNKNOWN", Set.of(), null,
+                updatedBy, updatedAt);
+    }
+
     private static Set<String> clean(Set<String> values) {
         if (values == null) {
             return Set.of();
@@ -60,6 +79,15 @@ public record CompanyTaxProfile(
 
     private static String normalize(String value) {
         return value == null || value.isBlank() ? null : value.trim().toUpperCase(java.util.Locale.ROOT);
+    }
+
+    private static String normalizeOrDefault(String value, String fallback) {
+        String normalized = normalize(value);
+        return normalized == null ? fallback : normalized;
+    }
+
+    private static String normalizeReference(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private static boolean hasCode(Set<String> values, String expected) {

@@ -49,10 +49,17 @@ describe('FiscalCompliancePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Proveedor' }));
     fireEvent.click(screen.getByRole('option', { name: 'Proveedor SAS - 900123456' }));
     fireEvent.change(screen.getByLabelText('Ano gravable'), { target: { value: '2025' } });
+    fireEvent.change(screen.getByLabelText('Ciudad de expedicion'), { target: { value: 'Bogota' } });
+    fireEvent.change(screen.getByLabelText('NIT del agente retenedor'), { target: { value: '900765432' } });
+    fireEvent.change(screen.getByLabelText('Nombre del agente retenedor'), { target: { value: 'Empresa SAS' } });
+    fireEvent.change(screen.getByLabelText('Direccion del agente retenedor'), { target: { value: 'Calle 1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Generar' }));
     fireEvent.click(screen.getByRole('button', { name: 'Descargar CSV' }));
 
-    expect(onGenerateCertificate).toHaveBeenCalledWith('supplier-1', 2025);
+    expect(onGenerateCertificate).toHaveBeenCalledWith(expect.objectContaining({
+      thirdPartyId: 'supplier-1', year: 2025, certificateCity: 'Bogota', issuerIdentification: '900765432',
+      beneficiaryIdentification: '900123456', beneficiaryName: 'Proveedor SAS',
+    }));
     expect(onDownloadCertificate).toHaveBeenCalledWith('certificate-1');
   });
 });

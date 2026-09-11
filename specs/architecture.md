@@ -296,14 +296,14 @@ Riesgos:
 
 ## Decision TASK-289 a TASK-295
 
-La fase 36 tiene estado mixto: CIIU, perfil fiscal empresarial y primera vertical de retenciones estan implementados; contador, credenciales temporales y notificaciones permanecen como target. Ninguna de estas capacidades crea privilegios globales fuera de ROOT.
+La fase 36 tiene estado mixto: CIIU y perfil fiscal empresarial estan implementados y el motor se completo en la fase 39; contador, credenciales temporales y notificaciones permanecen como target. Ninguna de estas capacidades crea privilegios globales fuera de ROOT.
 
 Responsabilidades objetivo:
 
 - `identity-service`: usuarios contador, contrasenas temporales, cambio obligatorio en primer ingreso y estado de credenciales.
 - `tenant-service`: asociaciones contador-empresa, restriccion de un contador activo por empresa y perfil fiscal/contable empresarial.
 - `thirdparty-service`: implementa el perfil fiscal canonico de clientes/proveedores, incluyendo responsabilidades, regimen, municipio y `ciiuCodes`; `ciiuCode` es alias historico.
-- `accounting-service`: implementa la primera vertical de reglas fiscales, calculo de retenciones, snapshots y cuentas sugeridas; TASK-309 a TASK-315 completan temporalidad, lineas, acumulaciones, ReteICA, conciliacion y certificados.
+- `accounting-service`: implementa el motor fiscal gobernado de TASK-309 a TASK-315: temporalidad, perfiles tipados, lineas, acumulaciones, ReteICA, conciliacion, presentacion, reversos, certificados y confirmacion local atomica. Los conceptos sin regla verificada permanecen bloqueados.
 - `reporting-service`: datasets normalizados para portal contador y exportaciones.
 - `inventory-service`: eventos de inventario bajo al cruzar umbral configurado por producto.
 - `notification-service` o modulo equivalente: puerto de notificaciones, plantillas, adaptadores SMTP/SES/local, reintentos y auditoria.

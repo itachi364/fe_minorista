@@ -126,6 +126,7 @@ public class BffProxyController {
                 || normalized.startsWith("fiscal-legal-sources")
                 || normalized.startsWith("fiscal-rule-packages")
                 || normalized.startsWith("fiscal-account-mappings")
+                || normalized.startsWith("account-presentation-mappings")
                 || normalized.startsWith("fiscal-periods")
                 || normalized.startsWith("withholding-certificates")
                 || normalized.matches("fiscal-calculations/withholdings/documents/[^/]+/reverse")

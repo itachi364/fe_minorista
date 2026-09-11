@@ -4,11 +4,14 @@ import java.time.Clock;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.InitializeBasicAccountingSetupUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.CalculateWithholdingsUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.CalculateFiscalDocumentUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ConfigureAccountingUseCase;
+import com.msvanegasg.facturaelectronica.accounting.application.port.in.ConfirmPurchaseFiscalUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.DiagnoseAccountingReadinessUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsPayableUseCase;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageAccountsReceivableUseCase;
@@ -36,6 +39,8 @@ import com.msvanegasg.facturaelectronica.accounting.application.port.out.FiscalP
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.FiscalLegalSourceRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.FiscalComplianceRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.FiscalDocumentCalculationRepositoryPort;
+import com.msvanegasg.facturaelectronica.accounting.application.port.out.FiscalCalculationObserver;
+import com.msvanegasg.facturaelectronica.accounting.application.port.out.FiscalConfirmationProcessRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.MunicipalFiscalPackageRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.MunicipalityCatalogPort;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.ThirdPartyFiscalProfilePort;
@@ -54,6 +59,7 @@ import com.msvanegasg.facturaelectronica.accounting.application.usecase.FiscalCa
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.FiscalLegalSourceManagementService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.FiscalComplianceService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.FiscalDocumentCalculationService;
+import com.msvanegasg.facturaelectronica.accounting.application.usecase.PurchaseFiscalConfirmationService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.MunicipalFiscalPackageService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.QueryAccountingBooksService;
 import com.msvanegasg.facturaelectronica.accounting.application.usecase.QueryWithholdingSnapshotsService;
@@ -136,9 +142,21 @@ public class AccountingUseCaseConfiguration {
     CalculateFiscalDocumentUseCase calculateFiscalDocumentUseCase(CalculateWithholdingsUseCase lineCalculator,
             FiscalDocumentCalculationRepositoryPort repository, CompanyTaxProfilePort companyTaxProfilePort,
             ThirdPartyFiscalProfilePort thirdPartyFiscalProfilePort, IdGeneratorPort idGenerator,
-            Clock accountingClock) {
+            Clock accountingClock, FiscalCalculationObserver observer) {
         return new FiscalDocumentCalculationService(lineCalculator, repository, companyTaxProfilePort,
-                thirdPartyFiscalProfilePort, idGenerator, accountingClock);
+                thirdPartyFiscalProfilePort, idGenerator, accountingClock, observer);
+    }
+
+    @Bean
+    ConfirmPurchaseFiscalUseCase confirmPurchaseFiscalUseCase(
+            CalculateFiscalDocumentUseCase fiscalDocumentUseCase,
+            GenerateAccountingEntryUseCase accountingEntryUseCase,
+            ManageAccountsPayableUseCase accountsPayableUseCase,
+            FiscalConfirmationProcessRepositoryPort processRepository, IdGeneratorPort idGenerator,
+            PlatformTransactionManager transactionManager, Clock accountingClock) {
+        return new PurchaseFiscalConfirmationService(fiscalDocumentUseCase, accountingEntryUseCase,
+                accountsPayableUseCase, processRepository, idGenerator, new TransactionTemplate(transactionManager),
+                accountingClock);
     }
 
     @Bean
@@ -161,8 +179,9 @@ public class AccountingUseCaseConfiguration {
     }
 
     @Bean
-    ManageFiscalComplianceUseCase manageFiscalComplianceUseCase(FiscalComplianceRepositoryPort repository) {
-        return new FiscalComplianceService(repository);
+    ManageFiscalComplianceUseCase manageFiscalComplianceUseCase(FiscalComplianceRepositoryPort repository,
+            DomainEventPublisherPort eventPublisher, IdGeneratorPort idGenerator, Clock accountingClock) {
+        return new FiscalComplianceService(repository, eventPublisher, idGenerator, accountingClock);
     }
 
     @Bean

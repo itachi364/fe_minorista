@@ -60,7 +60,10 @@ public class FiscalCatalogController {
                 request.requiredThirdPartyTaxRegime(), request.requiredThirdPartyResponsibility(),
                 request.municipalityCode(), request.ciiuCode(), request.validFrom(), request.validTo(),
                 request.priority(), request.specificity(), request.legalReference(), request.sourceUrl(),
-                request.published(), request.targetThirdPartyId(), request.evidenceReference());
+                request.published(), request.targetThirdPartyId(), request.evidenceReference(),
+                request.triggerMoment(), request.accumulationScope(), request.requiredThirdPartyPersonType(),
+                request.requiredThirdPartyTaxResidency(), request.requiredThirdPartyIncomeTaxStatus(),
+                request.requiredThirdPartySelfWithholdingScope());
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(useCase.create(command)));
     }
 
@@ -86,6 +89,8 @@ public class FiscalCatalogController {
                 rule.requiredThirdPartyTaxRegime(), rule.requiredThirdPartyResponsibility(), rule.municipalityCode(),
                 rule.ciiuCode(), rule.validFrom(), rule.validTo(), rule.priority(), rule.specificity(),
                 rule.legalReference(), rule.sourceUrl(), rule.published(), rule.active(), rule.targetThirdPartyId(),
-                rule.evidenceReference());
+                rule.evidenceReference(), rule.triggerMoment(), rule.accumulationScope(),
+                rule.requiredThirdPartyPersonType(), rule.requiredThirdPartyTaxResidency(),
+                rule.requiredThirdPartyIncomeTaxStatus(), rule.requiredThirdPartySelfWithholdingScope());
     }
 }

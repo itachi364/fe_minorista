@@ -4,8 +4,13 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import com.msvanegasg.facturaelectronica.thirdparty.domain.model.IncomeTaxStatus;
 import com.msvanegasg.facturaelectronica.thirdparty.domain.model.PersonType;
 import com.msvanegasg.facturaelectronica.thirdparty.domain.model.TaxRegime;
+import com.msvanegasg.facturaelectronica.thirdparty.domain.model.TaxResidency;
 import com.msvanegasg.facturaelectronica.thirdparty.domain.model.ThirdPartyRole;
 
 import jakarta.persistence.CollectionTable;
@@ -94,6 +99,24 @@ public class ThirdPartyJpaEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "tax_regime", length = 30)
     private TaxRegime taxRegime;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tax_residency", nullable = false, length = 20)
+    @Builder.Default
+    private TaxResidency taxResidency = TaxResidency.UNKNOWN;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "income_tax_status", nullable = false, length = 20)
+    @Builder.Default
+    private IncomeTaxStatus incomeTaxStatus = IncomeTaxStatus.UNKNOWN;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "self_withholding_scopes", nullable = false, columnDefinition = "varchar(100)[]")
+    @Builder.Default
+    private String[] selfWithholdingScopes = new String[0];
+
+    @Column(name = "fiscal_evidence_reference", length = 500)
+    private String fiscalEvidenceReference;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "third_party_role", joinColumns = @JoinColumn(name = "third_party_id"))

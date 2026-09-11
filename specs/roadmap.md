@@ -12,14 +12,6 @@ Este archivo ordena exclusivamente trabajo pendiente. No reemplaza requisitos, c
 - Restriccion: no existe fallback silencioso a mock ante errores reales.
 - Salida: evidencia de habilitacion y trazabilidad por empresa antes de declarar produccion.
 
-## Fase C: Culminacion del motor fiscal
-
-- Prioridad: P0/P1.
-- Tareas parciales: TASK-310, TASK-311, TASK-313, TASK-314 y TASK-315. TASK-309 y TASK-312 estan cerradas.
-- Objetivo pendiente: completar perfiles tipados, matriz nacional verificada, acumulaciones adicionales, movimientos compensatorios, presentacion NIIF, formato legal de certificados, observabilidad y E2E distribuidos.
-- Dependencia: gobierno juridico y plataforma ReteICA ya implementados; la parte DIAN puede avanzar en paralelo cuando no comparta contratos.
-- Salida: resultados explicables, inmutables, conciliables y bloqueados ante configuracion insuficiente.
-
 ## Fase D: Contadores y acceso inicial
 
 - Prioridad: P1.
@@ -49,5 +41,6 @@ Este archivo ordena exclusivamente trabajo pendiente. No reemplaza requisitos, c
 ## Trabajo no planificado
 
 - Los requisitos sin tarea activa no autorizan implementacion por si solos.
+- La fase 39 esta cerrada. Incorporar una nueva tarifa nacional o municipal exige fuente oficial, version, pruebas y publicacion; un concepto `REQUIRES_REVIEW` no es una regla operativa.
 - Los identificadores historicos omitidos no se reutilizan.
 - Toda nueva necesidad se agrega al final de la numeracion vigente y antes de `Context7 evidence` en `tasks.md`.

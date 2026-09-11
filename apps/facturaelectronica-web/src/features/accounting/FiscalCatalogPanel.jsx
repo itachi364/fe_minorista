@@ -9,14 +9,17 @@ const option = (value, label = value) => ({ value, label });
 const operationOptions = [option('PURCHASE', 'Compra'), option('EXPENSE', 'Gasto'), option('PAYMENT', 'Pago'), option('PAYROLL', 'Nomina'), option('RECEIPT', 'Ingreso / recaudo')];
 const typeOptions = ['RETEFUENTE', 'RETEIVA', 'RETEICA', 'AUTORETENCION'].map((value) => option(value));
 const decisionOptions = [option('APPLIED', 'Aplicar'), option('EXEMPT', 'Exento'), option('NOT_APPLIED', 'Excluir'), option('BLOCKED', 'Bloquear')];
-const baseOptions = [option('TAXABLE_BASE', 'Base gravable'), option('VAT_AMOUNT', 'Valor del IVA'), option('COMPANY_INCOME', 'Ingreso propio')];
+const baseOptions = [option('TAXABLE_BASE', 'Base gravable'), option('VAT_AMOUNT', 'Valor del IVA'),
+  option('AIU', 'AIU'), option('GROSS_PAYMENT', 'Pago bruto'), option('COMPANY_INCOME', 'Ingreso propio')];
 
-export function FiscalCatalogPanel({ parameters, rules, isRoot, activeCompanyId, locations = [], ciiuOptions = [],
+export function FiscalCatalogPanel({ parameters, rules, nationalConcepts = [], isRoot, activeCompanyId, locations = [], ciiuOptions = [],
   taxRegimeOptions = [], responsibilityOptions = [], fiscalConceptOptions = [], thirdParties = [], onLoad, onSave,
   onDeactivate, onOpenEvidence = () => {}, thirdPartiesLoading = false, thirdPartiesError = '', busy,
   governance = {}, compliance = {} }) {
   const [form, setForm] = useState(emptyForm);
   const change = (name, value) => setForm((current) => ({ ...current, [name]: value }));
+  const changeOperation = (value) => setForm((current) => ({ ...current, operationType: value,
+    triggerMoment: value === 'PAYMENT' ? 'PAYMENT' : 'ACCRUAL' }));
   const thirdPartyOptions = thirdParties.filter((item) => item.active !== false).map((item) => ({
     value: item.id,
     label: [item.businessName || item.fullName || item.tradeName || item.legalName, item.identificationNumber]
@@ -74,10 +77,24 @@ export function FiscalCatalogPanel({ parameters, rules, isRoot, activeCompanyId,
       { searchText: item.legalReference, content: <a href={item.sourceUrl} target="_blank" rel="noreferrer">{item.legalReference}</a> },
     ])} rowKey={(row) => row[2]} />
 
+    <DataTable title="Conceptos fiscales nacionales" description="Cobertura juridica controlada. Los conceptos pendientes no habilitan calculos automaticos." columns={['Codigo', 'Concepto', 'Retencion', 'Formulario 350', 'Estado', 'Fuente']} rows={nationalConcepts.map((item) => [
+      item.code,
+      item.description,
+      item.withholdingType,
+      item.form350Section || 'No asignada',
+      item.operationalStatus === 'VERIFIED_RULE' ? 'Regla verificada' : 'Requiere revision',
+      { searchText: item.legalReference, content: <a href={item.sourceUrl} target="_blank" rel="noreferrer">{item.legalReference}</a> },
+    ])} rowKey={(row) => row[0]} pageSize={10} />
+
     <FormPanel title="Nueva version de regla fiscal" submitLabel="Publicar regla" onSubmit={submit} busy={busy || (!activeCompanyId && !form.globalRule)}>
       <div className="form-grid three">
         <Field label="Version" value={form.ruleSetVersion} onChange={(value) => change('ruleSetVersion', value)} />
-        <SelectField label="Operacion" value={form.operationType} onChange={(value) => change('operationType', value)} options={operationOptions} />
+        <SelectField label="Operacion" value={form.operationType} onChange={changeOperation} options={operationOptions} />
+        <SelectField label="Momento de causacion" value={form.triggerMoment} onChange={(value) => change('triggerMoment', value)} options={[option('ACCRUAL', 'Pago o abono en cuenta'), option('PAYMENT', 'Pago efectivo')]} />
+        <SelectField label="Alcance de acumulacion" value={form.accumulationScope} onChange={(value) => change('accumulationScope', value)} options={[
+          option('OPERATION', 'Operacion'), option('CONTRACT', 'Contrato'), option('DAY', 'Dia'),
+          option('MONTH', 'Mes'), option('YEAR', 'Ano'),
+        ]} />
         <SelectField label="Concepto" value={form.conceptCode} onChange={(value) => change('conceptCode', value)} options={fiscalConceptOptions} placeholder="Cualquier concepto" />
         <SelectField label="Tipo de retencion" value={form.withholdingType} onChange={(value) => change('withholdingType', value)} options={typeOptions} />
         <SelectField label="Decision" value={form.decision} onChange={changeDecision} options={decisionOptions} />
@@ -91,6 +108,10 @@ export function FiscalCatalogPanel({ parameters, rules, isRoot, activeCompanyId,
         <SearchableSelectField label="Codigo CIIU" value={form.ciiuCode} onChange={(value) => change('ciiuCode', value)} options={ciiuOptions} placeholder="Cualquier CIIU" searchPlaceholder="Buscar codigo o actividad" />
         <SelectField label="Regimen requerido" value={form.requiredThirdPartyTaxRegime} onChange={(value) => change('requiredThirdPartyTaxRegime', value)} options={taxRegimeOptions} placeholder="Cualquier regimen" />
         <SelectField label="Responsabilidad requerida" value={form.requiredThirdPartyResponsibility} onChange={(value) => change('requiredThirdPartyResponsibility', value)} options={responsibilityOptions} placeholder="Cualquier responsabilidad" />
+        <SelectField label="Tipo de persona requerido" value={form.requiredThirdPartyPersonType} onChange={(value) => change('requiredThirdPartyPersonType', value)} options={[option('NATURAL', 'Persona natural'), option('JURIDICA', 'Persona juridica')]} placeholder="Cualquier tipo" />
+        <SelectField label="Residencia fiscal requerida" value={form.requiredThirdPartyTaxResidency} onChange={(value) => change('requiredThirdPartyTaxResidency', value)} options={[option('COLOMBIA', 'Colombia'), option('EXTERIOR', 'Exterior')]} placeholder="Cualquier residencia" />
+        <SelectField label="Calidad frente a renta requerida" value={form.requiredThirdPartyIncomeTaxStatus} onChange={(value) => change('requiredThirdPartyIncomeTaxStatus', value)} options={[option('DECLARANTE', 'Declarante'), option('NO_DECLARANTE', 'No declarante'), option('NO_APLICA', 'No aplica')]} placeholder="Cualquier calidad" />
+        <SelectField label="Alcance de autorretencion requerido" value={form.requiredThirdPartySelfWithholdingScope} onChange={(value) => change('requiredThirdPartySelfWithholdingScope', value)} options={[option('RENTA'), option('CREE', 'Autorretencion especial de renta'), option('ICA')]} placeholder="Sin condicion" />
         <SearchableSelectField label="Tercero exento" value={form.targetThirdPartyId} onChange={changeTargetThirdParty} options={thirdPartyOptions} disabled={form.globalRule || !activeCompanyId || thirdPartiesLoading || Boolean(thirdPartiesError)} placeholder={thirdPartiesLoading ? 'Cargando proveedores...' : thirdPartiesError ? 'No fue posible cargar proveedores' : thirdPartyOptions.length === 0 ? 'No hay proveedores activos' : 'Sin tercero especifico'} searchPlaceholder="Buscar por nombre o documento" />
         {form.decision === 'EXEMPT' && form.targetThirdPartyId && !form.globalRule && <label>
           Soporte de exencion (PDF)
@@ -139,6 +160,9 @@ function emptyForm() {
     thresholdTreatment: 'FULL_AMOUNT', decision: 'APPLIED', requiresCompanyWithholdingAgent: false,
     requiresCompanyVatResponsible: false, requiresCompanyVatWithholdingAgent: false,
     requiresCompanyIcaWithholdingAgent: true, requiredThirdPartyTaxRegime: '', requiredThirdPartyResponsibility: '',
+    triggerMoment: 'ACCRUAL', accumulationScope: 'DAY', requiredThirdPartyPersonType: '',
+    requiredThirdPartyTaxResidency: '', requiredThirdPartyIncomeTaxStatus: '',
+    requiredThirdPartySelfWithholdingScope: '',
     targetThirdPartyId: '', evidenceFile: null,
     municipalityCode: '', ciiuCode: '', validFrom: '2026-01-01', validTo: '', priority: '100', specificity: '20',
     legalReference: '', sourceUrl: '', published: true, globalRule: false,

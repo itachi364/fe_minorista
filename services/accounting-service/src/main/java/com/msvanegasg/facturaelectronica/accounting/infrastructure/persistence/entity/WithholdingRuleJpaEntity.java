@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalOperationType;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalCalculationBase;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalAccumulationScope;
+import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalTriggerMoment;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalThresholdOperator;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalThresholdTreatment;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.FiscalThresholdUnit;
@@ -108,4 +110,18 @@ public class WithholdingRuleJpaEntity {
     @Column(nullable = false) private Boolean published;
     @Column(name = "target_third_party_id") private UUID targetThirdPartyId;
     @Column(name = "evidence_reference", length = 500) private String evidenceReference;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "trigger_moment", nullable = false, length = 20)
+    private FiscalTriggerMoment triggerMoment;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "accumulation_scope", nullable = false, length = 20)
+    private FiscalAccumulationScope accumulationScope;
+    @Column(name = "required_third_party_person_type", length = 20)
+    private String requiredThirdPartyPersonType;
+    @Column(name = "required_third_party_tax_residency", length = 20)
+    private String requiredThirdPartyTaxResidency;
+    @Column(name = "required_third_party_income_tax_status", length = 20)
+    private String requiredThirdPartyIncomeTaxStatus;
+    @Column(name = "required_third_party_self_withholding_scope", length = 100)
+    private String requiredThirdPartySelfWithholdingScope;
 }

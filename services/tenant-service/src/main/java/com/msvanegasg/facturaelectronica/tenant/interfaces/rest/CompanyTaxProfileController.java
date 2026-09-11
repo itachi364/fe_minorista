@@ -43,7 +43,9 @@ public class CompanyTaxProfileController {
                 request.financialReportingGroup(), request.taxRegime(), request.rutResponsibilities(),
                 request.vatResponsible(), request.withholdingAgent(), request.vatWithholdingAgent(),
                 request.icaWithholdingAgent(), request.largeTaxpayer(), request.selfWithholding(),
-                request.simpleRegime(), request.icaMunicipalityCode(), request.ciiuCodes(), userId)));
+                request.simpleRegime(), request.icaMunicipalityCode(), request.ciiuCodes(), request.taxResidency(),
+                request.incomeTaxStatus(), request.selfWithholdingScopes(), request.fiscalEvidenceReference(),
+                userId)));
     }
 
     private static CompanyTaxProfileResponse toResponse(CompanyTaxProfileResult result) {
@@ -51,7 +53,8 @@ public class CompanyTaxProfileController {
                 result.financialReportingGroup(), result.taxRegime(), result.rutResponsibilities(),
                 result.vatResponsible(), result.withholdingAgent(), result.vatWithholdingAgent(),
                 result.icaWithholdingAgent(), result.largeTaxpayer(), result.selfWithholding(),
-                result.simpleRegime(), result.icaMunicipalityCode(), result.ciiuCodes(), result.updatedBy(),
-                result.updatedAt());
+                result.simpleRegime(), result.icaMunicipalityCode(), result.ciiuCodes(), result.taxResidency(),
+                result.incomeTaxStatus(), result.selfWithholdingScopes(), result.fiscalEvidenceReference(),
+                result.updatedBy(), result.updatedAt());
     }
 }

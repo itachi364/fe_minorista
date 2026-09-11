@@ -49,7 +49,9 @@ public class CompanyTaxProfileHttpAdapter implements CompanyTaxProfilePort {
             return Optional.of(new CompanyTaxProfile(response.taxRegime(), safe(response.rutResponsibilities()),
                     response.vatResponsible(), response.withholdingAgent(), response.largeTaxpayer(),
                     response.selfWithholding(), response.simpleRegime(), response.icaMunicipalityCode(),
-                    safe(response.ciiuCodes()), response.vatWithholdingAgent(), response.icaWithholdingAgent()));
+                    safe(response.ciiuCodes()), response.vatWithholdingAgent(), response.icaWithholdingAgent(),
+                    response.taxResidency(), response.incomeTaxStatus(), safe(response.selfWithholdingScopes()),
+                    response.fiscalEvidenceReference()));
         } catch (RuntimeException exception) {
             return Optional.empty();
         }
@@ -70,6 +72,10 @@ public class CompanyTaxProfileHttpAdapter implements CompanyTaxProfilePort {
             boolean selfWithholding,
             boolean simpleRegime,
             String icaMunicipalityCode,
-            Set<String> ciiuCodes) {
+            Set<String> ciiuCodes,
+            String taxResidency,
+            String incomeTaxStatus,
+            Set<String> selfWithholdingScopes,
+            String fiscalEvidenceReference) {
     }
 }

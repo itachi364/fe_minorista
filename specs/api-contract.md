@@ -3751,7 +3751,7 @@ Reglas:
 
 ## Contratos fase 36 - contadores, reglas fiscales y notificaciones
 
-Estado mixto: endpoints de contador, credenciales temporales y correo son `TARGET`; perfil fiscal, CIIU y calculos/snapshots de la primera vertical fiscal son `IMPLEMENTED/PARTIAL`. TASK-309 a TASK-315 definen su culminacion.
+Estado mixto: endpoints de contador, credenciales temporales y correo son `TARGET`; perfil fiscal, CIIU y motor fiscal gobernado son `IMPLEMENTED`. TASK-309 a TASK-315 estan cerradas.
 
 ### Administracion ROOT de contadores
 
@@ -4023,7 +4023,7 @@ Idempotency-Key: {uuid}
 }
 ```
 
-Estado: IMPLEMENTED/PARTIAL. El cliente no envia perfiles fiscales autoritativos ni estados juridicos. El backend los resuelve por empresa, tercero y fecha. La respuesta contiene resultados por linea y totales con decision, razon, regla, fuente, base, tarifa, acumulado previo y acumulado resultante. `paymentDate`, moneda, AIU y contrato permanecen como ampliaciones de TASK-310/TASK-311.
+Estado: IMPLEMENTED. El cliente no envia perfiles fiscales autoritativos ni estados juridicos. El backend los resuelve por empresa, tercero y fecha. La respuesta contiene resultados por linea y totales con decision, razon, regla, fuente, base, tarifa, acumulado previo, retencion previamente practicada y acumulado resultante. El contrato admite `contractId`, `paymentId`, `aiuAmount` y `grossPaymentAmount`; la regla declara `triggerMoment` y `accumulationScope`.
 
 Cuando falta una condicion determinante, el resultado usa `BLOCKED` con una razon accionable; nunca asume tarifa cero. `preview` no persiste efectos contables. La confirmacion del documento recalcula y compara el hash de entradas antes de persistir.
 
@@ -4033,6 +4033,16 @@ GET /api/v1/fiscal-calculations/withholdings/documents?sourceType=PURCHASE&sourc
 ```
 
 La confirmacion exige `sourceType/sourceId`; ambos identifican idempotentemente el documento fuente y no pueden reutilizarse con un hash de entrada diferente.
+
+Para una compra, el consumidor usa el contrato atomico de aplicacion:
+
+```http
+POST /api/v1/fiscal-confirmations/purchases
+X-Company-Id: {companyId}
+X-User-Id: {userId}
+```
+
+El cuerpo incluye documento, proveedor, fecha, municipio de operacion, condicion de credito, vencimiento cuando aplique, importes, contrato y lineas fiscales. La respuesta contiene `fiscalCalculation`, `accountingEntry`, `accountsPayable` y `status=COMPLETED`. El proceso es unico por `companyId + PURCHASE + sourceId`; un fallo revierte los efectos locales y conserva estado `FAILED` para diagnostico/reintento sin ocultar la causa original.
 
 ### Explicacion e historico
 
@@ -4049,7 +4059,11 @@ La explicacion incluye perfiles versionados, reglas candidatas descartadas, regl
 ```http
 GET /api/v1/fiscal-account-mappings
 PUT /api/v1/fiscal-account-mappings
+GET /api/v1/account-presentation-mappings
+PUT /api/v1/account-presentation-mappings
 GET /api/v1/fiscal-reconciliation?year=2026&month=9
+GET /api/v1/fiscal-auxiliaries/form-350?year=2026&month=9
+GET /api/v1/fiscal-national-concepts
 GET /api/v1/fiscal-periods/2026/9/summary
 POST /api/v1/fiscal-periods/2026/9/close
 POST /api/v1/fiscal-calculations/withholdings/documents/{calculationId}/reverse
@@ -4058,7 +4072,11 @@ GET /api/v1/withholding-certificates?thirdPartyId={uuid}&year=2026
 GET /api/v1/withholding-certificates/{certificateId}/download
 ```
 
-Estado: IMPLEMENTED/PARTIAL. V019 implementa mapeos empresariales, conciliacion mensual, reverso inmutable, cierre, resumen y certificados CSV versionados. No presenta ni paga declaraciones; el formato legal completo, movimientos compensatorios y conciliacion por casillas permanecen pendientes en TASK-313/TASK-314.
+Estado: IMPLEMENTED mediante V019/V021. Los mapeos de presentacion conservan cuenta, grupo NIIF, rubro, vigencia y evidencia sin alterar tarifas fiscales. El auxiliar 350 agrupa snapshots aplicados por concepto y seccion, excluyendo calculos reversados; no presenta ni paga declaraciones.
+
+`POST /withholding-certificates` exige `thirdPartyId`, `year`, ciudad de expedicion, identificacion/nombre/direccion del agente e identificacion/nombre del beneficiario. Cada version se aisla por empresa, conserva contenido CSV, `privateStorageKey` y `notificationStatus=PENDING`, y emite `WithholdingCertificateGenerated` con un enlace intermediado. El envio de correo no forma parte de este endpoint y permanece a cargo de TASK-295.
+
+`GET /fiscal-national-concepts` publica cobertura y trazabilidad del concepto. `operationalStatus=VERIFIED_RULE` informa que existe evidencia revisada; `REQUIRES_REVIEW` impide inferir o aplicar una tarifa. El motor siempre requiere ademas una regla publicada y vigente para la fecha concreta.
 
 ### Paquetes territoriales
 

@@ -19,6 +19,10 @@ public record CompanyTaxProfileResponse(
         boolean simpleRegime,
         String icaMunicipalityCode,
         Set<String> ciiuCodes,
+        String taxResidency,
+        String incomeTaxStatus,
+        Set<String> selfWithholdingScopes,
+        String fiscalEvidenceReference,
         UUID updatedBy,
         Instant updatedAt) {
 }

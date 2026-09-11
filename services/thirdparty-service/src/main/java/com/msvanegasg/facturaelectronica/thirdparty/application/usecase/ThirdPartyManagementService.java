@@ -32,7 +32,8 @@ public class ThirdPartyManagementService implements ManageThirdPartyUseCase {
                 command.fullName(), command.businessName(), command.tradeName(), command.email(), command.phone(),
                 command.address(), command.municipalityCode(), mergeCiiuCodes(command.ciiuCodes(), command.ciiuCode()),
                 command.taxResponsibilities(),
-                command.taxRegime(), command.roles(), true);
+                command.taxRegime(), command.taxResidency(), command.incomeTaxStatus(),
+                command.selfWithholdingScopes(), command.fiscalEvidenceReference(), command.roles(), true);
         return toResult(repository.save(thirdParty));
     }
 
@@ -47,7 +48,8 @@ public class ThirdPartyManagementService implements ManageThirdPartyUseCase {
         ThirdParty updated = existing.update(command.personType(), command.fullName(), command.businessName(),
                 command.tradeName(), command.email(), command.phone(), command.address(), command.municipalityCode(),
                 mergeCiiuCodes(command.ciiuCodes(), command.ciiuCode()), command.taxResponsibilities(),
-                command.taxRegime(), command.roles());
+                command.taxRegime(), command.taxResidency(), command.incomeTaxStatus(),
+                command.selfWithholdingScopes(), command.fiscalEvidenceReference(), command.roles());
         return toResult(repository.save(updated));
     }
 
@@ -118,6 +120,8 @@ public class ThirdPartyManagementService implements ManageThirdPartyUseCase {
                 thirdParty.tradeName(), thirdParty.email(), thirdParty.phone(), thirdParty.address(),
                 thirdParty.municipalityCode(), thirdParty.ciiuCode(), thirdParty.ciiuCodes(),
                 thirdParty.taxResponsibilities(), thirdParty.taxRegime(),
+                thirdParty.taxResidency(), thirdParty.incomeTaxStatus(), thirdParty.selfWithholdingScopes(),
+                thirdParty.fiscalEvidenceReference(),
                 thirdParty.roles(), thirdParty.active());
     }
 

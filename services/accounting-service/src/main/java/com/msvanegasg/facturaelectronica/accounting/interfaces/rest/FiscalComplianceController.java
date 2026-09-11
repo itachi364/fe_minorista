@@ -19,10 +19,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalAccountMappingResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountPresentationMappingResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalAuxiliaryResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.NationalFiscalConceptResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalPeriodSummary;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalReconciliationResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalReversalResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCertificateResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCertificateIdentity;
 import com.msvanegasg.facturaelectronica.accounting.application.port.in.ManageFiscalComplianceUseCase;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingType;
 
@@ -60,6 +64,33 @@ public class FiscalComplianceController {
         return useCase.reconcile(companyId, year, month);
     }
 
+    @GetMapping("/account-presentation-mappings")
+    public List<AccountPresentationMappingResult> presentationMappings(
+            @RequestHeader(COMPANY_HEADER) UUID companyId) {
+        return useCase.findPresentationMappings(companyId);
+    }
+
+    @PutMapping("/account-presentation-mappings")
+    public AccountPresentationMappingResult savePresentationMapping(
+            @RequestHeader(COMPANY_HEADER) UUID companyId,
+            @RequestHeader(name = USER_HEADER, required = false) UUID userId,
+            @Valid @RequestBody AccountPresentationMappingRequest request) {
+        return useCase.savePresentationMapping(companyId, request.accountId(), request.financialReportingGroup(),
+                request.statementSection(), request.presentationConcept(), request.validFrom(), request.validTo(),
+                request.evidenceReference(), userId);
+    }
+
+    @GetMapping("/fiscal-auxiliaries/form-350")
+    public List<FiscalAuxiliaryResult> form350Auxiliary(@RequestHeader(COMPANY_HEADER) UUID companyId,
+            @RequestParam int year, @RequestParam int month) {
+        return useCase.form350Auxiliary(companyId, year, month);
+    }
+
+    @GetMapping("/fiscal-national-concepts")
+    public List<NationalFiscalConceptResult> nationalConcepts() {
+        return useCase.nationalConcepts();
+    }
+
     @PostMapping("/fiscal-calculations/withholdings/documents/{calculationId}/reverse")
     public FiscalReversalResult reverse(@RequestHeader(COMPANY_HEADER) UUID companyId,
             @RequestHeader(name = USER_HEADER, required = false) UUID userId, @PathVariable UUID calculationId,
@@ -90,7 +121,10 @@ public class FiscalComplianceController {
     public WithholdingCertificateResult generateCertificate(@RequestHeader(COMPANY_HEADER) UUID companyId,
             @RequestHeader(name = USER_HEADER, required = false) UUID userId,
             @Valid @RequestBody WithholdingCertificateRequest request) {
-        return useCase.generateCertificate(companyId, request.thirdPartyId(), request.year(), userId);
+        return useCase.generateCertificate(companyId, request.thirdPartyId(), request.year(),
+                new WithholdingCertificateIdentity(request.certificateCity(), request.issuerIdentification(),
+                        request.issuerName(), request.issuerAddress(), request.beneficiaryIdentification(),
+                        request.beneficiaryName()), userId);
     }
 
     @GetMapping("/withholding-certificates/{certificateId}/download")
@@ -107,5 +141,12 @@ public class FiscalComplianceController {
             @NotBlank String payableAccountCode, String receivableAccountCode, @NotNull LocalDate validFrom,
             LocalDate validTo) { }
     public record FiscalReversalRequest(@NotBlank String reason) { }
-    public record WithholdingCertificateRequest(@NotNull UUID thirdPartyId, int year) { }
+    public record WithholdingCertificateRequest(@NotNull UUID thirdPartyId, int year,
+            @NotBlank String certificateCity, @NotBlank String issuerIdentification,
+            @NotBlank String issuerName, @NotBlank String issuerAddress,
+            @NotBlank String beneficiaryIdentification, @NotBlank String beneficiaryName) { }
+    public record AccountPresentationMappingRequest(@NotNull UUID accountId,
+            @NotBlank String financialReportingGroup, @NotBlank String statementSection,
+            @NotBlank String presentationConcept, @NotNull LocalDate validFrom, LocalDate validTo,
+            String evidenceReference) { }
 }

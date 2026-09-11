@@ -18,10 +18,14 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalAccountMappingResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.AccountPresentationMappingResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalAuxiliaryResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.NationalFiscalConceptResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalPeriodSummary;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalReconciliationResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.FiscalReversalResult;
 import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCertificateResult;
+import com.msvanegasg.facturaelectronica.accounting.application.dto.WithholdingCertificateIdentity;
 import com.msvanegasg.facturaelectronica.accounting.application.port.out.FiscalComplianceRepositoryPort;
 import com.msvanegasg.facturaelectronica.accounting.domain.model.WithholdingType;
 
@@ -111,9 +115,14 @@ public class FiscalComplianceJdbcAdapter implements FiscalComplianceRepositoryPo
                         + "ON CONFLICT (company_id, calculation_id) DO NOTHING",
                 id, companyId, calculationId, reason, userId, now);
         if (inserted == 0) return findReversal(companyId, calculationId).get(0);
+        UUID compensatingEntryId = createCompensatingEntry(companyId, calculationId, id, operationDate, reason);
+        if (compensatingEntryId != null) {
+            jdbcTemplate.update("UPDATE fiscal_calculation_reversal SET compensating_entry_id = ? WHERE id = ?",
+                    compensatingEntryId, id);
+        }
         jdbcTemplate.update("UPDATE fiscal_accumulation_line SET reversed_at = ? "
                 + "WHERE calculation_id = ? AND reversed_at IS NULL", now, calculationId);
-        return new FiscalReversalResult(id, companyId, calculationId, reason, userId, now);
+        return new FiscalReversalResult(id, companyId, calculationId, reason, userId, now, compensatingEntryId);
     }
 
     @Override
@@ -156,6 +165,14 @@ public class FiscalComplianceJdbcAdapter implements FiscalComplianceRepositoryPo
     @Override
     public WithholdingCertificateResult generateCertificate(UUID companyId, UUID thirdPartyId, int year,
             UUID userId) {
+        return generateCertificate(companyId, thirdPartyId, year,
+                new WithholdingCertificateIdentity("NO_INFORMADA", companyId.toString(), companyId.toString(),
+                        "NO_INFORMADA", thirdPartyId.toString(), thirdPartyId.toString()), userId);
+    }
+
+    @Override
+    public WithholdingCertificateResult generateCertificate(UUID companyId, UUID thirdPartyId, int year,
+            WithholdingCertificateIdentity identity, UUID userId) {
         Period period = period(year, 1, 12);
         jdbcTemplate.query("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", rs -> { },
                 companyId + ":" + thirdPartyId + ":" + year);
@@ -179,9 +196,14 @@ public class FiscalComplianceJdbcAdapter implements FiscalComplianceRepositoryPo
         UUID id = UUID.randomUUID();
         Instant now = Instant.now();
         jdbcTemplate.update("INSERT INTO withholding_certificate (id, company_id, third_party_id, fiscal_year, "
-                        + "version, total_base, total_withheld, content_csv, generated_by, generated_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", id, companyId, thirdPartyId, year, version,
-                money(totalBase), money(totalWithheld), csv(lines), userId, now);
+                        + "version, total_base, total_withheld, content_csv, generated_by, generated_at, "
+                        + "certificate_city, issuer_identification, issuer_name, issuer_address, "
+                        + "beneficiary_identification, beneficiary_name, private_storage_key, notification_status) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')", id, companyId, thirdPartyId,
+                year, version, money(totalBase), money(totalWithheld), csv(identity, year, lines), userId, now,
+                identity.certificateCity(), identity.issuerIdentification(), identity.issuerName(),
+                identity.issuerAddress(), identity.beneficiaryIdentification(), identity.beneficiaryName(),
+                "accounting/withholding-certificates/" + companyId + "/" + id + ".csv");
         return new WithholdingCertificateResult(id, companyId, thirdPartyId, year, version, money(totalBase),
                 money(totalWithheld), now);
     }
@@ -202,11 +224,108 @@ public class FiscalComplianceJdbcAdapter implements FiscalComplianceRepositoryPo
                 (rs, row) -> rs.getString(1), companyId, certificateId).stream().findFirst();
     }
 
+    @Override
+    public AccountPresentationMappingResult savePresentationMapping(UUID companyId, UUID accountId,
+            String financialReportingGroup, String statementSection, String presentationConcept,
+            LocalDate validFrom, LocalDate validTo, String evidenceReference, UUID userId) {
+        Integer accountCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM accounting_account "
+                + "WHERE id = ? AND company_id = ? AND active = true", Integer.class, accountId, companyId);
+        if (accountCount == null || accountCount == 0) {
+            throw new IllegalStateException("La cuenta contable no existe o esta inactiva para la empresa.");
+        }
+        jdbcTemplate.update("UPDATE account_presentation_mapping SET active = false, valid_to = ? "
+                        + "WHERE company_id = ? AND account_id = ? AND financial_reporting_group = ? "
+                        + "AND active = true AND valid_from < ?",
+                validFrom.minusDays(1), companyId, accountId, financialReportingGroup, validFrom);
+        UUID id = UUID.randomUUID();
+        jdbcTemplate.update("INSERT INTO account_presentation_mapping (id, company_id, account_id, "
+                        + "financial_reporting_group, statement_section, presentation_concept, valid_from, valid_to, "
+                        + "evidence_reference, active, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, true, ?, ?) "
+                        + "ON CONFLICT (company_id, account_id, financial_reporting_group, valid_from) DO UPDATE SET "
+                        + "statement_section = EXCLUDED.statement_section, presentation_concept = EXCLUDED.presentation_concept, "
+                        + "valid_to = EXCLUDED.valid_to, evidence_reference = EXCLUDED.evidence_reference, active = true, "
+                        + "updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at",
+                id, companyId, accountId, financialReportingGroup, statementSection, presentationConcept,
+                validFrom, validTo, evidenceReference, userId, Instant.now());
+        return findPresentationMappings(companyId).stream()
+                .filter(item -> item.accountId().equals(accountId)
+                        && item.financialReportingGroup().equals(financialReportingGroup)
+                        && item.validFrom().equals(validFrom))
+                .findFirst().orElseThrow();
+    }
+
+    @Override
+    public List<AccountPresentationMappingResult> findPresentationMappings(UUID companyId) {
+        return jdbcTemplate.query("SELECT mapping.*, account.code account_code FROM account_presentation_mapping mapping "
+                        + "JOIN accounting_account account ON account.id = mapping.account_id "
+                        + "WHERE mapping.company_id = ? ORDER BY mapping.financial_reporting_group, "
+                        + "mapping.statement_section, account.code, mapping.valid_from DESC",
+                (rs, row) -> new AccountPresentationMappingResult(rs.getObject("id", UUID.class), companyId,
+                        rs.getObject("account_id", UUID.class), rs.getString("account_code"),
+                        rs.getString("financial_reporting_group"), rs.getString("statement_section"),
+                        rs.getString("presentation_concept"), rs.getDate("valid_from").toLocalDate(),
+                        date(rs.getDate("valid_to")), rs.getString("evidence_reference"), rs.getBoolean("active")),
+                companyId);
+    }
+
+    @Override
+    public List<FiscalAuxiliaryResult> findForm350Auxiliary(UUID companyId, int year, int month) {
+        return jdbcTemplate.query("SELECT * FROM fiscal_form_350_auxiliary WHERE company_id = ? "
+                        + "AND fiscal_year = ? AND fiscal_month = ? ORDER BY form_350_section, concept_code, withholding_type",
+                (rs, row) -> new FiscalAuxiliaryResult(companyId, year, month, rs.getString("concept_code"),
+                        rs.getString("form_350_section"), rs.getString("withholding_type"),
+                        money(rs.getBigDecimal("base_amount")), money(rs.getBigDecimal("withheld_amount")),
+                        rs.getLong("document_count")), companyId, year, month);
+    }
+
+    @Override
+    public List<NationalFiscalConceptResult> findNationalConcepts() {
+        return jdbcTemplate.query("SELECT * FROM national_fiscal_concept_catalog ORDER BY withholding_type, code",
+                (rs, row) -> new NationalFiscalConceptResult(rs.getString("code"), rs.getString("description"),
+                        rs.getString("withholding_type"), rs.getString("form_350_section"),
+                        rs.getString("operational_status"), rs.getString("legal_reference"),
+                        rs.getString("source_url")));
+    }
+
     private List<FiscalReversalResult> findReversal(UUID companyId, UUID calculationId) {
         return jdbcTemplate.query("SELECT * FROM fiscal_calculation_reversal WHERE company_id = ? AND calculation_id = ?",
                 (rs, row) -> new FiscalReversalResult(rs.getObject("id", UUID.class), companyId, calculationId,
                         rs.getString("reason"), rs.getObject("reversed_by", UUID.class),
-                        rs.getTimestamp("reversed_at").toInstant()), companyId, calculationId);
+                        rs.getTimestamp("reversed_at").toInstant(),
+                        rs.getObject("compensating_entry_id", UUID.class)), companyId, calculationId);
+    }
+
+    private UUID createCompensatingEntry(UUID companyId, UUID calculationId, UUID reversalId,
+            LocalDate operationDate, String reason) {
+        List<UUID> originalIds = jdbcTemplate.query("SELECT entry.id FROM accounting_entry entry "
+                        + "JOIN fiscal_document_calculation calculation ON calculation.company_id = entry.company_id "
+                        + "AND calculation.source_type = entry.source_type AND calculation.source_id = entry.source_id "
+                        + "WHERE calculation.id = ? AND calculation.company_id = ? AND entry.status = 'POSTED'",
+                (rs, row) -> rs.getObject(1, UUID.class), calculationId, companyId);
+        if (originalIds.isEmpty()) return null;
+        UUID originalId = originalIds.get(0);
+        UUID entryId = UUID.randomUUID();
+        jdbcTemplate.update("INSERT INTO accounting_entry (id, company_id, entry_date, description, source_type, "
+                        + "source_id, status, debit_total, credit_total) SELECT ?, company_id, ?, ?, 'ADJUSTMENT', ?, "
+                        + "'POSTED', credit_total, debit_total FROM accounting_entry WHERE id = ? AND company_id = ?",
+                entryId, operationDate, "Reverso fiscal: " + reason, reversalId, originalId, companyId);
+        List<EntryLine> lines = jdbcTemplate.query("SELECT line_order, account_id, account_code, account_name, "
+                        + "thirdparty_id, debit_amount, credit_amount, description FROM accounting_entry_line "
+                        + "WHERE entry_id = ? ORDER BY line_order",
+                (rs, row) -> new EntryLine(rs.getInt(1), rs.getObject(2, UUID.class), rs.getString(3),
+                        rs.getString(4), rs.getObject(5, UUID.class), rs.getBigDecimal(6), rs.getBigDecimal(7),
+                        rs.getString(8)), originalId);
+        lines.forEach(line -> jdbcTemplate.update("INSERT INTO accounting_entry_line (id, entry_id, line_order, "
+                        + "account_id, account_code, account_name, thirdparty_id, debit_amount, credit_amount, "
+                        + "description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                UUID.randomUUID(), entryId, line.order(), line.accountId(), line.accountCode(), line.accountName(),
+                line.thirdPartyId(), line.credit(), line.debit(), "Reverso: " + escapeDescription(line.description())));
+        return entryId;
+    }
+
+    private static String escapeDescription(String value) {
+        String normalized = value == null || value.isBlank() ? "movimiento fiscal" : value.trim();
+        return normalized.length() > 240 ? normalized.substring(0, 240) : normalized;
     }
 
     private boolean isClosed(UUID companyId, int year, int month) {
@@ -232,8 +351,18 @@ public class FiscalComplianceJdbcAdapter implements FiscalComplianceRepositoryPo
         }
     }
 
-    private static String csv(List<CertificateLine> lines) {
-        StringBuilder value = new StringBuilder("fecha,tipoRetencion,concepto,base,tarifa,valor,tipoDocumento,idDocumento\n");
+    private static String csv(WithholdingCertificateIdentity identity, int year, List<CertificateLine> lines) {
+        StringBuilder value = new StringBuilder();
+        value.append("campo,valor\n")
+                .append("anoGravable,").append(year).append('\n')
+                .append("ciudadExpedicion,").append(escape(identity.certificateCity())).append('\n')
+                .append("nitAgenteRetenedor,").append(escape(identity.issuerIdentification())).append('\n')
+                .append("nombreAgenteRetenedor,").append(escape(identity.issuerName())).append('\n')
+                .append("direccionAgenteRetenedor,").append(escape(identity.issuerAddress())).append('\n')
+                .append("identificacionBeneficiario,").append(escape(identity.beneficiaryIdentification())).append('\n')
+                .append("nombreBeneficiario,").append(escape(identity.beneficiaryName())).append('\n')
+                .append("firmaResponsable,USUARIO_AUTENTICADO\n\n")
+                .append("fecha,tipoRetencion,concepto,base,tarifa,valor,tipoDocumento,idDocumento\n");
         lines.forEach(line -> value.append(line.date()).append(',').append(line.type()).append(',')
                 .append(escape(line.concept())).append(',').append(line.base()).append(',').append(line.rate())
                 .append(',').append(line.amount()).append(',').append(line.sourceType()).append(',')
@@ -263,4 +392,6 @@ public class FiscalComplianceJdbcAdapter implements FiscalComplianceRepositoryPo
     private record Period(LocalDate from, LocalDate to) { }
     private record CertificateLine(LocalDate date, String type, String concept, BigDecimal base, BigDecimal rate,
             BigDecimal amount, String sourceType, UUID sourceId) { }
+    private record EntryLine(int order, UUID accountId, String accountCode, String accountName, UUID thirdPartyId,
+            BigDecimal debit, BigDecimal credit, String description) { }
 }

@@ -21,6 +21,10 @@ public record CompanyTaxProfileResult(
         boolean simpleRegime,
         String icaMunicipalityCode,
         Set<String> ciiuCodes,
+        String taxResidency,
+        String incomeTaxStatus,
+        Set<String> selfWithholdingScopes,
+        String fiscalEvidenceReference,
         UUID updatedBy,
         Instant updatedAt) {
 
@@ -29,7 +33,8 @@ public record CompanyTaxProfileResult(
                 profile.financialReportingGroup(), profile.taxRegime(), profile.rutResponsibilities(),
                 profile.vatResponsible(), profile.withholdingAgent(), profile.vatWithholdingAgent(),
                 profile.icaWithholdingAgent(), profile.largeTaxpayer(), profile.selfWithholding(),
-                profile.simpleRegime(), profile.icaMunicipalityCode(), profile.ciiuCodes(), profile.updatedBy(),
-                profile.updatedAt());
+                profile.simpleRegime(), profile.icaMunicipalityCode(), profile.ciiuCodes(), profile.taxResidency(),
+                profile.incomeTaxStatus(), profile.selfWithholdingScopes(), profile.fiscalEvidenceReference(),
+                profile.updatedBy(), profile.updatedAt());
     }
 }
